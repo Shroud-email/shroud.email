@@ -1,6 +1,6 @@
-# 🥸 Alias
+# 🥷 Shroud
 
-Alias is an email privacy service.
+Shroud is an email privacy service.
 
 # To do
 

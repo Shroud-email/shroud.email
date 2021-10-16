@@ -1,4 +1,4 @@
-defmodule AliasWeb.ConnCase do
+defmodule ShroudWeb.ConnCase do
   @moduledoc """
   This module defines the test case to be used by
   tests that require setting up a connection.
@@ -11,7 +11,7 @@ defmodule AliasWeb.ConnCase do
   we enable the SQL sandbox, so changes done to the database
   are reverted at the end of every test. If you are using
   PostgreSQL, you can even run database tests asynchronously
-  by setting `use AliasWeb.ConnCase, async: true`, although
+  by setting `use ShroudWeb.ConnCase, async: true`, although
   this option is not recommended for other databases.
   """
 
@@ -22,17 +22,17 @@ defmodule AliasWeb.ConnCase do
       # Import conveniences for testing with connections
       import Plug.Conn
       import Phoenix.ConnTest
-      import AliasWeb.ConnCase
+      import ShroudWeb.ConnCase
 
-      alias AliasWeb.Router.Helpers, as: Routes
+      alias ShroudWeb.Router.Helpers, as: Routes
 
       # The default endpoint for testing
-      @endpoint AliasWeb.Endpoint
+      @endpoint ShroudWeb.Endpoint
     end
   end
 
   setup tags do
-    pid = Ecto.Adapters.SQL.Sandbox.start_owner!(Alias.Repo, shared: not tags[:async])
+    pid = Ecto.Adapters.SQL.Sandbox.start_owner!(Shroud.Repo, shared: not tags[:async])
     on_exit(fn -> Ecto.Adapters.SQL.Sandbox.stop_owner(pid) end)
     {:ok, conn: Phoenix.ConnTest.build_conn()}
   end
@@ -46,7 +46,7 @@ defmodule AliasWeb.ConnCase do
   test context.
   """
   def register_and_log_in_user(%{conn: conn}) do
-    user = Alias.AccountsFixtures.user_fixture()
+    user = Shroud.AccountsFixtures.user_fixture()
     %{conn: log_in_user(conn, user), user: user}
   end
 
@@ -56,7 +56,7 @@ defmodule AliasWeb.ConnCase do
   It returns an updated `conn`.
   """
   def log_in_user(conn, user) do
-    token = Alias.Accounts.generate_user_session_token(user)
+    token = Shroud.Accounts.generate_user_session_token(user)
 
     conn
     |> Phoenix.ConnTest.init_test_session(%{})

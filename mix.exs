@@ -1,9 +1,9 @@
-defmodule Alias.MixProject do
+defmodule Shroud.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :alias,
+      app: :shroud,
       version: "0.1.0",
       elixir: "~> 1.12",
       elixirc_paths: elixirc_paths(Mix.env()),
@@ -19,7 +19,7 @@ defmodule Alias.MixProject do
   # Type `mix help compile.app` for more information.
   def application do
     [
-      mod: {Alias.Application, []},
+      mod: {Shroud.Application, []},
       extra_applications: [:logger, :runtime_tools]
     ]
   end

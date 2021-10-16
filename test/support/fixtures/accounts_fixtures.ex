@@ -1,7 +1,7 @@
-defmodule Alias.AccountsFixtures do
+defmodule Shroud.AccountsFixtures do
   @moduledoc """
   This module defines test helpers for creating
-  entities via the `Alias.Accounts` context.
+  entities via the `Shroud.Accounts` context.
   """
 
   def unique_user_email, do: "user#{System.unique_integer()}@example.com"
@@ -18,7 +18,7 @@ defmodule Alias.AccountsFixtures do
     {:ok, user} =
       attrs
       |> valid_user_attributes()
-      |> Alias.Accounts.register_user()
+      |> Shroud.Accounts.register_user()
 
     user
   end

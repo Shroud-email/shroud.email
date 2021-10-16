@@ -1,4 +1,4 @@
-defmodule Alias.Repo.Migrations.CreateEmailAliases do
+defmodule Shroud.Repo.Migrations.CreateEmailAliases do
   use Ecto.Migration
 
   def change do

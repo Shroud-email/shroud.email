@@ -5,8 +5,8 @@
       "server": "localhost",
       "port": 5432,
       "driver": "PostgreSQL",
-      "name": "alias_dev",
-      "database": "alias_dev",
+      "name": "shroud_dev",
+      "database": "shroud_dev",
       "username": "postgres",
       "password": "postgres"
     }

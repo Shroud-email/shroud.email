@@ -1,4 +1,4 @@
-defmodule Alias.Repo.Migrations.CreateUsersAuthTables do
+defmodule Shroud.Repo.Migrations.CreateUsersAuthTables do
   use Ecto.Migration
 
   def change do

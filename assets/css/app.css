@@ -1,6 +1,16 @@
 /* This file is for your main application CSS */
 @import "./pico.css";
 
+/* @font-face {
+  font-family: "Carter One";
+  font-display: swap;
+  src: url("../fonts/CarterOne-Regular.ttf");
+}
+
+.logo {
+  font-family: "Carter One", "sans-serif";
+} */
+
 /* Alerts and form errors used by phx.new */
 .alert {
   padding: 15px;

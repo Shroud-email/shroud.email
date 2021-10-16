@@ -7,14 +7,14 @@
 # General application configuration
 import Config
 
-config :alias,
-  ecto_repos: [Alias.Repo]
+config :shroud,
+  ecto_repos: [Shroud.Repo]
 
 # Configures the endpoint
-config :alias, AliasWeb.Endpoint,
+config :shroud, ShroudWeb.Endpoint,
   url: [host: "localhost"],
-  render_errors: [view: AliasWeb.ErrorView, accepts: ~w(html json), layout: false],
-  pubsub_server: Alias.PubSub,
+  render_errors: [view: ShroudWeb.ErrorView, accepts: ~w(html json), layout: false],
+  pubsub_server: Shroud.PubSub,
   live_view: [signing_salt: "OFJWqfW8"]
 
 # Configures the mailer
@@ -24,9 +24,9 @@ config :alias, AliasWeb.Endpoint,
 #
 # For production it's recommended to configure a different adapter
 # at the `config/runtime.exs`.
-config :alias, Alias.Mailer, adapter: Swoosh.Adapters.Local
+config :shroud, Shroud.Mailer, adapter: Swoosh.Adapters.Local
 
-config :alias, :mailer,
+config :shroud, :mailer,
   smtp_options: [port: 2525]
 
 # Swoosh API client is needed for adapters other than SMTP.
