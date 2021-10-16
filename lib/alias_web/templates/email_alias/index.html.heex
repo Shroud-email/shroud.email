@@ -1,0 +1,18 @@
+<h1>Addresses</h1>
+
+<%= form_tag(Routes.email_alias_path(@conn, :create), method: "post") do %>
+  <button type="submit">Add address</button>
+<% end %>
+
+<%= if Enum.empty?(@aliases) do %>
+  No addresses yet.
+<% end %>
+
+<%= for email_alias <- @aliases do %>
+  <article>
+    <strong><%= email_alias.address %></strong>
+    <%= form_tag(Routes.email_alias_path(@conn, :delete, email_alias.id), method: "delete") do %>
+      <button type="submit" class="outline secondary">Delete</button>
+    <% end %>
+  </article>
+<% end %>

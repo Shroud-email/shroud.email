@@ -13,8 +13,10 @@
   <%= label f, :password %>
   <%= password_input f, :password, required: true %>
 
-  <%= label f, :remember_me, "Keep me logged in for 60 days" %>
-  <%= checkbox f, :remember_me %>
+  <fieldset>
+    <%= checkbox f, :remember_me, role: "switch" %>
+    <%= label f, :remember_me, "Remember me" %>
+  </fieldset>
 
   <div>
     <%= submit "Log in" %>
