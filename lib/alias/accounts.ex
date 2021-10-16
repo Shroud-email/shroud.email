@@ -7,6 +7,7 @@ defmodule Alias.Accounts do
   alias Alias.Repo
 
   alias Alias.Accounts.{User, UserToken, UserNotifier}
+  alias Alias.Aliases.EmailAlias
 
   ## Database getters
 
@@ -24,6 +25,14 @@ defmodule Alias.Accounts do
   """
   def get_user_by_email(email) when is_binary(email) do
     Repo.get_by(User, email: email)
+  end
+
+  def get_user_by_alias(address) when is_binary(address) do
+    query = from e in EmailAlias, where: e.address == ^address, preload: [:user]
+    case Repo.one(query) do
+      nil -> nil
+      email_alias -> email_alias.user
+    end
   end
 
   @doc """

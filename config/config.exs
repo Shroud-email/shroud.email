@@ -26,6 +26,9 @@ config :alias, AliasWeb.Endpoint,
 # at the `config/runtime.exs`.
 config :alias, Alias.Mailer, adapter: Swoosh.Adapters.Local
 
+config :alias, :mailer,
+  smtp_options: [port: 2525]
+
 # Swoosh API client is needed for adapters other than SMTP.
 config :swoosh, :api_client, false
 

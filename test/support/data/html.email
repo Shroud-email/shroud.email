@@ -1,0 +1,8 @@
+From: "Sender" <sender@example.com>
+To: "Recipient" <recipient@example.com>
+Subject: Multipart Email Example
+Content-Type: text/HTML; charset="utf-8"
+
+<h1>This is the HTML Section!</h1>
+<p>This is what displays in most modern email clients</p>
+

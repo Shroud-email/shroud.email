@@ -15,9 +15,10 @@ defmodule Alias.Application do
       # Start the PubSub system
       {Phoenix.PubSub, name: Alias.PubSub},
       # Start the Endpoint (http/https)
-      AliasWeb.Endpoint
+      AliasWeb.Endpoint,
       # Start a worker by calling: Alias.Worker.start_link(arg)
       # {Alias.Worker, arg}
+      {Alias.Email.SmtpServer, Application.get_env(:alias, :mailer)[:smtp_options]}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
