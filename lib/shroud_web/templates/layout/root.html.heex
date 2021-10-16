@@ -12,7 +12,7 @@
   <body>
     <nav class="container-fluid">
       <ul>
-        <li class="logo"><strong>Shroud.email</strong></li>
+        <li><strong class="logo">Shroud.email</strong> <sup>Alpha</sup></li>
         <li><%= link "Home", to: Routes.page_path(@conn, :index) %></li>
         <li><%= link "Addresses", to: Routes.email_alias_path(@conn, :index) %></li>
         <%= if function_exported?(Routes, :live_dashboard_path, 2) do %>
