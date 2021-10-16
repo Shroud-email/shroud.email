@@ -12,7 +12,8 @@
   <body>
     <nav class="container-fluid">
       <ul>
-        <li><strong>Shroud</strong></li>
+        <li class="logo"><strong>Shroud.email</strong></li>
+        <li><%= link "Home", to: Routes.page_path(@conn, :index) %></li>
         <li><%= link "Addresses", to: Routes.email_alias_path(@conn, :index) %></li>
         <%= if function_exported?(Routes, :live_dashboard_path, 2) do %>
           <li><%= link "LiveDashboard", to: Routes.live_dashboard_path(@conn, :home) %></li>
