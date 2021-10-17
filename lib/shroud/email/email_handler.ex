@@ -2,6 +2,7 @@ defmodule Shroud.Email.EmailHandler do
   import Swoosh.Email
   require Logger
   alias Shroud.{Accounts, Mailer}
+  alias Shroud.Email.Enricher
 
   @type header_type :: {String.t(), String.t()}
   @from_email "noreply@shroud.email"
@@ -34,9 +35,9 @@ defmodule Shroud.Email.EmailHandler do
     email =
       new()
       |> build_email(email)
+      |> Enricher.process()
 
-    # Now we've put together our email, we modify it lightly to make it clear it came from us
-    # TODO: show the alias the email was sent to in the body
+    # Now we've put together our email, we modify make it clear it came from us
     recipient_name =
       if is_list(email.to) and Enum.empty?(email.to) do
         ""
@@ -92,11 +93,10 @@ defmodule Shroud.Email.EmailHandler do
   defp process_header(email, {"to", value}), do: to(email, parse_address(value))
   defp process_header(email, {key, value}), do: header(email, key, value)
 
-  # Parses both `email@example.com`, `Zero Cool <email@example.com>`, and `"Zero Cool" <email@example.com>"`.
+  # Parses `email@example.com`, `Zero Cool <email@example.com>`, and `"Zero Cool" <email@example.com>"`.
   defp parse_address(address) do
     case Regex.run(~r/^(.*)<(.*@.*)>/, address) do
       nil ->
-        # Not an addr-spec
         {address, address}
 
       [_string, name_part, address_part] ->

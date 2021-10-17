@@ -1,0 +1,8 @@
+<p style="font-family: sans-serif; font-size: 13px; margin-top: 0px; margin-bottom: 0px;">
+  This message was forwarded from
+  <strong><%= @recipient_alias %></strong>
+  by <a href="https://shroud.email" target="_blank">Shroud.email</a>.
+</p>
+
+<%# sobelow_skip ["XSS.Raw"] %>
+<%= raw @body %>

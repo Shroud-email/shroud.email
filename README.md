@@ -8,8 +8,13 @@ Shroud is an email privacy service.
 - [ ] Handle attachments
 - [ ] Limit number of aliases (5?)
 - [ ] Custom aliases (pro)
-- [ ] Simple spam checks before forwarding?
+- [ ] Simple spam checks before forwarding? (rspamd integration)
 - [ ] Remove trackers
+- [ ] Ensure randoms can't send emails
+- [ ] Ensure backscatter prevented
+- [ ] Replies
+- [ ] One-click blocking
+- [ ] Scheduling
 
 ## Contributing
 
@@ -35,3 +40,5 @@ swaks --to test@example.com --server 127.0.0.1 --port 2525
 ## Useful links
 
 - http://reganmian.net/blog/2015/09/03/sending-and-receiving-email-with-elixir/
+- https://blog.ohmysmtp.com/blog/how-to-catch-spam-with-rspamd/
+- https://ohmysmtp.com/ (green!)
