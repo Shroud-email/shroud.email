@@ -7,7 +7,7 @@ defmodule Shroud.Accounts do
   alias Shroud.Repo
 
   alias Shroud.Accounts.{User, UserToken, UserNotifier}
-  alias Shroud.Shroudes.EmailAlias
+  alias Shroud.Aliases.EmailAlias
 
   ## Database getters
 

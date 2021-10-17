@@ -9,10 +9,10 @@ config :bcrypt_elixir, :log_rounds, 1
 # to provide built-in test partitioning in CI environment.
 # Run `mix help test` for more information.
 config :shroud, Shroud.Repo,
-  username: "postgres",
-  password: "postgres",
-  database: "shroud_test#{System.get_env("MIX_TEST_PARTITION")}",
-  hostname: "localhost",
+  username: System.get_env("POSTGRES_USER") || "postgres",
+  password: System.get_env("POSTGRES_PASSWORD") || "postgres",
+  database: System.get_env("POSTGRES_DB") || "shroud_test#{System.get_env("MIX_TEST_PARTITION")}",
+  hostname: System.get_env("POSTGRES_HOST") || "localhost",
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: 10
 

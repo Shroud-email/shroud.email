@@ -1,20 +1,20 @@
 defmodule ShroudWeb.EmailAliasController do
   use ShroudWeb, :controller
 
-  alias Shroud.Shroudes
+  alias Shroud.Aliases
 
   def index(conn, _params) do
-    aliases = Shroudes.list_aliases!(conn.assigns[:current_user])
+    aliases = Aliases.list_aliases!(conn.assigns[:current_user])
     render(conn, "index.html", aliases: aliases)
   end
 
   # def new(conn, _params) do
-  #   changeset = Shroudes.EmailAlias.changeset(%Shroudes.EmailAlias{})
+  #   changeset = Aliases.EmailAlias.changeset(%Aliases.EmailAlias{})
   #   render(conn, "new.html", changeset: changeset)
   # end
 
   def create(conn, _params) do
-    case Shroudes.create_random_email_alias(conn.assigns[:current_user]) do
+    case Aliases.create_random_email_alias(conn.assigns[:current_user]) do
       {:ok, _struct} ->
         conn
         |> put_flash(:info, "Created new address.")
@@ -28,7 +28,7 @@ defmodule ShroudWeb.EmailAliasController do
   end
 
   def delete(conn, %{"id" => id}) do
-    case Shroudes.delete_email_alias(id) do
+    case Aliases.delete_email_alias(id) do
       {:ok, _struct} -> conn |> put_flash(:info, "Deleted address.") |> redirect(to: "/addresses")
       {:error, _struct} -> conn |> put_flash(:error, "Something went wrong") |> redirect(to: "/addresses")
     end

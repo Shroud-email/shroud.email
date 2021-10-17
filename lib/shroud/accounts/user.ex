@@ -1,7 +1,7 @@
 defmodule Shroud.Accounts.User do
   use Ecto.Schema
   import Ecto.Changeset
-  alias Shroud.Shroudes.EmailAlias
+  alias Shroud.Aliases.EmailAlias
 
   schema "users" do
     field :email, :string

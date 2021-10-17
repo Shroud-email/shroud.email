@@ -1,4 +1,4 @@
-defmodule Shroud.Shroudes.EmailAlias do
+defmodule Shroud.Aliases.EmailAlias do
   use Ecto.Schema
   import Ecto.Changeset
   alias Shroud.Accounts.User

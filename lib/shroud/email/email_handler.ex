@@ -23,7 +23,7 @@ defmodule Shroud.Email.EmailHandler do
   end
 
   def forward_email(from, [first | rest], _data) do
-    Logger.error("Failed to forward email from #{from} with multiple recipients: #{[first | rest]}")
+    Logger.error("Failed to forward email from #{from} with multiple recipients: #{Enum.join([first | rest], ", ")}")
   end
 
   # Take an email as parsed by mimemail, then convert it into a Swoosh.Email.t
@@ -35,8 +35,20 @@ defmodule Shroud.Email.EmailHandler do
 
     # Now we've put together our email, we modify it lightly to make it clear it came from us
     # TODO: show the alias the email was sent to in the body
-    [{recipient_name, _alias}] = email.to
-    {sender_name, _sender_address} = email.reply_to
+    recipient_name =
+      if is_list(email.to) and Enum.empty?(email.to) do
+        ""
+      else
+        [{recipient_name, _alias}] = email.to
+        recipient_name
+      end
+    sender_name =
+      if is_nil(email.reply_to) do
+        ""
+      else
+        {sender_name, _sender_address} = email.reply_to
+        sender_name
+      end
     email
     |> from({sender_name <> @from_suffix, @from_email})
     |> Map.put(:to, [{recipient_name, recipient_address}])
