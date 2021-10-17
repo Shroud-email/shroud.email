@@ -1,12 +1,12 @@
-defmodule Shroud.Shroudes do
+defmodule Shroud.Aliases do
   @moduledoc """
-  The Shroudes context.
+  The Aliases context.
   """
 
   import Ecto.Query, warn: false
   alias Shroud.Repo
 
-  alias Shroud.Shroudes.EmailAlias
+  alias Shroud.Aliases.EmailAlias
 
   def list_aliases!(user) do
     user
