@@ -29,9 +29,11 @@ defmodule ShroudWeb.EmailAliasController do
 
   def delete(conn, %{"id" => id}) do
     case Aliases.delete_email_alias(id) do
-      {:ok, _struct} -> conn |> put_flash(:info, "Deleted address.") |> redirect(to: "/addresses")
-      {:error, _struct} -> conn |> put_flash(:error, "Something went wrong") |> redirect(to: "/addresses")
+      {:ok, _struct} ->
+        conn |> put_flash(:info, "Deleted address.") |> redirect(to: "/addresses")
+
+      {:error, _struct} ->
+        conn |> put_flash(:error, "Something went wrong") |> redirect(to: "/addresses")
     end
   end
-
 end

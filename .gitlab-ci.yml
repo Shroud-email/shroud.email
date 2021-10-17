@@ -46,3 +46,15 @@ test:
   script:
     - mix coveralls.json
     - ./codecov
+
+lint:
+  stage: test
+  extends: ".elixir"
+  variables:
+    MIX_ENV: "test"
+  script:
+    - mix local.hex --force
+    - mix local.rebar --force
+    - mix format --check-formatted
+    - mix credo
+    - mix sobelow --config --private

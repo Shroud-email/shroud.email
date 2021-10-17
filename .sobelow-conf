@@ -1,0 +1,12 @@
+[
+  verbose: false,
+  private: false,
+  skip: false,
+  router: "",
+  exit: "false",
+  format: "txt",
+  out: "",
+  threshold: "low",
+  ignore: ["Config.CSP", "Config.HTTPS"],
+  ignore_files: [""]
+]

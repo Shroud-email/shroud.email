@@ -23,7 +23,9 @@ defmodule Shroud.Email.EmailHandler do
   end
 
   def forward_email(from, [first | rest], _data) do
-    Logger.error("Failed to forward email from #{from} with multiple recipients: #{Enum.join([first | rest], ", ")}")
+    Logger.error(
+      "Failed to forward email from #{from} with multiple recipients: #{Enum.join([first | rest], ", ")}"
+    )
   end
 
   # Take an email as parsed by mimemail, then convert it into a Swoosh.Email.t
@@ -42,6 +44,7 @@ defmodule Shroud.Email.EmailHandler do
         [{recipient_name, _alias}] = email.to
         recipient_name
       end
+
     sender_name =
       if is_nil(email.reply_to) do
         ""
@@ -49,12 +52,14 @@ defmodule Shroud.Email.EmailHandler do
         {sender_name, _sender_address} = email.reply_to
         sender_name
       end
+
     email
     |> from({sender_name <> @from_suffix, @from_email})
     |> Map.put(:to, [{recipient_name, recipient_address}])
   end
 
-  @spec build_email(Swoosh.Email.t(), {String.t(), String.t(), [any()], any(), any()}) :: Swoosh.Email.t()
+  @spec build_email(Swoosh.Email.t(), {String.t(), String.t(), [any()], any(), any()}) ::
+          Swoosh.Email.t()
   defp build_email(email, {"text", "html", headers, _opts, body}) do
     email
     |> html_body(body)
@@ -67,7 +72,8 @@ defmodule Shroud.Email.EmailHandler do
     |> process_headers(headers)
   end
 
-  defp build_email(email, {"multipart", "alternative", headers, _opts, parts}) when is_list(parts) do
+  defp build_email(email, {"multipart", "alternative", headers, _opts, parts})
+       when is_list(parts) do
     parts
     |> Enum.reduce(email, fn part, acc -> build_email(acc, part) end)
     |> process_headers(headers)
@@ -113,5 +119,4 @@ defmodule Shroud.Email.EmailHandler do
       {:ok, email}
     end
   end
-
 end

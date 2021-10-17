@@ -29,6 +29,7 @@ defmodule Shroud.Accounts do
 
   def get_user_by_alias(address) when is_binary(address) do
     query = from e in EmailAlias, where: e.address == ^address, preload: [:user]
+
     case Repo.one(query) do
       nil -> nil
       email_alias -> email_alias.user

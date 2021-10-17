@@ -1,4 +1,5 @@
 defmodule Shroud.Email.SmtpServer do
+  # credo:disable-for-this-file Credo.Check.Readability.FunctionNames
   @behaviour :gen_smtp_server_session
 
   alias Shroud.Email.EmailHandler

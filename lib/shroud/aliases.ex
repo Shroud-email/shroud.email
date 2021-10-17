@@ -29,6 +29,7 @@ defmodule Shroud.Aliases do
       user_id: user.id,
       address: generate_email_address()
     }
+
     create_email_alias(email_alias)
   end
 
@@ -38,10 +39,11 @@ defmodule Shroud.Aliases do
   end
 
   defp generate_email_address() do
-    letters = "abcdefghijklmnopqrstuvwxyz"
-    numbers = "0123456789"
-    alphabet = letters <> String.upcase(letters) <> numbers |> String.split("")
-    address = Enum.reduce(1..16, [], fn (_, acc) -> [Enum.random(alphabet) | acc] end) |> Enum.join("")
+    alphabet = "abcdefghijklmnopqrstuvwxyz1234567890" |> String.split("")
+
+    address =
+      Enum.reduce(1..16, [], fn _, acc -> [Enum.random(alphabet) | acc] end) |> Enum.join("")
+
     address = address <> "@example.com"
 
     if Repo.exists?(from a in EmailAlias, where: a.address == ^address) do
@@ -50,5 +52,4 @@ defmodule Shroud.Aliases do
       address
     end
   end
-
 end

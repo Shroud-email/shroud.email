@@ -20,5 +20,4 @@ defmodule Shroud.AliasesFixtures do
 
     alias
   end
-
 end
