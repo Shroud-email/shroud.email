@@ -1,5 +1,9 @@
 import Config
 
+config :husky,
+  pre_commit: "mix format && mix credo",
+  pre_push: "mix format --check-formatted && mix credo && mix test"
+
 # Configure your database
 config :shroud, Shroud.Repo,
   username: "postgres",

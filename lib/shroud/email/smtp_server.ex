@@ -16,6 +16,7 @@ defmodule Shroud.Email.SmtpServer do
 
   def start(options) do
     Logger.debug("Starting SMTP server on port #{Keyword.get(options, :port)}")
+
     :gen_smtp_server.start(
       __MODULE__,
       [[], [{:allow_bare_newlines, :ignore}, options]]

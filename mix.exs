@@ -52,6 +52,7 @@ defmodule Shroud.MixProject do
       {:excoveralls, "~> 0.14.3", only: :test},
       {:sobelow, "~> 0.11.1", only: [:dev, :test], runtime: false},
       {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
+      {:husky, "~> 1.0", only: :dev, runtime: false},
       {:swoosh, "~> 1.3"},
       {:telemetry_metrics, "~> 0.6"},
       {:telemetry_poller, "~> 1.0"},
