@@ -25,7 +25,7 @@ defmodule Shroud.MixProject do
   def application do
     [
       mod: {Shroud.Application, []},
-      extra_applications: [:logger, :runtime_tools]
+      extra_applications: [:logger, :runtime_tools, :p1_utils]
     ]
   end
 
