@@ -3,6 +3,7 @@ defmodule Shroud.Email.SmtpServer do
   @behaviour :gen_smtp_server_session
 
   alias Shroud.Email.EmailHandler
+  require Logger
 
   def child_spec(opts) do
     %{
