@@ -4,7 +4,7 @@ defmodule ShroudWeb.UserConfirmationController do
   alias Shroud.Accounts
 
   def new(conn, _params) do
-    render(conn, "new.html")
+    render(conn, "new.html", page_title: "Confirm")
   end
 
   def create(conn, %{"user" => %{"email" => email}}) do
@@ -26,7 +26,7 @@ defmodule ShroudWeb.UserConfirmationController do
   end
 
   def edit(conn, %{"token" => token}) do
-    render(conn, "edit.html", token: token)
+    render(conn, "edit.html", token: token, page_title: "Confirm")
   end
 
   # Do not log in the user after confirmation to avoid a

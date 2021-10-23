@@ -5,7 +5,7 @@ defmodule ShroudWeb.EmailAliasController do
 
   def index(conn, _params) do
     aliases = Aliases.list_aliases!(conn.assigns[:current_user])
-    render(conn, "index.html", aliases: aliases)
+    render(conn, "index.html", aliases: aliases, page_title: "Addresses")
   end
 
   # def new(conn, _params) do

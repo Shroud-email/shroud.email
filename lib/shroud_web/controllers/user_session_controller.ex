@@ -5,7 +5,7 @@ defmodule ShroudWeb.UserSessionController do
   alias ShroudWeb.UserAuth
 
   def new(conn, _params) do
-    render(conn, "new.html", error_message: nil)
+    render(conn, "new.html", error_message: nil, page_title: "Log in")
   end
 
   def create(conn, %{"user" => user_params}) do

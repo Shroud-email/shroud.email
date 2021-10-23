@@ -16,8 +16,7 @@ config :shroud, ShroudWeb.Endpoint,
 # Do not print debug messages in production
 config :logger, level: :info
 
-config :shroud, :email_aliases,
-  domain: "shroud.email"
+config :shroud, :email_aliases, domain: "shroud.email"
 
 # ## SSL Support
 #

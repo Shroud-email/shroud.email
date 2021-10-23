@@ -7,7 +7,7 @@ defmodule ShroudWeb.UserSettingsController do
   plug :assign_email_and_password_changesets
 
   def edit(conn, _params) do
-    render(conn, "edit.html")
+    render(conn, "edit.html", page_title: "Settings")
   end
 
   def update(conn, %{"action" => "update_email"} = params) do
