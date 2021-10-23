@@ -7,8 +7,61 @@
   src: url("../fonts/CarterOne-Regular.ttf");
 }
 
+/* Cyan Light scheme (Default) */
+/* Can be forced with data-theme="light" */
+[data-theme="light"],
+:root:not([data-theme="dark"]) {
+  --primary: #00acc1;
+  --primary-hover: #0097a7;
+  --primary-focus: rgba(0, 172, 193, 0.125);
+  --primary-inverse: #FFF;
+}
+
+/* Cyan Dark scheme (Auto) */
+/* Automatically enabled if user has Dark mode enabled */
+@media only screen and (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --primary: #00acc1;
+    --primary-hover: #00bcd4;
+    --primary-focus: rgba(0, 172, 193, 0.25);
+    --primary-inverse: #FFF;
+  }
+}
+
+/* Cyan Dark scheme (Forced) */
+/* Enabled if forced with data-theme="dark" */
+[data-theme="dark"] {
+  --primary: #00acc1;
+  --primary-hover: #00bcd4;
+  --primary-focus: rgba(0, 172, 193, 0.25);
+  --primary-inverse: #FFF;
+}
+
+/* Cyan (Common styles) */
+:root {
+  --form-element-active-border-color: var(--primary);
+  --form-element-focus-color: var(--primary-focus);
+  --switch-color: var(--primary-inverse);
+  --switch-checked-background-color: var(--primary);
+}
+
 .logo {
   font-family: "Carter One", "sans-serif";
+}
+
+.auth-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.auth-card div {
+  padding: 2rem;
+}
+
+.auth-image {
+  background-image: url("/images/forestfog.jpg");
+  background-position: center;
+  background-size: cover;
 }
 
 /* Alerts and form errors used by phx.new */
