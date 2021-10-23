@@ -41,6 +41,7 @@ COPY lib lib
 RUN mix compile
 # changes to config/runtime.exs don't require recompiling the code
 COPY config/runtime.exs config/
+COPY CHECKS CHECKS
 # uncomment COPY if rel/ exists
 # COPY rel rel
 RUN mix release
