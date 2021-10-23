@@ -75,6 +75,10 @@ COPY Procfile ./
 COPY --from=build --chown="${USER}":"${USER}" /app/_build/"${MIX_ENV}"/rel/shroud ./
 
 ENTRYPOINT ["bin/shroud"]
+# Expose web (8080) and SMTP (2525)
+ENV PORT=5000
+EXPOSE 5000
+EXPOSE 25
 
 # Usage:
 #  * build: sudo docker image build -t elixir/shroud .
