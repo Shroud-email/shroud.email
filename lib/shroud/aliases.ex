@@ -8,6 +8,8 @@ defmodule Shroud.Aliases do
 
   alias Shroud.Aliases.EmailAlias
 
+  @alias_domain Application.compile_env!(:shroud, :email_aliases)[:domain]
+
   def list_aliases!(user) do
     user
     |> Ecto.assoc(:aliases)
@@ -44,7 +46,7 @@ defmodule Shroud.Aliases do
     address =
       Enum.reduce(1..16, [], fn _, acc -> [Enum.random(alphabet) | acc] end) |> Enum.join("")
 
-    address = address <> "@example.com"
+    address = address <> "@" <> @alias_domain
 
     if Repo.exists?(from a in EmailAlias, where: a.address == ^address) do
       generate_email_address()

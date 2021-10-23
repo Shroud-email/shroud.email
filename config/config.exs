@@ -28,6 +28,9 @@ config :shroud, Shroud.Mailer, adapter: Swoosh.Adapters.Local
 
 config :shroud, :mailer, smtp_options: [port: 2525]
 
+config :shroud, :email_aliases,
+  domain: "shroud.local"
+
 # Swoosh API client is needed for adapters other than SMTP.
 config :swoosh, :api_client, false
 
