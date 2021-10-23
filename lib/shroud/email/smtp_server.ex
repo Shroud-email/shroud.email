@@ -50,6 +50,8 @@ defmodule Shroud.Email.SmtpServer do
   end
 
   def handle_DATA(from, to, data, state) do
+    Logger.info("Received email fro #{from} with data #{data}")
+
     %{from: from, to: hd(to), data: data}
     |> EmailHandler.new()
     |> Oban.insert()

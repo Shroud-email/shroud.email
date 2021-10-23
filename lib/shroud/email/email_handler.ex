@@ -36,6 +36,8 @@ defmodule Shroud.Email.EmailHandler do
         :ok
 
       user ->
+        Logger.info("Forwarding email from #{from} to #{user.email} (via #{to})")
+
         # TODO: handle parsing failures?
         :mimemail.decode(data)
         |> transmogrify(user.email)
