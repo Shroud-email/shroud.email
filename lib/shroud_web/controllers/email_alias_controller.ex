@@ -8,11 +8,6 @@ defmodule ShroudWeb.EmailAliasController do
     render(conn, "index.html", aliases: aliases, page_title: "Addresses")
   end
 
-  # def new(conn, _params) do
-  #   changeset = Aliases.EmailAlias.changeset(%Aliases.EmailAlias{})
-  #   render(conn, "new.html", changeset: changeset)
-  # end
-
   def create(conn, _params) do
     case Aliases.create_random_email_alias(conn.assigns[:current_user]) do
       {:ok, _struct} ->

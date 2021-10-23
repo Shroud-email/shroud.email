@@ -3,7 +3,7 @@ defmodule Shroud.AccountsTest do
 
   alias Shroud.Accounts
 
-  import Shroud.AccountsFixtures
+  import Shroud.{AccountsFixtures, AliasesFixtures}
   alias Shroud.Accounts.{User, UserToken}
 
   describe "get_user_by_email/1" do
@@ -32,6 +32,27 @@ defmodule Shroud.AccountsTest do
 
       assert %User{id: ^id} =
                Accounts.get_user_by_email_and_password(user.email, valid_user_password())
+    end
+  end
+
+  describe "get_user_by_alias/1" do
+    test "it returns the user of an active, existing alias" do
+      %{id: id} = user_fixture()
+      email_alias = alias_fixture(%{user_id: id})
+
+      returned_id = Accounts.get_user_by_alias(email_alias.address).id
+
+      assert returned_id == id
+    end
+
+    test "it does not return a deleted alias" do
+      now = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
+      %{id: id} = user_fixture()
+      email_alias = alias_fixture(%{user_id: id, deleted_at: now})
+
+      returned_alias = Accounts.get_user_by_alias(email_alias.address)
+
+      assert is_nil(returned_alias)
     end
   end
 

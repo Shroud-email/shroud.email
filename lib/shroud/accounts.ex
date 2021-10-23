@@ -28,12 +28,12 @@ defmodule Shroud.Accounts do
   end
 
   def get_user_by_alias(address) when is_binary(address) do
-    query = from e in EmailAlias, where: e.address == ^address, preload: [:user]
+    query = from u in User,
+      join: e in EmailAlias,
+      on: e.user_id == u.id,
+      where: e.address == ^address and is_nil(e.deleted_at)
 
-    case Repo.one(query) do
-      nil -> nil
-      email_alias -> email_alias.user
-    end
+    Repo.one(query)
   end
 
   @doc """

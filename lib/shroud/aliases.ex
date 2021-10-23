@@ -13,6 +13,7 @@ defmodule Shroud.Aliases do
   def list_aliases!(user) do
     user
     |> Ecto.assoc(:aliases)
+    |> where([a], is_nil(a.deleted_at))
     |> Repo.all()
   end
 
@@ -36,8 +37,11 @@ defmodule Shroud.Aliases do
   end
 
   def delete_email_alias(id) do
-    email_alias = get_email_alias(id)
-    Repo.delete(email_alias)
+    now = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
+
+    get_email_alias(id)
+    |> EmailAlias.changeset(%{deleted_at: now})
+    |> Repo.update()
   end
 
   defp generate_email_address() do
