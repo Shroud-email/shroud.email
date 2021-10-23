@@ -1,4 +1,6 @@
 defmodule Shroud.Email.EmailHandler do
+  use Oban.Worker, queue: :outgoing_email
+
   import Swoosh.Email
   require Logger
   alias Shroud.{Accounts, Mailer}
@@ -7,8 +9,26 @@ defmodule Shroud.Email.EmailHandler do
   @type header_type :: {String.t(), String.t()}
   @from_email "noreply@shroud.email"
   @from_suffix " (via Shroud)"
+  @allowed_headers [
+    "from",
+    "to",
+    "reply-to",
+    "subject",
+    "date",
+    "delivered-to"
+  ]
 
-  def forward_email(from, [to], data) do
+  @impl Oban.Worker
+  def perform(%Oban.Job{args: %{"from" => from, "to" => [first | rest]}}) do
+    Logger.error(
+      "Failed to forward email from #{from} with multiple recipients: #{Enum.join([first | rest], ", ")}"
+    )
+
+    :ok
+  end
+
+  @impl Oban.Worker
+  def perform(%Oban.Job{args: %{"from" => from, "to" => to, "data" => data}}) do
     # Lookup real email based on the receiving alias (`to`)
     case Accounts.get_user_by_alias(to) do
       nil ->
@@ -19,18 +39,12 @@ defmodule Shroud.Email.EmailHandler do
         # TODO: handle parsing failures?
         :mimemail.decode(data)
         |> transmogrify(user.email)
-        |> deliver()
+        |> Mailer.deliver()
     end
   end
 
-  def forward_email(from, [first | rest], _data) do
-    Logger.error(
-      "Failed to forward email from #{from} with multiple recipients: #{Enum.join([first | rest], ", ")}"
-    )
-  end
-
-  # Take an email as parsed by mimemail, then convert it into a Swoosh.Email.t
-  # ready to send
+  # Take an email as parsed by mimemail, then convert it into a Swoosh.Email ready to send
+  @spec transmogrify(:mimemail.mimetuple(), String.t()) :: Swoosh.Email.t()
   defp transmogrify(email, recipient_address) do
     email =
       new()
@@ -84,6 +98,7 @@ defmodule Shroud.Email.EmailHandler do
   defp process_headers(email, headers) do
     headers
     |> Enum.map(fn {key, value} -> {String.downcase(key), value} end)
+    |> Enum.filter(fn {key, _value} -> Enum.member?(@allowed_headers, key) end)
     |> Enum.reduce(email, fn h, acc -> process_header(acc, h) end)
   end
 
@@ -112,11 +127,5 @@ defmodule Shroud.Email.EmailHandler do
     str
     |> String.replace(~r/^['"\s\\]+/, "")
     |> String.replace(~r/['"\s\\]+$/, "")
-  end
-
-  defp deliver(%Swoosh.Email{} = email) do
-    with {:ok, _metadata} <- Mailer.deliver(email) do
-      {:ok, email}
-    end
   end
 end

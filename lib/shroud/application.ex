@@ -16,9 +16,10 @@ defmodule Shroud.Application do
       {Phoenix.PubSub, name: Shroud.PubSub},
       # Start the Endpoint (http/https)
       ShroudWeb.Endpoint,
+      {Oban, Application.fetch_env!(:shroud, Oban)},
       # Start a worker by calling: Shroud.Worker.start_link(arg)
       # {Shroud.Worker, arg}
-      {Shroud.Email.SmtpServer, Application.get_env(:shroud, :mailer)[:smtp_options]}
+      {Shroud.Email.SmtpServer, Application.fetch_env!(:shroud, :mailer)[:smtp_options]}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

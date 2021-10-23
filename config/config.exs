@@ -31,6 +31,11 @@ config :shroud, :mailer, smtp_options: [port: 2525]
 # Swoosh API client is needed for adapters other than SMTP.
 config :swoosh, :api_client, false
 
+config :shroud, Oban,
+  repo: Shroud.Repo,
+  plugins: [Oban.Plugins.Pruner],
+  queues: [outgoing_email: 5]
+
 # Configure esbuild (the version is required)
 config :esbuild,
   version: "0.12.18",

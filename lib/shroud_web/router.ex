@@ -17,11 +17,11 @@ defmodule ShroudWeb.Router do
     plug :accepts, ["json"]
   end
 
-  scope "/", ShroudWeb do
-    pipe_through :browser
+  # scope "/", ShroudWeb do
+  #   pipe_through :browser
 
-    get "/", PageController, :index
-  end
+  #   get "/", PageController, :index
+  # end
 
   # Other scopes may use custom stacks.
   # scope "/api", ShroudWeb do
@@ -78,7 +78,7 @@ defmodule ShroudWeb.Router do
     put "/users/settings", UserSettingsController, :update
     get "/users/settings/confirm_email/:token", UserSettingsController, :confirm_email
 
-    resources "/addresses", EmailAliasController, only: [:index, :create, :delete]
+    resources "/", EmailAliasController, only: [:index, :create, :delete]
   end
 
   scope "/", ShroudWeb do

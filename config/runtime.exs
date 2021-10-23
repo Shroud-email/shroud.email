@@ -43,15 +43,7 @@ if config_env() == :prod do
     ],
     secret_key_base: secret_key_base
 
-  # ## Using releases
-  #
-  # If you are doing OTP releases, you need to instruct Phoenix
-  # to start each relevant endpoint:
-  #
-  #     config :shroud, ShroudWeb.Endpoint, server: true
-  #
-  # Then you can assemble a release by calling `mix release`.
-  # See `mix help release` for more information.
+  config :shroud, ShroudWeb.Endpoint, server: true
 
   # ## Configuring the mailer
   #
@@ -70,4 +62,13 @@ if config_env() == :prod do
   #     config :swoosh, :api_client, Swoosh.ApiClient.Hackney
   #
   # See https://hexdocs.pm/swoosh/Swoosh.html#module-installation for details.
+  oh_my_smtp_api_key =
+    System.get_env("OH_MY_SMTP_API_KEY") ||
+      raise """
+      environment variable OH_MY_SMTP_API_KEY is missing.
+      """
+
+  config :shroud, Shroud.Mailer,
+    adapter: Shroud.Swoosh.Adapters.OhMySmtp,
+    api_key: oh_my_smtp_api_key
 end

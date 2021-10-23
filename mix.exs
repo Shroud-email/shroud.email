@@ -59,7 +59,9 @@ defmodule Shroud.MixProject do
       {:jason, "~> 1.2"},
       {:plug_cowboy, "~> 2.5"},
       {:gen_smtp, "~> 1.1"},
-      {:iconv, "~> 1.0"}
+      {:iconv, "~> 1.0"},
+      {:oban, "~> 2.9"},
+      {:hackney, "~> 1.18"}
     ]
   end
 

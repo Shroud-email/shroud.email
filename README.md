@@ -2,7 +2,7 @@
 
 Shroud is an email privacy service.
 
-# To do
+## To do
 
 - [ ] Handle emails with multiple recipients
 - [ ] Handle attachments
@@ -41,4 +41,10 @@ swaks --to test@example.com --server 127.0.0.1 --port 2525
 
 - http://reganmian.net/blog/2015/09/03/sending-and-receiving-email-with-elixir/
 - https://blog.ohmysmtp.com/blog/how-to-catch-spam-with-rspamd/
-- https://ohmysmtp.com/ (green!)
+
+# Deploying
+
+Set the following environment variables:
+- `SECRET_KEY_BASE` (generate using `mix phx.gen.secret`)
+- `DATABASE_URL`
+- `OH_MY_SMTP_API_KEY`

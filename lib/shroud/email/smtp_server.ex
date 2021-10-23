@@ -50,8 +50,10 @@ defmodule Shroud.Email.SmtpServer do
   end
 
   def handle_DATA(from, to, data, state) do
-    # This is where you'd forward the email
-    EmailHandler.forward_email(from, to, data)
+    %{from: from, to: hd(to), data: data}
+    |> EmailHandler.new()
+    |> Oban.insert()
+
     {:ok, "1", state}
   end
 
