@@ -41,7 +41,6 @@ COPY lib lib
 RUN mix compile
 # changes to config/runtime.exs don't require recompiling the code
 COPY config/runtime.exs config/
-COPY CHECKS CHECKS
 # uncomment COPY if rel/ exists
 # COPY rel rel
 RUN mix release
@@ -71,6 +70,8 @@ RUN \
 # Everything from this line onwards will run in the context of the unprivileged user.
 USER "${USER}"
 
+COPY CHECKS ./
+COPY Procfile ./
 COPY --from=build --chown="${USER}":"${USER}" /app/_build/"${MIX_ENV}"/rel/shroud ./
 
 ENTRYPOINT ["bin/shroud"]
