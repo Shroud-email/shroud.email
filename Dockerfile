@@ -71,14 +71,14 @@ RUN \
 USER "${USER}"
 
 COPY CHECKS ./
-COPY Procfile ./
+COPY scripts/entrypoint.sh ./
 COPY --from=build --chown="${USER}":"${USER}" /app/_build/"${MIX_ENV}"/rel/shroud ./
 
-ENTRYPOINT ["bin/shroud"]
+ENTRYPOINT ["./entrypoint.sh"]
 # Expose web (8080) and SMTP (2525)
-ENV PORT=5000
-EXPOSE 5000
-EXPOSE 25
+ENV PORT=8080
+EXPOSE 8080
+EXPOSE 2525
 
 # Usage:
 #  * build: sudo docker image build -t elixir/shroud .
