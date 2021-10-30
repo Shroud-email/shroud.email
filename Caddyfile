@@ -1,3 +1,0 @@
-app.shroud.email
-
-reverse_proxy web:8080

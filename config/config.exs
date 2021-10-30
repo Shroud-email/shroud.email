@@ -26,7 +26,17 @@ config :shroud, ShroudWeb.Endpoint,
 # at the `config/runtime.exs`.
 config :shroud, Shroud.Mailer, adapter: Swoosh.Adapters.Local
 
-config :shroud, :mailer, smtp_options: [port: 2525]
+config :shroud, :mailer,
+  smtp_options: [
+    allow_bare_newlines: :ignore,
+    port: 2525,
+    sessionoptions: [hostname: "app.shroud.email", certfile: "server.pem", keyfile: "server.key"],
+    tls_options: [
+      # Don't verify peers (we'll forward anything we can)
+      verify: :verify_none,
+      log_level: :debug
+    ]
+  ]
 
 config :shroud, :email_aliases, domain: "shroud.local"
 

@@ -59,10 +59,11 @@ defmodule Shroud.MixProject do
       {:gettext, "~> 0.18"},
       {:jason, "~> 1.2"},
       {:plug_cowboy, "~> 2.5"},
-      {:gen_smtp, "~> 1.1"},
+      {:gen_smtp, git: "https://github.com/gen-smtp/gen_smtp.git", ref: "a896938fc967f75bc6601d1e9aad80ec27c6b045", override: true},
       {:iconv, "~> 1.0"},
       {:oban, "~> 2.9"},
-      {:hackney, "~> 1.18"}
+      {:hackney, "~> 1.18"},
+      {:ranch, "~> 1.8.0", override: true}
     ]
   end
 

@@ -2,7 +2,7 @@ version: "3.9"
 services:
   db:
     image: postgres:14.0-alpine3.14
-    restart: always
+    restart: unless-stopped
     volumes:
       - db_data:/var/lib/postgresql/data
     environment:
@@ -11,24 +11,25 @@ services:
       - POSTGRES_DB=${DB_DATABASE}
   web:
     build: .
-    restart: always
+    restart: unless-stopped
     ports:
       - "8080:8080"
-      - "25:2525"
+      - "587:1587"
     depends_on:
       - db
     environment:
       - DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_DATABASE}
       - SECRET_KEY_BASE=${SECRET_KEY_BASE}
       - OH_MY_SMTP_API_KEY=${OH_MY_SMTP_API_KEY}
+    volumes:
+      - "caddy_data:/var/caddy:ro"
   caddy:
-    image: caddy:2.4.5-alpine
-    restart: always
+    build: ./caddy
+    restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - $PWD/Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data
       - caddy_config:/config
 volumes:

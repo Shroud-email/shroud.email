@@ -1,0 +1,8 @@
+{
+  # Global options
+  storage permissive_file_storage {}
+}
+
+app.shroud.email
+
+reverse_proxy web:8080

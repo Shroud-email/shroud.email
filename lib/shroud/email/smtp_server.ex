@@ -19,7 +19,7 @@ defmodule Shroud.Email.SmtpServer do
 
     :gen_smtp_server.start(
       __MODULE__,
-      [[], [{:allow_bare_newlines, :ignore}, options]]
+      options
     )
   end
 
@@ -33,6 +33,8 @@ defmodule Shroud.Email.SmtpServer do
   end
 
   def handle_EHLO(_hostname, extensions, state) do
+    # Enable STARTTLS extension
+    extensions = extensions ++ [{to_charlist("STARTTLS"), true}]
     {:ok, extensions, state}
   end
 
@@ -80,6 +82,10 @@ defmodule Shroud.Email.SmtpServer do
 
   def handle_STARTTLS(state) do
     state
+  end
+
+  def handle_info(info, state) do
+    {:noreply, state}
   end
 
   def code_change(_old, state, _extra) do
