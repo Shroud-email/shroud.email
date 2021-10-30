@@ -1,101 +1,33 @@
 /* This file is for your main application CSS */
-@import "./pico.css";
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
 
 @font-face {
   font-family: "Carter One";
   font-display: swap;
-  src: url("../fonts/CarterOne-Regular.ttf");
-}
-
-/* Cyan Light scheme (Default) */
-/* Can be forced with data-theme="light" */
-[data-theme="light"],
-:root:not([data-theme="dark"]) {
-  --primary: #00acc1;
-  --primary-hover: #0097a7;
-  --primary-focus: rgba(0, 172, 193, 0.125);
-  --primary-inverse: #FFF;
-}
-
-/* Cyan Dark scheme (Auto) */
-/* Automatically enabled if user has Dark mode enabled */
-@media only screen and (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --primary: #00acc1;
-    --primary-hover: #00bcd4;
-    --primary-focus: rgba(0, 172, 193, 0.25);
-    --primary-inverse: #FFF;
-  }
-}
-
-/* Cyan Dark scheme (Forced) */
-/* Enabled if forced with data-theme="dark" */
-[data-theme="dark"] {
-  --primary: #00acc1;
-  --primary-hover: #00bcd4;
-  --primary-focus: rgba(0, 172, 193, 0.25);
-  --primary-inverse: #FFF;
-}
-
-/* Cyan (Common styles) */
-:root {
-  --form-element-active-border-color: var(--primary);
-  --form-element-focus-color: var(--primary-focus);
-  --switch-color: var(--primary-inverse);
-  --switch-checked-background-color: var(--primary);
+  src: url("/fonts/CarterOne-Regular.ttf");
 }
 
 .logo {
   font-family: "Carter One", "sans-serif";
 }
 
-.auth-card {
-  padding: 0;
-  overflow: hidden;
-}
-
-.auth-card div {
-  padding: 2rem;
-}
-
-.auth-image {
-  background-image: url("/images/forestfog.jpg");
-  background-position: center;
-  background-size: cover;
-}
-
-/* Alerts and form errors used by phx.new */
-.alert {
-  padding: 15px;
-  margin-bottom: 20px;
-  border: 1px solid transparent;
-  border-radius: 4px;
-}
-.alert-info {
-  color: #31708f;
-  background-color: #d9edf7;
-  border-color: #bce8f1;
-}
-.alert-warning {
-  color: #8a6d3b;
-  background-color: #fcf8e3;
-  border-color: #faebcc;
-}
-.alert-danger {
-  color: #a94442;
-  background-color: #f2dede;
-  border-color: #ebccd1;
-}
-.alert p {
-  margin-bottom: 0;
-}
-.alert:empty {
-  display: none;
-}
+/* Form errors from error_tag */
 .invalid-feedback {
-  color: #a94442;
-  display: block;
-  margin: -1rem 0 2rem;
+  @apply text-red-500 mt-1 mb-3;
+}
+
+.h1 {
+  @apply text-3xl font-extrabold mb-3;
+}
+
+.h2 {
+  @apply text-2xl font-bold mb-2;
+}
+
+.h3 {
+  @apply text-xl font-bold mb-2;
 }
 
 /* LiveView specific classes for your customization */

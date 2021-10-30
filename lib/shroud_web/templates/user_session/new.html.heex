@@ -1,35 +1,37 @@
-<article class="grid auth-card">
-  <div>
-    <h1>Log in</h1>
-    <.form let={f} for={@conn} action={Routes.user_session_path(@conn, :create)} as={:user}>
-      <%= if @error_message do %>
-        <div class="alert alert-danger">
-          <p><%= @error_message %></p>
-        </div>
-      <% end %>
+<div class="hero py-32 bg-base-200 rounded-3xl">
+  <div class="flex-col justify-center hero-content lg:flex-row">
+    <div class="text-center lg:text-left flex-1 mr-0 lg:mr-6">
+      <h1 class="h1">Log in</h1>
+      <p class="mb-5 w-max">
+        <%= link "Sign up", to: Routes.user_registration_path(@conn, :new), class: "link link-hover" %> | 
+        <%= link "Forgot your password?", to: Routes.user_reset_password_path(@conn, :new), class: "link link-hover" %>
+      </p>
+    </div>
+    <div class="card flex-shrink-0 w-full max-w-sm shadow-2xl bg-base-100">
+      <div class="card-body">
+        <.form let={f} for={@conn} action={Routes.user_session_path(@conn, :create)} as={:user}, class="form-control">
+          <%= if @error_message do %>
+            <div class="alert alert-error">
+              <p><%= @error_message %></p>
+            </div>
+          <% end %>
 
-      <%= label f, :email %>
-      <%= email_input f, :email, required: true %>
+          <%= label f, :email, class: "label" %>
+          <%= email_input f, :email, required: true, class: "input input-bordered" %>
 
-      <%= label f, :password %>
-      <%= password_input f, :password, required: true %>
+          <%= label f, :password, class: "label" %>
+          <%= password_input f, :password, required: true, class: "input input-bordered" %>
 
-      <fieldset>
-        <%= checkbox f, :remember_me, role: "switch" %>
-        <%= label f, :remember_me, "Remember me" %>
-      </fieldset>
+          <label class="label cursor-pointer my-2">
+            <span class="label-text">Remember me</span>
+            <%= checkbox f, :remember_me, class: "checkbox" %>
+          </label>
 
-      <div>
-        <%= submit "Log in" %>
+          <div>
+            <%= submit "Log in", class: "btn btn-primary" %>
+          </div>
+        </.form>
       </div>
-    </.form>
-
-    <p>
-      <%= link "Sign up", to: Routes.user_registration_path(@conn, :new) %> |
-      <%= link "Forgot your password?", to: Routes.user_reset_password_path(@conn, :new) %>
-    </p>
+    </div>
   </div>
-
-  <div class="auth-image">
-  </div>
-</article>
+</div>

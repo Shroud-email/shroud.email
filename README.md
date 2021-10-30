@@ -33,7 +33,7 @@ swaks --to test@example.com --server 127.0.0.1 --port 2525
 
 ## Libraries
 
-- [Pico.css](https://picocss.com/) for basic styles
+- [DaisyUI](https://daisyui.com/) for basic styles
 - [gen_smtp](https://github.com/gen-smtp/gen_smtp) for receiving emails
 - [Swoosh](https://hexdocs.pm/swoosh/Swoosh.html) for sending emails
 
