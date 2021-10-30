@@ -15,6 +15,7 @@ services:
     ports:
       - "8080:8080"
       - "587:1587"
+      - "25:1587"
     depends_on:
       - db
     environment:

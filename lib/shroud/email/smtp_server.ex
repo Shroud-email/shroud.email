@@ -24,7 +24,7 @@ defmodule Shroud.Email.SmtpServer do
   end
 
   def init(hostname, _session_count, _address, options) do
-    banner = ["#{hostname} SMTP shroud server"]
+    banner = ["#{hostname} SMTP shroud.email server"]
     {:ok, banner, options}
   end
 
