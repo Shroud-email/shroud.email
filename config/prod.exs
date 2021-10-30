@@ -22,8 +22,10 @@ config :shroud, :mailer,
   smtp_options: [
     port: 1587,
     sessionoptions: [
-      certfile: "/var/caddy/caddy/certificates/acme-v02.api.letsencrypt.org-directory/app.shroud.email/app.shroud.email.crt",
-      keyfile: "/var/caddy/caddy/certificates/acme-v02.api.letsencrypt.org-directory/app.shroud.email/app.shroud.email.key"
+      certfile:
+        "/var/caddy/certificates/acme-v02.api.letsencrypt.org-directory/app.shroud.email/app.shroud.email.crt",
+      keyfile:
+        "/var/caddy/certificates/acme-v02.api.letsencrypt.org-directory/app.shroud.email/app.shroud.email.key"
     ]
   ]
 

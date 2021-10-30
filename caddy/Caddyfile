@@ -1,6 +1,8 @@
 {
   # Global options
-  storage permissive_file_storage {}
+  storage permissive_file_storage {
+    root "/data"
+  }
 }
 
 app.shroud.email
