@@ -3,7 +3,7 @@ ARG MIX_ENV="prod"
 FROM hexpm/elixir:1.12.3-erlang-24.1.2-alpine-3.14.2 as build
 
 # install build dependencies
-RUN apk add --no-cache build-base git python3 curl
+RUN apk add --no-cache build-base git python3 curl npm
 
 # prepare build dir
 WORKDIR /app
@@ -34,10 +34,10 @@ COPY priv priv
 # your Elixir templates, you will need to move the asset compilation
 # step down so that `lib` is available.
 COPY assets assets
+COPY lib lib
 RUN mix assets.deploy
 
 # compile and build the release
-COPY lib lib
 RUN mix compile
 # changes to config/runtime.exs don't require recompiling the code
 COPY config/runtime.exs config/
