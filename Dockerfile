@@ -35,6 +35,7 @@ COPY priv priv
 # step down so that `lib` is available.
 COPY assets assets
 COPY lib lib
+RUN npm --prefix assets ci
 RUN mix assets.deploy
 
 # compile and build the release
