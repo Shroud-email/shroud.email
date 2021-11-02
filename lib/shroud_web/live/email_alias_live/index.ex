@@ -1,9 +1,12 @@
 defmodule ShroudWeb.EmailAliasLive.Index do
+  import Canada, only: [can?: 2]
+
   use Phoenix.HTML
   use ShroudWeb, :live_view
   on_mount ShroudWeb.UserLiveAuth
 
   alias Shroud.Aliases
+  alias Shroud.Aliases.EmailAlias
 
   alias ShroudWeb.Components.AliasCard
 
@@ -13,29 +16,39 @@ defmodule ShroudWeb.EmailAliasLive.Index do
   end
 
   @impl true
-  def handle_event("add_alias", _params, socket) do
+  def handle_event("add_alias", _params, %{assigns: %{current_user: user}} = socket) do
     socket =
-      case Aliases.create_random_email_alias(socket.assigns[:current_user]) do
-        {:ok, _struct} ->
-          socket
-          |> put_flash(:info, "Created new alias.")
+      if user |> can?(create(EmailAlias)) do
+        case Aliases.create_random_email_alias(user) do
+          {:ok, _struct} ->
+            socket
+            |> put_flash(:info, "Created new alias.")
 
-        {:error, _changeset} ->
-          socket
-          |> put_flash(:error, "Something went wrong.")
+          {:error, _changeset} ->
+            socket
+            |> put_flash(:error, "Something went wrong.")
+        end
+      else
+        socket |> put_flash(:error, "You don't have permission to do that.")
       end
 
     {:noreply, update_email_aliases(socket)}
   end
 
   @impl true
-  def handle_info({:deleted_alias, id}, socket) do
-    {:ok, deleted_alias} = Aliases.delete_email_alias(id)
+  def handle_info({:deleted_alias, id}, %{assigns: %{current_user: user}} = socket) do
+    email_alias = Aliases.get_email_alias!(id)
 
     socket =
-      socket
-      |> update_email_aliases()
-      |> put_flash(:info, "Deleted alias #{deleted_alias.address}.")
+      if user |> can?(destroy(email_alias)) do
+        {:ok, deleted_alias} = Aliases.delete_email_alias(id)
+
+        socket
+        |> update_email_aliases()
+        |> put_flash(:info, "Deleted alias #{deleted_alias.address}.")
+      else
+        socket |> put_flash(:error, "You don't have permission to do that.")
+      end
 
     {:noreply, socket}
   end

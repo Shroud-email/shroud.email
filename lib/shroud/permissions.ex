@@ -4,7 +4,7 @@ defmodule Shroud.Permissions do
 
   defimpl Canada.Can, for: User do
     def can?(%User{id: user_id}, action, %EmailAlias{user_id: user_id})
-        when action in [:update, :read, :destroy],
+        when action in [:read, :update, :destroy],
         do: true
 
     def can?(%User{}, :create, EmailAlias), do: true
