@@ -1,7 +1,8 @@
-<h1>Confirm account</h1>
-
-<.form let={_f} for={:user} action={Routes.user_confirmation_path(@conn, :update, @token)}>
-  <div>
-    <%= submit "Confirm my account" %>
+<div class="hero py-32 bg-base-200 rounded-3xl">
+  <div class="text-center hero-content flex flex-col">
+    <h1 class="h1">Confirm account</h1>
+    <.form let={_f} for={:user} action={Routes.user_confirmation_path(@conn, :update, @token)} class="form-control">
+      <%= submit "Confirm my account", class: "btn btn-primary" %>
+    </.form>
   </div>
-</.form>
+</div>
