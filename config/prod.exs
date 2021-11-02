@@ -10,7 +10,7 @@ import Config
 # which you should run after static files are built and
 # before starting your production server.
 config :shroud, ShroudWeb.Endpoint,
-  url: [host: "app.shroud.email", port: 80, scheme: "https"],
+  url: [host: "app.shroud.email", scheme: "https"],
   cache_static_manifest: "priv/static/cache_manifest.json"
 
 # Do not print debug messages in production
