@@ -20,9 +20,10 @@ defmodule ShroudWeb.EmailAliasLive.Index do
     socket =
       if user |> can?(create(EmailAlias)) do
         case Aliases.create_random_email_alias(user) do
-          {:ok, _struct} ->
+          {:ok, email_alias} ->
             socket
-            |> put_flash(:info, "Created new alias.")
+            |> put_flash(:info, "Created new alias #{email_alias.address}.")
+            |> assign(:aliases, [email_alias | socket.assigns.aliases])
 
           {:error, _changeset} ->
             socket
@@ -32,7 +33,7 @@ defmodule ShroudWeb.EmailAliasLive.Index do
         socket |> put_flash(:error, "You don't have permission to do that.")
       end
 
-    {:noreply, update_email_aliases(socket)}
+    {:noreply, socket}
   end
 
   @impl true
@@ -46,6 +47,33 @@ defmodule ShroudWeb.EmailAliasLive.Index do
         socket
         |> update_email_aliases()
         |> put_flash(:info, "Deleted alias #{deleted_alias.address}.")
+      else
+        socket |> put_flash(:error, "You don't have permission to do that.")
+      end
+
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info(
+        {:updated_alias, email_alias, params},
+        %{assigns: %{current_user: user}} = socket
+      ) do
+    socket =
+      if user |> can?(update(email_alias)) do
+        case Aliases.update_email_alias(email_alias, params) do
+          {:ok, email_alias} ->
+            verb = if email_alias.enabled, do: "Enabled", else: "Disabled"
+
+            socket
+            |> assign(:email_alias, email_alias)
+            |> assign(:changeset, Aliases.change_email_alias(email_alias, params))
+            |> put_flash(:info, "#{verb} #{email_alias.address}.")
+
+          {:error, _error} ->
+            socket
+            |> put_flash(:error, "Something went wrong.")
+        end
       else
         socket |> put_flash(:error, "You don't have permission to do that.")
       end
