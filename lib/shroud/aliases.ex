@@ -23,8 +23,18 @@ defmodule Shroud.Aliases do
     |> Repo.insert()
   end
 
-  def get_email_alias(id) do
-    Repo.get(EmailAlias, id)
+  def get_email_alias!(id) do
+    Repo.get!(EmailAlias, id)
+  end
+
+  def change_email_alias(%EmailAlias{} = email_alias, attrs \\ %{}) do
+    email_alias
+    |> EmailAlias.changeset(attrs)
+  end
+
+  def update_email_alias(%EmailAlias{} = email_alias, attrs) do
+    change_email_alias(email_alias, attrs)
+    |> Repo.update()
   end
 
   def create_random_email_alias(user) do
@@ -39,7 +49,7 @@ defmodule Shroud.Aliases do
   def delete_email_alias(id) do
     now = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
 
-    get_email_alias(id)
+    get_email_alias!(id)
     |> EmailAlias.changeset(%{deleted_at: now})
     |> Repo.update()
   end

@@ -26,7 +26,13 @@ defmodule ShroudWeb.UserAuth do
   """
   def log_in_user(conn, user, params \\ %{}) do
     token = Accounts.generate_user_session_token(user)
-    user_return_to = get_session(conn, :user_return_to)
+
+    user_return_to =
+      if user.confirmed_at do
+        get_session(conn, :user_return_to)
+      else
+        Routes.user_confirmation_path(conn, :new)
+      end
 
     conn
     |> renew_session()
@@ -81,7 +87,7 @@ defmodule ShroudWeb.UserAuth do
     conn
     |> renew_session()
     |> delete_resp_cookie(@remember_me_cookie)
-    |> redirect(to: "/")
+    |> redirect(to: "/users/log_in")
   end
 
   @doc """
@@ -122,10 +128,23 @@ defmodule ShroudWeb.UserAuth do
   end
 
   @doc """
-  Used for routes that require the user to be authenticated.
+  Used for routes that require the user to not be confirmed.
+  """
+  def redirect_if_user_is_confirmed(conn, _opts) do
+    user = conn.assigns[:current_user]
 
-  If you want to enforce the user email is confirmed before
-  they use the application at all, here would be a good place.
+    if user && user.confirmed_at != nil do
+      conn
+      |> redirect(to: signed_in_path(conn))
+      |> halt()
+    else
+      conn
+    end
+  end
+
+  @doc """
+  Used for routes that require the user to be authenticated
+  (but not necessarily confirmed).
   """
   def require_authenticated_user(conn, _opts) do
     if conn.assigns[:current_user] do
@@ -136,6 +155,33 @@ defmodule ShroudWeb.UserAuth do
       |> maybe_store_return_to()
       |> redirect(to: Routes.user_session_path(conn, :new))
       |> halt()
+    end
+  end
+
+  @doc """
+  Used for routes that require the user to be authenticated
+  and confirmed.
+  """
+  def require_confirmed_user(conn, _opts) do
+    user = conn.assigns[:current_user]
+
+    case user do
+      nil ->
+        conn
+        |> put_flash(:error, "You must log in to access this page.")
+        |> maybe_store_return_to()
+        |> redirect(to: Routes.user_session_path(conn, :new))
+        |> halt()
+
+      %{confirmed_at: nil} ->
+        conn
+        |> put_flash(:error, "Confirm your account to access this page.")
+        |> maybe_store_return_to()
+        |> redirect(to: Routes.user_confirmation_path(conn, :new))
+        |> halt()
+
+      _user ->
+        conn
     end
   end
 

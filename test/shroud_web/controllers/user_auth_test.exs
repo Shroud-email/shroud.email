@@ -2,6 +2,7 @@ defmodule ShroudWeb.UserAuthTest do
   use ShroudWeb.ConnCase, async: true
 
   alias Shroud.Accounts
+  alias Shroud.Repo
   alias ShroudWeb.UserAuth
   import Shroud.AccountsFixtures
 
@@ -21,7 +22,7 @@ defmodule ShroudWeb.UserAuthTest do
       conn = UserAuth.log_in_user(conn, user)
       assert token = get_session(conn, :user_token)
       assert get_session(conn, :live_socket_id) == "users_sessions:#{Base.url_encode64(token)}"
-      assert redirected_to(conn) == "/"
+      assert redirected_to(conn) == "/users/confirm"
       assert Accounts.get_user_by_session_token(token)
     end
 
@@ -31,6 +32,8 @@ defmodule ShroudWeb.UserAuthTest do
     end
 
     test "redirects to the configured path", %{conn: conn, user: user} do
+      # Confirm the user, otherwise they'll always be redirected to /users/confirm
+      user = user |> Accounts.User.confirm_changeset() |> Repo.update!()
       conn = conn |> put_session(:user_return_to, "/hello") |> UserAuth.log_in_user(user)
       assert redirected_to(conn) == "/hello"
     end
@@ -59,7 +62,7 @@ defmodule ShroudWeb.UserAuthTest do
       refute get_session(conn, :user_token)
       refute conn.cookies[@remember_me_cookie]
       assert %{max_age: 0} = conn.resp_cookies[@remember_me_cookie]
-      assert redirected_to(conn) == "/"
+      assert redirected_to(conn) == "/users/log_in"
       refute Accounts.get_user_by_session_token(user_token)
     end
 
@@ -78,7 +81,7 @@ defmodule ShroudWeb.UserAuthTest do
       conn = conn |> fetch_cookies() |> UserAuth.log_out_user()
       refute get_session(conn, :user_token)
       assert %{max_age: 0} = conn.resp_cookies[@remember_me_cookie]
-      assert redirected_to(conn) == "/"
+      assert redirected_to(conn) == "/users/log_in"
     end
   end
 
@@ -127,6 +130,21 @@ defmodule ShroudWeb.UserAuthTest do
     end
   end
 
+  describe "redirect_if_user_is_confirmed/2" do
+    test "redirects if user is confirmed", %{conn: conn, user: user} do
+      user = user |> Accounts.User.confirm_changeset() |> Repo.update!()
+      conn = conn |> assign(:current_user, user) |> UserAuth.redirect_if_user_is_confirmed([])
+      assert conn.halted
+      assert redirected_to(conn) == "/"
+    end
+
+    test "does not redirect if user is not confirmed", %{conn: conn} do
+      conn = UserAuth.redirect_if_user_is_confirmed(conn, [])
+      refute conn.halted
+      refute conn.status
+    end
+  end
+
   describe "require_authenticated_user/2" do
     test "redirects if user is not authenticated", %{conn: conn} do
       conn = conn |> fetch_flash() |> UserAuth.require_authenticated_user([])
@@ -163,6 +181,60 @@ defmodule ShroudWeb.UserAuthTest do
 
     test "does not redirect if user is authenticated", %{conn: conn, user: user} do
       conn = conn |> assign(:current_user, user) |> UserAuth.require_authenticated_user([])
+      refute conn.halted
+      refute conn.status
+    end
+  end
+
+  describe "require_confirmed_user/2" do
+    test "redirects if user is not authenticated", %{conn: conn} do
+      conn = conn |> fetch_flash() |> UserAuth.require_confirmed_user([])
+      assert conn.halted
+      assert redirected_to(conn) == Routes.user_session_path(conn, :new)
+      assert get_flash(conn, :error) == "You must log in to access this page."
+    end
+
+    test "redirects if user is not confirmed", %{conn: conn, user: user} do
+      conn =
+        conn
+        |> assign(:current_user, user)
+        |> fetch_flash()
+        |> UserAuth.require_confirmed_user([])
+
+      assert conn.halted
+      assert redirected_to(conn) == Routes.user_confirmation_path(conn, :new)
+      assert get_flash(conn, :error) == "Confirm your account to access this page."
+    end
+
+    test "stores the path to redirect to on GET", %{conn: conn} do
+      halted_conn =
+        %{conn | path_info: ["foo"], query_string: ""}
+        |> fetch_flash()
+        |> UserAuth.require_confirmed_user([])
+
+      assert halted_conn.halted
+      assert get_session(halted_conn, :user_return_to) == "/foo"
+
+      halted_conn =
+        %{conn | path_info: ["foo"], query_string: "bar=baz"}
+        |> fetch_flash()
+        |> UserAuth.require_confirmed_user([])
+
+      assert halted_conn.halted
+      assert get_session(halted_conn, :user_return_to) == "/foo?bar=baz"
+
+      halted_conn =
+        %{conn | path_info: ["foo"], query_string: "bar", method: "POST"}
+        |> fetch_flash()
+        |> UserAuth.require_confirmed_user([])
+
+      assert halted_conn.halted
+      refute get_session(halted_conn, :user_return_to)
+    end
+
+    test "does not redirect if user is confirmed", %{conn: conn, user: user} do
+      user = user |> Accounts.User.confirm_changeset() |> Repo.update!()
+      conn = conn |> assign(:current_user, user) |> UserAuth.require_confirmed_user([])
       refute conn.halted
       refute conn.status
     end

@@ -1,0 +1,30 @@
+<%= if @live_action in [:new, :edit] do %>
+  <%= live_modal ShroudWeb.EmailAliasLive.FormComponent,
+    id: @email_alias.id || :new,
+    title: @page_title,
+    action: @live_action,
+    email_alias: @email_alias,
+    return_to: Routes.email_alias_index_path(@socket, :index) %>
+<% end %>
+
+<div class="min-h-full">
+  <div class="flex justify-between">
+    <h1 class="h1">Aliases</h1>
+    <%= if not Enum.empty?(@aliases) do %>
+      <button phx-click="add_alias" class="btn btn-primary">New alias</button>
+    <% end %>
+  </div>
+
+  <%= if Enum.empty?(@aliases) do %>
+    <div class="flex flex-col items-center justify-center mt-12">
+      <p class="text-lg text-gray-300 mb-3">No addresses yet.</p>
+      <button phx-click="add_alias" class="btn btn-primary">Add your first alias</button>
+    </div>
+  <% end %>
+
+  <div class="space-y-6 mt-6">
+    <%= for email_alias <- @aliases do %>
+      <.live_component module={AliasCard} id={"alias-card-#{email_alias.id}"} email_alias={email_alias} />
+    <% end %>
+  </div>
+</div>

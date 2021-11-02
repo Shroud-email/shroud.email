@@ -1,11 +1,29 @@
-<main class="container">
-  <p class="alert alert-info" role="alert"
-    phx-click="lv:clear-flash"
-    phx-value-key="info"><%= live_flash(@flash, :info) %></p>
+<main class="container mx-auto min-h-full">
+  <%= if live_flash(@flash, :info) do %>
+    <div class="alert alert-info mb-6" role="alert">
+      <div class="flex-1"><%= live_flash(@flash, :info) %></div>
+      <div class="flex-none">
+        <button phx-click="lv:clear-flash" phx-value-key="info">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  <% end %>
 
-  <p class="alert alert-error" role="alert"
-    phx-click="lv:clear-flash"
-    phx-value-key="error"><%= live_flash(@flash, :error) %></p>
+  <%= if live_flash(@flash, :error) do %>
+    <div class="alert alert-error mb-6" role="alert">
+      <div class="flex-1"><%= live_flash(@flash, :error) %></div>
+      <div class="flex-none">
+        <button phx-click="lv:clear-flash" phx-value-key="error">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  <% end %>
 
   <%= @inner_content %>
 </main>

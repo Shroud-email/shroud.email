@@ -15,7 +15,7 @@
         <ul class="flex flex-row">
           <li class="inline mr-3"><strong class="logo">Shroud.email</strong> <sup>Alpha</sup></li>
           <%= if @current_user do %>
-          <li class="inline"><%= link "Addresses", to: Routes.email_alias_path(@conn, :index), class: "btn btn-sm btn-ghost rounded-btn" %></li>
+          <li class="inline"><%= link "Aliases", to: Routes.email_alias_index_path(@conn, :index), class: "btn btn-sm btn-ghost rounded-btn" %></li>
           <% end %>
           <%= if function_exported?(Routes, :live_dashboard_path, 2) do %>
             <li class="inline"><%= link "LiveDashboard", to: Routes.live_dashboard_path(@conn, :home), class: "btn btn-sm btn-ghost rounded-btn" %></li>

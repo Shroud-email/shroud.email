@@ -10,28 +10,39 @@ defmodule ShroudWeb.UserConfirmationControllerTest do
   end
 
   describe "GET /users/confirm" do
-    test "renders the resend confirmation page", %{conn: conn} do
+    test "redirects to login page for unauthenticated user", %{conn: conn} do
+      conn = get(conn, Routes.user_confirmation_path(conn, :new))
+
+      assert redirected_to(conn) == "/users/log_in"
+    end
+
+    test "renders the resend confirmation page when authenticated", %{conn: conn, user: user} do
+      conn = log_in_user(conn, user)
       conn = get(conn, Routes.user_confirmation_path(conn, :new))
       response = html_response(conn, 200)
-      assert response =~ "<h1>Resend confirmation instructions</h1>"
+      assert response =~ "Almost there</h1>"
+      assert response =~ "We sent you an email with a confirmation link."
     end
   end
 
   describe "POST /users/confirm" do
     @tag :capture_log
     test "sends a new confirmation token", %{conn: conn, user: user} do
+      conn = log_in_user(conn, user)
+
       conn =
         post(conn, Routes.user_confirmation_path(conn, :create), %{
           "user" => %{"email" => user.email}
         })
 
-      assert redirected_to(conn) == "/"
+      assert redirected_to(conn) == "/users/confirm"
       assert get_flash(conn, :info) =~ "If your email is in our system"
-      assert Repo.get_by!(Accounts.UserToken, user_id: user.id).context == "confirm"
+      assert Repo.get_by!(Accounts.UserToken, user_id: user.id, context: "confirm")
     end
 
-    test "does not send confirmation token if User is confirmed", %{conn: conn, user: user} do
+    test "redirects if User is confirmed", %{conn: conn, user: user} do
       Repo.update!(Accounts.User.confirm_changeset(user))
+      conn = log_in_user(conn, user)
 
       conn =
         post(conn, Routes.user_confirmation_path(conn, :create), %{
@@ -39,19 +50,7 @@ defmodule ShroudWeb.UserConfirmationControllerTest do
         })
 
       assert redirected_to(conn) == "/"
-      assert get_flash(conn, :info) =~ "If your email is in our system"
-      refute Repo.get_by(Accounts.UserToken, user_id: user.id)
-    end
-
-    test "does not send confirmation token if email is invalid", %{conn: conn} do
-      conn =
-        post(conn, Routes.user_confirmation_path(conn, :create), %{
-          "user" => %{"email" => "unknown@example.com"}
-        })
-
-      assert redirected_to(conn) == "/"
-      assert get_flash(conn, :info) =~ "If your email is in our system"
-      assert Repo.all(Accounts.UserToken) == []
+      refute Repo.get_by(Accounts.UserToken, user_id: user.id, context: "confirm")
     end
   end
 

@@ -16,6 +16,8 @@ defmodule ShroudWeb.ConnCase do
   """
 
   use ExUnit.CaseTemplate
+  alias Shroud.Repo
+  alias Shroud.Accounts.User
 
   using do
     quote do
@@ -47,6 +49,7 @@ defmodule ShroudWeb.ConnCase do
   """
   def register_and_log_in_user(%{conn: conn}) do
     user = Shroud.AccountsFixtures.user_fixture()
+    user |> User.confirm_changeset() |> Repo.update!()
     %{conn: log_in_user(conn, user), user: user}
   end
 

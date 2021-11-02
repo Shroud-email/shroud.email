@@ -1,10 +1,13 @@
-<h1>Resend confirmation instructions</h1>
-
-<.form let={f} for={:user} action={Routes.user_confirmation_path(@conn, :create)}>
-  <%= label f, :email %>
-  <%= email_input f, :email, required: true %>
-
-  <div>
-    <%= submit "Resend confirmation instructions" %>
+<div class="hero py-32 bg-base-200 rounded-3xl">
+  <div class="text-center hero-content flex flex-col">
+    <h1 class="h1">Almost there</h1>
+    <p class="w-max">
+      We sent you an email with a confirmation link.
+      Please click the link in this email to continue.
+    </p>
+    <.form let={f} for={:user} action={Routes.user_confirmation_path(@conn, :create)}>
+      <%= hidden_input f, :email, required: true, value: @current_user.email %>
+      <%= submit "Resend confirmation email", class: "btn btn-sm btn-ghost" %>
+    </.form>
   </div>
-</.form>
+</div>

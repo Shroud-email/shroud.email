@@ -72,21 +72,27 @@ defmodule ShroudWeb.Router do
   end
 
   scope "/", ShroudWeb do
-    pipe_through [:browser, :require_authenticated_user]
+    pipe_through [:browser, :require_authenticated_user, :redirect_if_user_is_confirmed]
+
+    get "/users/confirm", UserConfirmationController, :new
+    post "/users/confirm", UserConfirmationController, :create
+  end
+
+  scope "/", ShroudWeb do
+    pipe_through [:browser, :require_confirmed_user]
 
     get "/users/settings", UserSettingsController, :edit
     put "/users/settings", UserSettingsController, :update
+    # Route for changing email of an already-confirmed account
     get "/users/settings/confirm_email/:token", UserSettingsController, :confirm_email
 
-    resources "/", EmailAliasController, only: [:index, :create, :delete]
+    live "/", EmailAliasLive.Index, :index
   end
 
   scope "/", ShroudWeb do
     pipe_through [:browser]
 
     delete "/users/log_out", UserSessionController, :delete
-    get "/users/confirm", UserConfirmationController, :new
-    post "/users/confirm", UserConfirmationController, :create
     get "/users/confirm/:token", UserConfirmationController, :edit
     post "/users/confirm/:token", UserConfirmationController, :update
   end

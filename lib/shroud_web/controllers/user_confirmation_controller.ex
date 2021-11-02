@@ -22,7 +22,7 @@ defmodule ShroudWeb.UserConfirmationController do
       "If your email is in our system and it has not been confirmed yet, " <>
         "you will receive an email with instructions shortly."
     )
-    |> redirect(to: "/")
+    |> redirect(to: Routes.user_confirmation_path(conn, :new))
   end
 
   def edit(conn, %{"token" => token}) do
