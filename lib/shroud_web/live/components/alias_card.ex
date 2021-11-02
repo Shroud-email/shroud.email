@@ -8,11 +8,11 @@ defmodule ShroudWeb.Components.AliasCard do
   def render(assigns) do
     ~H"""
     <article id={"alias-#{@email_alias.id}"} class="card bordered">
-      <div class="card-body flex flex-row justify-between">
+      <div class="card-body flex flex-col sm:flex-row justify-between">
         <div class="font-bold text-lg flex items-center">
           <%= @email_alias.address %>
         </div>
-        <div class="flex">
+        <div class="flex mt-2 sm:mt-0 justify-end">
           <%= link "Delete", to: "#", phx_click: "delete", phx_target: @myself, data: [confirm: "Are you sure you want to permanently delete #{@email_alias.address}?"], class: "btn btn-outline btn-xs btn-error" %>
           <input type="checkbox" checked={@email_alias.enabled} class="toggle tooltip ml-2" data-tip="Enabled?" phx-click="toggle" phx-target={@myself} />
         </div>
