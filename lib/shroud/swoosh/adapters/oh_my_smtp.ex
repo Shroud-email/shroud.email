@@ -29,7 +29,7 @@ defmodule Shroud.Swoosh.Adapters.OhMySmtp do
     headers = prepare_headers(config)
     params = email |> prepare_body() |> Swoosh.json_library().encode!
 
-    case Swoosh.ApiClient.Hackney.post(@api_endpoint, headers, params, email) do
+    case Swoosh.ApiClient.post(@api_endpoint, headers, params, email) do
       {:ok, 200, _headers, body} ->
         {:ok, %{id: Swoosh.json_library().decode!(body)["id"]}}
 

@@ -40,8 +40,7 @@ config :shroud, :mailer,
 
 config :shroud, :email_aliases, domain: "shroud.local"
 
-# Swoosh API client is needed for adapters other than SMTP.
-config :swoosh, :api_client, false
+config :swoosh, :api_client, Swoosh.ApiClient.Hackney
 
 config :shroud, Oban,
   repo: Shroud.Repo,
