@@ -9,4 +9,12 @@ module.exports = {
   plugins: [
     require("daisyui"),
   ],
+  options: {
+    safelist: [
+      /data-theme$/,
+    ]
+  },
+  daisyui: {
+    themes: ["dark"],
+  },
 }
