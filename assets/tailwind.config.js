@@ -1,6 +1,5 @@
 module.exports = {
-  mode: "jit",
-  purge: ["./js/**/*.js", "../lib/*_web/**/*.*ex"],
+  purge: ["./js/**/*.js", "../lib/shroud_web/**/*.*ex"],
   theme: {
     extend: {},
   },
@@ -8,7 +7,6 @@ module.exports = {
     extend: {},
   },
   plugins: [
-    require('@tailwindcss/typography'),
     require("daisyui"),
   ],
 }
