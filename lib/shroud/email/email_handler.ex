@@ -36,6 +36,7 @@ defmodule Shroud.Email.EmailHandler do
     case Accounts.get_user_by_alias(to) do
       nil ->
         Logger.info("Discarding email to unknown address #{to} (from #{from})")
+        Appsignal.increment_counter("emails.discarded", 1)
         :ok
 
       user ->
