@@ -1,5 +1,6 @@
 defmodule ShroudWeb.Endpoint do
   use Phoenix.Endpoint, otp_app: :shroud
+  use Appsignal.Phoenix
   plug Shroud.HealthCheck
 
   # The session will be stored in the cookie and signed,

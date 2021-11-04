@@ -22,6 +22,8 @@ defmodule Shroud.Application do
       {Shroud.Email.SmtpServer, Application.fetch_env!(:shroud, :mailer)[:smtp_options]}
     ]
 
+    {:ok, _} = Application.ensure_all_started(:appsignal)
+
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: Shroud.Supervisor]

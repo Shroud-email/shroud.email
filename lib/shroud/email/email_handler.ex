@@ -1,5 +1,6 @@
 defmodule Shroud.Email.EmailHandler do
   use Oban.Worker, queue: :outgoing_email
+  use Appsignal.Instrumentation.Decorators
 
   import Swoosh.Email
   require Logger
@@ -19,6 +20,7 @@ defmodule Shroud.Email.EmailHandler do
   ]
 
   @impl Oban.Worker
+  @decorate transaction(:background_job)
   def perform(%Oban.Job{args: %{"from" => from, "to" => [first | rest]}}) do
     Logger.error(
       "Failed to forward email from #{from} with multiple recipients: #{Enum.join([first | rest], ", ")}"
@@ -28,6 +30,7 @@ defmodule Shroud.Email.EmailHandler do
   end
 
   @impl Oban.Worker
+  @decorate transaction(:background_job)
   def perform(%Oban.Job{args: %{"from" => from, "to" => to, "data" => data}}) do
     # Lookup real email based on the receiving alias (`to`)
     case Accounts.get_user_by_alias(to) do
@@ -36,6 +39,7 @@ defmodule Shroud.Email.EmailHandler do
         :ok
 
       user ->
+        Appsignal.increment_counter("emails.forwarded", 1)
         Logger.info("Forwarding email from #{from} to #{user.email} (via #{to})")
 
         # TODO: handle parsing failures?
@@ -47,6 +51,7 @@ defmodule Shroud.Email.EmailHandler do
 
   # Take an email as parsed by mimemail, then convert it into a Swoosh.Email ready to send
   @spec transmogrify(:mimemail.mimetuple(), String.t()) :: Swoosh.Email.t()
+  @decorate transaction_event("email_handler")
   defp transmogrify(email, recipient_address) do
     email =
       new()
