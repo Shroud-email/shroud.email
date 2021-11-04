@@ -67,7 +67,8 @@ defmodule Shroud.MixProject do
       {:oban, "~> 2.9"},
       {:hackney, "~> 1.18"},
       {:ranch, "~> 1.8.0", override: true},
-      {:canada, "~> 2.0"}
+      {:canada, "~> 2.0"},
+      {:mjml, "~> 1.1"}
     ]
   end
 
