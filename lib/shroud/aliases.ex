@@ -6,7 +6,7 @@ defmodule Shroud.Aliases do
   import Ecto.Query, warn: false
   alias Shroud.Repo
 
-  alias Shroud.Aliases.EmailAlias
+  alias Shroud.Aliases.{EmailAlias, EmailMetric}
 
   @alias_domain Application.compile_env!(:shroud, :email_aliases)[:domain]
 
@@ -25,6 +25,10 @@ defmodule Shroud.Aliases do
 
   def get_email_alias!(id) do
     Repo.get!(EmailAlias, id)
+  end
+
+  def get_email_alias_by_address!(address) do
+    Repo.get_by!(EmailAlias, address: address)
   end
 
   def change_email_alias(%EmailAlias{} = email_alias, attrs \\ %{}) do
@@ -52,6 +56,15 @@ defmodule Shroud.Aliases do
     get_email_alias!(id)
     |> EmailAlias.changeset(%{deleted_at: now})
     |> Repo.update()
+  end
+
+  def increment_forwarded!(alias_id) do
+    today = NaiveDateTime.utc_now() |> NaiveDateTime.to_date()
+
+    Repo.insert!(%EmailMetric{alias_id: alias_id, date: today, forwarded: 1},
+      conflict_target: [:alias_id, :date],
+      on_conflict: [inc: [forwarded: 1]]
+    )
   end
 
   defp generate_email_address() do

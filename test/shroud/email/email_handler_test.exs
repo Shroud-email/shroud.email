@@ -8,6 +8,7 @@ defmodule Shroud.Email.EmailHandlerTest do
   import Shroud.AliasesFixtures
 
   alias Shroud.Email.EmailHandler
+  alias Shroud.Aliases
 
   setup do
     user = user_fixture()
@@ -82,6 +83,16 @@ defmodule Shroud.Email.EmailHandlerTest do
         assert email.text_body =~ "Plain text email goes here!"
         assert email.html_body =~ "This is the HTML Section"
       end)
+    end
+
+    test "increments email metrics", %{email_alias: email_alias} do
+      data = File.read!("test/support/data/plaintext.email")
+      args = %{from: "sender@example.com", to: email_alias.address, data: data}
+
+      perform_job(EmailHandler, args)
+
+      metric = Repo.get_by!(Aliases.EmailMetric, alias_id: email_alias.id)
+      assert metric.forwarded == 1
     end
   end
 end

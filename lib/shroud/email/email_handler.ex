@@ -4,7 +4,7 @@ defmodule Shroud.Email.EmailHandler do
 
   import Swoosh.Email
   require Logger
-  alias Shroud.{Accounts, Mailer}
+  alias Shroud.{Accounts, Aliases, Mailer}
   alias Shroud.Email.Enricher
 
   @type header_type :: {String.t(), String.t()}
@@ -39,13 +39,17 @@ defmodule Shroud.Email.EmailHandler do
         :ok
 
       user ->
-        Appsignal.increment_counter("emails.forwarded", 1)
         Logger.info("Forwarding email from #{from} to #{user.email} (via #{to})")
 
         # TODO: handle parsing failures?
         :mimemail.decode(data)
         |> transmogrify(user.email)
         |> Mailer.deliver()
+
+        email_alias = Aliases.get_email_alias_by_address!(to)
+        Appsignal.increment_counter("emails.forwarded", 1)
+        Aliases.increment_forwarded!(email_alias.id)
+        :ok
     end
   end
 

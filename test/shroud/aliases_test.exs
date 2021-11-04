@@ -2,7 +2,7 @@ defmodule Shroud.AliasesTest do
   use Shroud.DataCase
 
   alias Shroud.Aliases
-  alias Shroud.Aliases.EmailAlias
+  alias Shroud.Aliases.{EmailAlias, EmailMetric}
 
   import Shroud.{AccountsFixtures, AliasesFixtures}
 
@@ -38,6 +38,32 @@ defmodule Shroud.AliasesTest do
 
       assert email_alias.deleted_at != nil
       assert_in_delta deleted_at, now, 1
+    end
+  end
+
+  describe "increment_forwarded!/1" do
+    test "it creates a new row for the date" do
+      %{id: id} = user_fixture()
+      email_alias = alias_fixture(%{user_id: id})
+
+      Aliases.increment_forwarded!(email_alias.id)
+
+      metric = Repo.get_by!(EmailMetric, alias_id: email_alias.id)
+      today = NaiveDateTime.utc_now() |> NaiveDateTime.to_date()
+      assert metric.date == today
+      assert metric.forwarded == 1
+    end
+
+    test "it increments an existing row" do
+      %{id: id} = user_fixture()
+      email_alias = alias_fixture(%{user_id: id})
+      today = NaiveDateTime.utc_now() |> NaiveDateTime.to_date()
+      Repo.insert!(%EmailMetric{alias_id: email_alias.id, date: today, forwarded: 1})
+
+      Aliases.increment_forwarded!(email_alias.id)
+
+      metric = Repo.get_by!(EmailMetric, alias_id: email_alias.id)
+      assert metric.forwarded == 2
     end
   end
 end
