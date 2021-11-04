@@ -1,3 +1,0 @@
-This email was forwarded from <%= @recipient_alias %> by Shroud.email.
-
-<%= @body %>

@@ -46,7 +46,6 @@ defmodule Shroud.MixProject do
       {:phoenix_html, "~> 3.0"},
       {:phoenix_live_reload, "~> 1.2", only: :dev},
       {:phoenix_live_view, "~> 0.17.0"},
-      {:floki, ">= 0.30.0", only: :test},
       {:phoenix_live_dashboard, "~> 0.5"},
       {:esbuild, "~> 0.2", runtime: Mix.env() == :dev},
       {:excoveralls, "~> 0.14.3", only: :test},
@@ -68,7 +67,8 @@ defmodule Shroud.MixProject do
       {:hackney, "~> 1.18"},
       {:ranch, "~> 1.8.0", override: true},
       {:canada, "~> 2.0"},
-      {:mjml, "~> 1.1"}
+      {:mjml, "~> 1.1"},
+      {:floki, "~> 0.32.0"}
     ]
   end
 
