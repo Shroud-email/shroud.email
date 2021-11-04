@@ -22,6 +22,10 @@ services:
       - DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_DATABASE}
       - SECRET_KEY_BASE=${SECRET_KEY_BASE}
       - OH_MY_SMTP_API_KEY=${OH_MY_SMTP_API_KEY}
+      - APPSIGNAL_OTP_APP=shroud
+      - APPSIGNAL_APP_NAME=shroud
+      - APPSIGNAL_APP_ENV=${APPSIGNAL_APP_ENV}
+      - APPSIGNAL_PUSH_API_KEY=${APPSIGNAL_PUSH_API_KEY}
     volumes:
       - "caddy_data:/var/caddy:ro"
   caddy:
