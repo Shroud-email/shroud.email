@@ -58,13 +58,23 @@ defmodule Shroud.Aliases do
     |> Repo.update()
   end
 
-  def increment_forwarded!(alias_id) do
+  def increment_forwarded!(%EmailAlias{} = email_alias) do
     today = NaiveDateTime.utc_now() |> NaiveDateTime.to_date()
 
-    Repo.insert!(%EmailMetric{alias_id: alias_id, date: today, forwarded: 1},
-      conflict_target: [:alias_id, :date],
-      on_conflict: [inc: [forwarded: 1]]
-    )
+    Repo.transaction(fn ->
+      Repo.insert!(%EmailMetric{alias_id: email_alias.id, date: today, forwarded: 1},
+        conflict_target: [:alias_id, :date],
+        on_conflict: [inc: [forwarded: 1]]
+      )
+
+      alias_update =
+        from e in EmailAlias,
+          where: e.id == ^email_alias.id,
+          select: e.forwarded,
+          update: [inc: [forwarded: 1]]
+
+      {1, _} = Repo.update_all(alias_update, [])
+    end)
   end
 
   defp generate_email_address() do

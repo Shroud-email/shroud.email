@@ -49,7 +49,7 @@ defmodule Shroud.Email.EmailHandler do
 
         email_alias = Aliases.get_email_alias_by_address!(to)
         Appsignal.increment_counter("emails.forwarded", 1)
-        Aliases.increment_forwarded!(email_alias.id)
+        Aliases.increment_forwarded!(email_alias)
         :ok
     end
   end

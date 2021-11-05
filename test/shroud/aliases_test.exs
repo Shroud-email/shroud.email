@@ -27,7 +27,7 @@ defmodule Shroud.AliasesTest do
   end
 
   describe "delete_email_alias/1" do
-    test "it sets deleted_at" do
+    test "sets deleted_at" do
       %{id: id} = user_fixture()
       email_alias = alias_fixture(%{user_id: id})
       Aliases.delete_email_alias(email_alias.id)
@@ -42,11 +42,11 @@ defmodule Shroud.AliasesTest do
   end
 
   describe "increment_forwarded!/1" do
-    test "it creates a new row for the date" do
+    test "creates a new row for the date" do
       %{id: id} = user_fixture()
       email_alias = alias_fixture(%{user_id: id})
 
-      Aliases.increment_forwarded!(email_alias.id)
+      Aliases.increment_forwarded!(email_alias)
 
       metric = Repo.get_by!(EmailMetric, alias_id: email_alias.id)
       today = NaiveDateTime.utc_now() |> NaiveDateTime.to_date()
@@ -54,16 +54,26 @@ defmodule Shroud.AliasesTest do
       assert metric.forwarded == 1
     end
 
-    test "it increments an existing row" do
+    test "increments an existing row" do
       %{id: id} = user_fixture()
       email_alias = alias_fixture(%{user_id: id})
       today = NaiveDateTime.utc_now() |> NaiveDateTime.to_date()
       Repo.insert!(%EmailMetric{alias_id: email_alias.id, date: today, forwarded: 1})
 
-      Aliases.increment_forwarded!(email_alias.id)
+      Aliases.increment_forwarded!(email_alias)
 
       metric = Repo.get_by!(EmailMetric, alias_id: email_alias.id)
       assert metric.forwarded == 2
+    end
+
+    test "increments forwarded field on the alias" do
+      %{id: id} = user_fixture()
+      email_alias = alias_fixture(%{user_id: id})
+
+      Aliases.increment_forwarded!(email_alias)
+
+      email_alias = Repo.reload(email_alias)
+      assert email_alias.forwarded == 1
     end
   end
 end
