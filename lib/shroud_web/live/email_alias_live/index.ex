@@ -82,6 +82,6 @@ defmodule ShroudWeb.EmailAliasLive.Index do
   end
 
   defp update_email_aliases(socket) do
-    assign(socket, :aliases, Aliases.list_aliases!(socket.assigns[:current_user]))
+    assign(socket, :aliases, Aliases.list_aliases(socket.assigns[:current_user]))
   end
 end

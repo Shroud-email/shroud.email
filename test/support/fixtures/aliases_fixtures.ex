@@ -4,6 +4,9 @@ defmodule Shroud.AliasesFixtures do
   entities via the `Shroud.Aliases` context.
   """
 
+  alias Shroud.Repo
+  alias Shroud.Aliases.EmailMetric
+
   def unique_alias_email, do: "alias#{System.unique_integer()}@example.com"
 
   def valid_alias_attributes(attrs \\ %{}) do
@@ -13,11 +16,18 @@ defmodule Shroud.AliasesFixtures do
   end
 
   def alias_fixture(attrs \\ %{}) do
-    {:ok, alias} =
+    {:ok, email_alias} =
       attrs
       |> valid_alias_attributes()
       |> Shroud.Aliases.create_email_alias()
 
-    alias
+    email_alias
+  end
+
+  def metric_fixture(attrs \\ %{}) do
+    changeset = EmailMetric.changeset(%EmailMetric{}, attrs)
+    {:ok, metric} = Repo.insert(changeset)
+
+    metric
   end
 end

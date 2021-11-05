@@ -13,8 +13,30 @@ defmodule Shroud.AliasesTest do
       alias_one = alias_fixture(%{user_id: id_one})
       alias_two = alias_fixture(%{user_id: id_two})
 
-      assert [alias_one] == Aliases.list_aliases!(user_one)
-      assert [alias_two] == Aliases.list_aliases!(user_two)
+      assert [alias_one] == Aliases.list_aliases(user_one)
+      assert [alias_two] == Aliases.list_aliases(user_two)
+    end
+
+    test "counts recently forwarded emails" do
+      one_week_seconds = 7 * 24 * 60 * 60
+
+      one_week_ago =
+        NaiveDateTime.utc_now()
+        |> NaiveDateTime.add(one_week_seconds, :second)
+        |> NaiveDateTime.to_date()
+
+      two_weeks_ago =
+        NaiveDateTime.utc_now()
+        |> NaiveDateTime.add(2 * one_week_seconds, :second)
+        |> NaiveDateTime.to_date()
+
+      %{id: user_id} = user = user_fixture()
+      %{id: alias_id} = alias_fixture(%{user_id: user_id})
+      metric_fixture(%{alias_id: alias_id, date: one_week_ago, forwarded: 1})
+      metric_fixture(%{alias_id: alias_id, date: two_weeks_ago, forwarded: 2})
+
+      listed_alias = user |> Aliases.list_aliases() |> hd()
+      assert listed_alias.forwarded_in_last_30_days == 3
     end
 
     test "does not include deleted aliases" do
@@ -22,7 +44,7 @@ defmodule Shroud.AliasesTest do
       email_alias = alias_fixture(%{user_id: id})
       Aliases.delete_email_alias(email_alias.id)
 
-      assert [] == Aliases.list_aliases!(user)
+      assert [] == Aliases.list_aliases(user)
     end
   end
 

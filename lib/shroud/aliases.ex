@@ -7,14 +7,28 @@ defmodule Shroud.Aliases do
   alias Shroud.Repo
 
   alias Shroud.Aliases.{EmailAlias, EmailMetric}
+  alias Shroud.Accounts.User
 
   @alias_domain Application.compile_env!(:shroud, :email_aliases)[:domain]
 
-  def list_aliases!(user) do
-    user
-    |> Ecto.assoc(:aliases)
-    |> where([a], is_nil(a.deleted_at))
-    |> Repo.all()
+  @spec list_aliases(User.t()) :: [EmailAlias.t()]
+  def list_aliases(%User{} = user) do
+    today = NaiveDateTime.utc_now() |> NaiveDateTime.to_date()
+
+    recent_metrics =
+      from m in EmailMetric,
+        where: m.date > date_add(^today, -30, "day"),
+        group_by: m.alias_id,
+        select: %{forwarded: sum(m.forwarded), alias_id: m.alias_id}
+
+    query =
+      from ea in EmailAlias,
+        where: ea.user_id == ^user.id and is_nil(ea.deleted_at),
+        left_join: m in subquery(recent_metrics),
+        on: m.alias_id == ea.id,
+        select_merge: %{ea | forwarded_in_last_30_days: coalesce(m.forwarded, 0)}
+
+    Repo.all(query)
   end
 
   def create_email_alias(attrs) do

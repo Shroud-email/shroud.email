@@ -28,6 +28,10 @@
   @apply text-xl font-bold mb-2;
 }
 
+[x-cloak] {
+  display: none !important;
+}
+
 /* LiveView specific classes for your customization */
 .phx-no-feedback.invalid-feedback,
 .phx-no-feedback .invalid-feedback {
