@@ -70,7 +70,8 @@ defmodule Shroud.MixProject do
       {:mjml, "~> 1.1"},
       {:floki, "~> 0.32.0"},
       {:appsignal, "~> 2.2"},
-      {:appsignal_phoenix, "~> 2.0"}
+      {:appsignal_phoenix, "~> 2.0"},
+      {:timex, "~> 3.7"}
     ]
   end
 
