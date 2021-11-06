@@ -53,6 +53,9 @@ defmodule Shroud.Email.Enricher do
         |> Floki.traverse_and_update(fn
           {"body", attrs, children} ->
             {"body", attrs, [header | children]}
+
+          other ->
+            other
         end)
         |> Floki.raw_html()
     end

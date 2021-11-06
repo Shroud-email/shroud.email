@@ -4,11 +4,19 @@ defmodule Shroud.Email.EmailHandlerTest do
   import ExUnit.CaptureLog
   import Swoosh.TestAssertions
 
-  import Shroud.AccountsFixtures
-  import Shroud.AliasesFixtures
+  import Shroud.{AccountsFixtures, AliasesFixtures, EmailFixtures}
 
   alias Shroud.Email.EmailHandler
   alias Shroud.Aliases
+
+  @html_content """
+    <html>
+      <body>
+        <h1>This is HTML content</h1>
+        <p>Lorem ipsum</p>
+      </body>
+    </html>
+  """
 
   setup do
     user = user_fixture()
@@ -44,7 +52,14 @@ defmodule Shroud.Email.EmailHandlerTest do
     end
 
     test "handles text/plain email", %{user: user, email_alias: email_alias} do
-      data = File.read!("test/support/data/plaintext.email")
+      data =
+        text_email(
+          {"Sender", "sender@example.com"},
+          [{"Recipient", email_alias.address}],
+          "Text only",
+          "Plain text content!"
+        )
+
       args = %{from: "sender@example.com", to: email_alias.address, data: data}
       perform_job(EmailHandler, args)
 
@@ -52,27 +67,35 @@ defmodule Shroud.Email.EmailHandlerTest do
         assert hd(email.to) == {"Recipient", user.email}
         assert email.from == {"Sender (via Shroud)", "noreply@shroud.email"}
         assert email.reply_to == {"Sender", "sender@example.com"}
-        assert email.text_body =~ "Plain text email goes here!"
+        assert email.text_body =~ "Plain text content!"
         assert is_nil(email.html_body)
       end)
     end
 
     test "handles text/html email", %{user: user, email_alias: email_alias} do
-      data = File.read!("test/support/data/html.email")
+      data = html_email("sender@example.com", [email_alias.address], "HTML only", @html_content)
       args = %{from: "sender@example.com", to: email_alias.address, data: data}
       perform_job(EmailHandler, args)
 
       assert_email_sent(fn email ->
-        assert hd(email.to) == {"Recipient", user.email}
-        assert email.from == {"Sender (via Shroud)", "noreply@shroud.email"}
-        assert email.reply_to == {"Sender", "sender@example.com"}
+        assert hd(email.to) == {email_alias.address, user.email}
+        assert email.from == {"sender@example.com (via Shroud)", "noreply@shroud.email"}
+        assert email.reply_to == {"sender@example.com", "sender@example.com"}
         assert is_nil(email.text_body)
-        assert email.html_body =~ "This is the HTML Section"
+        assert email.html_body =~ "This is HTML content"
       end)
     end
 
     test "handles multipart/alternative email", %{user: user, email_alias: email_alias} do
-      data = File.read!("test/support/data/multipart.email")
+      data =
+        multipart_email(
+          {"Sender", "sender@example.com"},
+          [{"Recipient", email_alias.address}],
+          "Multipart email",
+          "Plaintext content",
+          @html_content
+        )
+
       args = %{from: "sender@example.com", to: email_alias.address, data: data}
       perform_job(EmailHandler, args)
 
@@ -80,13 +103,20 @@ defmodule Shroud.Email.EmailHandlerTest do
         assert hd(email.to) == {"Recipient", user.email}
         assert email.from == {"Sender (via Shroud)", "noreply@shroud.email"}
         assert email.reply_to == {"Sender", "sender@example.com"}
-        assert email.text_body =~ "Plain text email goes here!"
-        assert email.html_body =~ "This is the HTML Section"
+        assert email.text_body =~ "Plaintext content"
+        assert email.html_body =~ "This is HTML content"
       end)
     end
 
     test "increments email metrics", %{email_alias: email_alias} do
-      data = File.read!("test/support/data/plaintext.email")
+      data =
+        text_email(
+          "sender@example.com",
+          [email_alias.address],
+          "Text only",
+          "Plain text content!"
+        )
+
       args = %{from: "sender@example.com", to: email_alias.address, data: data}
 
       perform_job(EmailHandler, args)
