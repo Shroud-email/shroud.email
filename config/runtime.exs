@@ -73,4 +73,7 @@ if config_env() == :prod do
     api_key: oh_my_smtp_api_key
 
   config :swoosh, :api_client, Swoosh.ApiClient.Hackney
+
+  config :appsignal, :config,
+    push_api_key: System.get_env("APPSIGNAL_PUSH_API_KEY")
 end

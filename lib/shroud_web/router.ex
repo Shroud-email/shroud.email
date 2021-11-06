@@ -13,9 +13,9 @@ defmodule ShroudWeb.Router do
     plug :fetch_current_user
   end
 
-  pipeline :api do
-    plug :accepts, ["json"]
-  end
+  # pipeline :api do
+  #   plug :accepts, ["json"]
+  # end
 
   # Other scopes may use custom stacks.
   # scope "/api", ShroudWeb do
@@ -86,6 +86,7 @@ defmodule ShroudWeb.Router do
   scope "/", ShroudWeb do
     pipe_through [:browser]
 
+    get "/_health", HealthController, :show
     delete "/users/log_out", UserSessionController, :delete
     get "/users/confirm/:token", UserConfirmationController, :edit
     post "/users/confirm/:token", UserConfirmationController, :update
