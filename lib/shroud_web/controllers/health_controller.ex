@@ -4,5 +4,4 @@ defmodule ShroudWeb.HealthController do
   def show(conn, _params) do
     text(conn, "OK")
   end
-
 end

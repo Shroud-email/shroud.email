@@ -3,5 +3,5 @@ use Mix.Config
 config :appsignal, :config,
   otp_app: :shroud,
   name: "shroud",
-  env: Mix.env,
+  env: Mix.env(),
   ignore_actions: ["ShroudWeb.HealthController#show"]
