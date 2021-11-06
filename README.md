@@ -4,7 +4,6 @@ Shroud is an email privacy service.
 
 ## To do
 
-- [ ] Handle emails with multiple recipients
 - [ ] Handle attachments
 - [ ] Limit number of aliases (5?)
 - [ ] Custom aliases (pro)

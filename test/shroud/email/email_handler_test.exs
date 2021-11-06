@@ -1,7 +1,6 @@
 defmodule Shroud.Email.EmailHandlerTest do
   use Shroud.DataCase, async: true
   use Oban.Testing, repo: Shroud.Repo
-  import ExUnit.CaptureLog
   import Swoosh.TestAssertions
 
   import Shroud.{AccountsFixtures, AliasesFixtures, EmailFixtures}
@@ -29,13 +28,6 @@ defmodule Shroud.Email.EmailHandlerTest do
   end
 
   describe "perform/1" do
-    test "logs error if there are multiple recipients" do
-      assert capture_log(fn ->
-               args = %{from: "sender@e.co", to: ["r1@e.co", "r2@e.co"], data: "data"}
-               perform_job(EmailHandler, args)
-             end) =~ "Failed to forward"
-    end
-
     test "forwards to the correct user", %{user: user, email_alias: email_alias} do
       args = %{
         from: "sender@example.com",
@@ -48,6 +40,58 @@ defmodule Shroud.Email.EmailHandlerTest do
       assert_email_sent(fn email ->
         {_name, recipient} = hd(email.to)
         recipient == user.email
+      end)
+    end
+
+    test "handles emails to multiple recipients", %{user: user, email_alias: email_alias} do
+      args = %{
+        from: "sender@example.com",
+        to: [email_alias.address, "other@example.com"],
+        data:
+          text_email(
+            "sender@example.com",
+            [email_alias.address, "other@example.com"],
+            "To multiple recipients",
+            "Plain text content"
+          )
+      }
+
+      perform_job(EmailHandler, args)
+
+      assert_email_sent(fn email ->
+        {_name, recipient} = hd(email.to)
+        recipient == user.email
+      end)
+
+      refute_email_sent(%{to: "other@example.com"})
+    end
+
+    test "handles emails to multiple shroud recipients", %{user: user, email_alias: email_alias} do
+      %{id: user_id} = other_user = user_fixture()
+      other_alias = alias_fixture(%{user_id: user_id})
+
+      args = %{
+        from: "sender@example.com",
+        to: [email_alias.address, other_alias.address],
+        data:
+          text_email(
+            "sender@example.com",
+            [email_alias.address, other_alias.address],
+            "To multiple recipients",
+            "Plain text content"
+          )
+      }
+
+      perform_job(EmailHandler, args)
+
+      assert_email_sent(fn email ->
+        {_name, recipient} = hd(email.to)
+        recipient == user.email
+      end)
+
+      assert_email_sent(fn email ->
+        {_name, recipient} = hd(email.to)
+        recipient == other_user.email
       end)
     end
 

@@ -21,36 +21,43 @@ defmodule Shroud.Email.EmailHandler do
 
   @impl Oban.Worker
   @decorate transaction(:background_job)
-  def perform(%Oban.Job{args: %{"from" => from, "to" => [first | rest]}}) do
-    Logger.error(
-      "Failed to forward email from #{from} with multiple recipients: #{Enum.join([first | rest], ", ")}"
-    )
-
-    :ok
+  def perform(%Oban.Job{args: %{"from" => from, "to" => recipients, "data" => data}})
+      when is_list(recipients) do
+    recipients
+    |> Enum.each(&handle_recipient(from, &1, data))
   end
 
   @impl Oban.Worker
   @decorate transaction(:background_job)
   def perform(%Oban.Job{args: %{"from" => from, "to" => to, "data" => data}}) do
-    # Lookup real email based on the receiving alias (`to`)
-    case Accounts.get_user_by_alias(to) do
+    handle_recipient(from, to, data)
+  end
+
+  defp handle_recipient(sender, recipient, data) do
+    # Lookup real email based on the receiving alias (`recipient`)
+    case Accounts.get_user_by_alias(recipient) do
       nil ->
-        Logger.info("Discarding email to unknown address #{to} (from #{from})")
+        Logger.info("Discarding email to unknown address #{recipient} (from #{sender})")
         Appsignal.increment_counter("emails.discarded", 1)
-        :ok
 
       user ->
-        Logger.info("Forwarding email from #{from} to #{user.email} (via #{to})")
+        Logger.info("Forwarding email from #{sender} to #{user.email} (via #{recipient})")
 
         # TODO: handle parsing failures?
         :mimemail.decode(data)
         |> transmogrify(user.email)
         |> Mailer.deliver()
 
-        email_alias = Aliases.get_email_alias_by_address!(to)
-        Appsignal.increment_counter("emails.forwarded", 1)
-        Aliases.increment_forwarded!(email_alias)
-        :ok
+        try do
+          email_alias = Aliases.get_email_alias_by_address!(recipient)
+          Appsignal.increment_counter("emails.forwarded", 1)
+          Aliases.increment_forwarded!(email_alias)
+        rescue
+          e ->
+            Logger.error(
+              "Failed to increment stats for email from #{sender} to #{recipient}: #{e}"
+            )
+        end
     end
   end
 
