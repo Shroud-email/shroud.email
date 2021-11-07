@@ -3,7 +3,6 @@ defmodule ShroudWeb.EmailAliasLive.Index do
 
   use Phoenix.HTML
   use ShroudWeb, :live_view
-  on_mount ShroudWeb.UserLiveAuth
 
   alias Shroud.Aliases
   alias Shroud.Aliases.EmailAlias
@@ -37,24 +36,6 @@ defmodule ShroudWeb.EmailAliasLive.Index do
   end
 
   @impl true
-  def handle_info({:deleted_alias, id}, %{assigns: %{current_user: user}} = socket) do
-    email_alias = Aliases.get_email_alias!(id)
-
-    socket =
-      if user |> can?(destroy(email_alias)) do
-        {:ok, deleted_alias} = Aliases.delete_email_alias(id)
-
-        socket
-        |> update_email_aliases()
-        |> put_flash(:info, "Deleted alias #{deleted_alias.address}.")
-      else
-        socket |> put_flash(:error, "You don't have permission to do that.")
-      end
-
-    {:noreply, socket}
-  end
-
-  @impl true
   def handle_info(
         {:updated_alias, email_alias, params},
         %{assigns: %{current_user: user}} = socket
@@ -67,7 +48,6 @@ defmodule ShroudWeb.EmailAliasLive.Index do
 
             socket
             |> assign(:email_alias, email_alias)
-            |> assign(:changeset, Aliases.change_email_alias(email_alias, params))
             |> put_flash(:info, "#{verb} #{email_alias.address}.")
 
           {:error, _error} ->
