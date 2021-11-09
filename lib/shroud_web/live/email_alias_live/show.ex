@@ -124,9 +124,8 @@ defmodule ShroudWeb.EmailAliasLive.Show do
   defp update_email_alias(socket) do
     email_alias = Aliases.get_email_alias_by_address!(socket.assigns.address)
 
-    socket =
-      socket
-      |> assign(:alias, email_alias)
-      |> assign(:changeset, Aliases.change_email_alias(email_alias))
+    socket
+    |> assign(:alias, email_alias)
+    |> assign(:changeset, Aliases.change_email_alias(email_alias))
   end
 end
