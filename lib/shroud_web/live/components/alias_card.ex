@@ -2,8 +2,6 @@ defmodule ShroudWeb.Components.AliasCard do
   use Phoenix.HTML
   use ShroudWeb, :live_component
 
-  alias Shroud.Aliases
-
   @impl true
   def render(assigns) do
     ~H"""

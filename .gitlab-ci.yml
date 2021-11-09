@@ -4,11 +4,13 @@ stages:
   - deploy
 
 .elixir:
-  image: elixir:1.12.3
-  cache:
-    paths:
-      - _build
-      - deps
+  image: hexpm/elixir:1.12.3-erlang-24.1.4-ubuntu-xenial-20210114
+  variables:
+    MIX_ENV: test
+    FF_USE_FASTZIP: "true"
+  before_script:
+    - apt-get update
+    - apt-get install -y git cargo build-essential curl
 
 compile:
   stage: build
@@ -18,6 +20,11 @@ compile:
     - mix local.rebar --force
     - mix deps.get
     - mix compile --warnings-as-errors
+  cache:
+    paths:
+      - _build
+      - deps
+    policy: pull-push
 
 test:
   stage: test
@@ -29,11 +36,8 @@ test:
     POSTGRES_HOST: postgres
     POSTGRES_USER: postgres
     POSTGRES_PASSWORD: "postgres"
-    MIX_ENV: "test"
-  before_script:
+  script:
     # Install codecov uploader and verify integrity
-    - apt-get update
-    - apt-get install curl
     - curl https://keybase.io/codecovsecurity/pgp_keys.asc | gpg --no-default-keyring --keyring trustedkeys.gpg --import
     - curl -Os https://uploader.codecov.io/latest/linux/codecov
     - curl -Os https://uploader.codecov.io/latest/linux/codecov.SHA256SUM
@@ -44,18 +48,25 @@ test:
     - mix local.hex --force
     - mix local.rebar --force
     - mix ecto.setup
-  script:
     - mix coveralls.json
     - ./codecov
+  cache:
+    paths:
+      - _build
+      - deps
+    policy: pull
 
 lint:
   stage: test
   extends: ".elixir"
-  variables:
-    MIX_ENV: "test"
   script:
     - mix local.hex --force
     - mix local.rebar --force
     - mix format --check-formatted
     - mix credo
     - mix sobelow --config --private
+  cache:
+    paths:
+      - _build
+      - deps
+    policy: pull
