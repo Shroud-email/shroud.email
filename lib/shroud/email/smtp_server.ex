@@ -1,4 +1,6 @@
 defmodule Shroud.Email.SmtpServer do
+  use Appsignal.Instrumentation.Decorators
+
   # credo:disable-for-this-file Credo.Check.Readability.FunctionNames
   @behaviour :gen_smtp_server_session
 
@@ -54,6 +56,7 @@ defmodule Shroud.Email.SmtpServer do
     {:ok, state}
   end
 
+  @decorate transaction(:background_job)
   def handle_DATA(from, to, data, state) do
     Logger.info("Received email from #{from} with data #{data}")
 
