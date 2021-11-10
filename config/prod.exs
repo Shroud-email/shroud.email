@@ -27,6 +27,11 @@ config :shroud, :mailer,
         "/var/caddy/certificates/acme-v02.api.letsencrypt.org-directory/app.shroud.email/app.shroud.email.crt",
       keyfile:
         "/var/caddy/certificates/acme-v02.api.letsencrypt.org-directory/app.shroud.email/app.shroud.email.key"
+    ],
+    tls_options: [
+      # Don't verify peers (we'll forward anything we can)
+      verify: :verify_none,
+      log_level: :info
     ]
   ]
 
