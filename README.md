@@ -1,23 +1,23 @@
 # 🥷 Shroud
 
-Shroud is an email privacy service.
+Shroud is an email privacy service. Protect your email address from spammers and creepy marketers
+by creating unlimited aliases that remove trackers and forward messages to your regular inbox.
 
 ## To do
 
 - [ ] Handle attachments
-- [ ] Limit number of aliases (5?)
-- [ ] Custom aliases (pro)
 - [ ] Simple spam checks before forwarding? (rspamd integration)
 - [ ] Remove trackers
-- [ ] Ensure randoms can't send emails
-- [ ] Ensure backscatter prevented
 - [ ] Replies
 - [ ] One-click blocking
 - [ ] Scheduling
 
 ## Contributing
 
-To start your Phoenix server:
+Shroud is built with Elixir and [Phoenix](https://www.phoenixframework.org/). Make sure you
+have Elixir and mix installed.
+
+To start the server:
 
   * Install dependencies with `mix deps.get`
   * Create and migrate your database with `mix ecto.setup`
@@ -35,11 +35,6 @@ swaks --to test@example.com --server 127.0.0.1 --port 2525
 - [DaisyUI](https://daisyui.com/) for basic styles
 - [gen_smtp](https://github.com/gen-smtp/gen_smtp) for receiving emails
 - [Swoosh](https://hexdocs.pm/swoosh/Swoosh.html) for sending emails
-
-## Useful links
-
-- http://reganmian.net/blog/2015/09/03/sending-and-receiving-email-with-elixir/
-- https://blog.ohmysmtp.com/blog/how-to-catch-spam-with-rspamd/
 
 # Deploying
 
