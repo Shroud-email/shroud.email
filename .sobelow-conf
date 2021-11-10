@@ -1,9 +1,9 @@
 [
   verbose: false,
-  private: false,
-  skip: false,
+  private: true,
+  skip: true,
   router: "",
-  exit: "false",
+  exit: "low",
   format: "txt",
   out: "",
   threshold: "low",

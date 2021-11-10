@@ -64,7 +64,7 @@ lint:
     - mix local.rebar --force
     - mix format --check-formatted
     - mix credo
-    - mix sobelow --config --private
+    - mix sobelow --config
   cache:
     paths:
       - _build
