@@ -1,5 +1,6 @@
 module.exports = {
   purge: ["./js/**/*.js", "../lib/shroud_web/**/*.*ex"],
+  mode: "jit",
   theme: {
     extend: {},
   },

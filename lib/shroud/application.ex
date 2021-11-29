@@ -19,7 +19,8 @@ defmodule Shroud.Application do
       {Oban, Application.fetch_env!(:shroud, Oban)},
       # Start a worker by calling: Shroud.Worker.start_link(arg)
       # {Shroud.Worker, arg}
-      {Shroud.Email.SmtpServer, Application.fetch_env!(:shroud, :mailer)[:smtp_options]}
+      {Shroud.Email.SmtpServer, Application.fetch_env!(:shroud, :mailer)[:smtp_options]},
+      Shroud.Scheduler
     ]
 
     {:ok, _} = Application.ensure_all_started(:appsignal)

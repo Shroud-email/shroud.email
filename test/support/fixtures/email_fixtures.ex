@@ -4,6 +4,8 @@ defmodule Shroud.EmailFixtures do
   the DATA portion of received emails.
   """
 
+  @spec multipart_email(String.t(), [String.t()], String.t(), String.t(), String.t()) ::
+          String.t()
   def multipart_email(sender, recipients, subject, text_content, html_content) do
     boundary = "gc0p4Jq0M2Yt08jU534c0p"
 
@@ -32,6 +34,7 @@ defmodule Shroud.EmailFixtures do
     |> convert_newlines()
   end
 
+  @spec html_email(String.t(), [String.t()], String.t(), String.t()) :: String.t()
   def html_email(sender, recipients, subject, content) do
     """
     Content-Type: text/HTML; charset="utf-8"
@@ -44,6 +47,7 @@ defmodule Shroud.EmailFixtures do
     |> convert_newlines()
   end
 
+  @spec text_email(String.t(), [String.t()], String.t(), String.t()) :: String.t()
   def text_email(sender, recipients, subject, content) do
     """
     Content-Type: text/plain; charset="utf-8"

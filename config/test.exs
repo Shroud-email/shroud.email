@@ -22,6 +22,11 @@ config :shroud, Oban,
 
 config :appsignal, :config, active: false
 
+config :shroud, :mailer,
+  smtp_options: [
+    port: 2526
+  ]
+
 # We don't run a server during test. If one is required,
 # you can enable the server option below.
 config :shroud, ShroudWeb.Endpoint,

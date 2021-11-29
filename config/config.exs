@@ -38,14 +38,24 @@ config :shroud, :mailer,
     ]
   ]
 
+config :shroud,
+  http_client: HTTPoison,
+  tracker_list_uri: "https://gitlab.com/shroud/email-trackers/-/raw/main/list.txt"
+
 config :shroud, :email_aliases, domain: "shroud.local"
+
+config :shroud, Shroud.Scheduler,
+  jobs: [
+    # Daily at midnight
+    {"@daily", {Shroud.Scheduler, :update_trackers, []}}
+  ]
 
 config :swoosh, :api_client, Swoosh.ApiClient.Hackney
 
 config :shroud, Oban,
   repo: Shroud.Repo,
   plugins: [Oban.Plugins.Pruner],
-  queues: [outgoing_email: 5]
+  queues: [default: 1, outgoing_email: 5]
 
 # Configure esbuild (the version is required)
 config :esbuild,
