@@ -49,6 +49,7 @@ defmodule Shroud.MixProject do
       {:phoenix_live_dashboard, "~> 0.5"},
       {:esbuild, "~> 0.2", runtime: Mix.env() == :dev},
       {:excoveralls, "~> 0.14.3", only: :test},
+      {:mox, "~> 1.0", only: :test},
       {:sobelow, "~> 0.11.1", only: [:dev, :test], runtime: false},
       {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
       {:husky, "~> 1.0", only: :dev, runtime: false},
@@ -71,7 +72,9 @@ defmodule Shroud.MixProject do
       {:floki, "~> 0.32.0"},
       {:appsignal, "~> 2.2"},
       {:appsignal_phoenix, "~> 2.0"},
-      {:timex, "~> 3.7"}
+      {:timex, "~> 3.7"},
+      {:httpoison, "~> 1.8"},
+      {:quantum, "~> 3.4"}
     ]
   end
 

@@ -1,43 +1,49 @@
 defmodule Shroud.Email.Enricher do
   @moduledoc """
-  This module handles the processing of the actual body of emails,
-  whether HTML or plaintext.
+  Adds a "Forwarded by Shroud.email" header to an email.
   """
 
-  @spec process(Swoosh.Email.t()) :: Swoosh.Email.t()
-  def process(%Swoosh.Email{} = email) do
-    [{_recipient_name, recipient_alias}] = email.to
+  alias Shroud.Email.ParsedEmail
+
+  @spec process(ParsedEmail.t()) :: ParsedEmail.t()
+  def process(%ParsedEmail{} = email) do
+    [{_recipient_name, recipient_alias}] = email.swoosh_email.to
 
     email
     |> process_text(recipient_alias)
     |> process_html(recipient_alias)
   end
 
-  defp process_text(%{text_body: nil} = email, _recipient_alias), do: email
+  defp process_text(%ParsedEmail{swoosh_email: %{text_body: nil}} = email, _recipient_alias),
+    do: email
 
-  defp process_text(email, recipient_alias) do
+  defp process_text(%ParsedEmail{swoosh_email: swoosh_email} = email, recipient_alias) do
     text_body = """
     This email was forwarded from #{recipient_alias} by Shroud.email.
 
-    #{email.text_body}
+    #{swoosh_email.text_body}
     """
 
-    %{email | text_body: text_body}
+    swoosh_email = %Swoosh.Email{swoosh_email | text_body: text_body}
+    %{email | swoosh_email: swoosh_email}
   end
 
-  defp process_html(%{html_body: nil} = email, _recipient_alias), do: email
+  defp process_html(%ParsedEmail{swoosh_email: %{html_body: nil}} = email, _recipient_alias),
+    do: email
 
-  defp process_html(email, recipient_alias) do
+  defp process_html(
+         %ParsedEmail{swoosh_email: swoosh_email, parsed_html: parsed_html} = email,
+         recipient_alias
+       ) do
     html_body =
-      case Floki.parse_document(email.html_body) do
-        {:ok, parsed} ->
-          enrich_parsed_html(parsed, recipient_alias)
-
-        {:error, _error} ->
-          html_fallback(email.html_body, recipient_alias)
+      if is_nil(parsed_html) do
+        html_fallback(swoosh_email.html_body, recipient_alias)
+      else
+        enrich_parsed_html(parsed_html, recipient_alias)
       end
 
-    %{email | html_body: html_body}
+    swoosh_email = %Swoosh.Email{swoosh_email | html_body: html_body}
+    %{email | swoosh_email: swoosh_email}
   end
 
   defp enrich_parsed_html(parsed_html, recipient_alias) do
@@ -85,7 +91,7 @@ defmodule Shroud.Email.Enricher do
         {"p",
          [
            {"style",
-            "font-family: sans-serif; font-size: 13px; text-align: center; color: #ebecf0"}
+            "font-family: sans-serif; font-size: 13px; text-align: center; color: #ebecf0;"}
          ],
          [
            "This message was forwarded from ",
@@ -95,8 +101,11 @@ defmodule Shroud.Email.Enricher do
             [
               {"href", "https://shroud.email"},
               {"target", "_blank"},
-              {"style", "text-decoration: none; color: #ebecf0"}
-            ], ["Shroud.email"]},
+              {"style", "text-decoration: none; color: #ebecf0;"}
+            ],
+            [
+              {"strong", [{"style", "color: #ebecf0;"}], ["Shroud.email"]}
+            ]},
            "."
          ]}
       ]

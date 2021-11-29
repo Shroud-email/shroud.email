@@ -2,22 +2,12 @@ defmodule Shroud.Email.EmailHandler do
   use Oban.Worker, queue: :outgoing_email
   use Appsignal.Instrumentation.Decorators
 
-  import Swoosh.Email
   require Logger
   alias Shroud.{Accounts, Aliases, Mailer}
-  alias Shroud.Email.Enricher
+  alias Shroud.Email.{Enricher, ParsedEmail, TrackerRemover}
 
-  @type header_type :: {String.t(), String.t()}
   @from_email "noreply@shroud.email"
   @from_suffix " (via Shroud)"
-  @allowed_headers [
-    "from",
-    "to",
-    "reply-to",
-    "subject",
-    "date",
-    "delivered-to"
-  ]
 
   @impl Oban.Worker
   @decorate transaction(:background_job)
@@ -43,9 +33,12 @@ defmodule Shroud.Email.EmailHandler do
       user ->
         Logger.info("Forwarding email from #{sender} to #{user.email} (via #{recipient})")
 
-        # TODO: handle parsing failures?
-        :mimemail.decode(data)
-        |> transmogrify(user.email)
+        ParsedEmail.parse(data)
+        |> TrackerRemover.process()
+        |> Enricher.process()
+        # Now our pipeline is done, we just want our Swoosh email
+        |> Map.get(:swoosh_email)
+        |> fix_sender_and_recipient(user.email)
         |> Mailer.deliver()
 
         try do
@@ -61,16 +54,9 @@ defmodule Shroud.Email.EmailHandler do
     end
   end
 
-  # Take an email as parsed by mimemail, then convert it into a Swoosh.Email ready to send
-  @spec transmogrify(:mimemail.mimetuple(), String.t()) :: Swoosh.Email.t()
-  @decorate transaction_event("email_handler")
-  defp transmogrify(email, recipient_address) do
-    email =
-      new()
-      |> build_email(email)
-      |> Enricher.process()
-
-    # Now we've put together our email, we modify make it clear it came from us
+  @spec fix_sender_and_recipient(Swoosh.Email.t(), String.t()) :: Swoosh.Email.t()
+  defp fix_sender_and_recipient(email, recipient_address) do
+    # Modify the email to make it clear it came from us
     recipient_name =
       if is_list(email.to) and Enum.empty?(email.to) do
         ""
@@ -88,63 +74,7 @@ defmodule Shroud.Email.EmailHandler do
       end
 
     email
-    |> from({sender_name <> @from_suffix, @from_email})
+    |> Map.put(:from, {sender_name <> @from_suffix, @from_email})
     |> Map.put(:to, [{recipient_name, recipient_address}])
-  end
-
-  @spec build_email(Swoosh.Email.t(), {String.t(), String.t(), [any()], any(), any()}) ::
-          Swoosh.Email.t()
-  defp build_email(email, {"text", "html", headers, _opts, body}) do
-    email
-    |> html_body(body)
-    |> process_headers(headers)
-  end
-
-  defp build_email(email, {"text", "plain", headers, _opts, body}) do
-    email
-    |> text_body(body)
-    |> process_headers(headers)
-  end
-
-  defp build_email(email, {"multipart", "alternative", headers, _opts, parts})
-       when is_list(parts) do
-    parts
-    |> Enum.reduce(email, fn part, acc -> build_email(acc, part) end)
-    |> process_headers(headers)
-  end
-
-  @spec process_headers(Swoosh.Email.t(), [header_type]) :: Swoosh.Email.t()
-  defp process_headers(email, headers) do
-    headers
-    |> Enum.map(fn {key, value} -> {String.downcase(key), value} end)
-    |> Enum.filter(fn {key, _value} -> Enum.member?(@allowed_headers, key) end)
-    |> Enum.reduce(email, fn h, acc -> process_header(acc, h) end)
-  end
-
-  @spec process_header(Swoosh.Email.t(), {String.t(), any()}) :: Swoosh.Email.t()
-  defp process_header(email, {"from", value}), do: reply_to(email, parse_address(value))
-  defp process_header(email, {"subject", value}), do: subject(email, value)
-  defp process_header(email, {"to", value}), do: to(email, parse_address(value))
-  defp process_header(email, {key, value}), do: header(email, key, value)
-
-  # Parses `email@example.com`, `Zero Cool <email@example.com>`, and `"Zero Cool" <email@example.com>"`.
-  defp parse_address(address) do
-    case Regex.run(~r/^(.*)<(.*@.*)>/, address) do
-      nil ->
-        {address, address}
-
-      [_string, name_part, address_part] ->
-        {trim_quotes_and_whitespace(name_part), String.trim(address_part)}
-
-      _other ->
-        Logger.warn("Failed to parse address: #{address}")
-        {nil, address}
-    end
-  end
-
-  defp trim_quotes_and_whitespace(str) do
-    str
-    |> String.replace(~r/^['"\s\\]+/, "")
-    |> String.replace(~r/['"\s\\]+$/, "")
   end
 end
