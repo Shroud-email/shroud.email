@@ -3,23 +3,26 @@ defmodule Shroud.Email.Enricher do
   Adds a "Forwarded by Shroud.email" header to an email.
   """
 
+  alias Shroud.Util
   alias Shroud.Email.ParsedEmail
+
+  alias ShroudWeb.Router.Helpers, as: Routes
 
   @spec process(ParsedEmail.t()) :: ParsedEmail.t()
   def process(%ParsedEmail{} = email) do
-    [{_recipient_name, recipient_alias}] = email.swoosh_email.to
-
     email
-    |> process_text(recipient_alias)
-    |> process_html(recipient_alias)
+    |> process_text()
+    |> process_html()
   end
 
-  defp process_text(%ParsedEmail{swoosh_email: %{text_body: nil}} = email, _recipient_alias),
+  defp process_text(%ParsedEmail{swoosh_email: %{text_body: nil}} = email),
     do: email
 
-  defp process_text(%ParsedEmail{swoosh_email: swoosh_email} = email, recipient_alias) do
+  defp process_text(%ParsedEmail{swoosh_email: swoosh_email} = email) do
+    [{}]
+
     text_body = """
-    This email was forwarded from #{recipient_alias} by Shroud.email.
+    This email was forwarded from #{recipient_alias(email)} by Shroud.email.
 
     #{swoosh_email.text_body}
     """
@@ -28,32 +31,29 @@ defmodule Shroud.Email.Enricher do
     %{email | swoosh_email: swoosh_email}
   end
 
-  defp process_html(%ParsedEmail{swoosh_email: %{html_body: nil}} = email, _recipient_alias),
+  defp process_html(%ParsedEmail{swoosh_email: %{html_body: nil}} = email),
     do: email
 
-  defp process_html(
-         %ParsedEmail{swoosh_email: swoosh_email, parsed_html: parsed_html} = email,
-         recipient_alias
-       ) do
+  defp process_html(%ParsedEmail{swoosh_email: swoosh_email, parsed_html: parsed_html} = email) do
     html_body =
       if is_nil(parsed_html) do
-        html_fallback(swoosh_email.html_body, recipient_alias)
+        html_fallback(swoosh_email.html_body, email)
       else
-        enrich_parsed_html(parsed_html, recipient_alias)
+        enrich_parsed_html(email)
       end
 
     swoosh_email = %Swoosh.Email{swoosh_email | html_body: html_body}
     %{email | swoosh_email: swoosh_email}
   end
 
-  defp enrich_parsed_html(parsed_html, recipient_alias) do
+  defp enrich_parsed_html(%ParsedEmail{parsed_html: parsed_html} = email) do
     case Floki.find(parsed_html, "body") do
       [] ->
         # No <body> element for some reason; use fallback
-        parsed_html |> Floki.raw_html() |> html_fallback(recipient_alias)
+        parsed_html |> Floki.raw_html() |> html_fallback(email)
 
       _body ->
-        header = shroud_header(recipient_alias)
+        header = shroud_header(email)
 
         parsed_html
         |> Floki.traverse_and_update(fn
@@ -69,9 +69,9 @@ defmodule Shroud.Email.Enricher do
 
   # If we can't process the HTML properly, just plonk this notice in
   # before the top <html> element. Ugly, but a decent fallback.
-  defp html_fallback(html_body, recipient_alias) do
+  defp html_fallback(html_body, email) do
     Appsignal.increment_counter("emails.html_fallback", 1)
-    header = recipient_alias |> shroud_header() |> Floki.raw_html()
+    header = email |> shroud_header() |> Floki.raw_html()
 
     """
     #{header}
@@ -80,35 +80,65 @@ defmodule Shroud.Email.Enricher do
     """
   end
 
-  defp shroud_header(recipient_alias) do
+  defp shroud_header(%ParsedEmail{} = email) do
+    # The email's `from` is noreply@shroud.email, so we get the real sender from the reply_to field
+    {_sender_name, sender_address} = email.swoosh_email.reply_to
+
+    trackers = email.removed_trackers
+
+    report_data =
+      %{
+        sender: sender_address,
+        email_alias: recipient_alias(email),
+        trackers: trackers
+      }
+      |> Util.uri_encode_map!()
+
+    report_uri = Routes.page_path(ShroudWeb.Endpoint, :email_report, report_data)
+
+    trackers_word = if length(trackers) == 1, do: "tracker", else: "trackers"
+
+    header_text =
+      if Enum.empty?(trackers),
+        do: "didn't find any trackers.",
+        else: "removed #{length(trackers)} #{trackers_word}."
+
     {
-      "div",
+      "a",
       [
-        {"style",
-         "background: #3d4451; background-color: #3d4451; margin:0px auto; padding: 5px; border-bottom: 2px solid #793ef9;"}
+        {"href", report_uri},
+        {"target", "_blank"},
+        {"rel", "noreferrer noopener"},
+        {"style", "text-decoration: none !important; text-decoration: none;"}
       ],
-      [
-        {"p",
-         [
-           {"style",
-            "font-family: sans-serif; font-size: 13px; text-align: center; color: #ebecf0;"}
-         ],
-         [
-           "This message was forwarded from ",
-           {"strong", [], [recipient_alias]},
-           " by ",
-           {"a",
-            [
-              {"href", "https://shroud.email"},
-              {"target", "_blank"},
-              {"style", "text-decoration: none; color: #ebecf0;"}
-            ],
-            [
-              {"strong", [{"style", "color: #ebecf0;"}], ["Shroud.email"]}
-            ]},
-           "."
-         ]}
-      ]
+      {
+        "div",
+        [
+          {"style",
+           "background: #3d4451; background-color: #3d4451; margin:0px auto; padding: 5px; border-bottom: 2px solid #793ef9;"}
+        ],
+        [
+          {"p",
+           [
+             {"style",
+              "font-family: sans-serif; font-size: 13px; text-align: center; color: #ebecf0;"}
+           ],
+           [
+             {"strong", [{"style", "color: #ebecf0;"}], "Shroud.email "},
+             header_text
+           ]}
+        ]
+      }
     }
+  end
+
+  defp recipient_alias(email) do
+    # TODO: we need to get this data from SmtpServer, otherwise
+    # there's an edge case when there are multiple recipients
+    {_name, recipient_address} =
+      email.swoosh_email.to
+      |> hd()
+
+    recipient_address
   end
 end
