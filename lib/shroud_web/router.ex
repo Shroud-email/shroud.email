@@ -93,5 +93,6 @@ defmodule ShroudWeb.Router do
     delete "/users/log_out", UserSessionController, :delete
     get "/users/confirm/:token", UserConfirmationController, :edit
     post "/users/confirm/:token", UserConfirmationController, :update
+    get "/email-report/:data", PageController, :email_report
   end
 end
