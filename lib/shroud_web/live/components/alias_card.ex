@@ -6,7 +6,7 @@ defmodule ShroudWeb.Components.AliasCard do
   def render(assigns) do
     ~H"""
     <article id={"alias-#{@email_alias.id}"} class="card bordered">
-      <div class="card-body grid grid-cols-1 md:grid-cols-2">
+      <div class="card-body grid grid-cols-1 xl:grid-cols-2">
         <div class="flex items-center">
           <div>
             <div class="text-gray-300"><%= @email_alias.title %></div>

@@ -11,7 +11,12 @@ defmodule ShroudWeb.EmailAliasLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, update_email_aliases(socket)}
+    socket =
+      socket
+      |> update_email_aliases()
+      |> assign(:view, :cards)
+
+    {:ok, socket}
   end
 
   @impl true
@@ -30,6 +35,18 @@ defmodule ShroudWeb.EmailAliasLive.Index do
         end
       else
         socket |> put_flash(:error, "You don't have permission to do that.")
+      end
+
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_event("switch_view", _params, %{assigns: %{view: view}} = socket) do
+    socket =
+      if view == :cards do
+        assign(socket, :view, :table)
+      else
+        assign(socket, :view, :cards)
       end
 
     {:noreply, socket}

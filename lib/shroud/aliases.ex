@@ -18,7 +18,8 @@ defmodule Shroud.Aliases do
         where: ea.user_id == ^user.id and is_nil(ea.deleted_at),
         left_join: m in subquery(recent_metrics()),
         on: m.alias_id == ea.id,
-        select_merge: %{ea | forwarded_in_last_30_days: coalesce(m.forwarded, 0)}
+        select_merge: %{ea | forwarded_in_last_30_days: coalesce(m.forwarded, 0)},
+        order_by: [desc: ea.inserted_at]
 
     Repo.all(query)
   end
