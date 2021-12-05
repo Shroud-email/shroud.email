@@ -115,16 +115,16 @@ defmodule Shroud.Email.Enricher do
         "div",
         [
           {"style",
-           "background: #3d4451; background-color: #3d4451; margin:0px auto; padding: 5px; border-bottom: 2px solid #793ef9;"}
+           "background: #ffffff; background-color: #ffffff; margin:0px auto; padding: 5px; border-bottom: 3px solid #d271d2;"}
         ],
         [
           {"p",
            [
              {"style",
-              "font-family: sans-serif; font-size: 13px; text-align: center; color: #ebecf0;"}
+              "font-family: sans-serif; font-size: 13px; text-align: center; color: #444444; margin: 5px auto;"}
            ],
            [
-             {"strong", [{"style", "color: #ebecf0;"}], "Shroud.email "},
+             {"strong", [{"style", "color: #444444;"}], "Shroud.email "},
              header_text
            ]}
         ]
