@@ -48,6 +48,43 @@ defmodule Shroud.AliasesTest do
     end
   end
 
+  describe "get_email_alias_by_address!/1" do
+    test "counts recently forwarded emails" do
+      one_week_seconds = 7 * 24 * 60 * 60
+
+      one_week_ago =
+        NaiveDateTime.utc_now()
+        |> NaiveDateTime.add(one_week_seconds, :second)
+        |> NaiveDateTime.to_date()
+
+      two_weeks_ago =
+        NaiveDateTime.utc_now()
+        |> NaiveDateTime.add(2 * one_week_seconds, :second)
+        |> NaiveDateTime.to_date()
+
+      %{id: user_id} = user_fixture()
+      %{id: alias_id, address: alias_address} = alias_fixture(%{user_id: user_id})
+      metric_fixture(%{alias_id: alias_id, date: one_week_ago, forwarded: 1})
+      metric_fixture(%{alias_id: alias_id, date: two_weeks_ago, forwarded: 2})
+
+      returned_alias = Aliases.get_email_alias_by_address!(alias_address)
+      assert returned_alias.id == alias_id
+      assert returned_alias.forwarded_in_last_30_days == 3
+    end
+
+    test "does not return a deleted alias" do
+      %{id: id} = user_fixture()
+      email_alias = alias_fixture(%{user_id: id})
+      Aliases.delete_email_alias(email_alias.id)
+
+      assert_raise Ecto.NoResultsError,
+                   ~r/expected at least one result but got none in query/,
+                   fn ->
+                     Aliases.get_email_alias_by_address!(email_alias.address)
+                   end
+    end
+  end
+
   describe "delete_email_alias/1" do
     test "sets deleted_at" do
       %{id: id} = user_fixture()

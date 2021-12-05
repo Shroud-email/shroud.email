@@ -13,18 +13,10 @@ defmodule Shroud.Aliases do
 
   @spec list_aliases(User.t()) :: [EmailAlias.t()]
   def list_aliases(%User{} = user) do
-    today = NaiveDateTime.utc_now() |> NaiveDateTime.to_date()
-
-    recent_metrics =
-      from m in EmailMetric,
-        where: m.date > date_add(^today, -30, "day"),
-        group_by: m.alias_id,
-        select: %{forwarded: sum(m.forwarded), alias_id: m.alias_id}
-
     query =
       from ea in EmailAlias,
         where: ea.user_id == ^user.id and is_nil(ea.deleted_at),
-        left_join: m in subquery(recent_metrics),
+        left_join: m in subquery(recent_metrics()),
         on: m.alias_id == ea.id,
         select_merge: %{ea | forwarded_in_last_30_days: coalesce(m.forwarded, 0)}
 
@@ -42,7 +34,14 @@ defmodule Shroud.Aliases do
   end
 
   def get_email_alias_by_address!(address) do
-    Repo.get_by!(EmailAlias, address: address)
+    query =
+      from ea in EmailAlias,
+        where: ea.address == ^address and is_nil(ea.deleted_at),
+        left_join: m in subquery(recent_metrics()),
+        on: m.alias_id == ea.id,
+        select_merge: %{ea | forwarded_in_last_30_days: coalesce(m.forwarded, 0)}
+
+    Repo.one!(query)
   end
 
   def change_email_alias(%EmailAlias{} = email_alias, attrs \\ %{}) do
@@ -104,5 +103,14 @@ defmodule Shroud.Aliases do
     else
       address
     end
+  end
+
+  defp recent_metrics do
+    today = NaiveDateTime.utc_now() |> NaiveDateTime.to_date()
+
+    from m in EmailMetric,
+      where: m.date > date_add(^today, -30, "day"),
+      group_by: m.alias_id,
+      select: %{forwarded: sum(m.forwarded), alias_id: m.alias_id}
   end
 end
