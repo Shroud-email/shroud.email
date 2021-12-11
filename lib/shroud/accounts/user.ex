@@ -8,6 +8,7 @@ defmodule Shroud.Accounts.User do
     field :password, :string, virtual: true, redact: true
     field :hashed_password, :string, redact: true
     field :confirmed_at, :naive_datetime
+    field :totp_secret, Shroud.Encrypted.Binary
 
     has_many :aliases, EmailAlias
 
@@ -139,5 +140,10 @@ defmodule Shroud.Accounts.User do
     else
       add_error(changeset, :current_password, "is not valid")
     end
+  end
+
+  def totp_changeset(user, attrs) do
+    user
+    |> cast(attrs, [:totp_secret])
   end
 end

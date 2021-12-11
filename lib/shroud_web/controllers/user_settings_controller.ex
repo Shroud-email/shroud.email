@@ -2,9 +2,11 @@ defmodule ShroudWeb.UserSettingsController do
   use ShroudWeb, :controller
 
   alias Shroud.Accounts
+  alias Shroud.Accounts.TOTP
   alias ShroudWeb.UserAuth
 
   plug :assign_email_and_password_changesets
+  plug :assign_totp_fields
 
   def edit(conn, _params) do
     render(conn, "edit.html", page_title: "Settings")
@@ -50,6 +52,61 @@ defmodule ShroudWeb.UserSettingsController do
     end
   end
 
+  def update(conn, %{"action" => "generate_totp_secret"}) do
+    user = conn.assigns.current_user
+
+    secret = TOTP.create_secret()
+
+    otp_qr_code =
+      user
+      |> TOTP.otp_uri(secret)
+      |> EQRCode.encode()
+      |> EQRCode.svg(width: 264)
+
+    conn
+    |> put_session(:totp_secret, secret)
+    |> render("edit.html", otp_qr_code: otp_qr_code)
+  end
+
+  def update(conn, %{"action" => "enable_totp"} = params) do
+    %{"verification_code" => otp} = params
+    user = conn.assigns.current_user
+    secret = get_session(conn, :totp_secret)
+
+    if TOTP.valid_code?(secret, otp) do
+      TOTP.enable_totp!(user, secret)
+
+      conn
+      |> put_session(:totp_secret, nil)
+      |> put_flash(:info, "Enabled two-factor authentication.")
+      |> UserAuth.fetch_current_user([])
+      |> render("edit.html")
+    else
+      conn
+      |> put_session(:totp_secret, nil)
+      |> put_flash(:error, "Invalid two-factor authentication code.")
+      |> render("edit.html")
+    end
+  end
+
+  def update(conn, %{"action" => "disable_totp"} = params) do
+    %{"verification_code" => otp} = params
+    user = conn.assigns.current_user
+
+    if TOTP.valid_code?(user.totp_secret, otp) do
+      TOTP.disable_totp!(user)
+
+      conn
+      |> put_flash(:info, "Disabled two-factor authentication.")
+      |> UserAuth.fetch_current_user([])
+      |> render("edit.html")
+    else
+      conn
+      |> put_flash(:error, "Invalid two-factor authentication code.")
+      |> render("edit.html")
+    end
+  end
+
   def confirm_email(conn, %{"token" => token}) do
     case Accounts.update_user_email(conn.assigns.current_user, token) do
       :ok ->
@@ -70,5 +127,10 @@ defmodule ShroudWeb.UserSettingsController do
     conn
     |> assign(:email_changeset, Accounts.change_user_email(user))
     |> assign(:password_changeset, Accounts.change_user_password(user))
+  end
+
+  defp assign_totp_fields(conn, _opts) do
+    conn
+    |> assign(:otp_qr_code, nil)
   end
 end

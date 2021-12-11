@@ -20,7 +20,8 @@ defmodule Shroud.Application do
       # Start a worker by calling: Shroud.Worker.start_link(arg)
       # {Shroud.Worker, arg}
       {Shroud.Email.SmtpServer, Application.fetch_env!(:shroud, :mailer)[:smtp_options]},
-      Shroud.Scheduler
+      Shroud.Scheduler,
+      Shroud.Vault
     ]
 
     {:ok, _} = Application.ensure_all_started(:appsignal)

@@ -74,7 +74,10 @@ defmodule Shroud.MixProject do
       {:appsignal_phoenix, "~> 2.0"},
       {:timex, "~> 3.7"},
       {:httpoison, "~> 1.8"},
-      {:quantum, "~> 3.4"}
+      {:quantum, "~> 3.4"},
+      {:nimble_totp, "~> 0.1.3"},
+      {:eqrcode, "~> 0.1.10"},
+      {:cloak_ecto, "~> 1.2"}
     ]
   end
 

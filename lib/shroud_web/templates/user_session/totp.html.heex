@@ -9,27 +9,19 @@
     </div>
     <div class="card flex-shrink-0 w-full max-w-sm shadow-2xl bg-base-100">
       <div class="card-body">
-        <.form let={f} for={@conn} action={Routes.user_session_path(@conn, :create)} as={:user}, class="form-control">
+        <.form let={f} for={@conn} action={Routes.user_session_path(@conn, :create_totp)} as={:user}, class="form-control">
           <%= if @error_message do %>
             <div class="alert alert-error">
               <p><%= @error_message %></p>
             </div>
           <% end %>
 
-          <%= hidden_input f, :action, name: "action", value: "log_in" %>
+          <%= hidden_input f, :action, name: "action", value: "totp" %>
 
-          <%= label f, :email, class: "label" %>
-          <%= email_input f, :email, required: true, class: "input input-bordered" %>
+          <%= label f, :verification_code, for: "verification_code", class: "label" %>
+          <%= number_input f, :verification_code, required: true, minlength: 6, maxlength: 6, name: "verification_code", id: "verification_code", class: "input input-bordered" %>
 
-          <%= label f, :password, class: "label" %>
-          <%= password_input f, :password, required: true, class: "input input-bordered" %>
-
-          <label class="label cursor-pointer my-2">
-            <span class="label-text">Remember me</span>
-            <%= checkbox f, :remember_me, class: "checkbox" %>
-          </label>
-
-          <div>
+          <div class="mt-2">
             <%= submit "Log in", class: "btn btn-primary" %>
           </div>
         </.form>

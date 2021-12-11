@@ -13,6 +13,16 @@ config :shroud, Shroud.Repo,
   show_sensitive_data_on_connection_error: true,
   pool_size: 10
 
+config :shroud, Shroud.Vault,
+  ciphers: [
+    default: {
+      Cloak.Ciphers.AES.GCM,
+      tag: "AES.GCM.V1",
+      key: Base.decode64!("3ni2dy3ES8g2vaRvws/fZgE+nB2ZqJqcbKbrhNl1NtM="),
+      iv_length: 12
+    }
+  ]
+
 # For development, we disable any cache and enable
 # debugging and code reloading.
 #
