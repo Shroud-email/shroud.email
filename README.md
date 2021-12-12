@@ -3,15 +3,6 @@
 Shroud is an email privacy service. Protect your email address from spammers and creepy marketers
 by creating unlimited aliases that remove trackers and forward messages to your regular inbox.
 
-## To do
-
-- [ ] Handle attachments
-- [ ] Simple spam checks before forwarding? (rspamd integration)
-- [ ] Remove trackers
-- [ ] Replies
-- [ ] One-click blocking
-- [ ] Scheduling
-
 ## Contributing
 
 Shroud is built with Elixir and [Phoenix](https://www.phoenixframework.org/). Make sure you
