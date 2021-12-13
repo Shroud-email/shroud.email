@@ -16,6 +16,16 @@ config :shroud, Shroud.Repo,
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: 10
 
+config :shroud, Shroud.Vault,
+  ciphers: [
+    default: {
+      Cloak.Ciphers.AES.GCM,
+      tag: "AES.GCM.V1",
+      key: Base.decode64!("3ni2dy3ES8g2vaRvws/fZgE+nB2ZqJqcbKbrhNl1NtM="),
+      iv_length: 12
+    }
+  ]
+
 config :shroud, Oban,
   queues: false,
   plugins: false
