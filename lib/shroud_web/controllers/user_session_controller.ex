@@ -34,7 +34,7 @@ defmodule ShroudWeb.UserSessionController do
     %{"email" => email} = user_params = get_session(conn, :totp_pending_user_params)
     user = Accounts.get_user_by_email(email)
 
-    if Accounts.TOTP.valid_code?(user.totp_secret, otp) do
+    if Accounts.TOTP.valid_code?(user, user.totp_secret, otp) do
       conn
       |> put_session(:totp_pending_user_params, nil)
       |> UserAuth.log_in_user(user, user_params)

@@ -19,7 +19,7 @@
           <%= hidden_input f, :action, name: "action", value: "totp" %>
 
           <%= label f, :verification_code, for: "verification_code", class: "label" %>
-          <%= number_input f, :verification_code, required: true, minlength: 6, maxlength: 6, name: "verification_code", id: "verification_code", class: "input input-bordered" %>
+          <%= number_input f, :verification_code, required: true, minlength: 6, maxlength: 8, name: "verification_code", id: "verification_code", class: "input input-bordered" %>
 
           <div class="mt-2">
             <%= submit "Log in", class: "btn btn-primary" %>

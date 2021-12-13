@@ -73,14 +73,14 @@ defmodule ShroudWeb.UserSettingsController do
     user = conn.assigns.current_user
     secret = get_session(conn, :totp_secret)
 
-    if TOTP.valid_code?(secret, otp) do
-      TOTP.enable_totp!(user, secret)
+    if TOTP.valid_code?(user, secret, otp) do
+      backup_codes = TOTP.enable_totp!(user, secret)
 
       conn
       |> put_session(:totp_secret, nil)
       |> put_flash(:info, "Enabled two-factor authentication.")
       |> UserAuth.fetch_current_user([])
-      |> render("edit.html")
+      |> render("edit.html", otp_backup_codes: backup_codes)
     else
       conn
       |> put_session(:totp_secret, nil)
@@ -93,7 +93,7 @@ defmodule ShroudWeb.UserSettingsController do
     %{"verification_code" => otp} = params
     user = conn.assigns.current_user
 
-    if TOTP.valid_code?(user.totp_secret, otp) do
+    if TOTP.valid_code?(user, user.totp_secret, otp) do
       TOTP.disable_totp!(user)
 
       conn
@@ -132,5 +132,6 @@ defmodule ShroudWeb.UserSettingsController do
   defp assign_totp_fields(conn, _opts) do
     conn
     |> assign(:otp_qr_code, nil)
+    |> assign(:otp_backup_codes, nil)
   end
 end

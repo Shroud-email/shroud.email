@@ -56,7 +56,7 @@
   <h2 class="h2 mt-12">Two-factor authentication</h2>
 
   <%= cond do %>
-  <% is_nil(@current_user.totp_secret) and is_nil(@otp_qr_code) -> %>
+  <% !@current_user.totp_enabled and is_nil(@otp_qr_code) -> %>
     <p class="mb-2">Two-factor authentication is currently <span class="font-bold">disabled</span>.</p>
     <.form let={f} for={@conn} action={Routes.user_settings_path(@conn, :update)} id="generate_totp_secret" class="form-control" method="put">
       <%= hidden_input f, :action, name: "action", value: "generate_totp_secret" %>
@@ -83,17 +83,37 @@
       </div>
     </.form>
   <% true -> %>
-    <div x-data="{ open: false }">
-      <div x-show="!open">
-        <p class="mb-2">Two-factor authentication is currently <span class="font-bold">enabled</span>.</p>
-        <button @click="open = true" class="btn">Disable two-factor authentication</button>
+    <div x-data={"{ showDisableField: false, showBackupCodes: #{if @otp_backup_codes, do: "true", else: "false" } }"}>
+      <div x-show="showBackupCodes">
+        <%= if @otp_backup_codes do %>
+          <p class="mb-2">
+            You have enabled two-factor authentication. These are your backup codes. Be sure to save them in a safe place.
+            <span class="font-bold">They will only be shown once.</span>
+          </p>
+          <div class="grid grid-cols-1 md:grid-cols-2 w-full gap-3 mb-3">
+            <%= for backup_code <- @otp_backup_codes do %>
+              <div class="font-mono text-center"><%= backup_code %></div>
+            <% end %>
+          </div>
+          <div>
+            <button @click={"navigator.clipboard.writeText('#{Enum.join(@otp_backup_codes, "\\n")}')"} class="btn btn-primary">Copy backup codes</button>
+            <button @click="showBackupCodes = false" class="btn">I've saved my backup codes</button>
+          </div>
+        <% end %>
       </div>
-      <.form let={f} for={@conn} action={Routes.user_settings_path(@conn, :update)} x-show="open" id="disable_totp" class="form-control" method="put">
+      <div x-show="!showBackupCodes && !showDisableField">
+        <p class="mb-2">
+          Two-factor authentication is currently <span class="font-bold">enabled</span>.
+          You have <%= length(@current_user.totp_backup_codes) %> backup codes remaining.
+        </p>
+        <button @click="showDisableField = true" class="btn">Disable two-factor authentication</button>
+      </div>
+      <.form let={f} for={@conn} action={Routes.user_settings_path(@conn, :update)} x-show="!showBackupCodes && showDisableField" id="disable_totp" class="form-control" method="put">
         <%= hidden_input f, :action, name: "action", value: "disable_totp" %>
 
         <p>To disable two-factor authentication, enter a verification code from your authenticator app.</p>
         <%= label f, :verification_code, for: "verification_code", class: "label" %>
-        <%= number_input f, :verification_code, required: true, minlength: 6, maxlength: 6, name: "verification_code", id: "verification_code", class: "input input-bordered" %>
+        <%= number_input f, :verification_code, required: true, minlength: 6, maxlength: 8, name: "verification_code", id: "verification_code", class: "input input-bordered" %>
         <div class="mt-2">
           <%= submit "Disable two-factor authentication", class: "btn" %>
         </div>

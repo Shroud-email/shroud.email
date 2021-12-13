@@ -8,7 +8,12 @@ defmodule Shroud.Accounts.User do
     field :password, :string, virtual: true, redact: true
     field :hashed_password, :string, redact: true
     field :confirmed_at, :naive_datetime
+    # Ideally, we'd just see if `totp_secret` was non-null to determine if
+    # TOTP is enabled. However, cloak_ecto seems to have trouble setting an
+    # encrypted field to nil (!), so we use this extra field to work around it.
+    field :totp_enabled, :boolean
     field :totp_secret, Shroud.Encrypted.Binary
+    field :totp_backup_codes, Shroud.Encrypted.StringList
 
     has_many :aliases, EmailAlias
 
@@ -144,6 +149,6 @@ defmodule Shroud.Accounts.User do
 
   def totp_changeset(user, attrs) do
     user
-    |> cast(attrs, [:totp_secret])
+    |> cast(attrs, [:totp_secret, :totp_backup_codes, :totp_enabled])
   end
 end
