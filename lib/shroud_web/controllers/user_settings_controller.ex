@@ -7,9 +7,14 @@ defmodule ShroudWeb.UserSettingsController do
 
   plug :assign_email_and_password_changesets
   plug :assign_totp_fields
+  plug :put_layout, "settings.html"
 
-  def edit(conn, _params) do
-    render(conn, "edit.html", page_title: "Settings")
+  def account(conn, _params) do
+    render(conn, "account.html", page_title: "Settings")
+  end
+
+  def billing(conn, _params) do
+    render(conn, "billing.html", page_title: "Settings")
   end
 
   def update(conn, %{"action" => "update_email"} = params) do
@@ -29,10 +34,10 @@ defmodule ShroudWeb.UserSettingsController do
           :info,
           "A link to confirm your email change has been sent to the new address."
         )
-        |> redirect(to: Routes.user_settings_path(conn, :edit))
+        |> redirect(to: Routes.user_settings_path(conn, :account))
 
       {:error, changeset} ->
-        render(conn, "edit.html", email_changeset: changeset)
+        render(conn, "account.html", email_changeset: changeset)
     end
   end
 
@@ -44,11 +49,11 @@ defmodule ShroudWeb.UserSettingsController do
       {:ok, user} ->
         conn
         |> put_flash(:info, "Password updated successfully.")
-        |> put_session(:user_return_to, Routes.user_settings_path(conn, :edit))
+        |> put_session(:user_return_to, Routes.user_settings_path(conn, :account))
         |> UserAuth.log_in_user(user)
 
       {:error, changeset} ->
-        render(conn, "edit.html", password_changeset: changeset)
+        render(conn, "account.html", password_changeset: changeset)
     end
   end
 
@@ -65,7 +70,7 @@ defmodule ShroudWeb.UserSettingsController do
 
     conn
     |> put_session(:totp_secret, secret)
-    |> render("edit.html", otp_qr_code: otp_qr_code)
+    |> render("account.html", otp_qr_code: otp_qr_code)
   end
 
   def update(conn, %{"action" => "enable_totp"} = params) do
@@ -80,12 +85,12 @@ defmodule ShroudWeb.UserSettingsController do
       |> put_session(:totp_secret, nil)
       |> put_flash(:info, "Enabled two-factor authentication.")
       |> UserAuth.fetch_current_user([])
-      |> render("edit.html", otp_backup_codes: backup_codes)
+      |> render("account.html", otp_backup_codes: backup_codes)
     else
       conn
       |> put_session(:totp_secret, nil)
       |> put_flash(:error, "Invalid two-factor authentication code.")
-      |> render("edit.html")
+      |> render("account.html")
     end
   end
 
@@ -99,11 +104,11 @@ defmodule ShroudWeb.UserSettingsController do
       conn
       |> put_flash(:info, "Disabled two-factor authentication.")
       |> UserAuth.fetch_current_user([])
-      |> render("edit.html")
+      |> render("account.html")
     else
       conn
       |> put_flash(:error, "Invalid two-factor authentication code.")
-      |> render("edit.html")
+      |> render("account.html")
     end
   end
 
@@ -112,12 +117,12 @@ defmodule ShroudWeb.UserSettingsController do
       :ok ->
         conn
         |> put_flash(:info, "Email changed successfully.")
-        |> redirect(to: Routes.user_settings_path(conn, :edit))
+        |> redirect(to: Routes.user_settings_path(conn, :account))
 
       :error ->
         conn
         |> put_flash(:error, "Email change link is invalid or it has expired.")
-        |> redirect(to: Routes.user_settings_path(conn, :edit))
+        |> redirect(to: Routes.user_settings_path(conn, :account))
     end
   end
 

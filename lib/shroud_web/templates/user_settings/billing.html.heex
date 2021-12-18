@@ -1,0 +1,9 @@
+<h1 class="h1">Billing</h1>
+
+<div class="flex items-center mt-6">
+  <%= if @current_user.stripe_customer_id do %>
+    <%= link "Update billing details", to: Routes.checkout_path(@conn, :billing_portal), class: "btn btn-primary" %>
+  <% else %>
+    <%= link "Activate your trial", to: Routes.checkout_path(@conn, :index), class: "btn btn-primary" %>
+  <% end %>
+</div>

@@ -1,7 +1,9 @@
+<%= if @current_user && @current_user.trial_expires_at do %>
+  <%= link "Subscribe", to: Routes.checkout_path(@conn, :index), class: "btn btn-accent btn-sm mr-3" %>
+<% end %>
 <ul>
 <%= if @current_user do %>
-  <li class="mr-3"><%= @current_user.email %></li>
-  <li><%= link "Settings", to: Routes.user_settings_path(@conn, :edit), class: "btn btn-sm btn-ghost rounded-btn" %></li>
+  <li><%= link "Settings", to: Routes.user_settings_path(@conn, :account), class: "btn btn-sm btn-ghost rounded-btn" %></li>
   <li><%= link "Log out", to: Routes.user_session_path(@conn, :delete), method: :delete, class: "btn btn-sm btn-ghost rounded-btn" %></li>
 <% else %>
   <li><%= link "Log in", to: Routes.user_session_path(@conn, :new), class: "btn btn-sm btn-ghost rounded-btn" %></li>

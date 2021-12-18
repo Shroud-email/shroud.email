@@ -33,3 +33,6 @@ Set the following environment variables:
 - `SECRET_KEY_BASE` (generate using `mix phx.gen.secret`)
 - `DATABASE_URL`
 - `OH_MY_SMTP_API_KEY`
+- `STRIPE_SECRET`
+- `STRIPE_PRICE` (the ID of the Stripe price you're using; it starts with `price_`)
+- `STRIPE_WEBHOOK_SECRET`

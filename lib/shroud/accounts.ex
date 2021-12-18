@@ -37,6 +37,10 @@ defmodule Shroud.Accounts do
     Repo.one(query)
   end
 
+  def get_user_by_stripe_id(stripe_customer_id) when is_binary(stripe_customer_id) do
+    Repo.get_by(User, stripe_customer_id: stripe_customer_id)
+  end
+
   @doc """
   Gets a user by email and password.
 
@@ -357,5 +361,11 @@ defmodule Shroud.Accounts do
       {:ok, %{user: user}} -> {:ok, user}
       {:error, :user, changeset, _} -> {:error, changeset}
     end
+  end
+
+  def update_stripe_details!(user, attrs \\ %{}) do
+    user
+    |> User.stripe_changeset(attrs)
+    |> Repo.update!()
   end
 end

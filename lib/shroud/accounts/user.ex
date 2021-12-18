@@ -15,6 +15,11 @@ defmodule Shroud.Accounts.User do
     field :totp_secret, Shroud.Encrypted.Binary
     field :totp_backup_codes, Shroud.Encrypted.StringList
 
+    field :stripe_customer_id, :string
+    field :trial_expires_at, :utc_datetime
+    field :plan_expires_at, :utc_datetime
+    field :status, Ecto.Enum, values: [:lead, :trial, :active, :inactive]
+
     has_many :aliases, EmailAlias
 
     timestamps()
@@ -150,5 +155,10 @@ defmodule Shroud.Accounts.User do
   def totp_changeset(user, attrs) do
     user
     |> cast(attrs, [:totp_secret, :totp_backup_codes, :totp_enabled])
+  end
+
+  def stripe_changeset(user, attrs) do
+    user
+    |> cast(attrs, [:status, :stripe_customer_id, :trial_expires_at, :plan_expires_at])
   end
 end

@@ -11,6 +11,13 @@
   font-family: "Carter One", "sans-serif";
 }
 
+.settings-link {
+  @apply flex p-3 hover:bg-base-300 text-gray-200;
+}
+.settings-link.active {
+  @apply bg-base-300;
+}
+
 /* Form errors from error_tag */
 .invalid-feedback {
   @apply text-red-500 mt-1 mb-3;

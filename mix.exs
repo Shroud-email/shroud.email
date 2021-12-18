@@ -77,7 +77,8 @@ defmodule Shroud.MixProject do
       {:quantum, "~> 3.4"},
       {:nimble_totp, "~> 0.1.3"},
       {:eqrcode, "~> 0.1.10"},
-      {:cloak_ecto, "~> 1.2"}
+      {:cloak_ecto, "~> 1.2"},
+      {:stripity_stripe, "~> 2.12"}
     ]
   end
 

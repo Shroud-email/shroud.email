@@ -13,14 +13,15 @@ defmodule ShroudWeb.Router do
     plug :fetch_current_user
   end
 
-  # pipeline :api do
-  #   plug :accepts, ["json"]
-  # end
+  pipeline :api do
+    plug :accepts, ["json"]
+  end
 
-  # Other scopes may use custom stacks.
-  # scope "/api", ShroudWeb do
-  #   pipe_through :api
-  # end
+  scope "/api", ShroudWeb do
+    pipe_through :api
+
+    post "/webhooks/stripe", CheckoutController, :webhook
+  end
 
   # Enables LiveDashboard only for development
   #
@@ -77,15 +78,20 @@ defmodule ShroudWeb.Router do
   scope "/", ShroudWeb do
     pipe_through [:browser, :require_confirmed_user]
 
-    get "/users/settings", UserSettingsController, :edit
-    put "/users/settings", UserSettingsController, :update
+    get "/settings/account", UserSettingsController, :account
+    get "/settings/billing", UserSettingsController, :billing
+    put "/settings", UserSettingsController, :update
     # Route for changing email of an already-confirmed account
-    get "/users/settings/confirm_email/:token", UserSettingsController, :confirm_email
+    get "/settings/confirm_email/:token", UserSettingsController, :confirm_email
 
     live_session :aliases, on_mount: ShroudWeb.UserLiveAuth do
       live "/", EmailAliasLive.Index, :index
       live "/alias/:address", EmailAliasLive.Show, :show
     end
+
+    get "/checkout", CheckoutController, :index
+    get "/checkout/success", CheckoutController, :success
+    get "/checkout/billing", CheckoutController, :billing_portal
   end
 
   scope "/", ShroudWeb do
