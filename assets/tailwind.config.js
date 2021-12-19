@@ -1,19 +1,14 @@
 module.exports = {
-  purge: ["./js/**/*.js", "../lib/shroud_web/**/*.*ex"],
-  mode: "jit",
+  content: ["./js/**/*.js", "../lib/shroud_web/**/*.*ex"],
   theme: {
     extend: {},
   },
   variants: {
     extend: {},
   },
-  plugins: [
-    require("daisyui"),
-  ],
+  plugins: [require("daisyui")],
   options: {
-    safelist: [
-      /data-theme$/,
-    ]
+    safelist: [/data-theme$/],
   },
   daisyui: {
     themes: ["dark"],
