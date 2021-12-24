@@ -1,80 +1,96 @@
-<%= if @live_action in [:new, :edit] do %>
-  <%= live_modal ShroudWeb.EmailAliasLive.FormComponent,
-    id: @email_alias.id || :new,
-    title: @page_title,
-    action: @live_action,
-    email_alias: @email_alias,
-    return_to: Routes.email_alias_index_path(@socket, :index) %>
-<% end %>
-
-<div class="min-h-full">
-  <div class="flex justify-between">
-    <h1 class="h1">Aliases</h1>
-    <%= if not Enum.empty?(@aliases) do %>
-      <button phx-click="add_alias" class="btn btn-primary">New alias</button>
-    <% end %>
-  </div>
-
-  <%= if Enum.empty?(@aliases) do %>
-    <div class="flex flex-col items-center justify-center mt-12">
-      <p class="text-lg text-gray-300 mb-3">No addresses yet.</p>
-      <button phx-click="add_alias" class="btn btn-primary">Add your first alias</button>
+<%= if Enum.empty?(@aliases) do %>
+  <div class="text-center">
+    <!-- HeroIcons mail -->
+    <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+    </svg>
+    <h3 class="mt-2 text-sm font-medium text-gray-900">No addresses yet</h3>
+    <p class="mt-1 text-sm text-gray-500">
+      Get started by adding your first alias.
+    </p>
+    <div class="mt-6">
+      <.button phx_click="add_alias" text="New alias">
+        <!-- Heroicon name: solid/plus -->
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+          <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+        </svg>
+      </.button>
     </div>
-  <% end %>
-
-  <div class="mt-6 overflow-x-auto">
-    <table class="table w-full">
-      <thead>
-        <tr>
-          <th>Address</th>
-          <th>Forwarded (total)</th>
-          <th>Forwarded (last 30 days)</th>
-          <th>Enabled?</th>
-          <th>Created</th>
-        </tr>
-      </thead>
-      <tbody>
-        <%= for email_alias <- @aliases do %>
-          <tr>
-            <td>
-              <div class="text-gray-300">
-                <%= email_alias.title || "No title" %>
-              </div>
-              <div x-data="{ tooltip: 'Copy to clipboard' }" class="flex items-center">
-                <button @click={"navigator.clipboard.writeText('#{email_alias.address}'); tooltip = 'Copied!'; setTimeout(() => tooltip = 'Copy to clipboard', 1500)"} class="tooltip" :data-tip="tooltip">
-                  <%= email_alias.address %>
-                </button>
-                <%= live_redirect to: Routes.email_alias_show_path(@socket, :show, email_alias.address), class: "ml-2 btn btn-xs btn-ghost" do %>
-                  Details
-                  <svg xmlns="http://www.w3.org/2000/svg" class="inline h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd" />
-                  </svg>
-                <% end %>
-              </div>
-            </td>
-            <td><%= email_alias.forwarded %></td>
-            <td><%= email_alias.forwarded_in_last_30_days %></td>
-            <td>
-              <%= if email_alias.enabled do %>
-                <span class="sr-only">Enabled</span>
-                <span class="text-success">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                  </svg>
-                </span>
-              <% else %>
-                <span class="sr-only">Disabled</span>
-                <span class="text-error">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-                  </svg>
-                </span>
-              <% end %>
-            </td>
-            <td><%= Timex.format!(email_alias.inserted_at, "{ISOdate}") %></td>
-          </tr>
-        <% end %>
-      </tbody>
-    </table>
   </div>
-</div>
+<% else %>
+  <div class="mb-3 flex items-center justify-between">
+    <div class="text-gray-600 text-sm">
+      <%= length(@aliases) %> <%= if length(@aliases) == 1, do: "alias", else: "aliases" %>
+    </div>
+    <.button phx_click="add_alias" text="New alias">
+      <!-- Heroicon name: solid/plus -->
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+      </svg>
+    </.button>
+  </div>
+  <div class="flex flex-col">
+    <div class="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+      <div class="py-2 align-middle inline-block min-w-full sm:px-6 lg:px-8">
+        <div class="shadow overflow-hidden border-b border-gray-200 sm:rounded-lg">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Address
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Forwarded
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Created
+                </th>
+                <th scope="col" class="relative px-6 py-3">
+                  <span class="sr-only">Edit</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+              <%= for email_alias <- @aliases do %>
+                <tr>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div>
+                      <%= live_redirect email_alias.address, to: Routes.email_alias_show_path(@socket, :show, email_alias.address), class: "text-sm font-medium text-gray-900 hover:text-gray-500" %>
+                      <div class="text-sm text-gray-500">
+                        <%= email_alias.title %>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm text-gray-900"><%= email_alias.forwarded %></div>
+                    <div class="text-sm text-gray-500"><%= email_alias.forwarded_in_last_30_days %> in the last month</div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <%= if email_alias.enabled do %>
+                      <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                        Enabled
+                      </span>
+                    <% else %>
+                      <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                        Disabled
+                      </span>
+                    <% end %>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <%= Timex.format!(email_alias.inserted_at, "{ISOdate}") %>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <%= live_redirect "Edit", to: Routes.email_alias_show_path(@socket, :show, email_alias.address), class: "text-indigo-600 hover:text-indigo-900" %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>

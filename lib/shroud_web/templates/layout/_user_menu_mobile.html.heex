@@ -1,0 +1,15 @@
+<div class="mt-3 px-2 space-y-1">
+  <%=
+    link "Settings",
+    to: Routes.user_settings_path(@conn, :account),
+    class: "block px-3 py-2 rounded-md text-base font-medium text-gray-400 hover:text-white hover:bg-gray-700",
+    role: "menuitem"
+  %>
+  <%=
+    link "Log out",
+    to: Routes.user_session_path(@conn, :delete),
+    method: :delete,
+    class: "block px-3 py-2 rounded-md text-base font-medium text-gray-400 hover:text-white hover:bg-gray-700",
+    role: "menuitem"
+  %>
+</div>

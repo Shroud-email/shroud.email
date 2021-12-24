@@ -1,16 +1,16 @@
+const defaultTheme = require("tailwindcss/defaultTheme")
+
 module.exports = {
   content: ["./js/**/*.js", "../lib/shroud_web/**/*.*ex"],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        sans: ["Inter var", ...defaultTheme.fontFamily.sans],
+      },
+    },
   },
   variants: {
     extend: {},
   },
-  plugins: [require("daisyui")],
-  options: {
-    safelist: [/data-theme$/],
-  },
-  daisyui: {
-    themes: ["dark"],
-  },
+  plugins: [require("@tailwindcss/forms"), require("@tailwindcss/typography")],
 }

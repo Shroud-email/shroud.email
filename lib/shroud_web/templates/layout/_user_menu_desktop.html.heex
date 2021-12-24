@@ -1,0 +1,27 @@
+<div x-show="open" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="transform opacity-0 scale-95" x-transition:enter-end="transform opacity-100 scale-100" x-transition:leave="transition ease-in duration-75" x-transition:leave-start="transform opacity-100 scale-100" x-transition:leave-end="transform opacity-0 scale-95" class="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none" x-ref="menu-items" x-description="Dropdown menu, show/hide based on menu state." :aria-activedescendant="activeDescendant" role="menu" aria-orientation="vertical" aria-labelledby="user-menu-button" tabindex="-1" @keydown.arrow-up.prevent="onArrowUp()" @keydown.arrow-down.prevent="onArrowDown()" @keydown.tab="open = false" @keydown.enter.prevent="open = false; focusButton()" @keyup.space.prevent="open = false; focusButton()" style="display: none;">
+  <%=
+    link "Settings",
+    to: Routes.user_settings_path(@conn, :account),
+    class: "block px-4 py-2 text-sm text-gray-700",
+    ":class": "{ 'bg-gray-100': activeIndex === 0 }",
+    role: "menuitem",
+    tabindex: "-1",
+    id: "user-menu-item-0",
+    "@mouseenter": "activeIndex = 0",
+    "@mouseleave": "activeIndex = -1",
+    "@click": "open = false; focusButton()"
+  %>
+  <%=
+    link "Log out",
+    to: Routes.user_session_path(@conn, :delete),
+    method: :delete,
+    class: "block px-4 py-2 text-sm text-gray-700",
+    ":class": "{ 'bg-gray-100': activeIndex === 1 }",
+    role: "menuitem",
+    tabindex: "-1",
+    id: "user-menu-item-1",
+    "@mouseenter": "activeIndex = 1",
+    "@mouseleave": "activeIndex = -1",
+    "@click": "open = false; focusButton()"
+  %>
+</div>

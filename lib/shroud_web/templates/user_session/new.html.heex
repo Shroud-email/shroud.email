@@ -1,39 +1,69 @@
-<div class="hero py-32 bg-base-200 rounded-3xl">
-  <div class="flex-col justify-center hero-content lg:flex-row">
-    <div class="text-center lg:text-left flex-1 mr-0 lg:mr-6">
-      <h1 class="h1">Log in</h1>
-      <p class="mb-5 w-max">
-        <%= link "Sign up", to: Routes.user_registration_path(@conn, :new), class: "link link-hover" %> | 
-        <%= link "Forgot your password?", to: Routes.user_reset_password_path(@conn, :new), class: "link link-hover" %>
-      </p>
-    </div>
-    <div class="card flex-shrink-0 w-full max-w-sm shadow-2xl bg-base-100">
-      <div class="card-body">
-        <.form let={f} for={@conn} action={Routes.user_session_path(@conn, :create)} as={:user}, class="form-control">
-          <%= if @error_message do %>
-            <div class="alert alert-error">
-              <p><%= @error_message %></p>
+<div class="min-h-full flex flex-col justify-center sm:px-6 lg:px-8">
+  <div class="sm:mx-auto sm:w-full sm:max-w-md">
+    <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
+      Sign in to your account
+    </h2>
+    <p class="mt-2 text-center text-sm text-gray-600">
+      Or
+      <%= link "start your 30-day free trial", to: Routes.user_registration_path(@conn, :new), class: "font-medium text-indigo-600 hover:text-indigo-500" %>
+    </p>
+  </div>
+
+  <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+    <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+      <.form let={f} for={@conn} action={Routes.user_session_path(@conn, :create)} as={:user}, class="space-y-6">
+        <%= if @error_message do %>
+          <div class="rounded-md bg-red-50 p-4">
+            <div class="flex">
+              <div class="flex-shrink-0">
+                <!-- Heroicon name: solid/x-circle -->
+                <svg class="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                </svg>
+              </div>
+              <div class="ml-3">
+                <div class="text-sm font-medium text-red-800">
+                  <%= @error_message %>
+                </div>
+              </div>
             </div>
-          <% end %>
-
-          <%= hidden_input f, :action, name: "action", value: "log_in" %>
-
-          <%= label f, :email, class: "label" %>
-          <%= email_input f, :email, required: true, class: "input input-bordered" %>
-
-          <%= label f, :password, class: "label" %>
-          <%= password_input f, :password, required: true, class: "input input-bordered" %>
-
-          <label class="label cursor-pointer my-2">
-            <span class="label-text">Remember me</span>
-            <%= checkbox f, :remember_me, class: "checkbox" %>
-          </label>
-
-          <div>
-            <%= submit "Log in", class: "btn btn-primary" %>
           </div>
-        </.form>
-      </div>
+        <% end %>
+
+        <%= hidden_input f, :action, name: "action", value: "log_in" %>
+
+        <div>
+          <%= label f, :email, class: "block text-sm font-medium text-gray-700" %>
+          <div class="mt-1">
+            <%= email_input f, :email, required: true, autocomplete: "email", class: "appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" %>
+          </div>
+        </div>
+
+        <div>
+          <%= label f, :password, class: "block text-sm font-medium text-gray-700" %>
+          <div class="mt-1">
+            <%= password_input f, :password, required: true, class: "appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" %>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between">
+          <div class="flex items-center">
+            <%= checkbox f, :remember_me, id: "remember-me", class: "h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" %>
+            <label for="remember-me" class="ml-2 block text-sm text-gray-900">
+              Remember me
+            </label>
+          </div>
+
+          <div class="text-sm">
+            <%= link "Forgot your password?", to: Routes.user_reset_password_path(@conn, :new), class: "font-medium text-indigo-600 hover:text-indigo-500" %>
+          </div>
+        </div>
+
+        <div>
+          <%= submit "Sign in", class: "w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" %>
+        </div>
+      </.form>
     </div>
   </div>
 </div>
+

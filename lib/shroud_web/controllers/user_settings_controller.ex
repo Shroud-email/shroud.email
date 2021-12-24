@@ -10,11 +10,11 @@ defmodule ShroudWeb.UserSettingsController do
   plug :put_layout, "settings.html"
 
   def account(conn, _params) do
-    render(conn, "account.html", page_title: "Settings")
+    render(conn, "account.html", page_title: "Account settings")
   end
 
   def billing(conn, _params) do
-    render(conn, "billing.html", page_title: "Settings")
+    render(conn, "billing.html", page_title: "Billing settings")
   end
 
   def update(conn, %{"action" => "update_email"} = params) do

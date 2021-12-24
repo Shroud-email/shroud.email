@@ -5,61 +5,113 @@ defmodule ShroudWeb.EmailAliasLive.Show do
 
   @impl true
   def handle_params(%{"address" => address}, _uri, socket) do
-    socket = assign(socket, :address, address)
-    {:noreply, update_email_alias(socket)}
+    socket =
+      socket
+      |> assign(:address, address)
+      |> assign(:page_title, "Aliases")
+      |> assign(:subpage_title, address)
+      |> update_email_alias()
+
+    {:noreply, socket}
   end
 
   @impl true
   def render(assigns) do
     ~H"""
-    <%= live_redirect to: Routes.email_alias_index_path(@socket, :index), class: "link link-hover mb-1 block" do %>
-      <svg xmlns="http://www.w3.org/2000/svg" class="inline h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-        <path fill-rule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clip-rule="evenodd" />
-      </svg>
-      Back
-    <% end %>
-    <div class="flex flex-col md:flex-row justify-between md:items-center">
-      <h1 class="font-extrabold text-xl md:text-3xl"><%= @alias.address %></h1>
-      <input id="enabled-toggle" type="checkbox" checked={@alias.enabled} class="toggle toggle-lg tooltip" data-tip="Enabled?" phx-click="toggle" />
-    </div>
-    <div x-data="{ editing: false }" class="my-3">
-      <.form let={f} for={@changeset} class="mt-3 mb-6" x-show="editing" phx-submit="update">
-        <div class="form-control">
-          <%= label f, :title, "Title", class: "label" %>
-          <%= text_input f, :title, placeholder: "Alias title", class: "input input-bordered" %>
+    <div>
+      <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+        <div class="px-4 py-5 sm:px-6 flex justify-between">
+          <div>
+            <h3 class="text-lg leading-6 font-medium text-gray-900">
+              <%= @address %>
+            </h3>
+            <%= live_redirect to: Routes.email_alias_index_path(@socket, :index), class: "inline-block mt-2 text-sm text-gray-500 hover:text-gray-700" do %>
+              <svg xmlns="http://www.w3.org/2000/svg" class="inline h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clip-rule="evenodd" />
+              </svg>
+              Back
+            <% end %>
+          </div>
+          <div class="self-start">
+            <button phx-click="delete" data-confirm={"Are you sure you want to permanently delete #{@alias.address}?"} class="text-xs font-semibold uppercase text-red-700 hover:text-red-500">Delete</button>
+          </div>
         </div>
-        <div class="form-control">
-          <%= label f, :notes, "Notes", class: "label" %>
-          <%= textarea f, :notes, placeholder: "Notes about this alias", class: "textarea textarea-bordered" %>
+        <div class="border-t border-gray-200">
+          <dl>
+            <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+              <dt class="text-sm font-medium text-gray-500">
+                Enabled?
+              </dt>
+              <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                <.toggle phx_click="toggle" enabled={@alias.enabled} />
+              </dd>
+            </div>
+            <.form @submit="editingNotes = false; editingTitle = false" let={f} for={@changeset} phx-submit="update" x-data="{ editingTitle: false, editingNotes: false }">
+              <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                <dt class="text-sm font-medium text-gray-500">
+                  Title
+                </dt>
+                <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2 flex">
+                  <%= label f, :title, "Title", class: "sr-only" %>
+                  <%= text_input f, :title, placeholder: "Alias title", "x-show": "editingTitle", class: "flex-grow shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md" %>
+                  <span x-show="!editingTitle" class="flex-grow"><%= @alias.title || "No title yet" %></span>
+                  <span class="ml-4 flex-shrink-0">
+                    <button @click="editingTitle = true" x-show="!editingTitle" type="button" class="bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                      Update
+                    </button>
+                    <%= submit "Save", "x-show": "editingTitle", class: "bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" %>
+                  </span>
+                </dd>
+              </div>
+              <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                <dt class="text-sm font-medium text-gray-500">
+                  Notes
+                </dt>
+                <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2 flex">
+                  <%= label f, :notes, "Notes", class: "sr-only" %>
+                  <%= textarea f, :notes, placeholder: "Notes about this alias", "x-show": "editingNotes", class: "flex-grow shadow-sm block w-full focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm border border-gray-300 rounded-md" %>
+                  <span x-show="!editingNotes" class="flex-grow"><%= @alias.notes || "No notes" %></span>
+                  <span class="ml-4 flex-shrink-0">
+                    <button @click="editingNotes = true" x-show="!editingNotes" type="button" class="bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                      Update
+                    </button>
+                    <%= submit "Save", "x-show": "editingNotes", class: "bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" %>
+                  </span>
+                </dd>
+              </div>
+            </.form>
+          </dl>
         </div>
-        <%= submit "Save", class: "btn btn-primary mt-2" %>
-        <button type="button" @click="editing = false" class="btn btn-ghost">Cancel</button>
-      </.form>
-      <div x-show="!editing">
-        <dl>
-          <dt class="font-bold mb-2">Title</dt>
-          <dd class="bg-neutral rounded-lg p-3 w-max"><%= @alias.title || "No title" %></dd>
-          <dt class="font-bold my-1">Notes</dt>
-          <dd class="max-w-md bg-neutral rounded-lg p-3">
-            <span class="whitespace-pre"><%= @alias.notes || "No notes yet" %></span>
+      </div>
+      <dl class="grid grid-cols-1 gap-5 sm:grid-cols-3 mt-6">
+        <div class="px-4 py-5 bg-white shadow rounded-lg overflow-hidden sm:p-6">
+          <dt class="text-sm font-medium text-gray-500 truncate">
+            Emails forwarded (total)
+          </dt>
+          <dd class="mt-1 text-3xl font-semibold text-gray-900">
+            <%= @alias.forwarded %>
           </dd>
-        </dl>
-        <button @click="editing = true" class="mt-2 link link-hover">Edit</button>
-      </div>
+        </div>
+
+        <div class="px-4 py-5 bg-white shadow rounded-lg overflow-hidden sm:p-6">
+          <dt class="text-sm font-medium text-gray-500 truncate">
+            Emails forwarded (last 30 days)
+          </dt>
+          <dd class="mt-1 text-3xl font-semibold text-gray-900">
+            <%= @alias.forwarded_in_last_30_days %>
+          </dd>
+        </div>
+
+        <div class="px-4 py-5 bg-white shadow rounded-lg overflow-hidden sm:p-6">
+          <dt class="text-sm font-medium text-gray-500 truncate">
+            Created
+          </dt>
+          <dd class="mt-1 text-3xl font-semibold text-gray-900">
+            <%= Timex.format!(@alias.inserted_at, "{D} {Mshort} '{YY}") %>
+          </dd>
+        </div>
+      </dl>
     </div>
-    <div class="stats mb-3 grid-flow-row md:grid-flow-col w-full border border-base-200 shadow">
-      <div class="stat">
-        <div class="stat-title">Emails forwarded</div>
-        <div class="stat-value"><%= @alias.forwarded %></div>
-        <div class="stat-desc"><%= @alias.forwarded_in_last_30_days %> in the last 30 days</div>
-      </div>
-      <div class="stat">
-        <div class="stat-title">Created</div>
-        <div class="stat-value"><%= Timex.format!(@alias.inserted_at, "{D} {Mshort} '{YY}") %></div>
-        <div class="stat-desc"><%= Timex.Format.DateTime.Formatters.Relative.format!(@alias.inserted_at, "{relative}") %></div>
-      </div>
-    </div>
-    <%= link "Delete alias", to: "#", phx_click: "delete", data: [confirm: "Are you sure you want to permanently delete #{@alias.address}?"], class: "btn btn-outline btn-xs btn-error" %>
     """
   end
 
@@ -83,13 +135,8 @@ defmodule ShroudWeb.EmailAliasLive.Show do
   end
 
   @impl true
-  def handle_event("toggle", %{"value" => "on"}, socket) do
-    {:noreply, update_alias(socket, %{enabled: true})}
-  end
-
-  @impl true
-  def handle_event("toggle", %{}, socket) do
-    {:noreply, update_alias(socket, %{enabled: false})}
+  def handle_event("toggle", _params, %{assigns: %{alias: alias}} = socket) do
+    {:noreply, update_alias(socket, %{enabled: !alias.enabled})}
   end
 
   @impl true

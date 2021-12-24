@@ -55,7 +55,8 @@ defmodule Shroud.Accounts.TOTP do
         true
 
       # Check backup codes, and if found, remove
-      Enum.any?(user.totp_backup_codes, &Plug.Crypto.secure_compare(&1, otp)) ->
+      user.totp_backup_codes &&
+          Enum.any?(user.totp_backup_codes, &Plug.Crypto.secure_compare(&1, otp)) ->
         updated_backup_codes =
           Enum.filter(user.totp_backup_codes, fn backup_code -> otp != backup_code end)
 

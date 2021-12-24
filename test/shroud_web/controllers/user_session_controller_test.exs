@@ -13,8 +13,8 @@ defmodule ShroudWeb.UserSessionControllerTest do
     test "renders log in page", %{conn: conn} do
       conn = get(conn, Routes.user_session_path(conn, :new))
       response = html_response(conn, 200)
-      assert response =~ "Log in</h1>"
-      assert response =~ "Sign up</a>"
+      assert response =~ "Sign in"
+      assert response =~ "start your 30-day free trial"
       assert response =~ "Forgot your password?</a>"
     end
 
@@ -79,7 +79,7 @@ defmodule ShroudWeb.UserSessionControllerTest do
         })
 
       response = html_response(conn, 200)
-      assert response =~ "Log in</h1>"
+      assert response =~ "Sign in"
       assert response =~ "Invalid email or password"
     end
   end

@@ -1,9 +1,14 @@
-<main class="container mx-auto min-h-full px-2 pb-6 mt-6">
-  <%= if get_flash(@conn, :info) do %>
-    <p class="alert alert-info mb-6" role="alert"><%= get_flash(@conn, :info) %></p>
-  <% end %>
-  <%= if get_flash(@conn, :error) do %>
-    <p class="alert alert-error mb-6" role="alert"><%= get_flash(@conn, :error) %></p>
-  <% end %>
-  <%= @inner_content %>
+<main>
+  <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+    <div class="px-4 py-4 sm:px-0">
+      <%= if get_flash(@conn, :info) do %>
+        <p class="alert alert-info mb-6" role="alert"><%= get_flash(@conn, :info) %></p>
+      <% end %>
+      <%= if get_flash(@conn, :error) do %>
+        <p class="alert alert-error mb-6" role="alert"><%= get_flash(@conn, :error) %></p>
+      <% end %>
+
+      <%= @inner_content %>
+    </div>
+  </div>
 </main>

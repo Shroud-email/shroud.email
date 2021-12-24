@@ -1,31 +1,33 @@
-<div class="hero py-32 bg-base-200 rounded-3xl">
-  <div class="flex-col justify-center hero-content lg:flex-row">
-    <div class="text-center lg:text-left flex-1 mr-0 lg:mr-6">
-      <h1 class="h1">Log in</h1>
-      <p class="mb-5 w-max">
-        <%= link "Sign up", to: Routes.user_registration_path(@conn, :new), class: "link link-hover" %> | 
-        <%= link "Forgot your password?", to: Routes.user_reset_password_path(@conn, :new), class: "link link-hover" %>
-      </p>
-    </div>
-    <div class="card flex-shrink-0 w-full max-w-sm shadow-2xl bg-base-100">
-      <div class="card-body">
-        <.form let={f} for={@conn} action={Routes.user_session_path(@conn, :create_totp)} as={:user}, class="form-control">
-          <%= if @error_message do %>
-            <div class="alert alert-error">
-              <p><%= @error_message %></p>
-            </div>
-          <% end %>
+<div class="min-h-full flex flex-col justify-center sm:px-6 lg:px-8">
+  <div class="sm:mx-auto sm:w-full sm:max-w-md">
+    <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
+      Sign in to your account
+    </h2>
+    <p class="mt-2 text-center text-sm text-gray-600">
+      Or
+      <%= link "start your 30-day free trial", to: Routes.user_registration_path(@conn, :new), class: "font-medium text-indigo-600 hover:text-indigo-500" %>
+    </p>
+  </div>
 
-          <%= hidden_input f, :action, name: "action", value: "totp" %>
+  <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+    <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+      <.form let={f} for={@conn} action={Routes.user_session_path(@conn, :create_totp)} as={:user}, class="space-y-6">
+        <%= hidden_input f, :action, name: "action", value: "totp" %>
 
-          <%= label f, :verification_code, for: "verification_code", class: "label" %>
-          <%= number_input f, :verification_code, required: true, minlength: 6, maxlength: 8, name: "verification_code", id: "verification_code", class: "input input-bordered" %>
+        <p class="text-gray-700 text-sm text-center">Enter the code from your authenticator app to continue.</p>
 
-          <div class="mt-2">
-            <%= submit "Log in", class: "btn btn-primary" %>
+        <div>
+          <%= label f, :verification_code, for: "verification_code", class: "block text-sm font-medium text-gray-700" %>
+          <div class="mt-1">
+            <%= number_input f, :verification_code, required: true, minlength: 6, maxlength: 8, name: "verification_code", id: "verification_code", class: "appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" %>
           </div>
-        </.form>
-      </div>
+        </div>
+
+        <div>
+          <%= submit "Sign in", class: "w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" %>
+        </div>
+      </.form>
     </div>
   </div>
 </div>
+
