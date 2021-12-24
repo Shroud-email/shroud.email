@@ -9,12 +9,52 @@ defmodule ShroudWeb.UserSettingsController do
   plug :assign_totp_fields
   plug :put_layout, "settings.html"
 
+  def redirect_to_account(conn, _params) do
+    redirect(conn, to: Routes.user_settings_path(conn, :account))
+  end
+
   def account(conn, _params) do
     render(conn, "account.html", page_title: "Account settings")
   end
 
+  def security(conn, _params) do
+    otp_qr_code =
+      if get_session(conn, :totp_secret) do
+        secret = get_session(conn, :totp_secret)
+
+        conn.assigns.current_user
+        |> TOTP.otp_uri(secret)
+        |> EQRCode.encode()
+        |> EQRCode.svg(width: 264)
+      end
+
+    totp_backup_codes = get_session(conn, :totp_backup_codes)
+
+    conn
+    |> put_session(:totp_backup_codes, nil)
+    |> render("security.html",
+      page_title: "Security settings",
+      otp_qr_code: otp_qr_code,
+      totp_backup_codes: totp_backup_codes
+    )
+  end
+
   def billing(conn, _params) do
     render(conn, "billing.html", page_title: "Billing settings")
+  end
+
+  def confirm_email(conn, %{"token" => token}) do
+    case Accounts.update_user_email(conn.assigns.current_user, token) do
+      :ok ->
+        conn
+        |> put_flash(:info, "Email changed successfully.")
+        |> redirect(to: Routes.user_settings_path(conn, :account))
+
+      :error ->
+        conn
+        |> put_flash(:error, "Email change link is invalid or it has expired.")
+        |> redirect(to: Routes.user_settings_path(conn, :account))
+    end
   end
 
   def update(conn, %{"action" => "update_email"} = params) do
@@ -49,28 +89,20 @@ defmodule ShroudWeb.UserSettingsController do
       {:ok, user} ->
         conn
         |> put_flash(:info, "Password updated successfully.")
-        |> put_session(:user_return_to, Routes.user_settings_path(conn, :account))
+        |> put_session(:user_return_to, Routes.user_settings_path(conn, :security))
         |> UserAuth.log_in_user(user)
 
       {:error, changeset} ->
-        render(conn, "account.html", password_changeset: changeset)
+        render(conn, "security.html", password_changeset: changeset)
     end
   end
 
   def update(conn, %{"action" => "generate_totp_secret"}) do
-    user = conn.assigns.current_user
-
     secret = TOTP.create_secret()
-
-    otp_qr_code =
-      user
-      |> TOTP.otp_uri(secret)
-      |> EQRCode.encode()
-      |> EQRCode.svg(width: 264)
 
     conn
     |> put_session(:totp_secret, secret)
-    |> render("account.html", otp_qr_code: otp_qr_code)
+    |> redirect(to: Routes.user_settings_path(conn, :security))
   end
 
   def update(conn, %{"action" => "enable_totp"} = params) do
@@ -83,14 +115,15 @@ defmodule ShroudWeb.UserSettingsController do
 
       conn
       |> put_session(:totp_secret, nil)
+      |> put_session(:totp_backup_codes, backup_codes)
       |> put_flash(:info, "Enabled two-factor authentication.")
       |> UserAuth.fetch_current_user([])
-      |> render("account.html", otp_backup_codes: backup_codes)
+      |> redirect(to: Routes.user_settings_path(conn, :security))
     else
       conn
       |> put_session(:totp_secret, nil)
       |> put_flash(:error, "Invalid two-factor authentication code.")
-      |> render("account.html")
+      |> redirect(to: Routes.user_settings_path(conn, :security))
     end
   end
 
@@ -104,25 +137,11 @@ defmodule ShroudWeb.UserSettingsController do
       conn
       |> put_flash(:info, "Disabled two-factor authentication.")
       |> UserAuth.fetch_current_user([])
-      |> render("account.html")
+      |> redirect(to: Routes.user_settings_path(conn, :security))
     else
       conn
       |> put_flash(:error, "Invalid two-factor authentication code.")
-      |> render("account.html")
-    end
-  end
-
-  def confirm_email(conn, %{"token" => token}) do
-    case Accounts.update_user_email(conn.assigns.current_user, token) do
-      :ok ->
-        conn
-        |> put_flash(:info, "Email changed successfully.")
-        |> redirect(to: Routes.user_settings_path(conn, :account))
-
-      :error ->
-        conn
-        |> put_flash(:error, "Email change link is invalid or it has expired.")
-        |> redirect(to: Routes.user_settings_path(conn, :account))
+      |> redirect(to: Routes.user_settings_path(conn, :security))
     end
   end
 

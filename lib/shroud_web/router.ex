@@ -78,7 +78,9 @@ defmodule ShroudWeb.Router do
   scope "/", ShroudWeb do
     pipe_through [:browser, :require_confirmed_user]
 
+    get "/settings", UserSettingsController, :redirect_to_account
     get "/settings/account", UserSettingsController, :account
+    get "/settings/security", UserSettingsController, :security
     get "/settings/billing", UserSettingsController, :billing
     put "/settings", UserSettingsController, :update
     # Route for changing email of an already-confirmed account

@@ -25,6 +25,22 @@
           </span>
         <% end %>
 
+        <%= link to: Routes.user_settings_path(@conn, :security), class: active_class(@conn, Routes.user_settings_path(@conn, :security), "text-gray-900 hover:text-gray-900 hover:bg-gray-50 group rounded-md px-3 py-2 flex items-center text-sm font-medium", "bg-gray-50 text-indigo-700 hover:text-indigo-700 hover:bg-white") do %>
+          <!-- Heroicon name: outline/key -->
+          <svg
+            class={active_class(@conn, Routes.user_settings_path(@conn, :security), "text-gray-400 group-hover:text-gray-500 flex-shrink-0 -ml-1 mr-3 h-6 w-6", "text-indigo-500 group-hover:text-indigo-500")}
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+          </svg>
+          <span class="truncate">
+            Security
+          </span>
+        <% end %>
+
         <%= link to: Routes.user_settings_path(@conn, :billing), class: active_class(@conn, Routes.user_settings_path(@conn, :billing), "text-gray-900 hover:text-gray-900 hover:bg-gray-50 group rounded-md px-3 py-2 flex items-center text-sm font-medium", "bg-gray-50 text-indigo-700 hover:text-indigo-700 hover:bg-white") do %>
           <!-- Heroicon name: outline/credit-card -->
           <svg
