@@ -12,7 +12,7 @@ services:
       - POSTGRES_USER=${DB_USER}
       - POSTGRES_DB=${DB_DATABASE}
   web:
-    build: .
+    image: shroud.email:latest
     restart: unless-stopped
     ports:
       - "8080:8080"
