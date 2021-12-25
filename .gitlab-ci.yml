@@ -57,10 +57,9 @@ docker_push:
   services:
     - docker:dind
   variables:
-    CI_REGISTRY: index.docker.io
-    CI_REGISTRY_IMAGE: index.docker.io/taooat/shroud.email
+    CI_REGISTRY_IMAGE: taooat/shroud.email
   before_script:
-    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin
   script:
     - docker build --pull -t "$CI_REGISTRY_IMAGE:latest" .
     - docker push "$CI_REGISTRY_IMAGE:latest"
