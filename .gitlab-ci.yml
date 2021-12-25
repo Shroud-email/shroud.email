@@ -1,5 +1,4 @@
 stages:
-  - build
   - test
   - deploy
 
@@ -11,20 +10,10 @@ stages:
   before_script:
     - apt-get update
     - apt-get install -y git cargo build-essential curl
-
-compile:
-  stage: build
-  extends: ".elixir"
-  script:
-    - mix local.hex --force
-    - mix local.rebar --force
-    - mix deps.get
-    - mix compile --warnings-as-errors
   cache:
     paths:
-      - _build
-      - deps
-    policy: pull-push
+      - _build/
+      - deps/
 
 test:
   stage: test
@@ -47,14 +36,10 @@ test:
     - chmod +x codecov
     - mix local.hex --force
     - mix local.rebar --force
+    - mix compile --warnings-as-errors
     - mix ecto.setup
     - mix coveralls.json
     - ./codecov
-  cache:
-    paths:
-      - _build
-      - deps
-    policy: pull
 
 lint:
   stage: test
@@ -65,8 +50,19 @@ lint:
     - mix format --check-formatted
     - mix credo
     - mix sobelow --config
-  cache:
-    paths:
-      - _build
-      - deps
-    policy: pull
+
+docker_push:
+  stage: deploy
+  image: docker:20.10.12
+  services:
+    - docker:dind
+  variables:
+    CI_REGISTRY: index.docker.io
+    CI_REGISTRY_IMAGE: index.docker.io/taooat/shroud.email
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
+  script:
+    - docker build --pull -t "$CI_REGISTRY_IMAGE:latest" .
+    - docker push "$CI_REGISTRY_IMAGE:latest"
+  only:
+    - main
