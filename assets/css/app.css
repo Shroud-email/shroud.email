@@ -3,6 +3,8 @@
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
 
+@import "./components.css";
+
 .logo {
   font-family: "Carter One", "sans-serif";
 }

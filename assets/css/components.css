@@ -1,0 +1,9 @@
+.alert {
+  @apply rounded-md p-4 flex text-sm border;
+}
+.alert-info {
+  @apply bg-blue-50 text-blue-700 border-blue-100;
+}
+.alert-error {
+  @apply bg-red-50 text-red-700 border-red-100;
+}
