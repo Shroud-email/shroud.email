@@ -3,11 +3,11 @@ defmodule Shroud.Email.EmailHandler do
   use Appsignal.Instrumentation.Decorators
 
   require Logger
-  alias Shroud.{Accounts, Aliases, Mailer}
+  alias Shroud.{Accounts, Aliases, Mailer, Util}
   alias Shroud.Accounts.User
   alias Shroud.Email.{Enricher, ParsedEmail, TrackerRemover}
 
-  @from_email "noreply@app.shroud.email"
+  @from_email "noreply@#{Util.email_domain()}"
   @from_suffix " (via Shroud)"
 
   @impl Oban.Worker

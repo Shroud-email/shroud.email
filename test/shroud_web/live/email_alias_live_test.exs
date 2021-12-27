@@ -30,7 +30,7 @@ defmodule ShroudWeb.EmailAliasLiveTest do
       html = index_live |> element("button", "New alias") |> render_click()
 
       assert html =~ "Created new alias"
-      assert html =~ "@shroud.local"
+      assert html =~ "@shroud.test"
     end
 
     # test "deletes email_alias in listing", %{conn: conn, email_alias: email_alias} do

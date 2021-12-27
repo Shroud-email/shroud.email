@@ -13,6 +13,15 @@ config :shroud, :billing,
 # any compile-time configuration in here, as it won't be applied.
 # The block below contains prod specific runtime configuration.
 if config_env() == :prod do
+  email_domain =
+    System.get_env("EMAIL_DOMAIN") ||
+      raise """
+      environment variable EMAIL_DOMAIN is missing.
+      For example: fog.shroud.email
+      """
+
+  config :shroud, :email_aliases, domain: email_domain
+
   database_url =
     System.get_env("DATABASE_URL") ||
       raise """

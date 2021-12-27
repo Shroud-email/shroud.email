@@ -25,4 +25,9 @@ defmodule Shroud.Util do
     now = NaiveDateTime.utc_now()
     NaiveDateTime.compare(datetime, now) == :lt
   end
+
+  @spec email_domain() :: String.t()
+  def email_domain() do
+    Application.fetch_env!(:shroud, :email_aliases)[:domain]
+  end
 end

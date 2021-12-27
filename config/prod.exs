@@ -16,8 +16,6 @@ config :shroud, ShroudWeb.Endpoint,
 # Do not print debug messages in production
 config :logger, level: :info
 
-config :shroud, :email_aliases, domain: "app.shroud.email"
-
 config :shroud, :mailer,
   smtp_options: [
     port: 1587,

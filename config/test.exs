@@ -16,6 +16,8 @@ config :shroud, Shroud.Repo,
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: 10
 
+config :shroud, :email_aliases, domain: "shroud.test"
+
 config :shroud, Shroud.Vault,
   ciphers: [
     default: {
