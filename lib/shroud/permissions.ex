@@ -14,11 +14,4 @@ defmodule Shroud.Permissions do
       Accounts.active?(user)
     end
   end
-
-  defimpl Canada.Can, for: EmailAlias do
-    # An alias can only forward emails if its user is active
-    def can?(%EmailAlias{} = email_alias, :forward, _) do
-      Accounts.active?(email_alias.user)
-    end
-  end
 end

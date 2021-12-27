@@ -18,7 +18,7 @@ defmodule Shroud.Email.EmailHandlerTest do
   """
 
   setup do
-    user = user_fixture()
+    user = user_fixture(%{status: :active})
     email_alias = alias_fixture(%{user_id: user.id})
 
     %{
@@ -67,7 +67,7 @@ defmodule Shroud.Email.EmailHandlerTest do
     end
 
     test "handles emails to multiple shroud recipients", %{user: user, email_alias: email_alias} do
-      %{id: user_id} = other_user = user_fixture()
+      %{id: user_id} = other_user = user_fixture(%{status: :active})
       other_alias = alias_fixture(%{user_id: user_id})
 
       args = %{
@@ -167,6 +167,30 @@ defmodule Shroud.Email.EmailHandlerTest do
 
       metric = Repo.get_by!(Aliases.EmailMetric, alias_id: email_alias.id)
       assert metric.forwarded == 1
+    end
+
+    test "does not forward to non-active account" do
+      yesterday =
+        NaiveDateTime.utc_now()
+        |> NaiveDateTime.add(-1 * 60 * 60 * 24)
+        |> NaiveDateTime.truncate(:second)
+
+      user = user_fixture(%{status: :trial, trial_expires_at: yesterday})
+      email_alias = alias_fixture(%{user_id: user.id})
+
+      data =
+        text_email(
+          "sender@example.com",
+          [email_alias.address],
+          "Text only",
+          "Plain text content!"
+        )
+
+      args = %{from: "sender@example.com", to: email_alias.address, data: data}
+
+      perform_job(EmailHandler, args)
+
+      assert_no_email_sent()
     end
   end
 end

@@ -4,6 +4,7 @@ defmodule Shroud.Email.EmailHandler do
 
   require Logger
   alias Shroud.{Accounts, Aliases, Mailer}
+  alias Shroud.Accounts.User
   alias Shroud.Email.{Enricher, ParsedEmail, TrackerRemover}
 
   @from_email "noreply@shroud.email"
@@ -31,26 +32,33 @@ defmodule Shroud.Email.EmailHandler do
         Appsignal.increment_counter("emails.discarded", 1)
 
       user ->
-        Logger.info("Forwarding email from #{sender} to #{user.email} (via #{recipient})")
-
-        ParsedEmail.parse(data)
-        |> TrackerRemover.process()
-        |> Enricher.process()
-        # Now our pipeline is done, we just want our Swoosh email
-        |> Map.get(:swoosh_email)
-        |> fix_sender_and_recipient(user.email)
-        |> Mailer.deliver()
-
-        try do
-          email_alias = Aliases.get_email_alias_by_address!(recipient)
-          Appsignal.increment_counter("emails.forwarded", 1)
-          Aliases.increment_forwarded!(email_alias)
-        rescue
-          e ->
-            Logger.error(
-              "Failed to increment stats for email from #{sender} to #{recipient}: #{e}"
-            )
+        if Accounts.active?(user) do
+          forward_email(user, sender, recipient, data)
+        else
+          Logger.info("Discarding email to #{user.email} because their account isn't active")
+          Appsignal.increment_counter("emails.discarded_expired", 1)
         end
+    end
+  end
+
+  defp forward_email(%User{} = user, sender, recipient, data) do
+    Logger.info("Forwarding email from #{sender} to #{user.email} (via #{recipient})")
+
+    ParsedEmail.parse(data)
+    |> TrackerRemover.process()
+    |> Enricher.process()
+    # Now our pipeline is done, we just want our Swoosh email
+    |> Map.get(:swoosh_email)
+    |> fix_sender_and_recipient(user.email)
+    |> Mailer.deliver()
+
+    try do
+      email_alias = Aliases.get_email_alias_by_address!(recipient)
+      Appsignal.increment_counter("emails.forwarded", 1)
+      Aliases.increment_forwarded!(email_alias)
+    rescue
+      e ->
+        Logger.error("Failed to increment stats for email from #{sender} to #{recipient}: #{e}")
     end
   end
 
