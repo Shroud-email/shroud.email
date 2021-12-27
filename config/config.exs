@@ -42,8 +42,6 @@ config :shroud,
   http_client: HTTPoison,
   tracker_list_uri: "https://gitlab.com/shroud/email-trackers/-/raw/main/list.txt"
 
-config :shroud, :email_aliases, domain: "shroud.local"
-
 config :shroud, Shroud.Scheduler,
   jobs: [
     # Daily at midnight

@@ -23,6 +23,8 @@ config :shroud, Shroud.Vault,
     }
   ]
 
+config :shroud, :email_aliases, domain: "shroud.local"
+
 # For development, we disable any cache and enable
 # debugging and code reloading.
 #
