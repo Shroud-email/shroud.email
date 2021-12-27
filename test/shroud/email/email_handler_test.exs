@@ -109,7 +109,7 @@ defmodule Shroud.Email.EmailHandlerTest do
 
       assert_email_sent(fn email ->
         assert hd(email.to) == {"Recipient", user.email}
-        assert email.from == {"Sender (via Shroud)", "noreply@shroud.email"}
+        assert email.from == {"Sender (via Shroud)", "noreply@app.shroud.email"}
         assert email.reply_to == {"Sender", "sender@example.com"}
         assert email.text_body =~ "Plain text content!"
         assert is_nil(email.html_body)
@@ -123,7 +123,7 @@ defmodule Shroud.Email.EmailHandlerTest do
 
       assert_email_sent(fn email ->
         assert hd(email.to) == {email_alias.address, user.email}
-        assert email.from == {"sender@example.com (via Shroud)", "noreply@shroud.email"}
+        assert email.from == {"sender@example.com (via Shroud)", "noreply@app.shroud.email"}
         assert email.reply_to == {"sender@example.com", "sender@example.com"}
         assert is_nil(email.text_body)
         assert email.html_body =~ "This is HTML content"
@@ -145,7 +145,7 @@ defmodule Shroud.Email.EmailHandlerTest do
 
       assert_email_sent(fn email ->
         assert hd(email.to) == {"Recipient", user.email}
-        assert email.from == {"Sender (via Shroud)", "noreply@shroud.email"}
+        assert email.from == {"Sender (via Shroud)", "noreply@app.shroud.email"}
         assert email.reply_to == {"Sender", "sender@example.com"}
         assert email.text_body =~ "Plaintext content"
         assert email.html_body =~ "This is HTML content"

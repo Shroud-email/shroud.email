@@ -9,7 +9,7 @@ defmodule Shroud.Accounts.UserNotifier do
     email =
       new()
       |> to(recipient)
-      |> from({"Shroud", "noreply@shroud.email"})
+      |> from({"Shroud", "noreply@app.shroud.email"})
       |> subject(subject)
       |> html_body(html_body)
       |> text_body(text_body)

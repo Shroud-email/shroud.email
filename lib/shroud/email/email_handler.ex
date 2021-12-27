@@ -7,7 +7,7 @@ defmodule Shroud.Email.EmailHandler do
   alias Shroud.Accounts.User
   alias Shroud.Email.{Enricher, ParsedEmail, TrackerRemover}
 
-  @from_email "noreply@shroud.email"
+  @from_email "noreply@app.shroud.email"
   @from_suffix " (via Shroud)"
 
   @impl Oban.Worker

@@ -81,7 +81,7 @@ defmodule Shroud.Email.Enricher do
   end
 
   defp shroud_header(%ParsedEmail{} = email) do
-    # The email's `from` is noreply@shroud.email, so we get the real sender from the reply_to field
+    # The email's `from` is noreply@app.shroud.email, so we get the real sender from the reply_to field
     {_sender_name, sender_address} = email.swoosh_email.reply_to
 
     trackers = email.removed_trackers
