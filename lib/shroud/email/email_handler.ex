@@ -44,21 +44,23 @@ defmodule Shroud.Email.EmailHandler do
   defp forward_email(%User{} = user, sender, recipient, data) do
     Logger.info("Forwarding email from #{sender} to #{user.email} (via #{recipient})")
 
-    ParsedEmail.parse(data)
-    |> TrackerRemover.process()
-    |> Enricher.process()
-    # Now our pipeline is done, we just want our Swoosh email
-    |> Map.get(:swoosh_email)
-    |> fix_sender_and_recipient(user.email)
-    |> Mailer.deliver()
+    case ParsedEmail.parse(data)
+         |> TrackerRemover.process()
+         |> Enricher.process()
+         # Now our pipeline is done, we just want our Swoosh email
+         |> Map.get(:swoosh_email)
+         |> fix_sender_and_recipient(user.email)
+         |> Mailer.deliver() do
+      {:ok, _id} ->
+        email_alias = Aliases.get_email_alias_by_address!(recipient)
+        Appsignal.increment_counter("emails.forwarded", 1)
+        Aliases.increment_forwarded!(email_alias)
 
-    try do
-      email_alias = Aliases.get_email_alias_by_address!(recipient)
-      Appsignal.increment_counter("emails.forwarded", 1)
-      Aliases.increment_forwarded!(email_alias)
-    rescue
-      e ->
-        Logger.error("Failed to increment stats for email from #{sender} to #{recipient}: #{e}")
+      {:error, error} ->
+        Logger.error("Failed to forward email from #{sender} to #{user.email}: #{error}")
+
+      other ->
+        Logger.error("Failed to forward email from #{sender} to #{user.email}: #{other}")
     end
   end
 
