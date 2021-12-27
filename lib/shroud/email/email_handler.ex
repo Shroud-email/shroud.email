@@ -7,9 +7,6 @@ defmodule Shroud.Email.EmailHandler do
   alias Shroud.Accounts.User
   alias Shroud.Email.{Enricher, ParsedEmail, TrackerRemover}
 
-  @from_email "noreply@#{Util.email_domain()}"
-  @from_suffix " (via Shroud)"
-
   @impl Oban.Worker
   @decorate transaction(:background_job)
   def perform(%Oban.Job{args: %{"from" => from, "to" => recipients, "data" => data}})
@@ -56,6 +53,9 @@ defmodule Shroud.Email.EmailHandler do
         Appsignal.increment_counter("emails.forwarded", 1)
         Aliases.increment_forwarded!(email_alias)
 
+      {:error, {_code, error}} ->
+        Logger.error("Failed to forward email from #{sender} to #{user.email}: #{error}")
+
       {:error, error} ->
         Logger.error("Failed to forward email from #{sender} to #{user.email}: #{error}")
 
@@ -83,8 +83,10 @@ defmodule Shroud.Email.EmailHandler do
         sender_name
       end
 
+    sender = {sender_name <> " (via Shroud.email)", "noreply@#{Util.email_domain()}"}
+
     email
-    |> Map.put(:from, {sender_name <> @from_suffix, @from_email})
+    |> Map.put(:from, sender)
     |> Map.put(:to, [{recipient_name, recipient_address}])
   end
 end
