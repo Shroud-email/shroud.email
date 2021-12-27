@@ -28,6 +28,6 @@ defmodule Shroud.Util do
 
   @spec email_domain() :: String.t()
   def email_domain() do
-    Application.fetch_env!(:shroud, :email_aliases)[:domain]
+    Application.get_env(:shroud, :email_aliases)[:domain]
   end
 end
