@@ -9,7 +9,36 @@
     <link phx-track-static rel="stylesheet" href={Routes.static_path(@conn, "/fonts/CarterOne.css")}/>
     <link phx-track-static rel="stylesheet" href={Routes.static_path(@conn, "/fonts/inter/inter.css")}/>
     <link phx-track-static rel="stylesheet" href={Routes.static_path(@conn, "/assets/app.css")}/>
+    <script type="text/javascript" async defer src="https://app.papercups.io/widget.js"></script>
     <script defer phx-track-static type="text/javascript" src={Routes.static_path(@conn, "/assets/app.js")}></script>
+    <script>
+      window.Papercups = {
+        config: {
+          token: "81a13d1b-a34a-487e-965e-8779ddd855f1",
+          inbox: "f01194cc-2fa5-4be5-b2e1-54f42b1fc773",
+          title: "Welcome to Shroud.email",
+          subtitle: "Ask us anything in the chat window below 😊",
+          primaryColor: "#1f2937",
+          newMessagePlaceholder: "Start typing...",
+          showAgentAvailability: false,
+          agentAvailableText: "We're online right now!",
+          agentUnavailableText: "We're away at the moment.",
+          requireEmailUpfront: true,
+          iconVariant: "outlined",
+          baseUrl: "https://app.papercups.io",
+          <%= if @current_user do %>
+          customer: {
+            name: "<%= @current_user.email %>",
+            email: "<%= @current_user.email %>",
+            external_id: <%= @current_user.id %>,
+            metadata: {
+              status: "<%= @current_user.status %>"
+            }
+          }
+          <% end %>
+        },
+      };
+    </script>
   </head>
   <body class="h-full">
     <div class="min-h-full">
