@@ -49,5 +49,21 @@ defmodule ShroudWeb.UserRegistrationControllerTest do
       assert response =~ "must have the @ sign and no spaces"
       assert response =~ "should be at least 12 character"
     end
+
+    test "creates a lifetime user", %{conn: conn} do
+      email = unique_user_email()
+
+      conn =
+        post(conn, Routes.user_registration_path(conn, :create), %{
+          "user" => valid_user_attributes(email: email, status: :lifetime)
+        })
+
+      assert get_session(conn, :user_token)
+      assert redirected_to(conn) == "/users/confirm"
+
+      # Now do a logged in request and assert on the menu
+      conn = get(conn, "/users/confirm")
+      assert conn.assigns.current_user.status == :lifetime
+    end
   end
 end

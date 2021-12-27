@@ -12,6 +12,10 @@
   <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
     <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
       <.form let={f} for={@changeset} action={Routes.user_registration_path(@conn, :new)} as={:user}, class="space-y-6">
+        <%= if @lifetime do %>
+          <p class="text-sm text-gray-600 text-center">Signing up for a lifetime account.</p>
+          <%= select f, :status, [:lifetime], selected: :lifetime, class: "hidden" %>
+        <% end %>
         <div>
           <%= label f, :email, class: "block text-sm font-medium text-gray-700" %>
           <div class="mt-1">

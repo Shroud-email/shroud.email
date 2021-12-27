@@ -297,8 +297,18 @@ defmodule Shroud.Accounts do
   end
 
   defp confirm_user_multi(user) do
+    now = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
+    thirty_days_from_now = NaiveDateTime.add(now, 60 * 60 * 24 * 30)
+    # Don't overwrite lifetime status
+    status = if user.status == :lifetime, do: :lifetime, else: :trial
+
+    attrs = %{
+      trial_expires_at: thirty_days_from_now,
+      status: status
+    }
+
     Ecto.Multi.new()
-    |> Ecto.Multi.update(:user, User.confirm_changeset(user))
+    |> Ecto.Multi.update(:user, User.confirm_changeset(user, attrs))
     |> Ecto.Multi.delete_all(:tokens, UserToken.user_and_contexts_query(user, ["confirm"]))
   end
 
@@ -371,6 +381,7 @@ defmodule Shroud.Accounts do
   end
 
   def active?(%User{} = user) do
-    user.status == :active || (user.status == :trial && not Util.past?(user.trial_expires_at))
+    user.status == :active || user.status == :lifetime ||
+      (user.status == :trial && not Util.past?(user.trial_expires_at))
   end
 end

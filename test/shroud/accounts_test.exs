@@ -548,6 +548,12 @@ defmodule Shroud.AccountsTest do
       assert Accounts.active?(user)
     end
 
+    test "returns true for lifetime users" do
+      user = user_fixture(%{status: :lifetime})
+
+      assert Accounts.active?(user)
+    end
+
     test "returns false for expired trial users", %{yesterday: yesterday} do
       user = user_fixture(%{status: :trial, trial_expires_at: yesterday})
 

@@ -18,7 +18,7 @@ defmodule Shroud.Accounts.User do
     field :stripe_customer_id, :string
     field :trial_expires_at, :naive_datetime
     field :plan_expires_at, :naive_datetime
-    field :status, Ecto.Enum, values: [:lead, :trial, :active, :inactive]
+    field :status, Ecto.Enum, values: [:lead, :trial, :active, :inactive, :lifetime]
 
     has_many :aliases, EmailAlias
 
@@ -44,7 +44,7 @@ defmodule Shroud.Accounts.User do
   """
   def registration_changeset(user, attrs, opts \\ []) do
     user
-    |> cast(attrs, [:email, :password])
+    |> cast(attrs, [:email, :password, :status])
     |> validate_email()
     |> validate_password(opts)
   end
@@ -120,10 +120,12 @@ defmodule Shroud.Accounts.User do
   @doc """
   Confirms the account by setting `confirmed_at`.
   """
-  def confirm_changeset(user) do
+  def confirm_changeset(user, attrs \\ %{}) do
     now = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
-    thirty_days_from_now = NaiveDateTime.add(now, 60 * 60 * 24 * 30)
-    change(user, confirmed_at: now, trial_expires_at: thirty_days_from_now, status: :trial)
+
+    user
+    |> cast(attrs, [:status, :trial_expires_at])
+    |> change(confirmed_at: now)
   end
 
   @doc """

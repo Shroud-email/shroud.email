@@ -5,9 +5,10 @@ defmodule ShroudWeb.UserRegistrationController do
   alias Shroud.Accounts.User
   alias ShroudWeb.UserAuth
 
-  def new(conn, _params) do
+  def new(conn, params) do
+    lifetime = params["lifetime"] == "true"
     changeset = Accounts.change_user_registration(%User{})
-    render(conn, "new.html", changeset: changeset, page_title: "Sign up")
+    render(conn, "new.html", changeset: changeset, page_title: "Sign up", lifetime: lifetime)
   end
 
   def create(conn, %{"user" => user_params}) do
@@ -24,7 +25,10 @@ defmodule ShroudWeb.UserRegistrationController do
         |> UserAuth.log_in_user(user)
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        render(conn, "new.html", changeset: changeset)
+        render(conn, "new.html",
+          changeset: changeset,
+          lifetime: user_params["status"] == "lifetime"
+        )
     end
   end
 end

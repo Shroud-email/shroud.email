@@ -1,4 +1,18 @@
-<%= if @current_user.stripe_customer_id do %>
+<%= cond do %>
+<% @current_user.status == :lifetime -> %>
+  <div class="shadow sm:rounded-md sm:overflow-hidden">
+    <div class="bg-white py-6 px-4 space-y-6 sm:p-6">
+      <div>
+        <h3 class="text-lg leading-6 font-medium text-gray-900">Billing</h3>
+        <p class="mt-1 text-sm text-gray-500">
+          You're on a lifetime plan. No billing settings to deal with!
+        </p>
+      </div>
+    </div>
+  </div>
+<% is_nil(@current_user.stripe_customer_id) -> %>
+  <%= render "_signup.html", assigns %>
+<% true -> %>
   <div class="shadow sm:rounded-md sm:overflow-hidden">
     <div class="bg-white py-6 px-4 space-y-6 sm:p-6">
       <div>
@@ -13,6 +27,4 @@
       <%= link "Update billing details", to: Routes.checkout_path(@conn, :billing_portal), class: "btn btn-primary" %>
     </div>
   </div>
-<% else %>
-  <%= render "_signup.html", assigns %>
 <% end %>
