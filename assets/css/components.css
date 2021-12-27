@@ -4,6 +4,9 @@
 .alert-info {
   @apply bg-blue-50 text-blue-700 border-blue-100;
 }
+.alert-warning {
+  @apply bg-yellow-50 text-yellow-700 border-yellow-100;
+}
 .alert-error {
   @apply bg-red-50 text-red-700 border-red-100;
 }

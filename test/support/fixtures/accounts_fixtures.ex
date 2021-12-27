@@ -3,6 +3,9 @@ defmodule Shroud.AccountsFixtures do
   This module defines test helpers for creating
   entities via the `Shroud.Accounts` context.
   """
+  alias Shroud.Accounts
+  alias Shroud.Accounts.User
+  alias Shroud.Repo
 
   def unique_user_email, do: "user#{System.unique_integer()}@example.com"
   def valid_user_password, do: "hello world!"
@@ -18,7 +21,12 @@ defmodule Shroud.AccountsFixtures do
     {:ok, user} =
       attrs
       |> valid_user_attributes()
-      |> Shroud.Accounts.register_user()
+      |> Accounts.register_user()
+
+    user =
+      user
+      |> User.status_changeset(attrs)
+      |> Repo.update!(returning: true)
 
     user
   end

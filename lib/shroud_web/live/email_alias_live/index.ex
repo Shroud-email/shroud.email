@@ -4,6 +4,7 @@ defmodule ShroudWeb.EmailAliasLive.Index do
   use Phoenix.HTML
   use ShroudWeb, :live_view
 
+  alias Shroud.Accounts
   alias Shroud.Aliases
   alias Shroud.Aliases.EmailAlias
 

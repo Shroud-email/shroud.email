@@ -58,9 +58,6 @@ defmodule ShroudWeb.CheckoutController do
       "checkout.session.completed" ->
         handle_checkout_session_completed(event.data.object)
 
-      "customer.subscription.trial_will_end" ->
-        handle_trial_will_end(event.data.object)
-
       "customer.subscription.created" ->
         update_subscription_status(event.data.object)
 
@@ -92,19 +89,6 @@ defmodule ShroudWeb.CheckoutController do
     end
   end
 
-  defp handle_trial_will_end(subscription) do
-    case Accounts.get_user_by_stripe_id(subscription.customer) do
-      nil ->
-        Logger.error(
-          "Received customer.subscription.trial_will_end webhook for unknown customer: #{subscription.customer}"
-        )
-
-      user ->
-        # TODO: email customer telling that that they'll be charged soon
-        Logger.info("Trial ending soon for #{user.email}")
-    end
-  end
-
   defp update_subscription_status(subscription) do
     case Accounts.get_user_by_stripe_id(subscription.customer) do
       nil ->
@@ -114,19 +98,8 @@ defmodule ShroudWeb.CheckoutController do
 
       user ->
         case subscription.status do
-          "trialing" ->
-            trial_end = DateTime.from_unix!(subscription.trial_end)
-
-            attrs = %{
-              trial_expires_at: trial_end,
-              status: :trial
-            }
-
-            Accounts.update_stripe_details!(user, attrs)
-            Logger.info("Updated trial_expires_at for #{user.email} to #{trial_end}")
-
           "active" ->
-            # Subscription became active (trial rolled over)
+            # Subscription became active (user signed up)
             current_period_end = DateTime.from_unix!(subscription.current_period_end)
 
             attrs = %{

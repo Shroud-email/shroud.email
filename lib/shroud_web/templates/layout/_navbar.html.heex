@@ -22,6 +22,16 @@
           <div class="ml-4 flex items-center md:ml-6">
             <!-- Profile dropdown -->
             <%= if @current_user do %>
+              <%= if @current_user.status == :trial do %>
+                <div class="text-gray-400 mr-2">
+                  <%= if Shroud.Util.past?(@current_user.trial_expires_at) do %>
+                    You trial has expired.
+                  <% else %>
+                    Your trial expires <%= Timex.from_now(@current_user.trial_expires_at) %>.
+                  <% end %>
+                  <%= link "Sign up now.", to: Routes.user_settings_path(@conn, :billing), class: "underline hover:text-gray-500" %>
+                </div>
+              <% end %>
               <div class="ml-3 relative" x-data="Components.menu({ open: false })" x-init="init()" @keydown.escape.stop="open = false; focusButton()" @click.away="onClickAway($event)">
                 <div>
                   <button type="button" class="max-w-xs bg-gray-800 rounded-full flex items-center text-sm text-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white" id="user-menu-button" aria-haspopup="true" x-ref="button" @click="onButtonClick()" :aria-expanded="open.toString()" @keydown.arrow-up.prevent="onArrowUp()" @keydown.arrow-down.prevent="onArrowDown()">
@@ -71,11 +81,11 @@
     <div class="px-2 py-3 space-y-1 sm:px-3">
       <!-- Current: "bg-gray-900 text-white", Default: "text-gray-300 hover:bg-gray-700 hover:text-white" -->
       <%= if @current_user do %>
-        <%= link "Aliases", to: Routes.email_alias_index_path(@conn, :index), class: active_class(@conn, Routes.email_alias_index_path(@conn, :index), "bg-gray-900 text-white block px-3 py-2 rounded-md text-base font-medium", "bg-gray-900 text-white") %>
+        <%= link "Aliases", to: Routes.email_alias_index_path(@conn, :index), class: active_class(@conn, Routes.email_alias_index_path(@conn, :index), "text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium", "bg-gray-900 text-white") %>
       <% end %>
 
       <%= if function_exported?(Routes, :live_dashboard_path, 2) do %>
-        <%= link "LiveDashboard", to: Routes.live_dashboard_path(@conn, :home), class: "text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium" %>
+        <%= link "LiveDashboard", to: Routes.live_dashboard_path(@conn, :home), class: active_class(@conn, Routes.live_dashboard_path(@conn, :home), "text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium", "bg-gray-900 text-white") %>
       <% end %>
     </div>
     <div class="pt-4 pb-3 border-t border-gray-700">
@@ -89,8 +99,18 @@
           </div>
           <div class="ml-3">
             <div class="text-base font-medium leading-none text-white"><%= @current_user.email %></div>
-            <!-- TODO: make this trial days remaining -->
-            <%# <div class="text-sm font-medium leading-none text-gray-400">tom@example.com</div> %>
+            <%= if @current_user do %>
+              <%= if @current_user.status == :trial do %>
+                <div class="text-gray-400 mr-2">
+                  <%= if Shroud.Util.past?(@current_user.trial_expires_at) do %>
+                    You trial has expired.
+                  <% else %>
+                    Your trial expires <%= Timex.from_now(@current_user.trial_expires_at) %>.
+                  <% end %>
+                  <%= link "Sign up now.", to: Routes.user_settings_path(@conn, :billing), class: "underline hover:text-gray-500" %>
+                </div>
+              <% end %>
+            <% end %>
           </div>
         </div>
         <%= render "_user_menu_mobile.html", assigns %>

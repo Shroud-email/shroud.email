@@ -16,8 +16,8 @@ defmodule Shroud.Accounts.User do
     field :totp_backup_codes, Shroud.Encrypted.StringList
 
     field :stripe_customer_id, :string
-    field :trial_expires_at, :utc_datetime
-    field :plan_expires_at, :utc_datetime
+    field :trial_expires_at, :naive_datetime
+    field :plan_expires_at, :naive_datetime
     field :status, Ecto.Enum, values: [:lead, :trial, :active, :inactive]
 
     has_many :aliases, EmailAlias
@@ -122,7 +122,8 @@ defmodule Shroud.Accounts.User do
   """
   def confirm_changeset(user) do
     now = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
-    change(user, confirmed_at: now)
+    thirty_days_from_now = NaiveDateTime.add(now, 60 * 60 * 24 * 30)
+    change(user, confirmed_at: now, trial_expires_at: thirty_days_from_now, status: :trial)
   end
 
   @doc """
@@ -160,5 +161,10 @@ defmodule Shroud.Accounts.User do
   def stripe_changeset(user, attrs) do
     user
     |> cast(attrs, [:status, :stripe_customer_id, :trial_expires_at, :plan_expires_at])
+  end
+
+  def status_changeset(user, attrs) do
+    user
+    |> cast(attrs, [:status, :trial_expires_at])
   end
 end

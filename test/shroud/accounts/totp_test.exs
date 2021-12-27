@@ -53,8 +53,7 @@ defmodule Shroud.Accounts.TOTPTest do
   describe "disable_totp!/2" do
     test "disables TOTP", %{user: user} do
       TOTP.enable_totp!(user, TOTP.create_secret())
-      TOTP.disable_totp!(user)
-      user = Repo.reload!(user)
+      user = TOTP.disable_totp!(user)
 
       refute user.totp_enabled
     end

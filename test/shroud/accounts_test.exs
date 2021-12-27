@@ -526,4 +526,32 @@ defmodule Shroud.AccountsTest do
       refute inspect(%User{password: "123456"}) =~ "password: \"123456\""
     end
   end
+
+  describe "active?/1" do
+    setup do
+      now = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
+      yesterday = NaiveDateTime.add(now, -1 * 60 * 60 * 24)
+      tomorrow = NaiveDateTime.add(now, 60 * 60 * 24)
+
+      %{yesterday: yesterday, tomorrow: tomorrow}
+    end
+
+    test "returns true for active trial users", %{tomorrow: tomorrow} do
+      user = user_fixture(%{status: :trial, trial_expires_at: tomorrow})
+
+      assert Accounts.active?(user)
+    end
+
+    test "returns true for active users" do
+      user = user_fixture(%{status: :active})
+
+      assert Accounts.active?(user)
+    end
+
+    test "returns false for expired trial users", %{yesterday: yesterday} do
+      user = user_fixture(%{status: :trial, trial_expires_at: yesterday})
+
+      refute Accounts.active?(user)
+    end
+  end
 end

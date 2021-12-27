@@ -16,9 +16,6 @@ defmodule Shroud.Billing.Session do
             price: config()[:stripe_price]
           }
         ],
-        subscription_data: %{
-          trial_period_days: 30
-        },
         payment_method_types: [
           "card"
         ]

@@ -19,4 +19,10 @@ defmodule Shroud.Util do
       :error -> :error
     end
   end
+
+  @spec past?(NaiveDateTime.t()) :: boolean
+  def past?(datetime) do
+    now = NaiveDateTime.utc_now()
+    NaiveDateTime.compare(datetime, now) == :lt
+  end
 end
