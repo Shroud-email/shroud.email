@@ -21,10 +21,27 @@ defmodule Shroud.Application do
       # {Shroud.Worker, arg}
       {Shroud.Email.SmtpServer, Application.fetch_env!(:shroud, :mailer)[:smtp_options]},
       Shroud.Scheduler,
-      Shroud.Vault
+      Shroud.Vault,
+      {Registry,
+       [
+         name: Appsignal.Registry,
+         keys: :unique,
+         partitions: System.schedulers_online()
+       ]}
     ]
 
     {:ok, _} = Application.ensure_all_started(:appsignal)
+
+    :telemetry.attach_many(
+      "appsignal-oban",
+      [
+        [:oban, :job, :start],
+        [:oban, :job, :stop],
+        [:oban, :job, :exception]
+      ],
+      &Shroud.AppsignalOban.handle_event/4,
+      nil
+    )
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
