@@ -1,26 +1,33 @@
-<div class="rounded-xl p-4 shadow-2xl bg-gradient-to-br from-pink-700 to-purple-700 text-primary-content">
-  <h1 class="text-2xl font-extrabold text-center">Email report</h1>
-</div>
+<div class="bg-white rounded-lg shadow-lg mx-auto p-6 max-w-2xl">
+  <svg class="h-12 w-12 text-indigo-600 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+  </svg>
+  <h1 class="text-3xl font-extrabold text-center">Email report</h1>
 
-<p class="my-6">This email was sent from <span class="font-bold"><%= @sender %></span>
-to <span class="font-bold"><%= @email_alias %></span>.</p>
-
-<%= if not Enum.empty?(@trackers) do %>
-  <h2 class="h2">Trackers</h2>
-
-  <p>Shroud.email removed the following trackers from this email:</p>
-
-  <ul class="space-y-2 my-3">
-    <%= for tracker <- @trackers do %>
-      <li class="block bg-gray-600 rounded-lg p-3 font-semibold"><%= tracker %></li>
-    <% end %>
-  </ul>
-
-  <p>
-    Spammers and advertisers use trackers like these to see when you opened an email, and where you
-    were when you opened it. Thanks to Shroud.email, you're keeping them in the dark.
+  <p class="my-6 text-gray-800">
+    This email was sent from <span class="font-bold"><%= @sender %></span>
+    to <span class="font-bold"><%= @email_alias %></span>.
   </p>
 
-<% else %>
-  Shroud.email did not find any trackers in this email. You're all clear!
-<% end %>
+  <%= if not Enum.empty?(@trackers) do %>
+    <h2 class="text-xl font-bold">Trackers</h2>
+
+    <p class="text-gray-800">Shroud.email removed the following trackers from this email:</p>
+
+    <ul class="space-y-2 my-4">
+      <%= for tracker <- @trackers do %>
+        <li class="block bg-slate-200 rounded p-3 font-semibold"><%= tracker %></li>
+      <% end %>
+    </ul>
+
+    <p class="text-gray-800">
+      Spammers and advertisers use trackers like these to see when you opened an email, and where you
+      were when you opened it. Thanks to Shroud.email, you're keeping them in the dark.
+    </p>
+
+  <% else %>
+    <p class="text-indigo-800 text-center font-bold mb-3">
+      Shroud.email did not find any trackers in this email. You're all clear!
+    </p>
+  <% end %>
+</div>

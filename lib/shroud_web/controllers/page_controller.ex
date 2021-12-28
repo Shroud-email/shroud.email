@@ -10,8 +10,7 @@ defmodule ShroudWeb.PageController do
           "email_report.html",
           trackers: decoded["trackers"],
           sender: decoded["sender"],
-          email_alias: decoded["email_alias"],
-          layout: {ShroudWeb.LayoutView, "report.html"}
+          email_alias: decoded["email_alias"]
         )
 
       :error ->
