@@ -5,7 +5,6 @@ defmodule Shroud.Accounts.TOTPTest do
   alias Shroud.Repo
 
   import Shroud.AccountsFixtures
-  # alias Shroud.Accounts.User
 
   setup do
     user = user_fixture()

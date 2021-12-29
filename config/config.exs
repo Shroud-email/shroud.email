@@ -45,7 +45,9 @@ config :shroud,
 config :shroud, Shroud.Scheduler,
   jobs: [
     # Daily at midnight
-    {"@daily", {Shroud.Scheduler, :update_trackers, []}}
+    {"@daily", {Shroud.Scheduler, :update_trackers, []}},
+    {"@daily", {Shroud.Scheduler, :email_expiring_trials, []}},
+    {"@daily", {Shroud.Scheduler, :email_expired_trials, []}}
   ]
 
 config :swoosh, :api_client, Swoosh.ApiClient.Hackney

@@ -384,4 +384,15 @@ defmodule Shroud.Accounts do
     user.status == :active || user.status == :lifetime ||
       (user.status == :trial && not Util.past?(user.trial_expires_at))
   end
+
+  def list_users_with_trial_expiry_between(from_datetime, to_datetime) do
+    query =
+      from u in User,
+        where:
+          u.trial_expires_at >= ^from_datetime and
+            u.trial_expires_at <= ^to_datetime and
+            u.status == :trial
+
+    Repo.all(query)
+  end
 end
