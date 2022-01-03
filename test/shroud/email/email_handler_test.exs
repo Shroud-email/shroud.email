@@ -211,5 +211,24 @@ defmodule Shroud.Email.EmailHandlerTest do
 
       assert_no_email_sent()
     end
+
+    test "does not forward when alias is disabled" do
+      user = user_fixture(%{status: :active})
+      email_alias = alias_fixture(%{user_id: user.id, enabled: false})
+
+      data =
+        text_email(
+          "sender@example.com",
+          [email_alias.address],
+          "Text only",
+          "Plain text content!"
+        )
+
+      args = %{from: "sender@example.com", to: email_alias.address, data: data}
+
+      perform_job(EmailHandler, args)
+
+      assert_no_email_sent()
+    end
   end
 end

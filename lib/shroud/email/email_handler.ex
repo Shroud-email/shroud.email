@@ -31,6 +31,10 @@ defmodule Shroud.Email.EmailHandler do
         Logger.info("Discarding email to unknown address #{recipient} (from #{sender})")
         Appsignal.increment_counter("emails.discarded", 1)
 
+      not email_alias.enabled ->
+        Logger.info("Discarding email to blocked alias #{recipient}")
+        Appsignal.increment_counter("emails.blocked", 1)
+
       Accounts.active?(user) &&
           Enum.member?(email_alias.blocked_addresses, String.downcase(sender)) ->
         Logger.info("Blocking email to #{user.email} because the sender (#{sender}) is blocked")
