@@ -33,6 +33,17 @@ defmodule Shroud.Aliases do
     Repo.get!(EmailAlias, id)
   end
 
+  def get_email_alias_by_address(address) do
+    query =
+      from ea in EmailAlias,
+        where: ea.address == ^address and is_nil(ea.deleted_at),
+        left_join: m in subquery(recent_metrics()),
+        on: m.alias_id == ea.id,
+        select_merge: %{ea | forwarded_in_last_30_days: coalesce(m.forwarded, 0)}
+
+    Repo.one(query)
+  end
+
   def get_email_alias_by_address!(address) do
     query =
       from ea in EmailAlias,
@@ -51,6 +62,31 @@ defmodule Shroud.Aliases do
 
   def update_email_alias(%EmailAlias{} = email_alias, attrs) do
     change_email_alias(email_alias, attrs)
+    |> Repo.update()
+  end
+
+  @spec block_sender(EmailAlias.t(), String.t()) ::
+          {:ok, EmailAlias.t()} | {:error, Ecto.Changeset.t()}
+  def block_sender(%EmailAlias{} = email_alias, sender) do
+    blocked_addresses = MapSet.new([String.downcase(sender) | email_alias.blocked_addresses])
+    attrs = %{blocked_addresses: MapSet.to_list(blocked_addresses)}
+
+    email_alias
+    |> EmailAlias.blocked_addresses_changeset(attrs)
+    |> Repo.update()
+  end
+
+  @spec unblock_sender(EmailAlias.t(), String.t()) :: {:ok, EmailAlias.t()} | :error
+  def unblock_sender(%EmailAlias{} = email_alias, sender) do
+    blocked_addresses =
+      email_alias.blocked_addresses
+      |> Enum.map(&String.downcase/1)
+      |> Enum.reject(fn address -> address == String.downcase(sender) end)
+
+    attrs = %{blocked_addresses: blocked_addresses}
+
+    email_alias
+    |> EmailAlias.blocked_addresses_changeset(attrs)
     |> Repo.update()
   end
 
@@ -85,6 +121,25 @@ defmodule Shroud.Aliases do
           where: e.id == ^email_alias.id,
           select: e.forwarded,
           update: [inc: [forwarded: 1]]
+
+      {1, _} = Repo.update_all(alias_update, [])
+    end)
+  end
+
+  def increment_blocked!(%EmailAlias{} = email_alias) do
+    today = NaiveDateTime.utc_now() |> NaiveDateTime.to_date()
+
+    Repo.transaction(fn ->
+      Repo.insert!(%EmailMetric{alias_id: email_alias.id, date: today, blocked: 1},
+        conflict_target: [:alias_id, :date],
+        on_conflict: [inc: [blocked: 1]]
+      )
+
+      alias_update =
+        from e in EmailAlias,
+          where: e.id == ^email_alias.id,
+          select: e.blocked,
+          update: [inc: [blocked: 1]]
 
       {1, _} = Repo.update_all(alias_update, [])
     end)

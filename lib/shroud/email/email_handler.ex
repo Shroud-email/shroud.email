@@ -23,18 +23,26 @@ defmodule Shroud.Email.EmailHandler do
 
   defp handle_recipient(sender, recipient, data) do
     # Lookup real email based on the receiving alias (`recipient`)
-    case Accounts.get_user_by_alias(recipient) do
-      nil ->
+    user = Accounts.get_user_by_alias(recipient)
+    email_alias = Aliases.get_email_alias_by_address(recipient)
+
+    cond do
+      user == nil || email_alias == nil ->
         Logger.info("Discarding email to unknown address #{recipient} (from #{sender})")
         Appsignal.increment_counter("emails.discarded", 1)
 
-      user ->
-        if Accounts.active?(user) do
-          forward_email(user, sender, recipient, data)
-        else
-          Logger.info("Discarding email to #{user.email} because their account isn't active")
-          Appsignal.increment_counter("emails.discarded_expired", 1)
-        end
+      Accounts.active?(user) &&
+          Enum.member?(email_alias.blocked_addresses, String.downcase(sender)) ->
+        Logger.info("Blocking email to #{user.email} because the sender (#{sender}) is blocked")
+        Appsignal.increment_counter("emails.blocked", 1)
+        Aliases.increment_blocked!(email_alias)
+
+      Accounts.active?(user) ->
+        forward_email(user, sender, recipient, data)
+
+      true ->
+        Logger.info("Discarding email to #{user.email} because their account isn't active")
+        Appsignal.increment_counter("emails.discarded_expired", 1)
     end
   end
 

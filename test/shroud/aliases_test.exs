@@ -85,6 +85,50 @@ defmodule Shroud.AliasesTest do
     end
   end
 
+  describe "block_sender/2" do
+    test "blocks a sender" do
+      %{id: user_id} = user_fixture()
+      email_alias = alias_fixture(%{user_id: user_id})
+
+      {:ok, email_alias} = Aliases.block_sender(email_alias, "test@test.com")
+
+      assert length(email_alias.blocked_addresses) == 1
+      assert hd(email_alias.blocked_addresses) == "test@test.com"
+    end
+
+    test "doesn't add duplicates" do
+      %{id: user_id} = user_fixture()
+      email_alias = alias_fixture(%{user_id: user_id})
+
+      {:ok, _email_alias} = Aliases.block_sender(email_alias, "test@test.com")
+      {:ok, email_alias} = Aliases.block_sender(email_alias, "test@test.com")
+
+      assert length(email_alias.blocked_addresses) == 1
+      assert hd(email_alias.blocked_addresses) == "test@test.com"
+    end
+
+    test "downcases addresses" do
+      %{id: user_id} = user_fixture()
+      email_alias = alias_fixture(%{user_id: user_id})
+
+      {:ok, email_alias} = Aliases.block_sender(email_alias, "TEST@test.com")
+
+      assert length(email_alias.blocked_addresses) == 1
+      assert hd(email_alias.blocked_addresses) == "test@test.com"
+    end
+  end
+
+  describe "unblock_sender/2" do
+    test "unblocks a sender" do
+      %{id: user_id} = user_fixture()
+      email_alias = alias_fixture(%{user_id: user_id, blocked_addresses: ["test@test.com"]})
+
+      {:ok, email_alias} = Aliases.unblock_sender(email_alias, "test@test.com")
+
+      assert Enum.empty?(email_alias.blocked_addresses)
+    end
+  end
+
   describe "delete_email_alias/1" do
     test "sets deleted_at" do
       %{id: id} = user_fixture()
@@ -111,6 +155,7 @@ defmodule Shroud.AliasesTest do
       today = NaiveDateTime.utc_now() |> NaiveDateTime.to_date()
       assert metric.date == today
       assert metric.forwarded == 1
+      assert metric.blocked == 0
     end
 
     test "increments an existing row" do
@@ -133,6 +178,43 @@ defmodule Shroud.AliasesTest do
 
       email_alias = Repo.reload(email_alias)
       assert email_alias.forwarded == 1
+    end
+  end
+
+  describe "increment_blocked!/1" do
+    test "creates a new row for the date" do
+      %{id: id} = user_fixture()
+      email_alias = alias_fixture(%{user_id: id})
+
+      Aliases.increment_blocked!(email_alias)
+
+      metric = Repo.get_by!(EmailMetric, alias_id: email_alias.id)
+      today = NaiveDateTime.utc_now() |> NaiveDateTime.to_date()
+      assert metric.date == today
+      assert metric.forwarded == 0
+      assert metric.blocked == 1
+    end
+
+    test "increments an existing row" do
+      %{id: id} = user_fixture()
+      email_alias = alias_fixture(%{user_id: id})
+      today = NaiveDateTime.utc_now() |> NaiveDateTime.to_date()
+      Repo.insert!(%EmailMetric{alias_id: email_alias.id, date: today, blocked: 1})
+
+      Aliases.increment_blocked!(email_alias)
+
+      metric = Repo.get_by!(EmailMetric, alias_id: email_alias.id)
+      assert metric.blocked == 2
+    end
+
+    test "increments blocked field on the alias" do
+      %{id: id} = user_fixture()
+      email_alias = alias_fixture(%{user_id: id})
+
+      Aliases.increment_blocked!(email_alias)
+
+      email_alias = Repo.reload(email_alias)
+      assert email_alias.blocked == 1
     end
   end
 end

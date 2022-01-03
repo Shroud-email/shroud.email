@@ -10,6 +10,7 @@ defmodule ShroudWeb.EmailAliasLive.Show do
       |> assign(:address, address)
       |> assign(:page_title, "Aliases")
       |> assign(:subpage_title, address)
+      |> assign(:blocked_sender_error, "")
       |> update_email_alias()
 
     {:noreply, socket}
@@ -47,7 +48,7 @@ defmodule ShroudWeb.EmailAliasLive.Show do
               </dd>
             </div>
             <.form @submit="editingNotes = false; editingTitle = false" let={f} for={@changeset} phx-submit="update" x-data="{ editingTitle: false, editingNotes: false }">
-              <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+              <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                 <dt class="text-sm font-medium text-gray-500">
                   Title
                 </dt>
@@ -63,7 +64,7 @@ defmodule ShroudWeb.EmailAliasLive.Show do
                   </span>
                 </dd>
               </div>
-              <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+              <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                 <dt class="text-sm font-medium text-gray-500">
                   Notes
                 </dt>
@@ -80,12 +81,73 @@ defmodule ShroudWeb.EmailAliasLive.Show do
                 </dd>
               </div>
             </.form>
+            <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+              <dt class="text-sm font-medium text-gray-500">
+                <div>Blocked senders</div>
+                <div class="mt-1 font-normal">
+                  Emails from these addresses won't be forwarded.
+                </div>
+              </dt>
+              <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                <%= if not Enum.empty?(@alias.blocked_addresses) do %>
+                  <ul role="list" class="border border-gray-200 rounded-md divide-y divide-gray-200 mb-6">
+                    <%= for blocked_sender <- @alias.blocked_addresses do %>
+                      <li class="pl-3 pr-4 py-3 flex items-center justify-between text-sm">
+                        <div class="w-0 flex-1 flex items-center">
+                          <!-- Heroicon name: solid/mail -->
+                          <svg xmlns="http://www.w3.org/2000/svg" class="flex-shrink-0 h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                            <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                          </svg>
+                          <span class="ml-2 flex-1 w-0 truncate">
+                            <%= blocked_sender %>
+                          </span>
+                        </div>
+                        <div class="ml-4 flex-shrink-0">
+                          <button
+                            phx-click="unblock_sender"
+                            phx-value-sender={blocked_sender}
+                            type="button"
+                            class="font-medium text-indigo-600 hover:text-indigo-500"
+                          >
+                            Unblock
+                          </button>
+                        </div>
+                      </li>
+                    <% end %>
+                  </ul>
+                <% end %>
+
+                <form phx-submit="block_sender">
+                  <div>
+                    <label for="sender" class="block text-sm font-medium text-gray-700">Block an address</label>
+                    <div class="mt-1 flex rounded-md shadow-sm">
+                      <div class="relative flex items-stretch flex-grow focus-within:z-10">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <!-- Heroicon name: solid/ban -->
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clip-rule="evenodd" />
+                          </svg>
+                        </div>
+                        <input type="email" name="sender" id="sender" class="focus:ring-indigo-500 focus:border-indigo-500 block w-full rounded-none rounded-l-md pl-10 sm:text-sm border-gray-300" placeholder="spammer@example.com">
+                      </div>
+                      <button type="submit" class="-ml-px relative inline-flex items-center space-x-2 px-4 py-2 border border-gray-300 text-sm font-medium rounded-r-md text-gray-700 bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">
+                        <span>Block sender</span>
+                      </button>
+                    </div>
+                  </div>
+                  <%= if @blocked_sender_error do %>
+                    <span class="invalid-feedback"><%= @blocked_sender_error %></span>
+                  <% end %>
+                </form>
+              </dd>
+            </div>
           </dl>
         </div>
       </div>
-      <dl class="grid grid-cols-1 gap-5 sm:grid-cols-3 mt-6">
+      <dl class="grid grid-cols-1 gap-5 xl:grid-cols-4 mt-6">
         <div class="px-4 py-5 bg-white shadow rounded-lg overflow-hidden sm:p-6">
-          <dt class="text-sm font-medium text-gray-500 truncate">
+          <dt class="text-sm font-medium text-green-700 truncate">
             Emails forwarded (total)
           </dt>
           <dd class="mt-1 text-3xl font-semibold text-gray-900">
@@ -94,11 +156,20 @@ defmodule ShroudWeb.EmailAliasLive.Show do
         </div>
 
         <div class="px-4 py-5 bg-white shadow rounded-lg overflow-hidden sm:p-6">
-          <dt class="text-sm font-medium text-gray-500 truncate">
+          <dt class="text-sm font-medium text-green-700 truncate">
             Emails forwarded (last 30 days)
           </dt>
           <dd class="mt-1 text-3xl font-semibold text-gray-900">
             <%= @alias.forwarded_in_last_30_days %>
+          </dd>
+        </div>
+
+        <div class="px-4 py-5 bg-white shadow rounded-lg overflow-hidden sm:p-6">
+          <dt class="text-sm font-medium text-red-800 truncate">
+            Emails blocked (total)
+          </dt>
+          <dd class="mt-1 text-3xl font-semibold text-gray-900">
+            <%= @alias.blocked %>
           </dd>
         </div>
 
@@ -142,6 +213,58 @@ defmodule ShroudWeb.EmailAliasLive.Show do
   @impl true
   def handle_event("update", %{"email_alias" => %{"title" => title, "notes" => notes}}, socket) do
     {:noreply, update_alias(socket, %{title: title, notes: notes})}
+  end
+
+  @impl true
+  def handle_event(
+        "unblock_sender",
+        %{"sender" => sender},
+        %{assigns: %{current_user: user, alias: email_alias}} = socket
+      ) do
+    socket =
+      if user |> can?(update(email_alias)) do
+        case Aliases.unblock_sender(email_alias, sender) do
+          {:ok, _email_alias} ->
+            socket
+            |> put_flash(:info, "Unblocked #{sender}.")
+            |> update_email_alias()
+
+          :error ->
+            put_flash(socket, :error, "Something went wrong.")
+        end
+      else
+        socket |> put_flash(:error, "You don't have permission to do that.")
+      end
+
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_event(
+        "block_sender",
+        %{"sender" => sender},
+        %{assigns: %{current_user: user, alias: email_alias}} = socket
+      ) do
+    socket =
+      if user |> can?(update(email_alias)) do
+        case Aliases.block_sender(email_alias, sender) do
+          {:ok, _email_alias} ->
+            socket
+            |> assign(:blocked_sender_error, "")
+            |> put_flash(:info, "Blocked #{sender}.")
+            |> update_email_alias()
+
+          {:error, changeset} ->
+            {error, _} = Keyword.get(changeset.errors, :blocked_addresses)
+
+            socket
+            |> assign(:blocked_sender_error, error)
+        end
+      else
+        socket |> put_flash(:error, "You don't have permission to do that.")
+      end
+
+    {:noreply, socket}
   end
 
   defp update_alias(%{assigns: %{current_user: user, alias: email_alias}} = socket, params) do
