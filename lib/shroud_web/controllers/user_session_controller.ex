@@ -16,7 +16,7 @@ defmodule ShroudWeb.UserSessionController do
     %{"email" => email, "password" => password} = user_params
 
     if user = Accounts.get_user_by_email_and_password(email, password) do
-      if user.totp_secret do
+      if user.totp_enabled do
         conn
         |> put_session(:totp_pending_user_params, user_params)
         |> redirect(to: Routes.user_session_path(conn, :new_totp))
