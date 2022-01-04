@@ -58,8 +58,6 @@ defmodule Shroud.Email.SmtpServer do
 
   @decorate transaction(:background_job)
   def handle_DATA(from, to, data, state) do
-    Logger.info("Received email from #{from} with data #{data}")
-
     %{from: from, to: hd(to), data: data}
     |> EmailHandler.new()
     |> Oban.insert()
