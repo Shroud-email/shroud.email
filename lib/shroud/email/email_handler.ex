@@ -1,5 +1,5 @@
 defmodule Shroud.Email.EmailHandler do
-  use Oban.Worker, queue: :outgoing_email, max_attempts: 10
+  use Oban.Worker, queue: :outgoing_email, max_attempts: 20
   use Appsignal.Instrumentation.Decorators
 
   require Logger
