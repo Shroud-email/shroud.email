@@ -73,13 +73,24 @@ defmodule Shroud.Email.TrackerRemover do
     {"height", height} = Enum.find(attrs, {"height", "999"}, &match?({"height", _height}, &1))
     {"src", source} = Enum.find(attrs, {"src", nil}, &match?({"src", _src}, &1))
 
-    {width, _rem} = Integer.parse(width)
-    {height, _rem} = Integer.parse(height)
-
-    if width < 3 and height < 3 and not is_nil(source) do
-      source
-      |> URI.parse()
-      |> Map.get(:host)
+    with {width, _rem} <- parse_size(width),
+         {height, _rem} <- parse_size(height) do
+      if width < 3 and height < 3 and not is_nil(source) do
+        source
+        |> URI.parse()
+        |> Map.get(:host)
+      end
+    else
+      :error -> nil
     end
+  end
+
+  defp parse_size(size) do
+    size
+    |> String.trim()
+    |> String.replace_suffix("px", "")
+    |> String.replace_suffix("rem", "")
+    |> String.replace_suffix("em", "")
+    |> Integer.parse()
   end
 end

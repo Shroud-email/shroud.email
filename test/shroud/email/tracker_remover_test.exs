@@ -82,6 +82,39 @@ defmodule Shroud.Email.TrackerRemoverTest do
       assert Enum.member?(email.removed_trackers, "tracker2.com")
     end
 
+    test "removes 1x1 images with 'px' in height" do
+      html_body = """
+      <html>
+        <body>
+          <h1>An email</h1>
+          <img src="https://unknowntracker.com" width="1px" height="1px" />
+          <img src="https://gooddomain.com" width="500" height="1" />
+          <p>Content</p>
+        </body>
+      </html>
+      """
+
+      expected_result = """
+      <html>
+        <body>
+          <h1>An email</h1>
+          <img src="https://gooddomain.com" width="500" height="1" />
+          <p>Content</p>
+        </body>
+      </html>
+      """
+
+      email =
+        html_email("sender@example.com", ["recipient@example.com"], "Subject", html_body)
+        |> ParsedEmail.parse()
+        |> TrackerRemover.process()
+
+      assert remove_whitespace(email.swoosh_email.html_body) == remove_whitespace(expected_result)
+      assert length(Floki.find(email.parsed_html, "img")) == 1
+      assert length(email.removed_trackers) == 1
+      assert hd(email.removed_trackers) == "unknowntracker.com"
+    end
+
     test "doesn't double-count 1x1 images from known trackers" do
       html_body = """
       <html>
