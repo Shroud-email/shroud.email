@@ -36,6 +36,7 @@ test:
     - chmod +x codecov
     - mix local.hex --force
     - mix local.rebar --force
+    - mix deps.get
     - mix compile --warnings-as-errors
     - mix ecto.setup
     - mix coveralls.json
@@ -47,6 +48,7 @@ lint:
   script:
     - mix local.hex --force
     - mix local.rebar --force
+    - mix deps.get
     - mix format --check-formatted
     - mix credo
     - mix sobelow --config

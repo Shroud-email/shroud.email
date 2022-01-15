@@ -68,6 +68,56 @@ defmodule Shroud.Email.ParsedEmailTest do
       assert replace_crlf(parsed.swoosh_email.text_body) == @text_content
       assert not is_nil(parsed.parsed_html)
     end
+
+    test "handles an application/octet attachment" do
+      raw_email = File.read!("test/support/data/single_attachment.email")
+
+      %{swoosh_email: email} = ParsedEmail.parse(raw_email)
+
+      assert length(email.attachments) == 1
+      assert hd(email.attachments).filename == "motherofalldemos.jpg"
+      assert hd(email.attachments).content_type == "image/jpeg"
+    end
+
+    test "handles an image/jpeg attachment" do
+      raw_email = File.read!("test/support/data/attachment_image.email")
+
+      %{swoosh_email: email} = ParsedEmail.parse(raw_email)
+
+      assert length(email.attachments) == 1
+      assert hd(email.attachments).filename == "motherofalldemos.jpg"
+      assert hd(email.attachments).content_type == "image/jpeg"
+    end
+
+    test "handles multiple attachments" do
+      raw_email = File.read!("test/support/data/multiple_attachments.email")
+
+      %{swoosh_email: email} = ParsedEmail.parse(raw_email)
+
+      assert length(email.attachments) == 2
+
+      assert Enum.map(email.attachments, &Map.get(&1, :filename)) == [
+               "internet.jpg",
+               "motherofalldemos.jpg"
+             ]
+
+      assert Enum.map(email.attachments, &Map.get(&1, :content_type)) == [
+               "image/jpeg",
+               "image/jpeg"
+             ]
+    end
+
+    test "handles an inline attachment" do
+      raw_email = File.read!("test/support/data/inline_attachment.email")
+
+      %{swoosh_email: email} = ParsedEmail.parse(raw_email)
+
+      assert length(email.attachments) == 1
+      attachment = hd(email.attachments)
+      assert attachment.filename == "motherofalldemos.jpg"
+      assert attachment.content_type == "image/jpeg"
+      assert attachment.cid == "708f1df0@example.com"
+    end
   end
 
   defp replace_crlf(string) do
