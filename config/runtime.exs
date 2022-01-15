@@ -98,7 +98,7 @@ if config_env() == :prod do
       """
 
   config :shroud, Shroud.Mailer,
-    adapter: Shroud.Swoosh.Adapters.OhMySmtp,
+    adapter: Swoosh.Adapters.OhMySmtp,
     api_key: oh_my_smtp_api_key
 
   config :swoosh, :api_client, Swoosh.ApiClient.Hackney

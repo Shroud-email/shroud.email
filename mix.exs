@@ -53,7 +53,8 @@ defmodule Shroud.MixProject do
       {:sobelow, "~> 0.11.1", only: [:dev, :test], runtime: false},
       {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
       {:husky, "~> 1.0", only: :dev, runtime: false},
-      {:swoosh, "~> 1.3"},
+      {:swoosh,
+       git: "https://github.com/taobojlen/swoosh", tag: "b454ead1ce52602e210acf20e28ed3dce4147341"},
       {:telemetry_metrics, "~> 0.6"},
       {:telemetry_poller, "~> 1.0"},
       {:gettext, "~> 0.18"},
@@ -78,7 +79,8 @@ defmodule Shroud.MixProject do
       {:nimble_totp, "~> 0.1.3"},
       {:eqrcode, "~> 0.1.10"},
       {:cloak_ecto, "~> 1.2"},
-      {:stripity_stripe, "~> 2.12"}
+      {:stripity_stripe, "~> 2.12"},
+      {:mime, "~> 1.6.0"}
     ]
   end
 
