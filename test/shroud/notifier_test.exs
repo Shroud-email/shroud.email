@@ -34,4 +34,18 @@ defmodule Shroud.NotifierTest do
       }
     )
   end
+
+  test "notify_outgoing_email_bounced/2" do
+    Notifier.notify_outgoing_email_bounced("from@example.com", "to@example.com")
+
+    assert_enqueued(
+      worker: NotifierJob,
+      args: %{
+        payload: %{
+          "content" =>
+            "⚠️ Email from **from@example.com** to **to@example.com** hard bounced. Failed to forward!"
+        }
+      }
+    )
+  end
 end
