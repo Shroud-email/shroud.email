@@ -6,7 +6,7 @@ defmodule Shroud.Accounts do
   import Ecto.Query, warn: false
   alias Shroud.Repo
 
-  alias Shroud.Util
+  alias Shroud.{Notifier, Util}
   alias Shroud.Accounts.{User, UserToken, UserNotifier}
   alias Shroud.Aliases.EmailAlias
 
@@ -91,9 +91,16 @@ defmodule Shroud.Accounts do
 
   """
   def register_user(attrs) do
-    %User{}
-    |> User.registration_changeset(attrs)
-    |> Repo.insert(returning: true)
+    case %User{}
+         |> User.registration_changeset(attrs)
+         |> Repo.insert(returning: true) do
+      {:ok, user} ->
+        Notifier.notify_user_started_trial(user.email)
+        {:ok, user}
+
+      other ->
+        other
+    end
   end
 
   @doc """

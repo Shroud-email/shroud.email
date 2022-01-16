@@ -2,7 +2,7 @@ defmodule ShroudWeb.CheckoutController do
   use ShroudWeb, :controller
   require Logger
 
-  alias Shroud.Accounts
+  alias Shroud.{Accounts, Notifier}
   alias Shroud.Billing.Session
   alias ShroudWeb.Plugs.CachingBodyReader
 
@@ -109,6 +109,7 @@ defmodule ShroudWeb.CheckoutController do
             }
 
             Accounts.update_stripe_details!(user, attrs)
+            Notifier.notify_user_signed_up(user.email)
             Logger.info("Updated plan_expires_at for #{user.email} to #{current_period_end}")
 
           "past_due" ->

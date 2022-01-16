@@ -5,6 +5,8 @@ defmodule Shroud.Email.TrackerListFetcherTest do
   alias Shroud.Email.TrackerListFetcher
   alias Shroud.Email
 
+  setup :verify_on_exit!
+
   describe "perform/1" do
     test "saves all trackers" do
       Shroud.MockHTTPoison

@@ -1,5 +1,6 @@
 defmodule Shroud.AccountsTest do
   use Shroud.DataCase
+  use Oban.Testing, repo: Shroud.Repo
 
   alias Shroud.Accounts
 
@@ -112,6 +113,13 @@ defmodule Shroud.AccountsTest do
       assert is_binary(user.hashed_password)
       assert is_nil(user.confirmed_at)
       assert is_nil(user.password)
+    end
+
+    test "enqueues a webhook notification" do
+      email = unique_user_email()
+      Accounts.register_user(valid_user_attributes(email: email))
+
+      assert_enqueued(worker: Shroud.NotifierJob)
     end
   end
 

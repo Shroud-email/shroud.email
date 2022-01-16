@@ -55,7 +55,7 @@ config :swoosh, :api_client, Swoosh.ApiClient.Hackney
 config :shroud, Oban,
   repo: Shroud.Repo,
   plugins: [Oban.Plugins.Pruner],
-  queues: [default: 1, outgoing_email: 5]
+  queues: [default: 1, outgoing_email: 5, notifier: 1]
 
 # Configure esbuild (the version is required)
 config :esbuild,

@@ -30,6 +30,7 @@ services:
       - STRIPE_SECRET=${STRIPE_SECRET}
       - STRIPE_PRICE=${STRIPE_PRICE}
       - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+      - NOTIFIER_WEBHOOK_URL=${NOTIFIER_WEBHOOK_URL}
     volumes:
       - "caddy_data:/var/caddy:ro"
   caddy:
