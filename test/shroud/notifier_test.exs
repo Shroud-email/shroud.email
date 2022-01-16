@@ -20,4 +20,18 @@ defmodule Shroud.NotifierTest do
       args: %{payload: %{"content" => "🎉 **user@example.com** just signed up for a paid plan!"}}
     )
   end
+
+  test "notify_outgoing_email_marked_as_spam/2" do
+    Notifier.notify_outgoing_email_marked_as_spam("from@example.com", "to@example.com")
+
+    assert_enqueued(
+      worker: NotifierJob,
+      args: %{
+        payload: %{
+          "content" =>
+            "⚠️ Email from **from@example.com** to **to@example.com** marked as spam by OhMySMTP"
+        }
+      }
+    )
+  end
 end

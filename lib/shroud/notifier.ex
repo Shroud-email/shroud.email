@@ -21,6 +21,14 @@ defmodule Shroud.Notifier do
     enqueue_webhook(payload)
   end
 
+  def notify_outgoing_email_marked_as_spam(from, to) do
+    payload = %{
+      content: "⚠️ Email from **#{from}** to **#{to}** marked as spam by OhMySMTP"
+    }
+
+    enqueue_webhook(payload)
+  end
+
   defp enqueue_webhook(payload) do
     case Application.fetch_env(:shroud, :notifier_webhook_url) do
       {:ok, _url} ->
