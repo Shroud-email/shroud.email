@@ -6,6 +6,8 @@ defmodule Shroud.Email.ParsedEmail do
   import Swoosh.Email
   require Logger
 
+  alias Shroud.Email.EncodedWord
+
   @enforce_keys [:raw_email]
   defstruct [:raw_email, :swoosh_email, :parsed_html, removed_trackers: []]
 
@@ -30,7 +32,11 @@ defmodule Shroud.Email.ParsedEmail do
   def parse(raw_email) do
     # TODO: handle parsing failures from mimemail?
     # TODO: only process headers once!
-    parsed_email = :mimemail.decode(raw_email)
+    parsed_email =
+      raw_email
+      |> EncodedWord.decode()
+      |> :mimemail.decode()
+
     swoosh_email = build_email(new(), parsed_email)
 
     # TODO: maybe log some detailed errors if there's a parsing failure here

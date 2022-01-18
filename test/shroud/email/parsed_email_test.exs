@@ -118,6 +118,13 @@ defmodule Shroud.Email.ParsedEmailTest do
       assert attachment.content_type == "image/jpeg"
       assert attachment.cid == "708f1df0@example.com"
     end
+
+    test "handles ISO-8859-1 encoding" do
+      raw_email = File.read!("test/support/data/encoded_word.email")
+      %{swoosh_email: email} = ParsedEmail.parse(raw_email)
+
+      Jason.encode!(email.html_body) |> IO.inspect()
+    end
   end
 
   defp replace_crlf(string) do
