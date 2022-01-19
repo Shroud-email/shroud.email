@@ -79,8 +79,7 @@ defmodule Shroud.MixProject do
       {:eqrcode, "~> 0.1.10"},
       {:cloak_ecto, "~> 1.2"},
       {:stripity_stripe, "~> 2.12"},
-      {:mime, "~> 1.6.0"},
-      {:mail, "~> 0.2.3"}
+      {:mime, "~> 1.6.0"}
     ]
   end
 

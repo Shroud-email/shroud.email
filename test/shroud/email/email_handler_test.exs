@@ -152,6 +152,41 @@ defmodule Shroud.Email.EmailHandlerTest do
       end)
     end
 
+    test "handles unicode email headers (encoded-word)", %{email_alias: email_alias} do
+      data =
+        text_email(
+          {"Sender", "sender@example.com"},
+          [{"Recipient", email_alias.address}],
+          "Hello, =?utf-8?Q?foo?=",
+          "Text body"
+        )
+
+      args = %{from: "sender@example.com", to: email_alias.address, data: data}
+      perform_job(EmailHandler, args)
+
+      assert_email_sent(fn email ->
+        assert email.subject == "Hello, foo"
+      end)
+    end
+
+    test "handles unicode email bodies (quoted-printable)", %{email_alias: email_alias} do
+      data =
+        text_email(
+          {"Sender", "sender@example.com"},
+          [{"Recipient", email_alias.address}],
+          "Subject",
+          "p=C3=A9dagogues",
+          "Content-Transfer-Encoding: quoted-printable"
+        )
+
+      args = %{from: "sender@example.com", to: email_alias.address, data: data}
+      perform_job(EmailHandler, args)
+
+      assert_email_sent(fn email ->
+        assert email.text_body =~ "pédagogues"
+      end)
+    end
+
     test "increments email metrics", %{email_alias: email_alias} do
       data =
         text_email(

@@ -21,7 +21,6 @@ defmodule Shroud.Email.ParsedEmailTest do
 
       parsed = ParsedEmail.parse(raw_email)
 
-      assert parsed.raw_email == raw_email
       assert parsed.removed_trackers == []
       assert parsed.swoosh_email.subject == "Subject"
       assert replace_crlf(parsed.swoosh_email.text_body) == @text_content
@@ -37,7 +36,6 @@ defmodule Shroud.Email.ParsedEmailTest do
 
       parsed = ParsedEmail.parse(raw_email)
 
-      assert parsed.raw_email == raw_email
       assert parsed.removed_trackers == []
       assert parsed.swoosh_email.subject == "Subject"
       assert replace_crlf(parsed.swoosh_email.html_body) == replace_crlf(@html_content)
@@ -59,7 +57,6 @@ defmodule Shroud.Email.ParsedEmailTest do
 
       parsed = ParsedEmail.parse(raw_email)
 
-      assert parsed.raw_email == raw_email
       assert parsed.removed_trackers == []
       assert parsed.swoosh_email.subject == "Subject"
       assert replace_crlf(parsed.swoosh_email.html_body) == replace_crlf(@html_content)
@@ -67,6 +64,26 @@ defmodule Shroud.Email.ParsedEmailTest do
       assert parsed.swoosh_email.to == [{"recipient@shroud.email", "recipient@shroud.email"}]
       assert replace_crlf(parsed.swoosh_email.text_body) == @text_content
       assert not is_nil(parsed.parsed_html)
+    end
+
+    test "handles unicode email bodies (quoted-printable)" do
+      raw_email = File.read!("test/support/data/unicode_body.email")
+
+      %{swoosh_email: email} = ParsedEmail.parse(raw_email)
+
+      assert email.html_body =~ "①"
+      assert email.html_body =~ "㏨"
+      assert email.html_body =~ "λ"
+    end
+
+    test "handles unicode headers (encoded-word)" do
+      raw_email = File.read!("test/support/data/unicode_header.email")
+
+      %{swoosh_email: email} = ParsedEmail.parse(raw_email)
+
+      {sender, _sender_email} = email.reply_to
+      assert sender == "Pärla Example"
+      assert email.subject == "Unicode PÄRLA test"
     end
 
     test "handles an application/octet attachment" do

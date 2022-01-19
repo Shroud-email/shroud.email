@@ -13,14 +13,14 @@ defmodule Shroud.EmailFixtures do
     Content-Type: multipart/alternative; boundary="#{boundary}"
 
     --#{boundary}
-    Content-Type: text/plain; charset="utf-8"
+    Content-Type: text/plain
     Content-Transfer-Encoding: quoted-printable
     Content-Disposition: inline
 
     #{text_content}
 
     --#{boundary}
-    Content-Type: text/HTML; charset="utf-8"
+    Content-Type: text/HTML
     Content-Transfer-Encoding: quoted-printable
     Content-Disposition: inline
 
@@ -37,7 +37,7 @@ defmodule Shroud.EmailFixtures do
   @spec html_email(String.t(), [String.t()], String.t(), String.t()) :: String.t()
   def html_email(sender, recipients, subject, content) do
     """
-    Content-Type: text/HTML; charset="utf-8"
+    Content-Type: text/HTML
 
     #{content}
     """
@@ -48,15 +48,16 @@ defmodule Shroud.EmailFixtures do
   end
 
   @spec text_email(String.t(), [String.t()], String.t(), String.t()) :: String.t()
-  def text_email(sender, recipients, subject, content) do
+  def text_email(sender, recipients, subject, content, extra_header \\ nil) do
     """
-    Content-Type: text/plain; charset="utf-8"
+    Content-Type: text/plain
 
     #{content}
     """
     |> add_subject(subject)
     |> add_sender(sender)
     |> add_recipients(recipients)
+    |> add_header(extra_header)
     |> convert_newlines()
   end
 
@@ -81,6 +82,12 @@ defmodule Shroud.EmailFixtures do
     """
     To: #{recipients}
     """ <> data
+  end
+
+  defp add_header(data, nil), do: data
+
+  defp add_header(data, header) do
+    header <> "\n" <> data
   end
 
   defp format_address({name, address}), do: "\"#{name}\" <#{address}>"
