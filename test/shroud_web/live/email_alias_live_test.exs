@@ -27,7 +27,8 @@ defmodule ShroudWeb.EmailAliasLiveTest do
         conn
         |> live(Routes.email_alias_index_path(conn, :index))
 
-      html = index_live |> element("button", "New alias") |> render_click()
+      {:ok, _view, html} =
+        index_live |> element("button", "New alias") |> render_click() |> follow_redirect(conn)
 
       assert html =~ "Created new alias"
       assert html =~ "@shroud.test"

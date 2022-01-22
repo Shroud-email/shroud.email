@@ -11,7 +11,7 @@ defmodule Shroud.Aliases do
   alias Shroud.Accounts.User
 
   @spec list_aliases(User.t()) :: [EmailAlias.t()]
-  def list_aliases(%User{} = user) do
+  def list_aliases(%User{} = user, search_query \\ nil) do
     query =
       from ea in EmailAlias,
         where: ea.user_id == ^user.id and is_nil(ea.deleted_at),
@@ -19,6 +19,13 @@ defmodule Shroud.Aliases do
         on: m.alias_id == ea.id,
         select_merge: %{ea | forwarded_in_last_30_days: coalesce(m.forwarded, 0)},
         order_by: [desc: ea.inserted_at]
+
+    query =
+      if is_nil(search_query) or search_query == "" do
+        query
+      else
+        filter_aliases(search_query, query)
+      end
 
     Repo.all(query)
   end
@@ -167,5 +174,31 @@ defmodule Shroud.Aliases do
       where: m.date > date_add(^today, -30, "day"),
       group_by: m.alias_id,
       select: %{forwarded: sum(m.forwarded), alias_id: m.alias_id}
+  end
+
+  # Shamelessly copied from https://smartlogic.io/blog/dynamic-conditionals-with-ecto/
+  defp filter_aliases(value, query) do
+    # value is the string entered by the user
+    # query is the existing database query with prior scopes applied
+    values =
+      value
+      # split on and remove all extra whitespace
+      |> String.split(~r/ +/, trim: true)
+      |> Enum.map(fn value ->
+        # replace non characters with wildcard characters
+        "%" <> String.replace(value, ~r/[\b\W]+/, "%") <> "%"
+      end)
+
+    conditions =
+      values
+      |> Enum.reduce(false, fn v, acc_query ->
+        dynamic(
+          [ea],
+          ilike(ea.address, ^v) or ilike(ea.title, ^v) or ilike(ea.notes, ^v) or ^acc_query
+        )
+      end)
+
+    query
+    |> where(^conditions)
   end
 end

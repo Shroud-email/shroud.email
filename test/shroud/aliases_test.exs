@@ -46,6 +46,37 @@ defmodule Shroud.AliasesTest do
 
       assert [] == Aliases.list_aliases(user)
     end
+
+    test "filters by query matching address" do
+      %{id: id} = user = user_fixture()
+      matching_alias = alias_fixture(%{user_id: id, address: "email-LOREM@example.com"})
+      _other_alias = alias_fixture(%{user_id: id, address: "email-ipsum@example.com"})
+
+      assert [matching_alias] == Aliases.list_aliases(user, "lorem")
+    end
+
+    test "filters by query matching title" do
+      %{id: id} = user = user_fixture()
+      matching_alias = alias_fixture(%{user_id: id, title: "Lorem ipsum"})
+      _other_alias = alias_fixture(%{user_id: id, title: "dolor sit amet"})
+
+      assert [matching_alias] == Aliases.list_aliases(user, "Ipsum")
+    end
+
+    test "filters by query matching notes" do
+      %{id: id} = user = user_fixture()
+      matching_alias = alias_fixture(%{user_id: id, notes: "lorem ipsum"})
+      _other_alias = alias_fixture(%{user_id: id, notes: "dolor sit amet"})
+
+      assert [matching_alias] == Aliases.list_aliases(user, "Lorem")
+    end
+
+    test "does not filter when passed empty string" do
+      %{id: id} = user = user_fixture()
+      email_alias = alias_fixture(%{user_id: id})
+
+      assert [email_alias] == Aliases.list_aliases(user, "")
+    end
   end
 
   describe "get_email_alias_by_address!/1" do

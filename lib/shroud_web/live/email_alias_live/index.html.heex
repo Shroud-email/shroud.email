@@ -26,7 +26,7 @@
   </div>
 <% end %>
 
-<%= if Enum.empty?(@aliases) do %>
+<%= if Enum.empty?(@aliases) and @filter_query == "" do %>
   <div class="text-center">
     <!-- HeroIcons mail -->
     <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -50,12 +50,22 @@
     <div class="text-gray-600 text-sm">
       <%= length(@aliases) %> <%= if length(@aliases) == 1, do: "alias", else: "aliases" %>
     </div>
-    <.button phx_click="add_alias" text="New alias">
-      <!-- Heroicon name: solid/plus -->
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
-      </svg>
-    </.button>
+
+    <div class="flex flex-row items-center">
+      <div class="mr-3">
+        <form phx-change="filter" phx-submit="filter">
+          <label for="query" class="sr-only">Filter aliases</label>
+          <input phx-debounce="1000" value={@filter_query} type="text" name="query" id="query" class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 px-4 rounded-full" placeholder="Filter">
+          <button type="submit" class="hidden">Apply filter</button>
+        </form>
+      </div>
+      <.button phx_click="add_alias" text="New alias">
+        <!-- Heroicon name: solid/plus -->
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+          <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+        </svg>
+      </.button>
+    </div>
   </div>
   <div class="flex flex-col">
     <div class="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">

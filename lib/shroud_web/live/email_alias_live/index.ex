@@ -16,6 +16,7 @@ defmodule ShroudWeb.EmailAliasLive.Index do
       |> update_email_aliases()
       |> assign(:page_title, "Aliases")
       |> assign(:subpage_title, nil)
+      |> assign(:filter_query, "")
 
     {:ok, socket}
   end
@@ -49,6 +50,16 @@ defmodule ShroudWeb.EmailAliasLive.Index do
   end
 
   @impl true
+  def handle_event("filter", %{"query" => query}, socket) do
+    socket =
+      socket
+      |> assign(:filter_query, query)
+      |> update_email_aliases()
+
+    {:noreply, socket}
+  end
+
+  @impl true
   def handle_info(
         {:updated_alias, email_alias, params},
         %{assigns: %{current_user: user}} = socket
@@ -75,6 +86,10 @@ defmodule ShroudWeb.EmailAliasLive.Index do
   end
 
   defp update_email_aliases(socket) do
-    assign(socket, :aliases, Aliases.list_aliases(socket.assigns[:current_user]))
+    assign(
+      socket,
+      :aliases,
+      Aliases.list_aliases(socket.assigns[:current_user], socket.assigns[:filter_query])
+    )
   end
 end
