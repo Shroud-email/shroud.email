@@ -39,6 +39,10 @@ defmodule Shroud.Notifier do
 
   defp enqueue_webhook(payload) do
     case Application.fetch_env(:shroud, :notifier_webhook_url) do
+      :error ->
+        # Not configured; do nothing
+        :ok
+
       {:ok, nil} ->
         # Not configured; do nothing
         :ok
