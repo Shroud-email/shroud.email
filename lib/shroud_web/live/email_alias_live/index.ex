@@ -7,6 +7,7 @@ defmodule ShroudWeb.EmailAliasLive.Index do
   alias Shroud.Accounts
   alias Shroud.Aliases
   alias Shroud.Aliases.EmailAlias
+  alias ShroudWeb.Router.Helpers, as: Routes
 
   @impl true
   def mount(_params, _session, socket) do
@@ -21,23 +22,30 @@ defmodule ShroudWeb.EmailAliasLive.Index do
 
   @impl true
   def handle_event("add_alias", _params, %{assigns: %{current_user: user}} = socket) do
-    socket =
-      if user |> can?(create(EmailAlias)) do
-        case Aliases.create_random_email_alias(user) do
-          {:ok, email_alias} ->
+    if user |> can?(create(EmailAlias)) do
+      case Aliases.create_random_email_alias(user) do
+        {:ok, email_alias} ->
+          socket =
             socket
             |> put_flash(:info, "Created new alias #{email_alias.address}.")
             |> assign(:aliases, [email_alias | socket.assigns.aliases])
 
-          {:error, _changeset} ->
+          {:noreply,
+           push_redirect(socket,
+             to: Routes.email_alias_show_path(socket, :show, email_alias.address)
+           )}
+
+        {:error, _changeset} ->
+          socket =
             socket
             |> put_flash(:error, "Something went wrong.")
-        end
-      else
-        socket |> put_flash(:error, "You don't have permission to do that.")
-      end
 
-    {:noreply, socket}
+          {:noreply, socket}
+      end
+    else
+      socket = socket |> put_flash(:error, "You don't have permission to do that.")
+      {:noreply, socket}
+    end
   end
 
   @impl true
