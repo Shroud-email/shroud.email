@@ -23,9 +23,22 @@ defmodule ShroudWeb.EmailAliasLive.Show do
       <div class="bg-white shadow overflow-hidden sm:rounded-lg">
         <div class="px-4 py-5 sm:px-6 flex justify-between">
           <div>
-            <h3 class="text-lg leading-6 font-medium text-gray-900">
-              <%= @address %>
-            </h3>
+            <div class="flex items-center">
+              <h3 class="text-lg leading-6 font-medium text-gray-900">
+                <%= @address %>
+              </h3>
+              <div
+                x-data="{ tooltip: 'Copy to clipboard' }"
+                class="ml-2"
+              >
+                <button x-tooltip="tooltip" class="rounded p-1 focus:ring focus:ring-indigo-500" @click={"navigator.clipboard.writeText('#{@address}'); tooltip = 'Copied!'; setTimeout(() => tooltip = 'Copy to clipboard', 1500)"}>
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M8 2a1 1 0 000 2h2a1 1 0 100-2H8z" />
+                    <path d="M3 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v6h-4.586l1.293-1.293a1 1 0 00-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L10.414 13H15v3a2 2 0 01-2 2H5a2 2 0 01-2-2V5zM15 11h2a1 1 0 110 2h-2v-2z" />
+                  </svg>
+                </button>
+              </div>
+            </div>
             <%= live_redirect to: Routes.email_alias_index_path(@socket, :index), class: "inline-block mt-2 text-sm text-gray-500 hover:text-gray-700" do %>
               <svg xmlns="http://www.w3.org/2000/svg" class="inline h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fill-rule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clip-rule="evenodd" />

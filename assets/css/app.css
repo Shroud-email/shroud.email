@@ -4,6 +4,7 @@
 @import "tailwindcss/utilities";
 
 @import "./components.css";
+@import "../vendor/tippy.css";
 
 .logo {
   font-family: "Carter One", "sans-serif";
