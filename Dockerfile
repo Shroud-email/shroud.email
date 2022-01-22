@@ -1,9 +1,9 @@
 ARG MIX_ENV="prod"
 
-FROM hexpm/elixir:1.12.3-erlang-24.1.2-alpine-3.14.2 as build
+FROM hexpm/elixir:1.13.2-erlang-24.1.7-debian-bullseye-20210902-slim as build
 
 # install build dependencies
-RUN apk add --no-cache build-base git python3 curl npm rust cargo
+RUN apt-get update && apt-get install -y build-essential git curl npm cargo
 
 # prepare build dir
 WORKDIR /app
@@ -28,11 +28,6 @@ COPY config/config.exs config/appsignal.exs config/$MIX_ENV.exs config/
 RUN mix deps.compile
 
 COPY priv priv
-
-# note: if your project uses a tool like https://purgecss.com/,
-# which customizes asset compilation based on what it finds in
-# your Elixir templates, you will need to move the asset compilation
-# step down so that `lib` is available.
 COPY assets assets
 COPY lib lib
 RUN npm --prefix assets ci
@@ -48,8 +43,8 @@ RUN mix release
 
 # start a new build stage so that the final image will only contain
 # the compiled release and other runtime necessities
-FROM alpine:3.14.2 AS app
-RUN apk add --no-cache libstdc++ openssl ncurses-libs libgcc
+FROM hexpm/elixir:1.13.2-erlang-24.1.7-debian-bullseye-20210902-slim as app
+RUN apt-get update && apt-get install -y openssl libncurses6
 
 ARG MIX_ENV
 ENV USER="elixir"
@@ -58,14 +53,14 @@ WORKDIR "/home/${USER}/app"
 # Creates an unprivileged user to be used exclusively to run the Phoenix app
 RUN \
   addgroup \
-   -g 1000 \
-   -S "${USER}" \
+   --gid 1000 \
+   "${USER}" \
   && adduser \
-   -s /bin/sh \
-   -u 1000 \
-   -G "${USER}" \
-   -h "/home/${USER}" \
-   -D "${USER}" \
+   --shell /bin/sh \
+   --uid 1000 \
+   --ingroup "${USER}" \
+   --home "/home/${USER}" \
+   "${USER}" \
   && su "${USER}"
 
 # Everything from this line onwards will run in the context of the unprivileged user.

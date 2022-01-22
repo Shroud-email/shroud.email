@@ -65,14 +65,13 @@ defmodule Shroud.Email.EmailHandler do
         Appsignal.increment_counter("emails.forwarded", 1)
         Aliases.increment_forwarded!(email_alias)
 
-      {:error, {_code, error}} ->
+      {:error, {_code, %{"error" => error}}} ->
         Logger.error("Failed to forward email from #{sender} to #{user.email}: #{error}")
+        {:error, error}
 
       {:error, error} ->
         Logger.error("Failed to forward email from #{sender} to #{user.email}: #{error}")
-
-      other ->
-        Logger.error("Failed to forward email from #{sender} to #{user.email}: #{other}")
+        {:error, error}
     end
   end
 
