@@ -110,7 +110,7 @@ defmodule ShroudWeb.CheckoutController do
 
             Accounts.update_stripe_details!(user, attrs)
             Notifier.notify_user_signed_up(user.email)
-            Logger.info("Updated plan_expires_at for #{user.email} to #{current_period_end}")
+            Logger.info("User #{user.email} signed up! Plan expires at #{current_period_end}")
 
           "past_due" ->
             # past_due doesn't deactivate the user's plan immediately to give them a grace period
