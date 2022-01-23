@@ -3,7 +3,8 @@ import Config
 config :stripity_stripe, api_key: System.get_env("STRIPE_SECRET")
 
 config :shroud, :billing,
-  stripe_price: System.get_env("STRIPE_PRICE"),
+  stripe_yearly_price: System.get_env("STRIPE_YEARLY_PRICE"),
+  stripe_monthly_price: System.get_env("STRIPE_MONTHLY_PRICE"),
   stripe_webhook_secret: System.get_env("STRIPE_WEBHOOK_SECRET")
 
 # config/runtime.exs is executed for all environments, including

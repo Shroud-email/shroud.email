@@ -6,13 +6,21 @@ defmodule ShroudWeb.CheckoutController do
   alias Shroud.Billing.Session
   alias ShroudWeb.Plugs.CachingBodyReader
 
-  def index(conn, _params) do
+  def index(conn, %{"period" => billing_period}) do
     # Don't use route helpers for the {CHECKOUT_SESSION_ID} template, because
     # then Phoenix will escape the brackets, which means that Stripe won't
     # substitute it properly.
+    billing_period = String.to_existing_atom(billing_period)
     success_url = Routes.checkout_url(conn, :success)
     cancel_url = Routes.user_settings_url(conn, :billing)
-    session = Session.create_checkout!(conn.assigns.current_user.email, success_url, cancel_url)
+
+    session =
+      Session.create_checkout!(
+        conn.assigns.current_user.email,
+        success_url,
+        cancel_url,
+        billing_period
+      )
 
     conn
     |> put_status(:see_other)
