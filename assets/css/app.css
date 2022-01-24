@@ -6,10 +6,6 @@
 @import "./components.css";
 @import "../vendor/tippy.css";
 
-.logo {
-  font-family: "Carter One", "sans-serif";
-}
-
 /* Form errors from error_tag */
 .invalid-feedback {
   @apply text-red-600 text-sm mt-1;
