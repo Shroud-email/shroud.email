@@ -16,7 +16,9 @@ services:
     restart: unless-stopped
     ports:
       - "8080:8080"
+      - "2525:1587"
       - "587:1587"
+      - "465:1587"
       - "25:1587"
     depends_on:
       - db
