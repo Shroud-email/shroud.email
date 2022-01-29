@@ -97,13 +97,13 @@ defmodule Shroud.Aliases do
     |> Repo.update()
   end
 
-  def create_random_email_alias(user) do
-    email_alias = %{
+  def create_random_email_alias(user, attrs \\ %{}) do
+    %{
       user_id: user.id,
       address: generate_email_address()
     }
-
-    create_email_alias(email_alias)
+    |> Map.merge(attrs)
+    |> create_email_alias()
   end
 
   def delete_email_alias(id) do
