@@ -204,7 +204,7 @@ defmodule Shroud.Email.EmailHandlerTest do
       assert metric.forwarded == 1
     end
 
-    test "does not forward to non-active account" do
+    test "forwards to non-active account" do
       yesterday =
         NaiveDateTime.utc_now()
         |> NaiveDateTime.add(-1 * 60 * 60 * 24)
@@ -225,7 +225,9 @@ defmodule Shroud.Email.EmailHandlerTest do
 
       perform_job(EmailHandler, args)
 
-      assert_no_email_sent()
+      assert_email_sent(fn email ->
+        assert email.text_body =~ "Plain text content!"
+      end)
     end
 
     test "does not forward email from a blocked address" do
