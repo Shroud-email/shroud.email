@@ -32,7 +32,6 @@ aliases = [
   %{title: "1337 Newsletter", enabled: false},
   %{description: "Lorem ipsum"},
   %{title: "Anonymous contact address"},
-  %{title: "H4xx0rForum"},
   %{
     enabled: false,
     description: "Haxx0r ipsum brute force server continue void snarf case it's a feature."
