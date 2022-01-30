@@ -266,6 +266,7 @@ defmodule Shroud.Email.EmailHandlerTest do
       perform_job(EmailHandler, args)
 
       assert_no_email_sent()
+      assert Repo.reload!(email_alias).blocked == 1
     end
   end
 end

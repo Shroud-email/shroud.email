@@ -33,12 +33,13 @@ defmodule Shroud.Email.EmailHandler do
 
       not email_alias.enabled ->
         Logger.info("Discarding email to blocked alias #{recipient}")
+        Aliases.increment_blocked!(email_alias)
         Appsignal.increment_counter("emails.blocked", 1)
 
       Enum.member?(email_alias.blocked_addresses, String.downcase(sender)) ->
         Logger.info("Blocking email to #{user.email} because the sender (#{sender}) is blocked")
-        Appsignal.increment_counter("emails.blocked", 1)
         Aliases.increment_blocked!(email_alias)
+        Appsignal.increment_counter("emails.blocked", 1)
 
       true ->
         forward_email(user, sender, recipient, data)
