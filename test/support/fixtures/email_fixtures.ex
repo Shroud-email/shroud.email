@@ -74,10 +74,7 @@ defmodule Shroud.EmailFixtures do
   end
 
   defp add_recipients(data, recipients) do
-    recipients =
-      recipients
-      |> Enum.map(&format_address/1)
-      |> Enum.join(", ")
+    recipients = Enum.map_join(recipients, ", ", &format_address/1)
 
     """
     To: #{recipients}

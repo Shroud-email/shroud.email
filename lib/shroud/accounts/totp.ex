@@ -77,8 +77,7 @@ defmodule Shroud.Accounts.TOTP do
 
     Enum.map(1..8, fn _index ->
       1..8
-      |> Enum.map(fn _ -> Enum.at(alphabet, :rand.uniform(10) - 1) end)
-      |> Enum.join("")
+      |> Enum.map_join(fn _ -> Enum.at(alphabet, :rand.uniform(10) - 1) end)
     end)
   end
 end
