@@ -4,11 +4,11 @@ defmodule Shroud.Email.TrackerRemover do
   This works in a few ways:
   - Compare all image URLs to a list of known tracker regexes
   - Remove any 1x1 (or 2x2) images
+  - Replace all image URLs with ones proxied through this app
   - TODO: look at other external resources like fonts
   - TODO: look at images with URL params, even if they're not on the blocklist
   - TODO: handle tracking links (automatically click them)
   - TODO: open everything as soon as the email is received (like Mail Privacy Protection)
-  - TODO: maybe proxy images/assets
   """
 
   # TODO: look into also handling text emails (i.e. just tracking links)
@@ -16,6 +16,7 @@ defmodule Shroud.Email.TrackerRemover do
 
   alias Shroud.Email
   alias Shroud.Email.{ParsedEmail, Tracker}
+  alias ShroudWeb.Router.Helpers, as: Routes
 
   @spec process(ParsedEmail.t()) :: ParsedEmail.t()
   def process(%ParsedEmail{parsed_html: nil} = email), do: email
@@ -55,6 +56,7 @@ defmodule Shroud.Email.TrackerRemover do
       end
 
     if is_nil(removed_tracker) do
+      attrs = attrs |> Enum.map(&proxify_src/1)
       {{"img", attrs, children}, acc}
     else
       # Returning nil removes this img element from the HTML
@@ -93,4 +95,11 @@ defmodule Shroud.Email.TrackerRemover do
     |> String.replace_suffix("em", "")
     |> Integer.parse()
   end
+
+  defp proxify_src({"src", href}) do
+    href = URI.encode(href)
+    {"src", Routes.proxy_url(ShroudWeb.Endpoint, :proxy, %{url: href})}
+  end
+
+  defp proxify_src(attribute), do: attribute
 end

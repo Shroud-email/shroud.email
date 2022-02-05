@@ -105,5 +105,6 @@ defmodule ShroudWeb.Router do
     get "/users/confirm/:token", UserConfirmationController, :edit
     post "/users/confirm/:token", UserConfirmationController, :update
     get "/email-report/:data", PageController, :email_report
+    get "/proxy", ProxyController, :proxy
   end
 end
