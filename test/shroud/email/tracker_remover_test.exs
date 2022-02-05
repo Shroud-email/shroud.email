@@ -41,7 +41,7 @@ defmodule Shroud.Email.TrackerRemoverTest do
         |> TrackerRemover.process()
 
       assert remove_whitespace(email.swoosh_email.html_body) == remove_whitespace(expected_result)
-      assert length(Floki.find(email.parsed_html, "img")) == 0
+      assert Enum.empty?(Floki.find(email.parsed_html, "img"))
       assert email.removed_trackers == ["SpyOnU"]
     end
 
