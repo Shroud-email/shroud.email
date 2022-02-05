@@ -3,7 +3,7 @@ stages:
   - deploy
 
 .elixir:
-  image: hexpm/elixir:1.12.3-erlang-24.1.4-ubuntu-xenial-20210114
+  image: hexpm/elixir:1.13.2-erlang-24.2.1-ubuntu-xenial-20210804
   variables:
     MIX_ENV: test
     FF_USE_FASTZIP: "true"
