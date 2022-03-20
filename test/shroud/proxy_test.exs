@@ -24,10 +24,15 @@ defmodule Shroud.ProxyTest do
       assert {:error, :invalid_uri} == Proxy.get(url)
     end
 
-    test "disallowed file type" do
+    test "weird file type" do
       url = "https://example.com/foo.exe"
 
-      assert {:error, :disallowed_filetype} == Proxy.get(url)
+      Shroud.MockHTTPoison
+      |> expect(:get, fn ^url ->
+        {:ok, %HTTPoison.Response{status_code: 200, body: "foo"}}
+      end)
+
+      assert {:ok, "foo"} == Proxy.get(url)
     end
 
     test "non-200 response" do
