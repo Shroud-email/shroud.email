@@ -9,8 +9,7 @@ defmodule Shroud.Proxy do
       %URI{path: nil} ->
         {:error, :invalid_uri}
 
-      %URI{path: path} ->
-        mime_type = MIME.from_path(path)
+      %URI{path: _path} ->
         get_from_network(url)
     end
   end
