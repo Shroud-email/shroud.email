@@ -2,6 +2,7 @@ defmodule ShroudWeb.Router do
   use ShroudWeb, :router
 
   import ShroudWeb.UserAuth
+  import ShroudWeb.UserApiAuth
 
   pipeline :browser do
     plug :accepts, ["html"]
@@ -15,6 +16,7 @@ defmodule ShroudWeb.Router do
 
   pipeline :api do
     plug :accepts, ["json"]
+    plug :fetch_current_api_user
   end
 
   scope "/api", ShroudWeb do
@@ -22,6 +24,18 @@ defmodule ShroudWeb.Router do
 
     post "/webhooks/stripe", CheckoutController, :webhook
     post "/webhooks/ohmysmtp", OhMySmtpController, :webhook
+  end
+
+  scope "/api/v1", ShroudWeb.Api.V1 do
+    pipe_through :api
+
+    post "/token", TokenController, :create
+  end
+
+  scope "/api/v1", ShroudWeb.Api.V1 do
+    pipe_through [:api, :require_confirmed_api_user]
+
+    resources "/aliases", EmailAliasController, only: [:index]
   end
 
   # Enables LiveDashboard only for development
