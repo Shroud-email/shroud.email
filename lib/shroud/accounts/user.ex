@@ -169,4 +169,9 @@ defmodule Shroud.Accounts.User do
     user
     |> cast(attrs, [:status, :trial_expires_at])
   end
+
+  def inserted_at_changeset(user, attrs) do
+    user
+    |> cast(attrs, [:inserted_at])
+  end
 end
