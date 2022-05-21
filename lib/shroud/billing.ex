@@ -11,6 +11,7 @@ defmodule Shroud.Billing do
     data = :crypto.strong_rand_bytes(16) |> Base.encode64() |> String.slice(0, 16)
     # max_age is 50 years
     Phoenix.Token.sign(ShroudWeb.Endpoint, @salt, data, max_age: 1_577_880_000)
+    |> Base.encode64(padding: false)
   end
 
   @spec redeem_lifetime_code(String.t(), User) ::
@@ -41,10 +42,12 @@ defmodule Shroud.Billing do
     end
   end
 
-  defp valid_code?(code) do
-    case Phoenix.Token.verify(ShroudWeb.Endpoint, @salt, code) do
-      {:error, _error} -> false
-      _other -> true
+  defp valid_code?(base64_code) do
+    with {:ok, code} <- Base.decode64(base64_code, padding: false),
+         {:ok, _data} <- Phoenix.Token.verify(ShroudWeb.Endpoint, @salt, code) do
+      true
+    else
+      _error -> false
     end
   end
 

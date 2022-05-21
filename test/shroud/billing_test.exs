@@ -15,9 +15,9 @@ defmodule Shroud.Billing.BillingTest do
       assert :ok == Billing.redeem_lifetime_code(code, user)
     end
 
-    test "generates codes <120 characters long" do
+    test "generates codes <150 characters long" do
       code = Billing.create_lifetime_code()
-      assert String.length(code) < 120
+      assert String.length(code) < 150
     end
   end
 
