@@ -14,6 +14,11 @@ defmodule ShroudWeb.Router do
     plug :fetch_current_user
   end
 
+  pipeline :mounted_apps do
+    plug :accepts, ["html"]
+    plug :put_secure_browser_headers
+  end
+
   pipeline :api do
     plug :accepts, ["json"]
     plug :fetch_current_api_user
@@ -120,5 +125,10 @@ defmodule ShroudWeb.Router do
     post "/users/confirm/:token", UserConfirmationController, :update
     get "/email-report/:data", PageController, :email_report
     get "/proxy", ProxyController, :proxy
+  end
+
+  scope "/feature_flags" do
+    pipe_through [:mounted_apps]
+    forward "/", FunWithFlags.UI.Router, namespace: "feature_flags"
   end
 end

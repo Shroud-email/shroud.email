@@ -25,6 +25,12 @@ defmodule Shroud.Accounts.User do
     timestamps()
   end
 
+  defimpl FunWithFlags.Actor, for: __MODULE__ do
+    def id(%{id: id}) do
+      "user:#{id}"
+    end
+  end
+
   @doc """
   A user changeset for registration.
 

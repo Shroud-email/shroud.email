@@ -1,4 +1,5 @@
 <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+  <%= render "_logging_warning.html", assigns %>
   <%= if get_flash(@conn, :info) do %>
     <p class="alert alert-info mb-6" role="alert"><%= get_flash(@conn, :info) %></p>
   <% end %>

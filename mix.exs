@@ -80,7 +80,9 @@ defmodule Shroud.MixProject do
       {:cloak_ecto, "~> 1.2"},
       {:stripity_stripe, "~> 2.12"},
       {:mime, "~> 1.6.0"},
-      {:scrivener_ecto, "~> 2.7"}
+      {:scrivener_ecto, "~> 2.7"},
+      {:fun_with_flags, "~> 1.8"},
+      {:fun_with_flags_ui, "~> 0.8.0"}
     ]
   end
 

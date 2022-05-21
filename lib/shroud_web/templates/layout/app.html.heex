@@ -8,6 +8,8 @@
         <p class="alert alert-error mb-6" role="alert"><%= get_flash(@conn, :error) %></p>
       <% end %>
 
+      <%= render "_logging_warning.html", assigns %>
+
       <%= @inner_content %>
     </div>
   </div>
