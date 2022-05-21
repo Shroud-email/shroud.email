@@ -102,6 +102,8 @@ defmodule ShroudWeb.Router do
     get "/settings/account", UserSettingsController, :account
     get "/settings/security", UserSettingsController, :security
     get "/settings/billing", UserSettingsController, :billing
+    get "/settings/billing/lifetime", UserSettingsController, :lifetime
+    post "/settings/billing/lifetime", UserSettingsController, :lifetime_signup
     put "/settings", UserSettingsController, :update
     # Route for changing email of an already-confirmed account
     get "/settings/confirm_email/:token", UserSettingsController, :confirm_email
