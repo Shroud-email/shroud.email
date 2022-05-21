@@ -1,0 +1,5 @@
+<%= if FunWithFlags.enabled?(:logging, for: @current_user) or FunWithFlags.enabled?(:logging_email_data, for: @current_user) do %>
+  <p class="alert alert-warning mb-6" role="alert">
+    Logging is enabled on your account. Please <a href="mailto:hello@shroud.email" class="underline mx-1">contact support</a> if you did not expect this.
+  </p>
+<% end %>

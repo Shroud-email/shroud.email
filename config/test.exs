@@ -49,8 +49,10 @@ config :shroud, ShroudWeb.Endpoint,
 # In test we don't send emails.
 config :shroud, Shroud.Mailer, adapter: Swoosh.Adapters.Test
 
-# Print only warnings and errors during test
-config :logger, level: :warn
+# We have tests for our logging, and these require a log level of at least info
+config :logger, level: :info
+# But only print warnings and higher to the console
+config :logger, :console, level: :warn
 
 # Initialize plugs at runtime for faster test compilation
 config :phoenix, :plug_init_mode, :runtime

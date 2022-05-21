@@ -42,5 +42,25 @@ defmodule ShroudWeb.EmailAliasLiveTest do
     #   assert index_live |> element("#alias-#{email_alias.id} a", "Delete") |> render_click()
     #   refute has_element?(index_live, "#alias-#{email_alias.id}")
     # end
+
+    test "shows logging warning when logging is enabled", %{conn: conn, user: user} do
+      FunWithFlags.enable(:logging, for_actor: user)
+
+      {:ok, _index_live, html} =
+        conn
+        |> live(Routes.email_alias_index_path(conn, :index))
+
+      assert html =~ "Logging is enabled"
+    end
+
+    test "shows logging warning when detailed logging is enabled", %{conn: conn, user: user} do
+      FunWithFlags.enable(:logging_email_data, for_actor: user)
+
+      {:ok, _index_live, html} =
+        conn
+        |> live(Routes.email_alias_index_path(conn, :index))
+
+      assert html =~ "Logging is enabled"
+    end
   end
 end

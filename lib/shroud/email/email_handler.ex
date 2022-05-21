@@ -32,12 +32,16 @@ defmodule Shroud.Email.EmailHandler do
         Appsignal.increment_counter("emails.discarded", 1)
 
       not email_alias.enabled ->
-        Logger.info("Discarding email to blocked alias #{recipient}")
+        maybe_log(user, "Discarding email from #{sender} to disabled alias #{recipient}")
         Aliases.increment_blocked!(email_alias)
         Appsignal.increment_counter("emails.blocked", 1)
 
       Enum.member?(email_alias.blocked_addresses, String.downcase(sender)) ->
-        Logger.info("Blocking email to #{user.email} because the sender (#{sender}) is blocked")
+        maybe_log(
+          user,
+          "Blocking email to #{user.email} because the sender (#{sender}) is blocked"
+        )
+
         Aliases.increment_blocked!(email_alias)
         Appsignal.increment_counter("emails.blocked", 1)
 
@@ -47,7 +51,11 @@ defmodule Shroud.Email.EmailHandler do
   end
 
   defp forward_email(%User{} = user, sender, recipient, data) do
-    Logger.info("Forwarding email from #{sender} to #{user.email} (via #{recipient})")
+    maybe_log(user, "Forwarding email from #{sender} to #{user.email} (via #{recipient})")
+
+    if FunWithFlags.enabled?(:email_data_logging, for: user) do
+      Logger.info("Email data: #{data}")
+    end
 
     case ParsedEmail.parse(data)
          |> TrackerRemover.process()
@@ -95,5 +103,11 @@ defmodule Shroud.Email.EmailHandler do
     email
     |> Map.put(:from, sender)
     |> Map.put(:to, [{recipient_name, recipient_address}])
+  end
+
+  defp maybe_log(%User{} = user, text) do
+    if FunWithFlags.enabled?(:logging, for: user) do
+      Logger.info(text)
+    end
   end
 end

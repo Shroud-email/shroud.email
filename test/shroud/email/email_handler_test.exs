@@ -1,7 +1,8 @@
 defmodule Shroud.Email.EmailHandlerTest do
-  use Shroud.DataCase, async: true
+  use Shroud.DataCase, async: false
   use Oban.Testing, repo: Shroud.Repo
   import Swoosh.TestAssertions
+  import ExUnit.CaptureLog
 
   import Shroud.{AccountsFixtures, AliasesFixtures, EmailFixtures}
 
@@ -267,6 +268,109 @@ defmodule Shroud.Email.EmailHandlerTest do
 
       assert_no_email_sent()
       assert Repo.reload!(email_alias).blocked == 1
+    end
+
+    test "does not log by default" do
+      user = user_fixture(%{status: :active})
+      email_alias = alias_fixture(%{user_id: user.id})
+
+      data =
+        text_email(
+          "sender@example.com",
+          [email_alias.address],
+          "Text only",
+          "Plain text content!"
+        )
+
+      args = %{from: "sender@example.com", to: email_alias.address, data: data}
+
+      assert capture_log(fn ->
+               perform_job(EmailHandler, args)
+             end) == ""
+    end
+
+    test "logs forwarded emails if logging is enabled for user" do
+      user = user_fixture(%{status: :active})
+      email_alias = alias_fixture(%{user_id: user.id})
+      FunWithFlags.enable(:logging, for_actor: user)
+
+      data =
+        text_email(
+          "sender@example.com",
+          [email_alias.address],
+          "Text only",
+          "Plain text content!"
+        )
+
+      args = %{from: "sender@example.com", to: email_alias.address, data: data}
+
+      assert capture_log(fn ->
+               perform_job(EmailHandler, args)
+             end) =~
+               "Forwarding email from sender@example.com to #{user.email} (via #{email_alias.address})"
+    end
+
+    test "logs full email data if verbose logging is enabled for user" do
+      user = user_fixture(%{status: :active})
+      email_alias = alias_fixture(%{user_id: user.id})
+      FunWithFlags.enable(:email_data_logging, for_actor: user)
+
+      data =
+        text_email(
+          "sender@example.com",
+          [email_alias.address],
+          "Text only",
+          "Plain text content!"
+        )
+
+      args = %{from: "sender@example.com", to: email_alias.address, data: data}
+
+      assert capture_log(fn ->
+               perform_job(EmailHandler, args)
+             end) =~
+               "Email data: To: #{email_alias.address}\r\nFrom: sender@example.com\r\nSubject: Text only\r\nContent-Type: text/plain\r\n\r\nPlain text content!\r\n"
+    end
+
+    test "logs blocked emails if logging is enabled for user" do
+      user = user_fixture(%{status: :active})
+      email_alias = alias_fixture(%{user_id: user.id, blocked_addresses: ["sender@example.com"]})
+      FunWithFlags.enable(:logging, for_actor: user)
+
+      data =
+        text_email(
+          "sender@example.com",
+          [email_alias.address],
+          "Text only",
+          "Plain text content!"
+        )
+
+      args = %{from: "sender@example.com", to: email_alias.address, data: data}
+
+      assert capture_log(fn ->
+               perform_job(EmailHandler, args)
+             end) =~
+               "Blocking email to #{user.email} because the sender (sender@example.com) is blocked"
+    end
+
+    test "logs email to disabled aliases if logging is enabled for user" do
+      user = user_fixture(%{status: :active})
+      email_alias = alias_fixture(%{user_id: user.id, enabled: false})
+      FunWithFlags.enable(:logging, for_actor: user)
+
+      data =
+        text_email(
+          "sender@example.com",
+          [email_alias.address],
+          "Text only",
+          "Plain text content!"
+        )
+
+      args = %{from: "sender@example.com", to: email_alias.address, data: data}
+
+      assert capture_log(fn ->
+               perform_job(EmailHandler, args)
+             end) =~
+               "Discarding email from sender@example.com to disabled alias #{email_alias.address}"
     end
   end
 end
