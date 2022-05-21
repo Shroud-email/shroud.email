@@ -1,7 +1,7 @@
 defmodule ShroudWeb.UserSettingsController do
   use ShroudWeb, :controller
 
-  alias Shroud.Accounts
+  alias Shroud.{Accounts, Billing}
   alias Shroud.Accounts.TOTP
   alias ShroudWeb.UserAuth
 
@@ -41,6 +41,32 @@ defmodule ShroudWeb.UserSettingsController do
 
   def billing(conn, _params) do
     render(conn, "billing.html", page_title: "Billing settings")
+  end
+
+  def lifetime(conn, _params) do
+    render(conn, "lifetime.html", page_title: "Lifetime signup")
+  end
+
+  @spec lifetime_signup(Plug.Conn.t(), map) :: Plug.Conn.t()
+  def lifetime_signup(conn, %{"lifetime_code" => code}) do
+    user = conn.assigns.current_user
+
+    case Billing.redeem_lifetime_code(code, user) do
+      {:error, :invalid_code} ->
+        conn
+        |> put_flash(:error, "Invalid code.")
+        |> redirect(to: Routes.user_settings_path(conn, :lifetime))
+
+      {:error, :already_redeemed} ->
+        conn
+        |> put_flash(:error, "This code has already been redeemed.")
+        |> redirect(to: Routes.user_settings_path(conn, :lifetime))
+
+      :ok ->
+        conn
+        |> put_flash(:info, "You have successfully signed up for lifetime access!")
+        |> redirect(to: Routes.user_settings_path(conn, :billing))
+    end
   end
 
   def confirm_email(conn, %{"token" => token}) do
