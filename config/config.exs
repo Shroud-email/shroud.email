@@ -13,7 +13,11 @@ config :shroud,
 # Configures the endpoint
 config :shroud, ShroudWeb.Endpoint,
   url: [host: "localhost"],
-  render_errors: [view: ShroudWeb.ErrorView, accepts: ~w(html json), layout: false],
+  render_errors: [
+    view: ShroudWeb.ErrorView,
+    accepts: ~w(html json),
+    layout: {ShroudWeb.LayoutView, "error.html"}
+  ],
   pubsub_server: Shroud.PubSub,
   live_view: [signing_salt: "OFJWqfW8"]
 
