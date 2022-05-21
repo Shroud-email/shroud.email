@@ -5,10 +5,16 @@ defmodule ShroudWeb.ErrorViewTest do
   import Phoenix.View
 
   test "renders 404.html" do
-    assert render_to_string(ShroudWeb.ErrorView, "404.html", []) == "Not Found"
+    rendered = render_to_string(ShroudWeb.ErrorView, "404.html", [])
+
+    assert rendered =~ "404 error"
+    assert rendered =~ "Lost in the fog"
   end
 
   test "renders 500.html" do
-    assert render_to_string(ShroudWeb.ErrorView, "500.html", []) == "Internal Server Error"
+    rendered = render_to_string(ShroudWeb.ErrorView, "500.html", [])
+
+    assert rendered =~ "500 error"
+    assert rendered =~ "Something went wrong"
   end
 end

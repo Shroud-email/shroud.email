@@ -1,0 +1,46 @@
+<div id="fog" class="min-h-full pt-16 pb-12 flex flex-col bg-gray-800">
+  <main class="flex-grow flex flex-col justify-center max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex-shrink-0 flex justify-center">
+      <a href="/" class="inline-flex">
+        <span class="sr-only">Shroud.email</span>
+        <img class="h-12 w-auto text-indigo-400" src="/images/logo.svg" alt="Shroud.email logo" />
+      </a>
+    </div>
+    <div class="py-16">
+      <div class="text-center">
+        <p class="text-sm font-semibold text-indigo-400 uppercase tracking-wide"><%= @error %> error</p>
+        <h1 class="mt-2 text-4xl font-extrabold text-gray-100 tracking-tight sm:text-5xl"><%= @heading %></h1>
+        <p class="mt-2 text-base text-gray-300"><%= @description %></p>
+        <div class="mt-6">
+          <a href="/" class="text-base font-medium text-indigo-400 hover:text-indigo-200">Go back home<span aria-hidden="true"> &rarr;</span></a>
+        </div>
+      </div>
+    </div>
+  </main>
+  <footer class="flex-shrink-0 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8">
+    <nav class="flex justify-center space-x-4">
+      <a href="mailto:hello@shroud.email" class="text-sm font-medium text-gray-300 hover:text-gray-400">Contact Support</a>
+      <span class="inline-block border-l border-gray-500" aria-hidden="true"></span>
+      <a href="https://shroud.appsignal-status.com/" target="_blank" class="text-sm font-medium text-gray-300 hover:text-gray-400">Status</a>
+    </nav>
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r121/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vanta@0.5.21/dist/vanta.fog.min.js"></script>
+<script>
+VANTA.FOG({
+  el: "#fog",
+  THREE: THREE,
+  mouseControls: false,
+  touchControls: false,
+  gyroControls: false,
+  minHeight: 200.0,
+  minWidth: 200.0,
+  baseColor: 0x1f2937,
+  lowlightColor: 0x111827,
+  midtoneColor: 0x334155,
+  highlightColor: 0x475569,
+  speed: 1.8,
+});
+</script>
