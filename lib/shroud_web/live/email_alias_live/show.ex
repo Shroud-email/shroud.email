@@ -21,33 +21,34 @@ defmodule ShroudWeb.EmailAliasLive.Show do
     ~H"""
     <div>
       <div class="bg-white shadow overflow-hidden sm:rounded-lg">
-        <div class="px-4 py-5 sm:px-6 flex justify-between">
-          <div>
-            <div class="flex items-center">
-              <h3 class="text-lg leading-6 font-medium text-gray-900">
-                <%= @address %>
-              </h3>
-              <div
-                x-data="{ tooltip: 'Copy to clipboard' }"
-                class="ml-2"
-              >
-                <button x-tooltip="tooltip" class="rounded p-1 focus:ring focus:ring-indigo-500" @click={"navigator.clipboard.writeText('#{@address}'); tooltip = 'Copied!'; setTimeout(() => tooltip = 'Copy to clipboard', 1500)"}>
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M8 2a1 1 0 000 2h2a1 1 0 100-2H8z" />
-                    <path d="M3 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v6h-4.586l1.293-1.293a1 1 0 00-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L10.414 13H15v3a2 2 0 01-2 2H5a2 2 0 01-2-2V5zM15 11h2a1 1 0 110 2h-2v-2z" />
-                  </svg>
-                </button>
-              </div>
+        <div class="px-4 py-5 sm:px-6">
+          <div class="flex flex-col sm:flex-row items-center w-full">
+            <h3 class="text-lg leading-6 font-medium text-gray-900">
+              <%= @address %>
+            </h3>
+            <div
+              x-data="{ tooltip: 'Copy to clipboard' }"
+              class="ml-2 mt-2 sm:mt-0"
+            >
+              <button x-tooltip="tooltip" class="rounded p-1 focus:ring focus:ring-indigo-500" @click={"navigator.clipboard.writeText('#{@address}'); tooltip = 'Copied!'; setTimeout(() => tooltip = 'Copy to clipboard', 1500)"}>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M8 2a1 1 0 000 2h2a1 1 0 100-2H8z" />
+                  <path d="M3 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v6h-4.586l1.293-1.293a1 1 0 00-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L10.414 13H15v3a2 2 0 01-2 2H5a2 2 0 01-2-2V5zM15 11h2a1 1 0 110 2h-2v-2z" />
+                </svg>
+              </button>
             </div>
-            <%= live_redirect to: Routes.email_alias_index_path(@socket, :index), class: "inline-block mt-2 text-sm text-gray-500 hover:text-gray-700" do %>
+            <div class="hidden sm:block ml-auto">
+              <button phx-click="delete" data-confirm={"Are you sure you want to permanently delete #{@alias.address}?"} class="text-xs font-semibold uppercase text-red-700 hover:text-red-500">Delete</button>
+            </div>
+          </div>
+          <div class="flex items-center justify-between mt-2">
+            <%= live_redirect to: Routes.email_alias_index_path(@socket, :index), class: "inline-block text-sm text-gray-500 hover:text-gray-700" do %>
               <svg xmlns="http://www.w3.org/2000/svg" class="inline h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fill-rule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clip-rule="evenodd" />
               </svg>
               Back
             <% end %>
-          </div>
-          <div class="self-start">
-            <button phx-click="delete" data-confirm={"Are you sure you want to permanently delete #{@alias.address}?"} class="text-xs font-semibold uppercase text-red-700 hover:text-red-500">Delete</button>
+            <button phx-click="delete" data-confirm={"Are you sure you want to permanently delete #{@alias.address}?"} class="sm:hidden text-xs font-semibold uppercase text-red-700 hover:text-red-500">Delete</button>
           </div>
         </div>
         <div class="border-t border-gray-200">
@@ -145,7 +146,7 @@ defmodule ShroudWeb.EmailAliasLive.Show do
                         <input type="email" name="sender" id="sender" class="focus:ring-indigo-500 focus:border-indigo-500 block w-full rounded-none rounded-l-md pl-10 sm:text-sm border-gray-300" placeholder="spammer@example.com">
                       </div>
                       <button type="submit" class="-ml-px relative inline-flex items-center space-x-2 px-4 py-2 border border-gray-300 text-sm font-medium rounded-r-md text-gray-700 bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">
-                        <span>Block sender</span>
+                        Block
                       </button>
                     </div>
                   </div>
