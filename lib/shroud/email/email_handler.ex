@@ -53,7 +53,7 @@ defmodule Shroud.Email.EmailHandler do
   defp forward_email(%User{} = user, sender, recipient, data) do
     maybe_log(user, "Forwarding email from #{sender} to #{user.email} (via #{recipient})")
 
-    if FunWithFlags.enabled?(:email_data_logging, for: user) do
+    if Accounts.Logging.email_logging_enabled?(user) do
       Logger.info("Email data: #{data}")
     end
 
@@ -106,7 +106,7 @@ defmodule Shroud.Email.EmailHandler do
   end
 
   defp maybe_log(%User{} = user, text) do
-    if FunWithFlags.enabled?(:logging, for: user) do
+    if Accounts.Logging.logging_enabled?(user) do
       Logger.info(text)
     end
   end

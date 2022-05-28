@@ -54,7 +54,7 @@ defmodule ShroudWeb.EmailAliasLiveTest do
     end
 
     test "shows logging warning when detailed logging is enabled", %{conn: conn, user: user} do
-      FunWithFlags.enable(:logging_email_data, for_actor: user)
+      FunWithFlags.enable(:email_data_logging, for_actor: user)
 
       {:ok, _index_live, html} =
         conn
