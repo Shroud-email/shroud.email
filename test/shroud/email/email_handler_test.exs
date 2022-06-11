@@ -19,8 +19,8 @@ defmodule Shroud.Email.EmailHandlerTest do
   """
 
   setup do
-    user = user_fixture(%{status: :active})
-    email_alias = alias_fixture(%{user_id: user.id})
+    user = user_fixture(%{status: :active, email: "user@example.com"})
+    email_alias = alias_fixture(%{user_id: user.id, address: "alias@shroud.test"})
 
     %{
       user: user,
@@ -33,14 +33,25 @@ defmodule Shroud.Email.EmailHandlerTest do
       args = %{
         from: "sender@example.com",
         to: email_alias.address,
-        data: "To: #{email_alias.address}\r\nLorem ipsum"
+        data:
+          text_email(
+            "sender@example.com",
+            [email_alias.address],
+            "Hello, world",
+            "Plain text content"
+          )
       }
 
       perform_job(EmailHandler, args)
 
       assert_email_sent(fn email ->
-        {_name, recipient} = hd(email.to)
-        recipient == user.email
+        assert email.to == [{email_alias.address, user.email}]
+
+        assert email.from ==
+                 {"sender@example.com (via Shroud.email)",
+                  "sender_at_example.com_alias@shroud.test"}
+
+        assert is_nil(email.reply_to)
       end)
     end
 
@@ -96,6 +107,100 @@ defmodule Shroud.Email.EmailHandlerTest do
       end)
     end
 
+    test "handles replies from an alias", %{user: user} do
+      args = %{
+        from: user.email,
+        to: ["recipient_at_example.com_alias@shroud.test"],
+        data:
+          text_email(
+            user.email,
+            ["recipient_at_example.com_alias@shroud.test"],
+            "To one recipient",
+            "Plain text content"
+          )
+      }
+
+      perform_job(EmailHandler, args)
+
+      assert_email_sent(fn email ->
+        assert email.to == [{"recipient@example.com", "recipient@example.com"}]
+        assert email.from == {"alias@shroud.test (via Shroud.email)", "alias@shroud.test"}
+        assert is_nil(email.reply_to)
+      end)
+    end
+
+    test "ignores replies from non-users" do
+      args = %{
+        from: "other@example.com",
+        to: ["recipient_at_example.com_alias@shroud.test"],
+        data:
+          text_email(
+            "other@example.com",
+            ["recipient_at_example.com_alias@shroud.test"],
+            "To one recipient",
+            "Plain text content"
+          )
+      }
+
+      assert capture_log(fn ->
+               perform_job(EmailHandler, args)
+             end) =~
+               "Discarding outgoing email from other@example.com to recipient_at_example.com_alias@shroud.test because the alias belongs to someone else"
+
+      assert_no_email_sent()
+    end
+
+    test "ignores replies from other users (not the aliases' owner)" do
+      other_user = user_fixture()
+
+      args = %{
+        from: other_user.email,
+        to: ["recipient_at_example.com_alias@shroud.test"],
+        data:
+          text_email(
+            other_user.email,
+            ["recipient_at_example.com_alias@shroud.test"],
+            "To one recipient",
+            "Plain text content"
+          )
+      }
+
+      assert capture_log(fn ->
+               perform_job(EmailHandler, args)
+             end) =~
+               "Discarding outgoing email from #{other_user.email} to recipient_at_example.com_alias@shroud.test"
+
+      assert_no_email_sent()
+    end
+
+    test "handles existing user emailing other user's alias", %{user: user} do
+      other_user = user_fixture()
+      other_alias = alias_fixture(%{address: "other@shroud.test", user_id: other_user.id})
+
+      args = %{
+        from: user.email,
+        to: [other_alias.address],
+        data:
+          text_email(
+            user.email,
+            [other_alias.address],
+            "To one recipient",
+            "Plain text content"
+          )
+      }
+
+      perform_job(EmailHandler, args)
+
+      assert_email_sent(fn email ->
+        assert email.to == [{other_alias.address, other_user.email}]
+
+        assert email.from ==
+                 {"#{user.email} (via Shroud.email)", "user_at_example.com_other@shroud.test"}
+
+        assert is_nil(email.reply_to)
+      end)
+    end
+
     test "handles text/plain email", %{user: user, email_alias: email_alias} do
       data =
         text_email(
@@ -110,8 +215,11 @@ defmodule Shroud.Email.EmailHandlerTest do
 
       assert_email_sent(fn email ->
         assert hd(email.to) == {"Recipient", user.email}
-        assert email.from == {"Sender (via Shroud.email)", "noreply@shroud.test"}
-        assert email.reply_to == {"Sender", "sender@example.com"}
+
+        assert email.from ==
+                 {"Sender (via Shroud.email)", "sender_at_example.com_alias@shroud.test"}
+
+        assert is_nil(email.reply_to)
         assert email.text_body =~ "Plain text content!"
         assert is_nil(email.html_body)
       end)
@@ -124,8 +232,12 @@ defmodule Shroud.Email.EmailHandlerTest do
 
       assert_email_sent(fn email ->
         assert hd(email.to) == {email_alias.address, user.email}
-        assert email.from == {"sender@example.com (via Shroud.email)", "noreply@shroud.test"}
-        assert email.reply_to == {"sender@example.com", "sender@example.com"}
+
+        assert email.from ==
+                 {"sender@example.com (via Shroud.email)",
+                  "sender_at_example.com_alias@shroud.test"}
+
+        assert is_nil(email.reply_to)
         assert is_nil(email.text_body)
         assert email.html_body =~ "This is HTML content"
       end)
@@ -146,8 +258,11 @@ defmodule Shroud.Email.EmailHandlerTest do
 
       assert_email_sent(fn email ->
         assert hd(email.to) == {"Recipient", user.email}
-        assert email.from == {"Sender (via Shroud.email)", "noreply@shroud.test"}
-        assert email.reply_to == {"Sender", "sender@example.com"}
+
+        assert email.from ==
+                 {"Sender (via Shroud.email)", "sender_at_example.com_alias@shroud.test"}
+
+        assert is_nil(email.reply_to)
         assert email.text_body =~ "Plaintext content"
         assert email.html_body =~ "This is HTML content"
       end)
@@ -307,7 +422,7 @@ defmodule Shroud.Email.EmailHandlerTest do
       assert capture_log(fn ->
                perform_job(EmailHandler, args)
              end) =~
-               "Forwarding email from sender@example.com to #{user.email} (via #{email_alias.address})"
+               "Forwarding incoming email from sender@example.com to #{user.email} (via #{email_alias.address})"
     end
 
     test "logs full email data if verbose logging is enabled for user" do
@@ -349,7 +464,7 @@ defmodule Shroud.Email.EmailHandlerTest do
       assert capture_log(fn ->
                perform_job(EmailHandler, args)
              end) =~
-               "Blocking email to #{user.email} because the sender (sender@example.com) is blocked"
+               "Blocking incoming email to #{user.email} because the sender (sender@example.com) is blocked"
     end
 
     test "logs email to disabled aliases if logging is enabled for user" do
@@ -370,7 +485,7 @@ defmodule Shroud.Email.EmailHandlerTest do
       assert capture_log(fn ->
                perform_job(EmailHandler, args)
              end) =~
-               "Discarding email from sender@example.com to disabled alias #{email_alias.address}"
+               "Discarding incoming email from sender@example.com to disabled alias #{email_alias.address}"
     end
   end
 end

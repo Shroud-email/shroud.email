@@ -248,4 +248,42 @@ defmodule Shroud.AliasesTest do
       assert email_alias.blocked == 1
     end
   end
+
+  describe "increment_replied!/1" do
+    test "creates a new row for the date" do
+      %{id: id} = user_fixture()
+      email_alias = alias_fixture(%{user_id: id})
+
+      Aliases.increment_replied!(email_alias)
+
+      metric = Repo.get_by!(EmailMetric, alias_id: email_alias.id)
+      today = NaiveDateTime.utc_now() |> NaiveDateTime.to_date()
+      assert metric.date == today
+      assert metric.forwarded == 0
+      assert metric.blocked == 0
+      assert metric.replied == 1
+    end
+
+    test "increments an existing row" do
+      %{id: id} = user_fixture()
+      email_alias = alias_fixture(%{user_id: id})
+      today = NaiveDateTime.utc_now() |> NaiveDateTime.to_date()
+      Repo.insert!(%EmailMetric{alias_id: email_alias.id, date: today, replied: 1})
+
+      Aliases.increment_replied!(email_alias)
+
+      metric = Repo.get_by!(EmailMetric, alias_id: email_alias.id)
+      assert metric.replied == 2
+    end
+
+    test "increments replied field on the alias" do
+      %{id: id} = user_fixture()
+      email_alias = alias_fixture(%{user_id: id})
+
+      Aliases.increment_replied!(email_alias)
+
+      email_alias = Repo.reload(email_alias)
+      assert email_alias.replied == 1
+    end
+  end
 end

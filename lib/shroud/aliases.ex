@@ -152,7 +152,27 @@ defmodule Shroud.Aliases do
     end)
   end
 
+  def increment_replied!(%EmailAlias{} = email_alias) do
+    today = NaiveDateTime.utc_now() |> NaiveDateTime.to_date()
+
+    Repo.transaction(fn ->
+      Repo.insert!(%EmailMetric{alias_id: email_alias.id, date: today, replied: 1},
+        conflict_target: [:alias_id, :date],
+        on_conflict: [inc: [replied: 1]]
+      )
+
+      alias_update =
+        from e in EmailAlias,
+          where: e.id == ^email_alias.id,
+          select: e.replied,
+          update: [inc: [replied: 1]]
+
+      {1, _} = Repo.update_all(alias_update, [])
+    end)
+  end
+
   defp generate_email_address() do
+    # Note: don't ever use underscores in an alias as it will break Shroud.Email.ReplyAddress.
     alphabet = "abcdefghijklmnopqrstuvwxyz1234567890" |> String.split("")
 
     address =

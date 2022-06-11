@@ -4,7 +4,7 @@ defmodule Shroud.Email.Enricher do
   """
 
   alias Shroud.Util
-  alias Shroud.Email.ParsedEmail
+  alias Shroud.Email.{ParsedEmail, ReplyAddress}
 
   alias ShroudWeb.Router.Helpers, as: Routes
 
@@ -81,8 +81,8 @@ defmodule Shroud.Email.Enricher do
   end
 
   defp shroud_header(%ParsedEmail{} = email) do
-    # The email's `from` is noreply@<our domain>, so we get the real sender from the reply_to field
-    {_sender_name, sender_address} = email.swoosh_email.reply_to
+    {_sender_name, sender_address} = email.swoosh_email.from
+    {sender_address, _email_alias} = ReplyAddress.from_reply_address(sender_address)
 
     trackers = email.removed_trackers
 
