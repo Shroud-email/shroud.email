@@ -65,6 +65,8 @@ defmodule Shroud.Email.EmailHandler do
 
         forward_incoming_email(recipient_user, sender, recipient, data)
     end
+
+    :ok
   end
 
   defp handle_outgoing_email(sender, recipient, data) do
@@ -82,6 +84,8 @@ defmodule Shroud.Email.EmailHandler do
         "Discarding outgoing email from #{sender} to #{recipient} because the alias belongs to someone else"
       )
     end
+
+    :ok
   end
 
   # Forwards a reply (sent to a reply address from a user) to the external address
