@@ -1,7 +1,9 @@
-# 🥷 Shroud
+# [Shroud.email](https://shroud.email/)
 
-Shroud is an email privacy service. Protect your email address from spammers and creepy marketers
+[Shroud.email](https://shroud.email/) is an email privacy service. Protect your email address from spammers and creepy marketers
 by creating unlimited aliases that remove trackers and forward messages to your regular inbox.
+
+This repo contains our source code. If you just want to set up your email aliases, sign up for our [free 30-day trial](https://app.shroud.email/users/register).
 
 ## Contributing
 
@@ -23,16 +25,10 @@ swaks --to test@example.com --server 127.0.0.1 --port 2525
 
 ## Libraries
 
-- [DaisyUI](https://daisyui.com/) for basic styles
+- [Tailwind CSS](https://tailwindcss.com/) for styles
 - [gen_smtp](https://github.com/gen-smtp/gen_smtp) for receiving emails
 - [Swoosh](https://hexdocs.pm/swoosh/Swoosh.html) for sending emails
 
 # Deploying
 
-Set the following environment variables:
-- `SECRET_KEY_BASE` (generate using `mix phx.gen.secret`)
-- `DATABASE_URL`
-- `OH_MY_SMTP_API_KEY`
-- `STRIPE_SECRET`
-- `STRIPE_PRICE` (the ID of the Stripe price you're using; it starts with `price_`)
-- `STRIPE_WEBHOOK_SECRET`
+Set the environment variables in `example.env`.
