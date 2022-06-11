@@ -28,9 +28,7 @@ config :shroud, Shroud.Vault,
     }
   ]
 
-config :shroud, Oban,
-  queues: false,
-  plugins: false
+config :shroud, Oban, testing: :manual
 
 config :appsignal, :config, active: false
 

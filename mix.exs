@@ -38,7 +38,7 @@ defmodule Shroud.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
-      {:bcrypt_elixir, "~> 2.0"},
+      {:bcrypt_elixir, "~> 3.0"},
       {:phoenix, "~> 1.6.2"},
       {:phoenix_ecto, "~> 4.4"},
       {:ecto_sql, "~> 3.6"},
@@ -59,10 +59,7 @@ defmodule Shroud.MixProject do
       {:gettext, "~> 0.18"},
       {:jason, "~> 1.2"},
       {:plug_cowboy, "~> 2.5"},
-      {:gen_smtp,
-       git: "https://github.com/gen-smtp/gen_smtp.git",
-       tag: "84940faf96b871ca71e2d95a974ffaef4859aaed",
-       override: true},
+      {:gen_smtp, "~> 1.2"},
       {:iconv, "~> 1.0"},
       {:oban, "~> 2.9"},
       {:hackney, "~> 1.18"},
@@ -75,14 +72,15 @@ defmodule Shroud.MixProject do
       {:timex, "~> 3.7"},
       {:httpoison, "~> 1.8"},
       {:quantum, "~> 3.4"},
-      {:nimble_totp, "~> 0.1.3"},
+      {:nimble_totp, "~> 0.2.0"},
       {:eqrcode, "~> 0.1.10"},
       {:cloak_ecto, "~> 1.2"},
       {:stripity_stripe, "~> 2.12"},
       {:mime, "~> 1.6.0"},
       {:scrivener_ecto, "~> 2.7"},
       {:fun_with_flags, "~> 1.8"},
-      {:fun_with_flags_ui, "~> 0.8.0"}
+      {:fun_with_flags_ui, "~> 0.8.0"},
+      {:p1_utils, "~> 1.0"}
     ]
   end
 
