@@ -7,6 +7,7 @@ defmodule Shroud.Aliases.EmailMetric do
     field :date, :date
     field :forwarded, :integer, default: 0
     field :blocked, :integer, default: 0
+    field :replied, :integer, default: 0
     belongs_to :alias, EmailAlias
 
     timestamps()
@@ -15,7 +16,7 @@ defmodule Shroud.Aliases.EmailMetric do
   @doc false
   def changeset(email_metric, attrs) do
     email_metric
-    |> cast(attrs, [:alias_id, :date, :forwarded, :blocked])
-    |> validate_required([:alias_id, :date, :forwarded, :blocked])
+    |> cast(attrs, [:alias_id, :date, :forwarded, :blocked, :replied])
+    |> validate_required([:alias_id, :date, :forwarded, :blocked, :replied])
   end
 end

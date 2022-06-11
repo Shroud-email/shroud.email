@@ -124,7 +124,7 @@ defmodule Shroud.Email.ParsedEmail do
   end
 
   @spec process_header(Swoosh.Email.t(), {String.t(), any()}) :: Swoosh.Email.t()
-  defp process_header(email, {"from", value}), do: reply_to(email, parse_address(value))
+  defp process_header(email, {"from", value}), do: from(email, parse_address(value))
   defp process_header(email, {"subject", value}), do: subject(email, value)
   defp process_header(email, {"to", value}), do: to(email, parse_address(value))
   defp process_header(email, {key, value}), do: header(email, key, value)

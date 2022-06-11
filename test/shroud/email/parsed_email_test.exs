@@ -24,7 +24,7 @@ defmodule Shroud.Email.ParsedEmailTest do
       assert parsed.removed_trackers == []
       assert parsed.swoosh_email.subject == "Subject"
       assert replace_crlf(parsed.swoosh_email.text_body) == @text_content
-      assert parsed.swoosh_email.reply_to == {"sender@example.com", "sender@example.com"}
+      assert parsed.swoosh_email.from == {"sender@example.com", "sender@example.com"}
       assert parsed.swoosh_email.to == [{"recipient@shroud.email", "recipient@shroud.email"}]
       assert is_nil(parsed.swoosh_email.html_body)
       assert is_nil(parsed.parsed_html)
@@ -39,7 +39,7 @@ defmodule Shroud.Email.ParsedEmailTest do
       assert parsed.removed_trackers == []
       assert parsed.swoosh_email.subject == "Subject"
       assert replace_crlf(parsed.swoosh_email.html_body) == replace_crlf(@html_content)
-      assert parsed.swoosh_email.reply_to == {"sender@example.com", "sender@example.com"}
+      assert parsed.swoosh_email.from == {"sender@example.com", "sender@example.com"}
       assert parsed.swoosh_email.to == [{"recipient@shroud.email", "recipient@shroud.email"}]
       assert is_nil(parsed.swoosh_email.text_body)
       assert not is_nil(parsed.parsed_html)
@@ -60,7 +60,7 @@ defmodule Shroud.Email.ParsedEmailTest do
       assert parsed.removed_trackers == []
       assert parsed.swoosh_email.subject == "Subject"
       assert replace_crlf(parsed.swoosh_email.html_body) == replace_crlf(@html_content)
-      assert parsed.swoosh_email.reply_to == {"sender@example.com", "sender@example.com"}
+      assert parsed.swoosh_email.from == {"sender@example.com", "sender@example.com"}
       assert parsed.swoosh_email.to == [{"recipient@shroud.email", "recipient@shroud.email"}]
       assert replace_crlf(parsed.swoosh_email.text_body) == @text_content
       assert not is_nil(parsed.parsed_html)
@@ -81,7 +81,7 @@ defmodule Shroud.Email.ParsedEmailTest do
 
       %{swoosh_email: email} = ParsedEmail.parse(raw_email)
 
-      {sender, _sender_email} = email.reply_to
+      {sender, _sender_email} = email.from
       assert sender == "Pärla Example"
       assert email.subject == "Unicode PÄRLA test"
     end

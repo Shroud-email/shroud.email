@@ -11,6 +11,7 @@ defmodule Shroud.Aliases.EmailAlias do
     field :notes, :string
     field :forwarded, :integer, default: 0
     field :blocked, :integer, default: 0
+    field :replied, :integer, default: 0
     field :forwarded_in_last_30_days, :integer, virtual: true, default: 0
     field :deleted_at, :naive_datetime
     field :blocked_addresses, {:array, :string}, default: []
@@ -30,6 +31,7 @@ defmodule Shroud.Aliases.EmailAlias do
       :title,
       :notes,
       :forwarded,
+      :replied,
       :user_id,
       :deleted_at,
       :blocked_addresses

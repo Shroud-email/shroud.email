@@ -28,4 +28,10 @@ defmodule Shroud.UtilTest do
       assert :error == Util.uri_decode_map("deadbeef")
     end
   end
+
+  describe "email_domain/0" do
+    test "returns the email domain" do
+      assert Util.email_domain() == "shroud.test"
+    end
+  end
 end
