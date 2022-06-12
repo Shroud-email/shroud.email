@@ -57,7 +57,11 @@ defmodule Shroud.Aliases do
         where: ea.address == ^address and is_nil(ea.deleted_at),
         left_join: m in subquery(recent_metrics()),
         on: m.alias_id == ea.id,
-        select_merge: %{ea | forwarded_in_last_30_days: coalesce(m.forwarded, 0)}
+        select_merge: %{
+          forwarded_in_last_30_days: coalesce(m.forwarded, 0),
+          blocked_in_last_30_days: coalesce(m.blocked, 0),
+          replied_in_last_30_days: coalesce(m.replied, 0)
+        }
 
     Repo.one!(query)
   end
@@ -193,7 +197,12 @@ defmodule Shroud.Aliases do
     from m in EmailMetric,
       where: m.date > date_add(^today, -30, "day"),
       group_by: m.alias_id,
-      select: %{forwarded: sum(m.forwarded), alias_id: m.alias_id}
+      select: %{
+        forwarded: sum(m.forwarded),
+        blocked: sum(m.blocked),
+        replied: sum(m.replied),
+        alias_id: m.alias_id
+      }
   end
 
   # Shamelessly copied from https://smartlogic.io/blog/dynamic-conditionals-with-ecto/

@@ -2,6 +2,7 @@ defmodule ShroudWeb.EmailAliasLive.Show do
   import Canada, only: [can?: 2]
   use ShroudWeb, :live_view
   alias Shroud.Aliases
+  alias Shroud.Email.ReplyAddress
 
   @impl true
   def handle_params(%{"address" => address}, _uri, socket) do
@@ -11,6 +12,7 @@ defmodule ShroudWeb.EmailAliasLive.Show do
       |> assign(:page_title, "Aliases")
       |> assign(:subpage_title, address)
       |> assign(:blocked_sender_error, "")
+      |> assign(:reverse_alias_recipient, "")
       |> update_email_alias()
 
     {:noreply, socket}
@@ -97,6 +99,60 @@ defmodule ShroudWeb.EmailAliasLive.Show do
             </.form>
             <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
               <dt class="text-sm font-medium text-gray-500">
+                <div>Send emails</div>
+                <div class="mt-1 font-normal">
+                  Create a reverse alias to send emails from this address.
+                </div>
+              </dt>
+              <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                <form phx-submit="update_recipient">
+                  <fieldset class="bg-white">
+                    <div class="mt-1 rounded-md shadow-sm -space-y-px">
+                      <div class="mt-1 flex rounded-t-md shadow-sm">
+                        <div class="relative flex items-stretch flex-grow focus-within:z-10">
+                          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <!-- Heroicon name: solid/at-symbol -->
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                              <path fill-rule="evenodd" d="M14.243 5.757a6 6 0 10-.986 9.284 1 1 0 111.087 1.678A8 8 0 1118 10a3 3 0 01-4.8 2.401A4 4 0 1114 10a1 1 0 102 0c0-1.537-.586-3.07-1.757-4.243zM12 10a2 2 0 10-4 0 2 2 0 004 0z" clip-rule="evenodd" />
+                            </svg>
+                          </div>
+                          <input type="email" name="recipient" id="recipient" class="focus:ring-indigo-500 focus:border-indigo-500 block w-full rounded-none rounded-tl-md pl-10 sm:text-sm border-gray-300" placeholder="recipient@example.com">
+                        </div>
+                        <button type="submit" class="-ml-px relative inline-flex items-center space-x-2 px-4 py-2 border border-gray-300 text-sm font-medium rounded-tr-md text-gray-700 bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">
+                          Generate
+                        </button>
+                      </div>
+                      <div class="rounded-b-md sm:text-sm bg-gray-50 border p-2 border-gray-300 flex items-center">
+                        <%= if @reverse_alias_recipient == "" do %>
+                          <span class="pl-2">-</span>
+                        <% else %>
+                          <%= ReplyAddress.to_reply_address(@reverse_alias_recipient, @address) %>
+                          <span
+                            x-data="{ tooltip: 'Copy to clipboard' }"
+                            class="ml-2 mt-2 sm:mt-0"
+                          >
+                            <button x-tooltip="tooltip" type="button" class="rounded p-1 focus:ring focus:ring-indigo-500" @click={"navigator.clipboard.writeText('#{ReplyAddress.to_reply_address(@reverse_alias_recipient, @address)}'); tooltip = 'Copied!'; setTimeout(() => tooltip = 'Copy to clipboard', 1500)"}>
+                              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M8 2a1 1 0 000 2h2a1 1 0 100-2H8z" />
+                                <path d="M3 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v6h-4.586l1.293-1.293a1 1 0 00-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L10.414 13H15v3a2 2 0 01-2 2H5a2 2 0 01-2-2V5zM15 11h2a1 1 0 110 2h-2v-2z" />
+                              </svg>
+                            </button>
+                          </span>
+                        <% end %>
+                      </div>
+                    </div>
+                  </fieldset>
+                  <%= if @reverse_alias_recipient != "" do %>
+                    <p class="mt-3 text-sm text-gray-900">
+                      Send an email to the above reverse alias. The recipient you entered will receive your message,
+                      but won't be able to see your real email address.
+                    </p>
+                  <% end %>
+                </form>
+              </dd>
+            </div>
+            <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+              <dt class="text-sm font-medium text-gray-500">
                 <div>Blocked senders</div>
                 <div class="mt-1 font-normal">
                   Emails from these addresses won't be forwarded.
@@ -134,7 +190,7 @@ defmodule ShroudWeb.EmailAliasLive.Show do
 
                 <form phx-submit="block_sender">
                   <div>
-                    <label for="sender" class="block text-sm font-medium text-gray-700">Block an address</label>
+                    <label for="sender" class="sr-only">Block an address</label>
                     <div class="mt-1 flex rounded-md shadow-sm">
                       <div class="relative flex items-stretch flex-grow focus-within:z-10">
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -162,29 +218,38 @@ defmodule ShroudWeb.EmailAliasLive.Show do
       <dl class="grid grid-cols-1 gap-5 xl:grid-cols-4 mt-6">
         <div class="px-4 py-5 bg-white shadow rounded-lg overflow-hidden sm:p-6">
           <dt class="text-sm font-medium text-green-700 truncate">
-            Emails forwarded (total)
+            Emails forwarded
           </dt>
           <dd class="mt-1 text-3xl font-semibold text-gray-900">
             <%= @alias.forwarded %>
           </dd>
+          <div class="sm:text-sm text-gray-600 ml-1 mt-1">
+            <%= @alias.forwarded_in_last_30_days %> in the last month
+          </div>
         </div>
 
         <div class="px-4 py-5 bg-white shadow rounded-lg overflow-hidden sm:p-6">
           <dt class="text-sm font-medium text-green-700 truncate">
-            Emails forwarded (last 30 days)
+            Replies sent
           </dt>
           <dd class="mt-1 text-3xl font-semibold text-gray-900">
-            <%= @alias.forwarded_in_last_30_days %>
+            <%= @alias.replied %>
           </dd>
+          <div class="sm:text-sm text-gray-600 ml-1 mt-1">
+            <%= @alias.replied_in_last_30_days %> in the last month
+          </div>
         </div>
 
         <div class="px-4 py-5 bg-white shadow rounded-lg overflow-hidden sm:p-6">
           <dt class="text-sm font-medium text-red-800 truncate">
-            Emails blocked (total)
+            Emails blocked
           </dt>
           <dd class="mt-1 text-3xl font-semibold text-gray-900">
             <%= @alias.blocked %>
           </dd>
+          <div class="sm:text-sm text-gray-600 ml-1 mt-1">
+            <%= @alias.blocked_in_last_30_days %> in the last month
+          </div>
         </div>
 
         <div class="px-4 py-5 bg-white shadow rounded-lg overflow-hidden sm:p-6">
@@ -227,6 +292,11 @@ defmodule ShroudWeb.EmailAliasLive.Show do
   @impl true
   def handle_event("update", %{"email_alias" => %{"title" => title, "notes" => notes}}, socket) do
     {:noreply, update_alias(socket, %{title: title, notes: notes})}
+  end
+
+  @impl true
+  def handle_event("update_recipient", %{"recipient" => recipient}, socket) do
+    {:noreply, assign(socket, reverse_alias_recipient: recipient)}
   end
 
   @impl true

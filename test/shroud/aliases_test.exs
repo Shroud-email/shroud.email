@@ -80,7 +80,7 @@ defmodule Shroud.AliasesTest do
   end
 
   describe "get_email_alias_by_address!/1" do
-    test "counts recently forwarded emails" do
+    test "counts recent metrics" do
       one_week_seconds = 7 * 24 * 60 * 60
 
       one_week_ago =
@@ -95,12 +95,28 @@ defmodule Shroud.AliasesTest do
 
       %{id: user_id} = user_fixture()
       %{id: alias_id, address: alias_address} = alias_fixture(%{user_id: user_id})
-      metric_fixture(%{alias_id: alias_id, date: one_week_ago, forwarded: 1})
-      metric_fixture(%{alias_id: alias_id, date: two_weeks_ago, forwarded: 2})
+
+      metric_fixture(%{
+        alias_id: alias_id,
+        date: one_week_ago,
+        forwarded: 1,
+        blocked: 2,
+        replied: 3
+      })
+
+      metric_fixture(%{
+        alias_id: alias_id,
+        date: two_weeks_ago,
+        forwarded: 1,
+        blocked: 2,
+        replied: 3
+      })
 
       returned_alias = Aliases.get_email_alias_by_address!(alias_address)
       assert returned_alias.id == alias_id
-      assert returned_alias.forwarded_in_last_30_days == 3
+      assert returned_alias.forwarded_in_last_30_days == 2
+      assert returned_alias.blocked_in_last_30_days == 4
+      assert returned_alias.replied_in_last_30_days == 6
     end
 
     test "does not return a deleted alias" do
