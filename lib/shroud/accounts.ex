@@ -98,7 +98,7 @@ defmodule Shroud.Accounts do
          |> Repo.insert(returning: true) do
       {:ok, user} ->
         Notifier.notify_user_started_trial(user.email)
-        Logger.info("User #{user.email} started a trial")
+        Logger.notice("User #{user.email} started a trial")
         {:ok, user}
 
       other ->

@@ -36,7 +36,7 @@ defmodule Shroud.Billing do
         )
         |> Repo.transaction()
 
-        Logger.info("#{user.email} redeemed a lifetime code!")
+        Logger.notice("#{user.email} redeemed a lifetime code!")
 
         :ok
     end

@@ -36,7 +36,10 @@ defmodule Shroud.Email.EmailHandler do
 
     cond do
       recipient_user == nil || email_alias == nil ->
-        Logger.info("Discarding incoming email to unknown address #{recipient} (from #{sender})")
+        Logger.notice(
+          "Discarding incoming email to unknown address #{recipient} (from #{sender})"
+        )
+
         Appsignal.increment_counter("emails.discarded", 1)
 
       not email_alias.enabled ->
@@ -80,7 +83,7 @@ defmodule Shroud.Email.EmailHandler do
 
       forward_outgoing_email(sender_user, sender, recipient, data)
     else
-      Logger.info(
+      Logger.notice(
         "Discarding outgoing email from #{sender} to #{recipient} because the alias belongs to someone else"
       )
     end
@@ -91,7 +94,7 @@ defmodule Shroud.Email.EmailHandler do
   # Forwards a reply (sent to a reply address from a user) to the external address
   defp forward_outgoing_email(%User{} = sender_user, sender, recipient, data) do
     if Accounts.Logging.email_logging_enabled?(sender_user) do
-      Logger.info("Email data: #{data}")
+      Logger.notice("Email data: #{data}")
     end
 
     case ParsedEmail.parse(data)
@@ -123,7 +126,7 @@ defmodule Shroud.Email.EmailHandler do
   # Forwards an email (sent to an alias) to the user
   defp forward_incoming_email(%User{} = user, sender, recipient, data) do
     if Accounts.Logging.email_logging_enabled?(user) do
-      Logger.info("Email data: #{data}")
+      Logger.notice("Email data: #{data}")
     end
 
     case ParsedEmail.parse(data)
@@ -201,7 +204,7 @@ defmodule Shroud.Email.EmailHandler do
 
   defp maybe_log(%User{} = user, text) do
     if Accounts.Logging.logging_enabled?(user) do
-      Logger.info(text)
+      Logger.notice(text)
     end
   end
 end

@@ -48,7 +48,7 @@ config :shroud, ShroudWeb.Endpoint,
 config :shroud, Shroud.Mailer, adapter: Swoosh.Adapters.Test
 
 # We have tests for our logging, and these require a log level of at least info
-config :logger, level: :info
+config :logger, level: :notice
 # But only print warnings and higher to the console
 config :logger, :console, level: :warn
 

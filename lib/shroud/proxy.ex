@@ -20,7 +20,7 @@ defmodule Shroud.Proxy do
         {:ok, body}
 
       {:ok, %HTTPoison.Response{status_code: status_code}} ->
-        Logger.info("Attempt to proxy \"#{url}\" failed; returned status code #{status_code}")
+        Logger.notice("Attempt to proxy \"#{url}\" failed; returned status code #{status_code}")
         {:error, :non_200_status_code}
 
       {:error, %HTTPoison.Error{reason: reason}} ->

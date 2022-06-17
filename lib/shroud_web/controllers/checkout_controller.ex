@@ -118,15 +118,15 @@ defmodule ShroudWeb.CheckoutController do
 
             Accounts.update_stripe_details!(user, attrs)
             Notifier.notify_user_signed_up(user.email)
-            Logger.info("User #{user.email} signed up! Plan expires at #{current_period_end}")
+            Logger.notice("User #{user.email} signed up! Plan expires at #{current_period_end}")
 
           "past_due" ->
             # past_due doesn't deactivate the user's plan immediately to give them a grace period
-            Logger.info("Payment for user #{user.email} is 'past_due'")
+            Logger.notice("Payment for user #{user.email} is 'past_due'")
 
           "incomplete" ->
             # incomplete doesn't deactivate the user's plan immediately to give them a grace period
-            Logger.info("Payment for user #{user.email} is 'incomplete'")
+            Logger.notice("Payment for user #{user.email} is 'incomplete'")
 
           other ->
             # Remaining options are incomplete_expired, canceled, unpaid. These all cancel
@@ -139,7 +139,7 @@ defmodule ShroudWeb.CheckoutController do
             }
 
             Accounts.update_stripe_details!(user, attrs)
-            Logger.info("Set #{user.email} to inactive due to Stripe event '#{other}'")
+            Logger.notice("Set #{user.email} to inactive due to Stripe event '#{other}'")
         end
     end
   end
