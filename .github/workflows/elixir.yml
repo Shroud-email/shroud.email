@@ -13,19 +13,17 @@ env:
   MIX_ENV: test
 
 jobs:
-  build:
+  test:
 
-    name: Build and test
+    name: Test
     runs-on: ubuntu-latest
-    env:
-      POSTGRES_HOST: db
     services:
-      db:
+      postgres:
         image: postgres:13.2-alpine
         env:
           POSTGRES_DB: shroud_test
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: "postgres"
+          POSTGRES_PASSWORD: postgres
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
