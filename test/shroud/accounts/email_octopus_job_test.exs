@@ -33,7 +33,7 @@ defmodule Shroud.Accounts.EmailOctopusJobTest do
       expect(Shroud.MockHTTPoison, :post, 0, fn _url, _payload, _headers -> :ok end)
 
       Application.delete_env(:shroud, :email_octopus_api_key)
-      on_exit(fn -> Application.put_env(:shroud, :email_octopus_api_key, "123") end)
+      on_exit(fn -> Application.put_env(:shroud, :email_octopus_api_key, "deadbeef") end)
       perform_job(EmailOctopusJob, %{user_id: user.id})
     end
 
