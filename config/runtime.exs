@@ -107,5 +107,7 @@ if config_env() == :prod do
   config :appsignal, :config, push_api_key: System.get_env("APPSIGNAL_PUSH_API_KEY")
 
   config :shroud,
-    notifier_webhook_url: System.get_env("NOTIFIER_WEBHOOK_URL")
+    notifier_webhook_url: System.get_env("NOTIFIER_WEBHOOK_URL"),
+    email_octopus_list_id: System.get_env("EMAIL_OCTOPUS_LIST_ID"),
+    email_octopus_api_key: System.get_env("EMAIL_OCTOPUS_API_KEY")
 end

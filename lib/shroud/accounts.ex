@@ -7,7 +7,7 @@ defmodule Shroud.Accounts do
   alias Shroud.Repo
 
   alias Shroud.{Notifier, Util}
-  alias Shroud.Accounts.{User, UserToken, UserNotifier}
+  alias Shroud.Accounts.{EmailOctopusJob, User, UserToken, UserNotifier}
   alias Shroud.Aliases.EmailAlias
 
   require Logger
@@ -300,6 +300,10 @@ defmodule Shroud.Accounts do
     with {:ok, query} <- UserToken.verify_email_token_query(token, "confirm"),
          %User{} = user <- Repo.one(query),
          {:ok, %{user: user}} <- Repo.transaction(confirm_user_multi(user)) do
+      %{user_id: user.id}
+      |> EmailOctopusJob.new()
+      |> Oban.insert!()
+
       {:ok, user}
     else
       _ -> :error
