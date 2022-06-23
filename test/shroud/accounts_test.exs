@@ -442,6 +442,11 @@ defmodule Shroud.AccountsTest do
       refute Repo.get!(User, user.id).confirmed_at
       assert Repo.get_by(UserToken, user_id: user.id)
     end
+
+    test "subscribes the user in EmailOctopus", %{user: user, token: token} do
+      assert {:ok, _confirmed_user} = Accounts.confirm_user(token)
+      assert_enqueued(worker: Accounts.EmailOctopusJob, args: %{user_id: user.id})
+    end
   end
 
   describe "deliver_user_reset_password_instructions/2" do

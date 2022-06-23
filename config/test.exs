@@ -56,4 +56,6 @@ config :logger, :console, level: :warn
 config :phoenix, :plug_init_mode, :runtime
 
 config :shroud,
-  notifier_webhook_url: "webhook.com/webhook"
+  notifier_webhook_url: "webhook.com/webhook",
+  email_octopus_list_id: 123,
+  email_octopus_api_key: "deadbeef"
