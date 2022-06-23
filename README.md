@@ -1,5 +1,8 @@
 # [Shroud.email](https://shroud.email/)
 
+[![CI](https://github.com/Shroud-email/shroud.email/actions/workflows/ci.yml/badge.svg)](https://github.com/Shroud-email/shroud.email/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/Shroud-email/shroud.email/branch/main/graph/badge.svg?token=VOCBPBLSVG)](https://codecov.io/gh/Shroud-email/shroud.email)
+
 [Shroud.email](https://shroud.email/) is an email privacy service. Protect your email address from spammers and creepy marketers
 by creating unlimited aliases that remove trackers and forward messages to your regular inbox.
 
