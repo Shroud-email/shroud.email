@@ -56,10 +56,13 @@ jobs:
       run: mix ecto.setup
     - name: Run tests
       run: mix coveralls.json
+    - uses: codecov/codecov-action@v3
+      with:
+        files: ./cover/excoveralls.json
 
   deploy:
     needs: test
-    if: github.ref == 'refs/head/main'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     env:
       REGISTRY: ghcr.io
