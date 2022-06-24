@@ -19,13 +19,7 @@ config :logger, level: :notice
 config :shroud, :mailer,
   smtp_options: [
     port: 1587,
-    sessionoptions: [
-      hostname: "app.shroud.email",
-      certfile:
-        "/var/caddy/certificates/acme-v02.api.letsencrypt.org-directory/app.shroud.email/app.shroud.email.crt",
-      keyfile:
-        "/var/caddy/certificates/acme-v02.api.letsencrypt.org-directory/app.shroud.email/app.shroud.email.key"
-    ],
+    sessionoptions: [hostname: "shroud.email.local"],
     tls_options: [
       # Don't verify peers (we'll forward anything we can)
       verify: :verify_none,
