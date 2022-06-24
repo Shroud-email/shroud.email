@@ -44,7 +44,7 @@ config :shroud, :mailer,
 
 config :shroud,
   http_client: HTTPoison,
-  tracker_list_uri: "https://gitlab.com/shroud/email-trackers/-/raw/main/list.txt"
+  tracker_list_uri: "https://raw.githubusercontent.com/Shroud-email/email-trackers/main/list.txt"
 
 config :shroud, Shroud.Scheduler,
   jobs: [
