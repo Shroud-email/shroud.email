@@ -32,9 +32,8 @@ config :shroud, Shroud.Mailer, adapter: Swoosh.Adapters.Local
 
 config :shroud, :mailer,
   smtp_options: [
-    allow_bare_newlines: :ignore,
-    port: 2525,
-    sessionoptions: [hostname: "app.shroud.email", certfile: "server.pem", keyfile: "server.key"],
+    port: 1587,
+    sessionoptions: [hostname: "shroud.email.local"],
     tls_options: [
       # Don't verify peers (we'll forward anything we can)
       verify: :verify_none,
