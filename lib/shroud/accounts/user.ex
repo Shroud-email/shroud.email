@@ -15,6 +15,8 @@ defmodule Shroud.Accounts.User do
     field :totp_secret, Shroud.Encrypted.Binary
     field :totp_backup_codes, Shroud.Encrypted.StringList
 
+    has_many :user_tokens, Shroud.Accounts.UserToken
+
     field :stripe_customer_id, :string
     field :trial_expires_at, :naive_datetime
     field :plan_expires_at, :naive_datetime

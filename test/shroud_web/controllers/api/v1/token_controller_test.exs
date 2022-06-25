@@ -38,7 +38,7 @@ defmodule ShroudWeb.Api.V1.TokenControllerTest do
           "totp" => totp_code
         })
 
-      %{token: token} = Repo.get_by!(UserToken, user_id: user.id)
+      token = hd(Repo.preload(user, :user_tokens).user_tokens).token
 
       assert json_response(conn, 200) == %{
                "token" => Base.encode64(token)
