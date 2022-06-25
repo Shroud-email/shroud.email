@@ -1,6 +1,9 @@
 defmodule Shroud.Release do
   @app :shroud
 
+  alias Shroud.Accounts
+  alias ShroudWeb.Router.Helpers, as: Routes
+
   def migrate do
     load_app()
 
@@ -12,6 +15,26 @@ defmodule Shroud.Release do
   def rollback(repo, version) do
     load_app()
     {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :down, to: version))
+  end
+
+  def create_admin_user do
+    email = Application.get_env(:shroud, :admin_user_email)
+
+    if email && is_nil(Accounts.get_user_by_email(email)) do
+      # some random password, but we sent a password reset email so the user can set their own
+      password = :crypto.strong_rand_bytes(32) |> Base.url_encode64()
+      {:ok, user} = Accounts.register_user(%{email: email, password: password, status: :lifetime})
+
+      Accounts.deliver_user_confirmation_instructions(
+        user,
+        &Routes.user_confirmation_url(ShroudWeb.Endpoint, :edit, &1)
+      )
+
+      Accounts.deliver_user_reset_password_instructions(
+        user,
+        &Routes.user_reset_password_url(ShroudWeb.Endpoint, :edit, &1)
+      )
+    end
   end
 
   defp repos do
