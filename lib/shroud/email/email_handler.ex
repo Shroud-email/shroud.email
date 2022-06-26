@@ -192,6 +192,8 @@ defmodule Shroud.Email.EmailHandler do
     |> Map.put(:from, {"#{email_alias} (via Shroud.email)", email_alias})
     # Fix the recipient (replace the reply address with the real recipient)
     |> Map.put(:to, [{recipient_address, recipient_address}])
+    # Don't forward the reply-to header in replies as it may contain the user's real email
+    |> Map.put(:reply_to, nil)
   end
 
   defp sender_owns_alias?(nil, _reply_address), do: false

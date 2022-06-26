@@ -19,9 +19,9 @@ defmodule Shroud.Email.ParsedEmail do
 
   @allowed_headers [
     "from",
+    "subject",
     "to",
     "reply-to",
-    "subject",
     "date",
     "delivered-to"
   ]
@@ -127,6 +127,7 @@ defmodule Shroud.Email.ParsedEmail do
   defp process_header(email, {"from", value}), do: from(email, parse_address(value))
   defp process_header(email, {"subject", value}), do: subject(email, value)
   defp process_header(email, {"to", value}), do: to(email, parse_address(value))
+  defp process_header(email, {"reply-to", value}), do: reply_to(email, parse_address(value))
   defp process_header(email, {key, value}), do: header(email, key, value)
 
   @spec process_attachment(Swoosh.Email.t(), binary(), Keyword.t()) :: Swoosh.Email.t()

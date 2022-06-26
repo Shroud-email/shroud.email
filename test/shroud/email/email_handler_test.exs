@@ -107,6 +107,29 @@ defmodule Shroud.Email.EmailHandlerTest do
       end)
     end
 
+    test "forwards a custom reply-to header", %{user: user, email_alias: email_alias} do
+      args = %{
+        from: "sender@example.com",
+        to: [email_alias.address],
+        data:
+          text_email(
+            "sender@example.com",
+            [email_alias.address],
+            "Custom reply-to!",
+            "Plain text content",
+            "Reply-To: custom@example.com"
+          )
+      }
+
+      perform_job(EmailHandler, args)
+
+      assert_email_sent(fn email ->
+        {_name, recipient} = hd(email.to)
+        assert recipient == user.email
+        assert email.reply_to == {"custom@example.com", "custom@example.com"}
+      end)
+    end
+
     test "handles replies from an alias", %{user: user} do
       args = %{
         from: user.email,
@@ -171,6 +194,29 @@ defmodule Shroud.Email.EmailHandlerTest do
                "Discarding outgoing email from #{other_user.email} to recipient_at_example.com_alias@shroud.test"
 
       assert_no_email_sent()
+    end
+
+    test "does not include reply-to in replies", %{user: user} do
+      args = %{
+        from: user.email,
+        to: ["recipient_at_example.com_alias@shroud.test"],
+        data:
+          text_email(
+            user.email,
+            ["recipient_at_example.com_alias@shroud.test"],
+            "To one recipient",
+            "Plain text content",
+            "Reply-To: #{user.email}"
+          )
+      }
+
+      perform_job(EmailHandler, args)
+
+      assert_email_sent(fn email ->
+        assert email.to == [{"recipient@example.com", "recipient@example.com"}]
+        assert email.from == {"alias@shroud.test (via Shroud.email)", "alias@shroud.test"}
+        assert is_nil(email.reply_to)
+      end)
     end
 
     test "handles existing user emailing other user's alias", %{user: user} do
