@@ -80,31 +80,24 @@ if config_env() == :prod do
     server: true
 
   # ## Configuring the mailer
-  #
-  # In production you need to configure the mailer to use a different adapter.
-  # Also, you may need to configure the Swoosh API client of your choice if you
-  # are not using SMTP. Here is an example of the configuration:
-  #
-  #     config :shroud, Shroud.Mailer,
-  #       adapter: Swoosh.Adapters.Mailgun,
-  #       api_key: System.get_env("MAILGUN_API_KEY"),
-  #       domain: System.get_env("MAILGUN_DOMAIN")
-  #
-  # For this example you need include a HTTP client required by Swoosh API client.
-  # Swoosh supports Hackney and Finch out of the box:
-  #
-  #     config :swoosh, :api_client, Swoosh.ApiClient.Hackney
-  #
   # See https://hexdocs.pm/swoosh/Swoosh.html#module-installation for details.
-  oh_my_smtp_api_key =
-    System.get_env("OH_MY_SMTP_API_KEY") ||
-      raise """
-      environment variable OH_MY_SMTP_API_KEY is missing.
-      """
+
+  smtp_username =
+    System.get_env("SMTP_USERNAME") || raise "environment variable SMTP_USERNAME is missing"
+
+  smtp_password =
+    System.get_env("SMTP_PASSWORD") || raise "environment variable SMTP_PASSWORD is missing"
 
   config :shroud, Shroud.Mailer,
-    adapter: Swoosh.Adapters.OhMySmtp,
-    api_key: oh_my_smtp_api_key
+    adapter: Swoosh.Adapters.SMTP,
+    relay: System.get_env("SMTP_RELAY") || "localhost",
+    username: smtp_username,
+    password: smtp_password,
+    ssl: false,
+    tls: :if_available,
+    auth: :always,
+    retries: 5,
+    no_mx_lookups: true
 
   config :swoosh, :api_client, Swoosh.ApiClient.Hackney
 
