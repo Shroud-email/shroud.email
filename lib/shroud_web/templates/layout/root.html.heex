@@ -15,7 +15,8 @@
       defer
       data-domain="app.shroud.email,rollup.shroud.email"
       data-api="https://shroud.email/p/api/event"
-      src="https://shroud.email/p/pjs/script.outbound-links.js"
+      data-exclude="/alias/**, /users/**, /email-report/**"
+      src="https://shroud.email/p/pjs/script.outbound-links.exclusions.js"
     ></script>
     <script>
       window.Papercups = {
