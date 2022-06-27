@@ -1,0 +1,65 @@
+Received: from shroud.email (staging-shroud.email [172.25.0.1])
+	by shroud.email (Haraka/2.8.28) with ESMTPS id FEAFBB34-4B40-47E0-85A1-57403A13238A.1
+	envelope-from <>
+	tls TLS_AES_256_GCM_SHA384;
+	Mon, 27 Jun 2022 07:28:01 +0000
+Received: (Haraka outbound); Mon, 27 Jun 2022 07:28:00 +0000
+Content-Type: multipart/report; report-type=delivery-status;
+    boundary="boundary_2A89584B-CEE2-44EA-9E82-0041EBB62FF2"
+References: <cfacf693f97703e65197cdf26d8cf155@ed859405980c>
+Message-Id: <B26FA0F0-182D-42FC-AEBD-6667A7FD6BD0@shroud.email>
+Date: Mon, 27 Jun 2022 07:28:00 +0000
+Precedence: junk
+X-Spam-Checker-Version: SpamAssassin 3.4.1 (2015-04-28) on aec3e4413c58
+X-Spam-Flag: YES
+X-Spam-Level: *****
+X-Spam-Status: Yes, score=5.7 required=5.0 tests=ALL_TRUSTED,
+	MIME_HEADER_CTYPE_ONLY,MISSING_FROM,MISSING_HEADERS,MISSING_SUBJECT,
+	SCC_BODY_URI_ONLY,TVD_SPACE_RATIO,T_SCC_BODY_TEXT_LINE,URIBL_BLOCKED
+	autolearn=no autolearn_force=no version=3.4.1
+
+This is a MIME-encapsulated message.
+
+--boundary_2A89584B-CEE2-44EA-9E82-0041EBB62FF2
+Content-Type: text/plain; charset=us-ascii
+
+
+--boundary_2A89584B-CEE2-44EA-9E82-0041EBB62FF2
+Content-type: message/delivery-status
+
+Original-Envelope-Id: <cfacf693f97703e65197cdf26d8cf155@ed859405980c>
+Reporting-MTA: dns;shroud.email
+Arrival-Date: Mon, 27 Jun 2022 07:28:00 +0000
+
+Final-Recipient: rfc822;recipient@mac.com
+Action: failed
+Status: 5.7.0
+Remote-MTA: mx01.mail.icloud.com
+Diagnostic-Code: smtp;554 5.7.0 Blocked - see https://support.proofpoint.com/dnsbl-lookup.cgi?ip=49.12.235.114 
+
+--boundary_2A89584B-CEE2-44EA-9E82-0041EBB62FF2
+Content-Description: Undelivered Message Headers
+Content-Type: text/rfc822-headers
+
+Received: (Haraka outbound); Mon, 27 Jun 2022 07:28:00 +0000
+Authentication-Results: shroud.email;
+	auth=pass (cram-md5)
+Received: from ed859405980c (hosting-web-1.hosting_default [172.25.0.7])
+	by shroud.email (Haraka/2.8.28) with ESMTPSA id 5C776A1D-CFA1-450D-AB5E-B16A4ADCB64B.1
+	envelope-from <cgqq33obr4zcgw41@shroud.email>
+	tls TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256 (authenticated bits=0);
+	Mon, 27 Jun 2022 07:27:58 +0000
+From: "cgqq33obr4zcgw41@shroud.email (via Shroud.email)" <cgqq33obr4zcgw41@shroud.email>
+To: "recipient@mac.com" <recipient@mac.com>
+Subject: Another one
+MIME-Version: 1.0
+date: Mon, 27 Jun 2022 07:27:49 +0000
+Content-Type: multipart/alternative;
+	boundary="_=4i025t09346f4n4y5c5s1y4x4d053a37=_"
+Message-ID: <cfacf693f97703e65197cdf26d8cf155@ed859405980c>
+X-Spam-Checker-Version: SpamAssassin 3.4.1 (2015-04-28) on aec3e4413c58
+X-Spam-Status: No, score=-1.0 required=5.0 tests=ALL_TRUSTED,HTML_MESSAGE,
+	T_SCC_BODY_TEXT_LINE autolearn=ham autolearn_force=no version=3.4.1
+DKIM-Signature: v=1;a=rsa-sha256;bh=UThxPl+YQsisB9YatsNpiYMAJdsPTHfxYaFIvmSxFME=;c=relaxed/simple;d=shroud.email;h=from:reply-to:subject:date:message-id:to:mime-version;s=shroudemail;b=ZUmZ9kwoLjMiieV3n2XyhPYdOu3IjPcHzu6KFOqNtLwi8ASzhBabfVbICbao499acKeIE1BAnmc16sjZNJ2CfheQTAinNt5e3OR8jzznmb/YuUiwlopuEDOajnXGHxramkaeb27ysF2nBwqQ0B/UWiKlB675adi4O4ZMHpz6qDtkItkRtBw9m7OdFQlKMjvH7PNLxqjDSNrsyCoi0FTSglsF+fCIEOPhBffnKdmDHletrsu3Cz/KGc9hi1TPPyS/Ceux2ayCqo1Im3LFbNaNSrRbxxJ2QXVdrOY1gONSbiXnUtEzGsLBg0iP4hAGU5lX4jbj6eZjjKcRrQrhsgYYAw==
+
+--boundary_2A89584B-CEE2-44EA-9E82-0041EBB62FF2--

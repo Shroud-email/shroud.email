@@ -4,6 +4,8 @@ defmodule Shroud.EmailFixtures do
   the DATA portion of received emails.
   """
 
+  alias Shroud.Util
+
   @spec multipart_email(String.t(), [String.t()], String.t(), String.t(), String.t()) ::
           String.t()
   def multipart_email(sender, recipients, subject, text_content, html_content) do
@@ -31,7 +33,7 @@ defmodule Shroud.EmailFixtures do
     |> add_subject(subject)
     |> add_sender(sender)
     |> add_recipients(recipients)
-    |> convert_newlines()
+    |> Util.lf_to_crlf()
   end
 
   @spec html_email(String.t(), [String.t()], String.t(), String.t()) :: String.t()
@@ -44,7 +46,7 @@ defmodule Shroud.EmailFixtures do
     |> add_subject(subject)
     |> add_sender(sender)
     |> add_recipients(recipients)
-    |> convert_newlines()
+    |> Util.lf_to_crlf()
   end
 
   @spec text_email(String.t(), [String.t()], String.t(), String.t()) :: String.t()
@@ -58,7 +60,7 @@ defmodule Shroud.EmailFixtures do
     |> add_sender(sender)
     |> add_recipients(recipients)
     |> add_header(extra_header)
-    |> convert_newlines()
+    |> Util.lf_to_crlf()
   end
 
   defp add_subject(data, subject) do
@@ -89,9 +91,4 @@ defmodule Shroud.EmailFixtures do
 
   defp format_address({name, address}), do: "\"#{name}\" <#{address}>"
   defp format_address(address), do: address
-
-  # Emails require CRLF newlines
-  defp convert_newlines(data) do
-    String.replace(data, "\n", "\r\n")
-  end
 end

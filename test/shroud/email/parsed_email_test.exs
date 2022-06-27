@@ -3,6 +3,7 @@ defmodule Shroud.Email.ParsedEmailTest do
 
   import Shroud.EmailFixtures
   alias Shroud.Email.ParsedEmail
+  alias Shroud.Util
 
   @html_content """
     <html>
@@ -23,7 +24,7 @@ defmodule Shroud.Email.ParsedEmailTest do
 
       assert parsed.removed_trackers == []
       assert parsed.swoosh_email.subject == "Subject"
-      assert replace_crlf(parsed.swoosh_email.text_body) == @text_content
+      assert Util.crlf_to_lf(parsed.swoosh_email.text_body) == @text_content
       assert parsed.swoosh_email.from == {"sender@example.com", "sender@example.com"}
       assert parsed.swoosh_email.to == [{"recipient@shroud.email", "recipient@shroud.email"}]
       assert is_nil(parsed.swoosh_email.html_body)
@@ -38,7 +39,7 @@ defmodule Shroud.Email.ParsedEmailTest do
 
       assert parsed.removed_trackers == []
       assert parsed.swoosh_email.subject == "Subject"
-      assert replace_crlf(parsed.swoosh_email.html_body) == replace_crlf(@html_content)
+      assert Util.crlf_to_lf(parsed.swoosh_email.html_body) == Util.crlf_to_lf(@html_content)
       assert parsed.swoosh_email.from == {"sender@example.com", "sender@example.com"}
       assert parsed.swoosh_email.to == [{"recipient@shroud.email", "recipient@shroud.email"}]
       assert is_nil(parsed.swoosh_email.text_body)
@@ -59,10 +60,10 @@ defmodule Shroud.Email.ParsedEmailTest do
 
       assert parsed.removed_trackers == []
       assert parsed.swoosh_email.subject == "Subject"
-      assert replace_crlf(parsed.swoosh_email.html_body) == replace_crlf(@html_content)
+      assert Util.crlf_to_lf(parsed.swoosh_email.html_body) == Util.crlf_to_lf(@html_content)
       assert parsed.swoosh_email.from == {"sender@example.com", "sender@example.com"}
       assert parsed.swoosh_email.to == [{"recipient@shroud.email", "recipient@shroud.email"}]
-      assert replace_crlf(parsed.swoosh_email.text_body) == @text_content
+      assert Util.crlf_to_lf(parsed.swoosh_email.text_body) == @text_content
       assert not is_nil(parsed.parsed_html)
     end
 
@@ -135,11 +136,5 @@ defmodule Shroud.Email.ParsedEmailTest do
       assert attachment.content_type == "image/jpeg"
       assert attachment.cid == "708f1df0@example.com"
     end
-  end
-
-  defp replace_crlf(string) do
-    string
-    |> String.replace(~r/\r\n/, "\n")
-    |> String.trim()
   end
 end

@@ -30,4 +30,18 @@ defmodule Shroud.Util do
   def email_domain() do
     Application.get_env(:shroud, :email_aliases)[:domain]
   end
+
+  @spec crlf_to_lf(String.t()) :: String.t()
+  def crlf_to_lf(string) do
+    string
+    |> String.replace(~r/\r\n/, "\n")
+    |> String.trim()
+  end
+
+  @spec lf_to_crlf(String.t()) :: String.t()
+  def lf_to_crlf(string) do
+    string
+    |> String.replace("\n", "\r\n")
+    |> String.trim()
+  end
 end

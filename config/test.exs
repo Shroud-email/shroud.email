@@ -49,8 +49,8 @@ config :shroud, Shroud.Mailer, adapter: Swoosh.Adapters.Test
 
 # We have tests for our logging, and these require a log level of at least info
 config :logger, level: :notice
-# But only print warnings and higher to the console
-config :logger, :console, level: :warn
+# But only print errors to the console
+config :logger, :console, level: :error
 
 # Initialize plugs at runtime for faster test compilation
 config :phoenix, :plug_init_mode, :runtime
