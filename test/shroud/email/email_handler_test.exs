@@ -7,7 +7,7 @@ defmodule Shroud.Email.EmailHandlerTest do
   import Shroud.{AccountsFixtures, AliasesFixtures, EmailFixtures}
 
   alias Shroud.Email.EmailHandler
-  alias Shroud.Aliases
+  alias Shroud.{Aliases, Util}
 
   @html_content """
     <html>
@@ -489,7 +489,7 @@ defmodule Shroud.Email.EmailHandlerTest do
       assert capture_log(fn ->
                perform_job(EmailHandler, args)
              end) =~
-               "Email data: To: #{email_alias.address}\r\nFrom: sender@example.com\r\nSubject: Text only\r\nContent-Type: text/plain\r\n\r\nPlain text content!\r\n"
+               "Email data: To: #{email_alias.address}\r\nFrom: sender@example.com\r\nSubject: Text only\r\nContent-Type: text/plain\r\n\r\nPlain text content!"
     end
 
     test "logs blocked emails if logging is enabled for user" do
@@ -533,5 +533,12 @@ defmodule Shroud.Email.EmailHandlerTest do
              end) =~
                "Discarding incoming email from sender@example.com to disabled alias #{email_alias.address}"
     end
+  end
+
+  test "handles 554 rejection notices" do
+    raw_email = File.read!("test/support/data/554_rejection_notice.email") |> Util.lf_to_crlf()
+    perform_job(EmailHandler, %{from: nil, to: "test@test.com", data: raw_email})
+
+    assert_enqueued(worker: Shroud.S3.S3UploadJob)
   end
 end

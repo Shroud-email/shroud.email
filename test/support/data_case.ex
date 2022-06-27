@@ -15,6 +15,7 @@ defmodule Shroud.DataCase do
   """
 
   use ExUnit.CaseTemplate
+  import Mox
 
   using do
     quote do
@@ -30,6 +31,8 @@ defmodule Shroud.DataCase do
   setup tags do
     pid = Ecto.Adapters.SQL.Sandbox.start_owner!(Shroud.Repo, shared: not tags[:async])
     on_exit(fn -> Ecto.Adapters.SQL.Sandbox.stop_owner(pid) end)
+
+    Shroud.MockDateTime |> stub_with(Shroud.DateTime)
     :ok
   end
 

@@ -80,7 +80,10 @@ defmodule Shroud.MixProject do
       {:scrivener_ecto, "~> 2.7"},
       {:fun_with_flags, "~> 1.8"},
       {:fun_with_flags_ui, "~> 0.8.0"},
-      {:p1_utils, "~> 1.0"}
+      {:p1_utils, "~> 1.0"},
+      {:ex_aws, "~> 2.3"},
+      {:ex_aws_s3, "~> 2.3"},
+      {:dotenv_parser, "~> 2.0", only: :dev}
     ]
   end
 

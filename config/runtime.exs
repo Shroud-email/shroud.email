@@ -1,11 +1,27 @@
 import Config
 
+if Config.config_env() == :dev do
+  DotenvParser.load_file(".env")
+end
+
 config :stripity_stripe, api_key: System.get_env("STRIPE_SECRET")
 
 config :shroud, :billing,
   stripe_yearly_price: System.get_env("STRIPE_YEARLY_PRICE"),
   stripe_monthly_price: System.get_env("STRIPE_MONTHLY_PRICE"),
   stripe_webhook_secret: System.get_env("STRIPE_WEBHOOK_SECRET")
+
+# ex_aws configured with AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
+# environment variables in addition to this one
+s3_bucket = System.get_env("S3_BUCKET") || "shroud-email"
+s3_host = System.get_env("S3_HOST") || "s3.amazonaws.com"
+config :shroud, :bounces, s3_bucket: s3_bucket
+
+config :ex_aws,
+  s3: [
+    scheme: "https",
+    host: s3_host
+  ]
 
 # config/runtime.exs is executed for all environments, including
 # during releases. It is executed after compilation and before the

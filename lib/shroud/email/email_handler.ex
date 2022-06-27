@@ -5,7 +5,14 @@ defmodule Shroud.Email.EmailHandler do
   require Logger
   alias Shroud.{Accounts, Aliases, Mailer, Util}
   alias Shroud.Accounts.User
-  alias Shroud.Email.{Enricher, ParsedEmail, ReplyAddress, TrackerRemover}
+  alias Shroud.Email.{BounceHandler, Enricher, ParsedEmail, ReplyAddress, TrackerRemover}
+
+  @impl Oban.Worker
+  @decorate transaction(:background_job)
+  def perform(%Oban.Job{args: %{"from" => from, "to" => to, "data" => data}})
+      when from in ["", nil] do
+    BounceHandler.handle_haraka_bounce_report(to, data)
+  end
 
   @impl Oban.Worker
   @decorate transaction(:background_job)
