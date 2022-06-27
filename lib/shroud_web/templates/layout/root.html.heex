@@ -11,13 +11,6 @@
     <link phx-track-static rel="icon" href={Routes.static_path(@conn, "/favicon.ico")} />
     <script type="text/javascript" async defer src="https://app.papercups.io/widget.js"></script>
     <script defer phx-track-static type="text/javascript" src={Routes.static_path(@conn, "/assets/app.js")}></script>
-    <script
-      defer
-      data-domain="app.shroud.email,rollup.shroud.email"
-      data-api="https://shroud.email/p/api/event"
-      data-exclude="/alias/**, /users/**, /email-report/**"
-      src="https://shroud.email/p/pjs/script.outbound-links.exclusions.js"
-    ></script>
     <script>
       window.Papercups = {
         config: {
