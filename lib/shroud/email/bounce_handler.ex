@@ -17,7 +17,7 @@ defmodule Shroud.Email.BounceHandler do
   def handle_haraka_bounce_report(to, data) do
     s3_path = "/bounces/#{to}-#{date_time().utc_now_unix()}.eml"
 
-    %{path: s3_path, contents: data}
+    %{path: s3_path, content: data}
     |> S3UploadJob.new()
     |> Oban.insert!()
 

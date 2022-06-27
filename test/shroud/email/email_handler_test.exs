@@ -3,6 +3,7 @@ defmodule Shroud.Email.EmailHandlerTest do
   use Oban.Testing, repo: Shroud.Repo
   import Swoosh.TestAssertions
   import ExUnit.CaptureLog
+  import Mox
 
   import Shroud.{AccountsFixtures, AliasesFixtures, EmailFixtures}
 
@@ -476,6 +477,11 @@ defmodule Shroud.Email.EmailHandlerTest do
       email_alias = alias_fixture(%{user_id: user.id})
       FunWithFlags.enable(:email_data_logging, for_actor: user)
 
+      Shroud.MockDateTime
+      |> stub(:utc_now_unix, fn ->
+        1_656_361_719
+      end)
+
       data =
         text_email(
           "sender@example.com",
@@ -484,12 +490,18 @@ defmodule Shroud.Email.EmailHandlerTest do
           "Plain text content!"
         )
 
-      args = %{from: "sender@example.com", to: email_alias.address, data: data}
+      perform_job(EmailHandler, %{from: "sender@example.com", to: email_alias.address, data: data})
 
-      assert capture_log(fn ->
-               perform_job(EmailHandler, args)
-             end) =~
-               "Email data: To: #{email_alias.address}\r\nFrom: sender@example.com\r\nSubject: Text only\r\nContent-Type: text/plain\r\n\r\nPlain text content!"
+      expected_content =
+        "To: #{email_alias.address}\r\nFrom: sender@example.com\r\nSubject: Text only\r\nContent-Type: text/plain\r\n\r\nPlain text content!"
+
+      assert_enqueued(
+        worker: Shroud.S3.S3UploadJob,
+        args: %{
+          path: "/emails/sender@example.com-#{email_alias.address}-1656361719.eml",
+          content: expected_content
+        }
+      )
     end
 
     test "logs blocked emails if logging is enabled for user" do

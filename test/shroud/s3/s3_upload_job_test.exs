@@ -19,7 +19,7 @@ defmodule Shroud.S3.S3UploadJobTest do
       assert :ok =
                perform_job(S3UploadJob, %{
                  path: "/emails/yolo.eml",
-                 contents: "my email content\n"
+                 content: "my email content\n"
                })
     end
   end

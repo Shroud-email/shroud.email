@@ -6,6 +6,7 @@ defmodule Shroud.Email.EmailHandler do
   alias Shroud.{Accounts, Aliases, Mailer, Util}
   alias Shroud.Accounts.User
   alias Shroud.Email.{BounceHandler, Enricher, ParsedEmail, ReplyAddress, TrackerRemover}
+  alias Shroud.S3.S3UploadJob
 
   @impl Oban.Worker
   @decorate transaction(:background_job)
@@ -101,7 +102,7 @@ defmodule Shroud.Email.EmailHandler do
   # Forwards a reply (sent to a reply address from a user) to the external address
   defp forward_outgoing_email(%User{} = sender_user, sender, recipient, data) do
     if Accounts.Logging.email_logging_enabled?(sender_user) do
-      Logger.notice("Email data: #{data}")
+      store_email(sender, recipient, data)
     end
 
     case ParsedEmail.parse(data)
@@ -133,7 +134,7 @@ defmodule Shroud.Email.EmailHandler do
   # Forwards an email (sent to an alias) to the user
   defp forward_incoming_email(%User{} = user, sender, recipient, data) do
     if Accounts.Logging.email_logging_enabled?(user) do
-      Logger.notice("Email data: #{data}")
+      store_email(sender, recipient, data)
     end
 
     case ParsedEmail.parse(data)
@@ -215,5 +216,16 @@ defmodule Shroud.Email.EmailHandler do
     if Accounts.Logging.logging_enabled?(user) do
       Logger.notice(text)
     end
+  end
+
+  defp store_email(sender, recipient, data) do
+    date_time = Application.get_env(:shroud, :datetime_module, Shroud.DateTime)
+    s3_path = "/emails/#{sender}-#{recipient}-#{date_time.utc_now_unix()}.eml"
+
+    %{path: s3_path, content: data}
+    |> S3UploadJob.new()
+    |> Oban.insert!()
+
+    Logger.notice("Storing email from #{sender} to #{recipient} to #{s3_path}")
   end
 end

@@ -23,7 +23,7 @@ defmodule Shroud.Email.BounceHandlerTest do
         worker: Shroud.S3.S3UploadJob,
         args: %{
           path: "/bounces/test@test.com-1656358048.eml",
-          contents: "email-contents"
+          content: "email-contents"
         }
       )
     end
