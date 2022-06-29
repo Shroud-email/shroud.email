@@ -393,6 +393,34 @@ defmodule Shroud.Email.EmailHandlerTest do
       end)
     end
 
+    test "forwards bounces from outgoing emails" do
+      user = user_fixture(%{status: :trial})
+      _email_alias = alias_fixture(%{user_id: user.id, address: "alias@shroud.local"})
+
+      data = File.read!("test/support/data/bounce.email") |> Util.lf_to_crlf()
+
+      perform_job(EmailHandler, %{
+        from: "MAILER-DAEMON@amazonses.com",
+        to: "alias@shroud.local",
+        data: data
+      })
+
+      assert_email_sent(fn email ->
+        assert email.to == [{"alias@shroud.local", user.email}]
+
+        assert email.from ==
+                 {"MAILER-DAEMON@amazonses.com (via Shroud.email)",
+                  "MAILER-DAEMON_at_amazonses.com_alias@shroud.test"}
+
+        assert email.subject == "Delivery Status Notification (Failure)"
+
+        assert email.text_body =~
+                 "The following message to <wrongster@foo.com> was undeliverable."
+
+        assert is_nil(email.html_body)
+      end)
+    end
+
     test "does not forward email from a blocked address" do
       user = user_fixture(%{status: :active})
       email_alias = alias_fixture(%{user_id: user.id, blocked_addresses: ["sender@example.com"]})

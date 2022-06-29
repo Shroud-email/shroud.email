@@ -90,6 +90,20 @@ defmodule Shroud.Email.ParsedEmail do
     |> process_headers(headers)
   end
 
+  defp build_email(email, {"message", "rfc822", _headers, _opts, _body}) do
+    # We're in a bounce report, and this section contains the original email.
+    # We don't want that -- we're interested in the bounce report.
+    # So we do nothing!
+    email
+  end
+
+  # Fallback
+  defp build_email(email, {_mime, _type, headers, _opts, parts}) when is_list(parts) do
+    parts
+    |> Enum.reduce(email, fn part, acc -> build_email(acc, part) end)
+    |> process_headers(headers)
+  end
+
   # Attachment
   defp build_email(
          email,

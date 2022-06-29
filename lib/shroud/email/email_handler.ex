@@ -168,11 +168,11 @@ defmodule Shroud.Email.EmailHandler do
   defp fix_incoming_sender_and_recipient(email, recipient_address, email_alias) do
     # Modify the email to make it clear it came from us
     recipient_name =
-      if is_list(email.to) and Enum.empty?(email.to) do
-        ""
-      else
+      if is_list(email.to) and length(email.to) == 1 do
         [{recipient_name, _alias}] = email.to
         recipient_name
+      else
+        ""
       end
 
     {sender_name, sender_address} =
