@@ -10,6 +10,7 @@ defmodule ShroudWeb.EmailAliasLive.Show do
       socket
       |> assign(:address, address)
       |> assign(:page_title, "Aliases")
+      |> assign(:page_title_url, Routes.email_alias_index_path(socket, :index))
       |> assign(:subpage_title, address)
       |> assign(:blocked_sender_error, "")
       |> assign(:reverse_alias_recipient, "")
@@ -43,13 +44,7 @@ defmodule ShroudWeb.EmailAliasLive.Show do
               <button phx-click="delete" data-confirm={"Are you sure you want to permanently delete #{@alias.address}?"} class="text-xs font-semibold uppercase text-red-700 hover:text-red-500">Delete</button>
             </div>
           </div>
-          <div class="flex items-center justify-between mt-2">
-            <%= live_redirect to: Routes.email_alias_index_path(@socket, :index), class: "inline-block text-sm text-gray-500 hover:text-gray-700" do %>
-              <svg xmlns="http://www.w3.org/2000/svg" class="inline h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clip-rule="evenodd" />
-              </svg>
-              Back
-            <% end %>
+          <div class="flex justify-end sm:justify-between items-center mt-2">
             <button phx-click="delete" data-confirm={"Are you sure you want to permanently delete #{@alias.address}?"} class="sm:hidden text-xs font-semibold uppercase text-red-700 hover:text-red-500">Delete</button>
           </div>
         </div>

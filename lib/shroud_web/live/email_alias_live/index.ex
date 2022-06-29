@@ -15,6 +15,7 @@ defmodule ShroudWeb.EmailAliasLive.Index do
       socket
       |> update_email_aliases()
       |> assign(:page_title, "Aliases")
+      |> assign(:page_title_url, nil)
       |> assign(:subpage_title, nil)
       |> assign(:filter_query, "")
 
