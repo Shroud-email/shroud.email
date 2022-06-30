@@ -189,6 +189,15 @@ defmodule Shroud.Email.EmailHandler do
     email
     |> Map.put(:from, sender)
     |> Map.put(:to, [{recipient_name, recipient_address}])
+    |> (fn email ->
+          if email.reply_to == nil do
+            email
+          else
+            {_name, reply_to_address} = email.reply_to
+            reply_to_reply_address = ReplyAddress.to_reply_address(reply_to_address, email_alias)
+            email |> Map.put(:reply_to, {reply_to_reply_address, reply_to_reply_address})
+          end
+        end).()
   end
 
   @spec fix_outgoing_sender_and_recipient(Swoosh.Email.t(), String.t()) :: Swoosh.Email.t()

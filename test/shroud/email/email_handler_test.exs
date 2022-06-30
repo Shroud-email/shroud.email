@@ -108,7 +108,9 @@ defmodule Shroud.Email.EmailHandlerTest do
       end)
     end
 
-    test "forwards a custom reply-to header", %{user: user, email_alias: email_alias} do
+    test "transforms reply-to headers to reply addresses", %{user: user} do
+      email_alias = alias_fixture(%{address: "alias@shroud.local", user_id: user.id})
+
       args = %{
         from: "sender@example.com",
         to: [email_alias.address],
@@ -127,7 +129,10 @@ defmodule Shroud.Email.EmailHandlerTest do
       assert_email_sent(fn email ->
         {_name, recipient} = hd(email.to)
         assert recipient == user.email
-        assert email.reply_to == {"custom@example.com", "custom@example.com"}
+
+        assert email.reply_to ==
+                 {"custom_at_example.com_alias@shroud.test",
+                  "custom_at_example.com_alias@shroud.test"}
       end)
     end
 
