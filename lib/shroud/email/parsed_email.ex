@@ -6,12 +6,10 @@ defmodule Shroud.Email.ParsedEmail do
   import Swoosh.Email
   require Logger
 
-  @enforce_keys [:raw_email]
-  defstruct [:raw_email, :swoosh_email, :parsed_html, removed_trackers: []]
+  defstruct [:swoosh_email, :parsed_html, removed_trackers: []]
 
   @type header_type :: {String.t(), String.t()}
   @type t :: %__MODULE__{
-          raw_email: String.t(),
           swoosh_email: Swoosh.Email.t(),
           parsed_html: Floki.html_tree(),
           removed_trackers: [String.t()]
@@ -45,7 +43,6 @@ defmodule Shroud.Email.ParsedEmail do
       end
 
     %__MODULE__{
-      raw_email: raw_email,
       swoosh_email: swoosh_email,
       parsed_html: parsed_html
     }
