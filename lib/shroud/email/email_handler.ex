@@ -8,6 +8,8 @@ defmodule Shroud.Email.EmailHandler do
   alias Shroud.Email.{BounceHandler, Enricher, ParsedEmail, ReplyAddress, TrackerRemover}
   alias Shroud.S3.S3UploadJob
 
+  @type mimemail_email :: :mimemail.mimetuple()
+
   @impl Oban.Worker
   @decorate transaction(:background_job)
   def perform(%Oban.Job{args: %{"from" => from, "to" => to, "data" => data}})
@@ -19,25 +21,31 @@ defmodule Shroud.Email.EmailHandler do
   @decorate transaction(:background_job)
   def perform(%Oban.Job{args: %{"from" => from, "to" => recipients, "data" => data}})
       when is_list(recipients) do
+    # TODO: handle parsing failures from mimemail?
+    email = :mimemail.decode(data)
+
     recipients
-    |> Enum.each(&handle_recipient(from, &1, data))
+    |> Enum.each(&handle_recipient(from, &1, email))
   end
 
   @impl Oban.Worker
   @decorate transaction(:background_job)
   def perform(%Oban.Job{args: %{"from" => from, "to" => to, "data" => data}}) do
-    handle_recipient(from, to, data)
+    email = :mimemail.decode(data)
+    handle_recipient(from, to, email)
   end
 
-  defp handle_recipient(sender, recipient, data) do
+  @spec handle_recipient(String.t(), String.t(), mimemail_email) :: :ok | {:error, term()}
+  defp handle_recipient(sender, recipient, mimemail_email) do
     if ReplyAddress.is_reply_address?(recipient) do
-      handle_outgoing_email(sender, recipient, data)
+      handle_outgoing_email(sender, recipient, mimemail_email)
     else
-      handle_incoming_email(sender, recipient, data)
+      handle_incoming_email(sender, recipient, mimemail_email)
     end
   end
 
-  defp handle_incoming_email(sender, recipient, data) do
+  @spec handle_incoming_email(String.t(), String.t(), mimemail_email) :: :ok | {:error, term()}
+  defp handle_incoming_email(sender, recipient, mimemail_email) do
     # Lookup real email based on the receiving alias (`recipient`)
     recipient_user = Accounts.get_user_by_alias(recipient)
     email_alias = Aliases.get_email_alias_by_address(recipient)
@@ -74,13 +82,14 @@ defmodule Shroud.Email.EmailHandler do
           "Forwarding incoming email from #{sender} to #{recipient_user.email} (via #{recipient})"
         )
 
-        forward_incoming_email(recipient_user, sender, recipient, data)
+        forward_incoming_email(recipient_user, sender, recipient, mimemail_email)
     end
 
     :ok
   end
 
-  defp handle_outgoing_email(sender, recipient, data) do
+  @spec handle_outgoing_email(String.t(), String.t(), mimemail_email) :: :ok | {:error, term()}
+  defp handle_outgoing_email(sender, recipient, mimemail_email) do
     sender_user = Accounts.get_user_by_email(sender)
 
     if sender_owns_alias?(sender_user, recipient) do
@@ -89,7 +98,7 @@ defmodule Shroud.Email.EmailHandler do
         "Forwarding outgoing email from #{sender} to external address #{recipient}"
       )
 
-      forward_outgoing_email(sender_user, sender, recipient, data)
+      forward_outgoing_email(sender_user, sender, recipient, mimemail_email)
     else
       Logger.notice(
         "Discarding outgoing email from #{sender} to #{recipient} because the alias belongs to someone else"
@@ -99,13 +108,17 @@ defmodule Shroud.Email.EmailHandler do
     :ok
   end
 
+  @spec forward_outgoing_email(User.t(), String.t(), String.t(), mimemail_email) ::
+          :ok | {:error, term()}
   # Forwards a reply (sent to a reply address from a user) to the external address
-  defp forward_outgoing_email(%User{} = sender_user, sender, recipient, data) do
+  defp forward_outgoing_email(%User{} = sender_user, sender, recipient, mimemail_email) do
     if Accounts.Logging.email_logging_enabled?(sender_user) do
+      # TODO: test this
+      data = :mimemail.encode(mimemail_email)
       store_email(sender, recipient, data)
     end
 
-    case ParsedEmail.parse(data)
+    case ParsedEmail.parse(mimemail_email)
          |> Map.get(:swoosh_email)
          |> fix_outgoing_sender_and_recipient(recipient)
          |> Mailer.deliver() do
@@ -115,7 +128,7 @@ defmodule Shroud.Email.EmailHandler do
         Appsignal.increment_counter("emails.replied", 1)
         Aliases.increment_replied!(email_alias)
 
-        nil
+        :ok
 
       {:error, {_code, %{"error" => error}}} ->
         Logger.error("Failed to forward email from #{sender} to #{sender_user.email}: #{error}")
@@ -131,13 +144,17 @@ defmodule Shroud.Email.EmailHandler do
     end
   end
 
+  @spec forward_incoming_email(User.t(), String.t(), String.t(), mimemail_email) ::
+          :ok | {:error, term()}
   # Forwards an email (sent to an alias) to the user
-  defp forward_incoming_email(%User{} = user, sender, recipient, data) do
+  defp forward_incoming_email(%User{} = user, sender, recipient, mimemail_email) do
     if Accounts.Logging.email_logging_enabled?(user) do
+      # TODO: test this
+      data = :mimemail.encode(mimemail_email)
       store_email(sender, recipient, data)
     end
 
-    case ParsedEmail.parse(data)
+    case ParsedEmail.parse(mimemail_email)
          |> TrackerRemover.process()
          |> Enricher.process()
          # Now our pipeline is done, we just want our Swoosh email

@@ -24,15 +24,10 @@ defmodule Shroud.Email.ParsedEmail do
     "delivered-to"
   ]
 
-  @spec parse(String.t()) :: t
-  def parse(raw_email) do
-    # TODO: handle parsing failures from mimemail?
-    # TODO: only process headers once!
-    parsed_email =
-      raw_email
-      |> :mimemail.decode()
-
-    swoosh_email = build_email(new(), parsed_email)
+  @spec parse(:mimemail.mimetuple()) :: t
+  def parse(mimemail_email) do
+    # TODO: only process headers from top-level envelope!
+    swoosh_email = build_email(new(), mimemail_email)
 
     # TODO: maybe log some detailed errors if there's a parsing failure here
     parsed_html =

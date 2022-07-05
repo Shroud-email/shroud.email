@@ -37,6 +37,7 @@ defmodule Shroud.Email.TrackerRemoverTest do
 
       email =
         html_email("sender@example.com", ["recipient@example.com"], "Subject", html_body)
+        |> :mimemail.decode()
         |> ParsedEmail.parse()
         |> TrackerRemover.process()
 
@@ -70,6 +71,7 @@ defmodule Shroud.Email.TrackerRemoverTest do
 
       email =
         html_email("sender@example.com", ["recipient@example.com"], "Subject", html_body)
+        |> :mimemail.decode()
         |> ParsedEmail.parse()
         |> TrackerRemover.process()
 
@@ -104,6 +106,7 @@ defmodule Shroud.Email.TrackerRemoverTest do
 
       email =
         html_email("sender@example.com", ["recipient@example.com"], "Subject", html_body)
+        |> :mimemail.decode()
         |> ParsedEmail.parse()
         |> TrackerRemover.process()
 
@@ -135,6 +138,7 @@ defmodule Shroud.Email.TrackerRemoverTest do
 
       email =
         html_email("sender@example.com", ["recipient@example.com"], "Subject", html_body)
+        |> :mimemail.decode()
         |> ParsedEmail.parse()
         |> TrackerRemover.process()
 
@@ -166,6 +170,7 @@ defmodule Shroud.Email.TrackerRemoverTest do
 
       email =
         html_email("sender@example.com", ["recipient@example.com"], "Subject", html_body)
+        |> :mimemail.decode()
         |> ParsedEmail.parse()
         |> TrackerRemover.process()
 
@@ -187,6 +192,7 @@ defmodule Shroud.Email.TrackerRemoverTest do
 
       email =
         html_email("sender@example.com", ["recipient@example.com"], "Subject", html_body)
+        |> :mimemail.decode()
         |> ParsedEmail.parse()
         |> TrackerRemover.process()
 

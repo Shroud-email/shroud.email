@@ -520,13 +520,25 @@ defmodule Shroud.Email.EmailHandlerTest do
           "sender@example.com",
           [email_alias.address],
           "Text only",
-          "Plain text content!"
+          "Plain text content!",
+          "Date: Tue, 5 Jul 2022 16:51:05 +0100\nMessage-ID: <deadbeef@local>"
         )
 
       perform_job(EmailHandler, %{from: "sender@example.com", to: email_alias.address, data: data})
 
       expected_content =
-        "To: #{email_alias.address}\r\nFrom: sender@example.com\r\nSubject: Text only\r\nContent-Type: text/plain\r\n\r\nPlain text content!"
+        """
+        Date: Tue, 5 Jul 2022 16:51:05 +0100
+        Message-ID: <deadbeef@local>
+        To: #{email_alias.address}
+        From: sender@example.com
+        Subject: Text only
+        Content-Type: text/plain
+        MIME-Version: 1.0
+
+        Plain text content!
+        """
+        |> Util.lf_to_crlf()
 
       assert_enqueued(
         worker: Shroud.S3.S3UploadJob,
