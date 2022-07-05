@@ -5,7 +5,16 @@ defmodule Shroud.Email.EmailHandler do
   require Logger
   alias Shroud.{Accounts, Aliases, Mailer, Util}
   alias Shroud.Accounts.User
-  alias Shroud.Email.{BounceHandler, Enricher, ParsedEmail, ReplyAddress, TrackerRemover}
+
+  alias Shroud.Email.{
+    BounceHandler,
+    Enricher,
+    ParsedEmail,
+    ReplyAddress,
+    TrackerRemover,
+    SpamHandler
+  }
+
   alias Shroud.S3.S3UploadJob
 
   @type mimemail_email :: :mimemail.mimetuple()
@@ -92,17 +101,22 @@ defmodule Shroud.Email.EmailHandler do
   defp handle_outgoing_email(sender, recipient, mimemail_email) do
     sender_user = Accounts.get_user_by_email(sender)
 
-    if sender_owns_alias?(sender_user, recipient) do
-      maybe_log(
-        sender_user,
-        "Forwarding outgoing email from #{sender} to external address #{recipient}"
-      )
+    cond do
+      SpamHandler.is_spam?(mimemail_email) ->
+        SpamHandler.handle_outgoing_spam_email(mimemail_email)
 
-      forward_outgoing_email(sender_user, sender, recipient, mimemail_email)
-    else
-      Logger.notice(
-        "Discarding outgoing email from #{sender} to #{recipient} because the alias belongs to someone else"
-      )
+      sender_owns_alias?(sender_user, recipient) ->
+        maybe_log(
+          sender_user,
+          "Forwarding outgoing email from #{sender} to external address #{recipient}"
+        )
+
+        forward_outgoing_email(sender_user, sender, recipient, mimemail_email)
+
+      true ->
+        Logger.notice(
+          "Discarding outgoing email from #{sender} to #{recipient} because the alias belongs to someone else"
+        )
     end
 
     :ok

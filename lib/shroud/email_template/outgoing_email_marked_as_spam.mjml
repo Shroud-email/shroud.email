@@ -19,17 +19,17 @@
     <mj-section full-width="full-width" padding-top="40px" padding-bottom="40px" background-color="white">
       <mj-column>
         <mj-text align="center" color="#111827" font-size="20px">
-          <h1>Your Shroud.email trial has expired</h1>
+          <h1>Your email was not delivered</h1>
         </mj-text>
         <mj-text color="#111827" font-size="16px">
           <p>Hi {{ user_email }},</p>
-          <p>Your Shroud.email trial has expired.</p>
-          <p>You'll no longer be able to create new aliases with tracker blocking.</p>
-          <p>
-          To re-activate your account, you can sign up at the following URL:
-          </p>
+
+          <p>Your email to {{ recipient }} (via {{ email_alias }}) was not delivered.</p>
+    
+          <p>Our systems marked this email as spam, which means that it is unlikely to be delivered to the recipient.</p>
+
+          <p>Please edit your email and try again, or contact us on support@shroud.email for further help.</p>
         </mj-text>
-        <mj-button align="center" href="{{ billing_url }}" font-size="16px" background-color="#4f46e5" border-radius="7px">Sign up now</mj-button>
       </mj-column>
     </mj-section>
     <mj-section full-width="full-width" padding-top="20px" background-color="#1f2937">

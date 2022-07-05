@@ -30,6 +30,7 @@ defmodule Shroud.Accounts do
     Repo.get_by(User, email: email)
   end
 
+  @spec get_user_by_alias(String.t()) :: User.t() | nil
   def get_user_by_alias(address) when is_binary(address) do
     query =
       from u in User,

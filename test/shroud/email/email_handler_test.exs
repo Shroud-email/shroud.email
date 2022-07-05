@@ -590,12 +590,39 @@ defmodule Shroud.Email.EmailHandlerTest do
              end) =~
                "Discarding incoming email from sender@example.com to disabled alias #{email_alias.address}"
     end
-  end
 
-  test "handles 554 rejection notices" do
-    raw_email = File.read!("test/support/data/554_rejection_notice.email") |> Util.lf_to_crlf()
-    perform_job(EmailHandler, %{from: nil, to: "test@test.com", data: raw_email})
+    test "handles 554 rejection notices" do
+      raw_email = File.read!("test/support/data/554_rejection_notice.email") |> Util.lf_to_crlf()
+      perform_job(EmailHandler, %{from: nil, to: "test@test.com", data: raw_email})
 
-    assert_enqueued(worker: Shroud.S3.S3UploadJob)
+      assert_enqueued(worker: Shroud.S3.S3UploadJob)
+    end
+
+    test "sends a notice on outgoing spam emails", %{user: user} do
+      data =
+        text_email(
+          user.email,
+          ["sender_at_example.com_alias@shroud.test"],
+          "Text only",
+          "Plain text content!",
+          "X-Spam-Status: Yes, score=5.1 required=5.0 tests=DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HTML_MESSAGE,RCVD_IN_MSPIKE_H2,SPF_HELO_NONE,SPF_PASS,T_SCC_BODY_TEXT_LINE autolearn=ham autolearn_force=no version=3.4.1"
+        )
+
+      perform_job(EmailHandler, %{
+        from: user.email,
+        to: "sender_at_example.com_alias@shroud.test",
+        data: data
+      })
+
+      assert_enqueued(
+        worker: Shroud.Accounts.UserNotifierJob,
+        args: %{
+          email_function: :deliver_outgoing_email_marked_as_spam,
+          email_args: [user.id, "alias@shroud.test", "sender@example.com"]
+        }
+      )
+
+      assert_no_email_sent()
+    end
   end
 end

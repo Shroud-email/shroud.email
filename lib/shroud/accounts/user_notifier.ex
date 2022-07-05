@@ -156,8 +156,7 @@ defmodule Shroud.Accounts.UserNotifier do
 
     Your Shroud.email trial has expired.
 
-    You'll no longer have access to Shroud.email's unlimited aliases or tracker blocking.
-    Your existing aliases will stop forwarding emails.
+    You'll no longer be able to create new aliases.
 
     To re-activate your aliases and your account, you can sign up at the following URL:
 
@@ -169,5 +168,34 @@ defmodule Shroud.Accounts.UserNotifier do
     """
 
     deliver(user.email, "Your Shroud.email trial has expired", html_body, text_body)
+  end
+
+  def deliver_outgoing_email_marked_as_spam(user_id, email_alias, recipient) do
+    user = Accounts.get_user!(user_id)
+
+    html_body =
+      EmailTemplate.OutgoingEmailMarkedAsSpam.render(
+        user_email: user.email,
+        email_alias: email_alias,
+        recipient: recipient,
+        current_year: DateTime.utc_now().year
+      )
+
+    text_body = """
+    ==============================
+
+    Hi #{user.email},
+
+    Your email to #{recipient} (via #{email_alias}) was not delivered.
+    Our systems marked this email as spam, which means that it is unlikely to be
+    delivered to the recipient.
+
+    Please edit your email and try again, or contact us on support@shroud.email for
+    further help.
+
+    ==============================
+    """
+
+    deliver(user.email, "Your email was not delivered", html_body, text_body)
   end
 end

@@ -6,8 +6,9 @@ defmodule Shroud.AliasesFixtures do
 
   alias Shroud.Repo
   alias Shroud.Aliases.EmailMetric
+  alias Shroud.Util
 
-  def unique_alias_email, do: "alias#{System.unique_integer()}@example.com"
+  def unique_alias_email, do: "alias#{System.unique_integer()}@#{Util.email_domain()}"
 
   def valid_alias_attributes(attrs \\ %{}) do
     Enum.into(attrs, %{
