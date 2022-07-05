@@ -76,7 +76,7 @@ defmodule ShroudWeb.CheckoutController do
         update_subscription_status(event.data.object)
 
       other ->
-        IO.puts("Received unhandled event #{other}")
+        Logger.warn("Received unhandled Stripe event: #{other}")
     end
   end
 
