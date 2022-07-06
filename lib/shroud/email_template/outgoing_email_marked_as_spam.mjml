@@ -24,9 +24,7 @@
         <mj-text color="#111827" font-size="16px">
           <p>Hi {{ user_email }},</p>
 
-          <p>Your email to {{ recipient }} (via {{ email_alias }}) was not delivered.</p>
-    
-          <p>Our systems marked this email as spam, which means that it is unlikely to be delivered to the recipient.</p>
+          <p>Your email to {{ recipient }} (via {{ email_alias }}) was not delivered as our systems detected it as spam.</p>
 
           <p>Please edit your email and try again, or contact us on support@shroud.email for further help.</p>
         </mj-text>

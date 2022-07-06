@@ -10,7 +10,8 @@ defmodule Shroud.Accounts.UserNotifier do
     email =
       new()
       |> to(recipient)
-      |> from({"Shroud", "noreply@#{Util.email_domain()}"})
+      |> from({"Shroud.email", "noreply@#{Util.email_domain()}"})
+      |> reply_to({"Shroud.email", "contact@shroud.email"})
       |> subject(subject)
       |> html_body(html_body)
       |> text_body(text_body)
@@ -186,9 +187,8 @@ defmodule Shroud.Accounts.UserNotifier do
 
     Hi #{user.email},
 
-    Your email to #{recipient} (via #{email_alias}) was not delivered.
-    Our systems marked this email as spam, which means that it is unlikely to be
-    delivered to the recipient.
+    Your email to #{recipient} (via #{email_alias}) was not delivered as our
+    systems detected it as spam.
 
     Please edit your email and try again, or contact us on support@shroud.email for
     further help.
