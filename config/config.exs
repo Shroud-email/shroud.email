@@ -50,7 +50,8 @@ config :shroud, Shroud.Scheduler,
     # Daily at midnight
     {"@daily", {Shroud.Scheduler, :update_trackers, []}},
     {"@daily", {Shroud.Scheduler, :email_expiring_trials, []}},
-    {"@daily", {Shroud.Scheduler, :email_expired_trials, []}}
+    {"@daily", {Shroud.Scheduler, :email_expired_trials, []}},
+    {"@hourly", {Shroud.Scheduler, :delete_spam_emails, []}}
   ]
 
 config :swoosh, :api_client, Swoosh.ApiClient.Hackney

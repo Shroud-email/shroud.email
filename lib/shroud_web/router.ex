@@ -3,6 +3,7 @@ defmodule ShroudWeb.Router do
 
   import ShroudWeb.UserAuth
   import ShroudWeb.UserApiAuth
+  import ShroudWeb.SpamCount
 
   pipeline :browser do
     plug :accepts, ["html"]
@@ -12,6 +13,7 @@ defmodule ShroudWeb.Router do
     plug :protect_from_forgery
     plug :put_secure_browser_headers
     plug :fetch_current_user
+    plug :fetch_spam_count
   end
 
   pipeline :mounted_apps do
@@ -108,9 +110,13 @@ defmodule ShroudWeb.Router do
     # Route for changing email of an already-confirmed account
     get "/settings/confirm_email/:token", UserSettingsController, :confirm_email
 
-    live_session :aliases, on_mount: ShroudWeb.UserLiveAuth do
+    live_session :aliases do
       live "/", EmailAliasLive.Index, :index
       live "/alias/:address", EmailAliasLive.Show, :show
+    end
+
+    live_session :spam do
+      live "/detention", SpamEmailLive.Index, :index
     end
 
     get "/checkout", CheckoutController, :index

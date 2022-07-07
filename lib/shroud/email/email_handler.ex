@@ -85,6 +85,22 @@ defmodule Shroud.Email.EmailHandler do
         Aliases.increment_blocked!(email_alias)
         Appsignal.increment_counter("emails.blocked", 1)
 
+      SpamHandler.is_spam?(mimemail_email) ->
+        maybe_log(
+          recipient_user,
+          "Storing spam email from #{sender} to #{recipient_user.email} (via #{recipient})"
+        )
+
+        SpamHandler.handle_incoming_spam_email(
+          sender,
+          recipient_user,
+          email_alias,
+          mimemail_email
+        )
+
+        Aliases.increment_blocked!(email_alias)
+        Appsignal.increment_counter("emails.spam", 1)
+
       true ->
         maybe_log(
           recipient_user,

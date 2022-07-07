@@ -11,6 +11,14 @@
             <div class="ml-10 flex items-baseline space-x-4">
               <%= if @current_user do %>
                 <%= link "Aliases", to: Routes.email_alias_index_path(@conn, :index), class: active_class(@conn, Routes.email_alias_index_path(@conn, :index), "text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium", "bg-gray-900 text-white") %>
+                <%= link to: Routes.spam_email_index_path(@conn, :index), class: active_class(@conn, Routes.spam_email_index_path(@conn, :index), "text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium", "bg-gray-900 text-white") do %>
+                  Spam
+                  <%= if @spam_count > 0 do %>
+                    <span class="ml-1 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-700 text-gray-200">
+                      <%= @spam_count %>
+                    </span>
+                  <% end %>
+                <% end %>
               <% end %>
 
               <%= if function_exported?(Routes, :live_dashboard_path, 2) do %>
@@ -83,6 +91,7 @@
       <!-- Current: "bg-gray-900 text-white", Default: "text-gray-300 hover:bg-gray-700 hover:text-white" -->
       <%= if @current_user do %>
         <%= link "Aliases", to: Routes.email_alias_index_path(@conn, :index), class: active_class(@conn, Routes.email_alias_index_path(@conn, :index), "text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium", "bg-gray-900 text-white") %>
+        <%= link "Spam", to: Routes.spam_email_index_path(@conn, :index), class: active_class(@conn, Routes.spam_email_index_path(@conn, :index), "text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium", "bg-gray-900 text-white") %>
       <% end %>
 
       <%= if function_exported?(Routes, :live_dashboard_path, 2) do %>

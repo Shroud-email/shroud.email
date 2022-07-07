@@ -26,7 +26,6 @@ defmodule Shroud.Email.ParsedEmail do
 
   @spec parse(:mimemail.mimetuple()) :: t
   def parse(mimemail_email) do
-    # TODO: only process headers from top-level envelope!
     swoosh_email = build_email(new(), mimemail_email)
 
     # TODO: maybe log some detailed errors if there's a parsing failure here

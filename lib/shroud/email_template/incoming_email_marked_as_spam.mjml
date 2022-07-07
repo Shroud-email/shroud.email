@@ -1,0 +1,51 @@
+<mjml>
+  <mj-head>
+    <mj-font name="Inter" href="https://app.shroud.email/fonts/inter/inter.css" />
+    <mj-attributes>
+      <mj-all font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Helvetica Neue, Arial, Noto Sans, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji" ico-font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Helvetica Neue, Arial, Noto Sans, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji" />
+    </mj-attributes>
+    <mj-style> .link-nostyle { color: inherit; text-decoration: none } </mj-style>
+  </mj-head>
+  <mj-body>
+    <mj-section full-width="full-width" background-color="#1f2937" padding-top="10px" padding-bottom="10px">
+      <mj-column>
+        <mj-social>
+          <mj-social-element font-size="20px" color="#fff" name="Shroud.email" href="https://shroud.email" src="https://app.shroud.email/images/logo.png">
+            Shroud.email
+          </mj-social-element>
+        </mj-social>
+      </mj-column>
+    </mj-section>
+    <mj-section full-width="full-width" padding-top="40px" padding-bottom="40px" background-color="white">
+      <mj-column>
+        <mj-text align="center" color="#111827" font-size="20px">
+          <h1>One of your aliases received a spam email</h1>
+        </mj-text>
+        <mj-text color="#111827" font-size="16px">
+          <p>Hi {{ user_email }},</p>
+
+          <p>
+            An email sent to one of your aliases ({{ email_alias }}) was marked as spam.
+            We did not forward this email as it would likely be refused by your mail provider.
+          </p>
+
+          <p>You can view this email on our web app. It will be deleted in 7 days.</p>
+
+          <mj-button align="center" href="{{ spam_url }}" font-size="16px" background-color="#4f46e5" border-radius="7px">View email</mj-button>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+    <mj-section full-width="full-width" padding-top="20px" background-color="#1f2937">
+      <mj-column>
+        <mj-text font-size="12px" color="lightgray">
+          <a class="link-nostyle" href="https://shroud.email">Shroud.email</a>
+        </mj-text>
+      </mj-column>
+      <mj-column>
+        <mj-text font-size="12px" color="lightgray" align="right">
+          {{ current_year }}
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

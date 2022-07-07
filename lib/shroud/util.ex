@@ -31,7 +31,11 @@ defmodule Shroud.Util do
     Application.get_env(:shroud, :email_aliases)[:domain]
   end
 
-  @spec crlf_to_lf(String.t()) :: String.t()
+  @spec crlf_to_lf(String.t() | nil) :: String.t() | nil
+  def crlf_to_lf(nil) do
+    nil
+  end
+
   def crlf_to_lf(string) do
     string
     |> String.replace(~r/\r\n/, "\n")

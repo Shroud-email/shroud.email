@@ -47,6 +47,7 @@ defmodule ShroudWeb do
       use Phoenix.LiveView,
         layout: {ShroudWeb.LayoutView, "live.html"}
 
+      on_mount ShroudWeb.UserLiveAuth
       unquote(view_helpers())
     end
   end

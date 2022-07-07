@@ -198,4 +198,34 @@ defmodule Shroud.Accounts.UserNotifier do
 
     deliver(user.email, "Your email was not delivered", html_body, text_body)
   end
+
+  def deliver_incoming_email_marked_as_spam(user_id, email_alias) do
+    user = Accounts.get_user!(user_id)
+    spam_url = Routes.spam_email_index_path(Endpoint, :index)
+
+    html_body =
+      EmailTemplate.IncomingEmailMarkedAsSpam.render(
+        user_email: user.email,
+        email_alias: email_alias,
+        spam_url: spam_url,
+        current_year: DateTime.utc_now().year
+      )
+
+    text_body = """
+    ==============================
+
+    Hi #{user.email},
+
+    An email sent to one of your aliases (#{email_alias}) was marked as spam.
+    We did not forward this email as it would likely be refused by your mail provider.
+
+    You can view this email on our web app: #{spam_url}
+
+    It will be deleted in 7 days.
+
+    ==============================
+    """
+
+    deliver(user.email, "We blocked a spam email", html_body, text_body)
+  end
 end

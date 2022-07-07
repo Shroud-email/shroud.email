@@ -2,12 +2,12 @@ defmodule Shroud.Scheduler do
   use Quantum, otp_app: :shroud
 
   alias Shroud.Accounts
-  alias Shroud.Email.TrackerListFetcher
+  alias Shroud.Email
   alias Shroud.Accounts.UserNotifierJob
 
   def update_trackers() do
     %{}
-    |> TrackerListFetcher.new()
+    |> Email.TrackerListFetcher.new()
     |> Oban.insert()
   end
 
@@ -36,5 +36,9 @@ defmodule Shroud.Scheduler do
       |> UserNotifierJob.new()
       |> Oban.insert()
     end)
+  end
+
+  def delete_spam_emails() do
+    Email.delete_old_spam_emails()
   end
 end

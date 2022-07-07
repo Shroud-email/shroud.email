@@ -7,6 +7,7 @@ defmodule Shroud.Email.EmailHandlerTest do
 
   import Shroud.{AccountsFixtures, AliasesFixtures, EmailFixtures}
 
+  alias Shroud.Email
   alias Shroud.Email.EmailHandler
   alias Shroud.{Aliases, Util}
 
@@ -474,7 +475,8 @@ defmodule Shroud.Email.EmailHandlerTest do
           "sender@example.com",
           [email_alias.address],
           "Text only",
-          "Plain text content!"
+          "Plain text content!",
+          "X-Spam-Status: No"
         )
 
       args = %{from: "sender@example.com", to: email_alias.address, data: data}
@@ -619,6 +621,37 @@ defmodule Shroud.Email.EmailHandlerTest do
         args: %{
           email_function: :deliver_outgoing_email_marked_as_spam,
           email_args: [user.id, "alias@shroud.test", "sender@example.com"]
+        }
+      )
+
+      assert_no_email_sent()
+    end
+
+    test "stores incoming spam emails without trackers", %{user: user, email_alias: email_alias} do
+      data =
+        html_email(
+          "spammer@example.com",
+          [email_alias.address],
+          "Spam email",
+          "<h1>Spam</h1><img src=\"https://abc.com/img.jpg\" height=\"1\" width=\"1\" />",
+          "X-Spam-Status: Yes, score=5.1 required=5.0 tests=DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HTML_MESSAGE,RCVD_IN_MSPIKE_H2,SPF_HELO_NONE,SPF_PASS,T_SCC_BODY_TEXT_LINE autolearn=ham autolearn_force=no version=3.4.1"
+        )
+
+      perform_job(EmailHandler, %{
+        from: "spammer@example.com",
+        to: email_alias.address,
+        data: data
+      })
+
+      spam_email = hd(Email.list_spam_emails(user))
+
+      assert spam_email.html_body == "<h1>Spam</h1>"
+
+      assert_enqueued(
+        worker: Shroud.Accounts.UserNotifierJob,
+        args: %{
+          email_function: :deliver_incoming_email_marked_as_spam,
+          email_args: [user.id, email_alias.address]
         }
       )
 

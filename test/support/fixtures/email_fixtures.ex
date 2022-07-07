@@ -1,10 +1,15 @@
 defmodule Shroud.EmailFixtures do
   @moduledoc """
   This module defines test helpers for creating
-  the DATA portion of received emails.
+  the DATA portion of received emails, and the SpamEmail
+  schema.
   """
 
+  alias Shroud.Repo
   alias Shroud.Util
+  alias Shroud.Email.SpamEmail
+  import Shroud.AccountsFixtures
+  import Shroud.AliasesFixtures
 
   @spec multipart_email(String.t(), [String.t()], String.t(), String.t(), String.t()) ::
           String.t()
@@ -36,8 +41,8 @@ defmodule Shroud.EmailFixtures do
     |> Util.lf_to_crlf()
   end
 
-  @spec html_email(String.t(), [String.t()], String.t(), String.t()) :: String.t()
-  def html_email(sender, recipients, subject, content) do
+  @spec html_email(String.t(), [String.t()], String.t(), String.t(), String.t()) :: String.t()
+  def html_email(sender, recipients, subject, content, extra_header \\ nil) do
     """
     Content-Type: text/HTML
 
@@ -46,6 +51,7 @@ defmodule Shroud.EmailFixtures do
     |> add_subject(subject)
     |> add_sender(sender)
     |> add_recipients(recipients)
+    |> add_header(extra_header)
     |> Util.lf_to_crlf()
   end
 
@@ -61,6 +67,25 @@ defmodule Shroud.EmailFixtures do
     |> add_recipients(recipients)
     |> add_header(extra_header)
     |> Util.lf_to_crlf()
+  end
+
+  def spam_email_fixture(attrs \\ %{}, user \\ nil, email_alias \\ nil) do
+    user = if user, do: user, else: user_fixture()
+    email_alias = if email_alias, do: email_alias, else: alias_fixture(%{user_id: user.id})
+
+    attrs =
+      Enum.into(attrs, %{
+        from: "spammer@example.com",
+        subject: "Spamspamspam",
+        text_body: "Spam",
+        html_body: "<html>spam</html>",
+        user_id: user.id,
+        email_alias_id: email_alias.id
+      })
+
+    %SpamEmail{}
+    |> Ecto.Changeset.change(attrs)
+    |> Repo.insert!()
   end
 
   defp add_subject(data, subject) do
