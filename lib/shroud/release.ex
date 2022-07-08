@@ -18,6 +18,7 @@ defmodule Shroud.Release do
   end
 
   def create_admin_user do
+    start_app()
     email = Application.get_env(:shroud, :admin_user_email)
 
     if email && is_nil(Accounts.get_user_by_email(email)) do
@@ -43,5 +44,11 @@ defmodule Shroud.Release do
 
   defp load_app do
     Application.load(@app)
+  end
+
+  defp start_app do
+    load_app()
+    Application.put_env(@app, :minimal, true)
+    Application.ensure_all_started(@app)
   end
 end
