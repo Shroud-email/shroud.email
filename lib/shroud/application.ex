@@ -19,16 +19,24 @@ defmodule Shroud.Application do
       {Oban, Application.fetch_env!(:shroud, Oban)},
       # Start a worker by calling: Shroud.Worker.start_link(arg)
       # {Shroud.Worker, arg}
-      {Shroud.Email.SmtpServer, Application.fetch_env!(:shroud, :mailer)[:smtp_options]},
-      Shroud.Scheduler,
-      Shroud.Vault,
-      {Registry,
-       [
-         name: Appsignal.Registry,
-         keys: :unique,
-         partitions: System.schedulers_online()
-       ]}
+      Shroud.Vault
     ]
+
+    children =
+      if Application.get_env(:shroud, :minimal) do
+        children
+      else
+        Enum.concat(children, [
+          {Shroud.Email.SmtpServer, Application.fetch_env!(:shroud, :mailer)[:smtp_options]},
+          Shroud.Scheduler,
+          {Registry,
+           [
+             name: Appsignal.Registry,
+             keys: :unique,
+             partitions: System.schedulers_online()
+           ]}
+        ])
+      end
 
     {:ok, _} = Application.ensure_all_started(:appsignal)
 
