@@ -1,4 +1,4 @@
-use Mix.Config
+import Config
 
 config :appsignal, :config,
   otp_app: :shroud,
