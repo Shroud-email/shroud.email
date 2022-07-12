@@ -28,6 +28,26 @@ defmodule Shroud.Email.EmailHandler do
 
   @impl Oban.Worker
   @decorate transaction(:background_job)
+  def perform(%Oban.Job{args: %{"from" => from, "to" => to, "data" => data}})
+      when byte_size(data) > 26_214_400 do
+    # when the email is too big, cancel
+
+    if is_list(to) do
+      Enum.each(to, fn recipient ->
+        user = Accounts.get_user_by_alias(recipient)
+        maybe_log(user, "Dropping email from #{from} to #{recipient} because it's above 25MB")
+      end)
+    else
+      user = Accounts.get_user_by_alias(to)
+      maybe_log(user, "Dropping email from #{from} to #{to} because it's above 25MB")
+    end
+
+    # silently drop the email. can probably handle this better but not worth it for now.
+    :ok
+  end
+
+  @impl Oban.Worker
+  @decorate transaction(:background_job)
   def perform(%Oban.Job{args: %{"from" => from, "to" => recipients, "data" => data}})
       when is_list(recipients) do
     # TODO: handle parsing failures from mimemail?
@@ -267,6 +287,8 @@ defmodule Shroud.Email.EmailHandler do
     email_alias = Aliases.get_email_alias_by_address(email_alias)
     not is_nil(email_alias) && email_alias.user_id == user.id
   end
+
+  defp maybe_log(nil, _text), do: :ok
 
   defp maybe_log(%User{} = user, text) do
     if Accounts.Logging.logging_enabled?(user) do

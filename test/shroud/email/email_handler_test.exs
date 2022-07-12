@@ -657,5 +657,46 @@ defmodule Shroud.Email.EmailHandlerTest do
 
       assert_no_email_sent()
     end
+
+    test "drops emails larger than 25MB", %{user: user, email_alias: email_alias} do
+      FunWithFlags.enable(:logging, for_actor: user)
+
+      data =
+        text_email(
+          "sender@example.com",
+          [email_alias.address],
+          "Large email",
+          Enum.reduce(1..(25 * 1024 * 1024), "", fn _, acc -> acc <> "." end)
+        )
+
+      assert capture_log(fn ->
+               perform_job(EmailHandler, %{
+                 from: "sender@example.com",
+                 to: email_alias.address,
+                 data: data
+               })
+             end) =~
+               "Dropping email from sender@example.com to #{email_alias.address} because it's above 25MB"
+
+      assert_no_email_sent()
+    end
+
+    test "drops emails (to several recipients) larger than 25MB", %{email_alias: email_alias} do
+      data =
+        text_email(
+          "sender@example.com",
+          [email_alias.address, "other@example.com"],
+          "Large email",
+          Enum.reduce(1..(25 * 1024 * 1024), "", fn _, acc -> acc <> "." end)
+        )
+
+      perform_job(EmailHandler, %{
+        from: "sender@example.com",
+        to: [email_alias.address, "other@example.com"],
+        data: data
+      })
+
+      assert_no_email_sent()
+    end
   end
 end
