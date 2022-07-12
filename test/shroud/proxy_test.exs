@@ -7,15 +7,15 @@ defmodule Shroud.ProxyTest do
   setup :verify_on_exit!
 
   describe "get/1" do
-    test "successful cache miss" do
+    test "proxies a request" do
       url = "https://example.com/foo.png"
 
       Shroud.MockHTTPoison
       |> expect(:get, fn ^url ->
-        {:ok, %HTTPoison.Response{status_code: 200, body: "foo"}}
+        {:ok, %HTTPoison.Response{status_code: 200, body: image_body()}}
       end)
 
-      assert {:ok, "foo"} == Proxy.get(url)
+      assert {:ok, image_body()} == Proxy.get(url)
     end
 
     test "invalid URL" do
@@ -29,10 +29,10 @@ defmodule Shroud.ProxyTest do
 
       Shroud.MockHTTPoison
       |> expect(:get, fn ^url ->
-        {:ok, %HTTPoison.Response{status_code: 200, body: "foo"}}
+        {:ok, %HTTPoison.Response{status_code: 200, body: image_body()}}
       end)
 
-      assert {:ok, "foo"} == Proxy.get(url)
+      assert {:ok, image_body()} == Proxy.get(url)
     end
 
     test "non-200 response" do
@@ -55,10 +55,10 @@ defmodule Shroud.ProxyTest do
         {:ok, %HTTPoison.Response{status_code: 301, headers: [{"Location", second_url}]}}
       end)
       |> expect(:get, fn ^second_url ->
-        {:ok, %HTTPoison.Response{status_code: 200, body: "bar"}}
+        {:ok, %HTTPoison.Response{status_code: 200, body: image_body()}}
       end)
 
-      assert {:ok, "bar"} == Proxy.get(first_url)
+      assert {:ok, image_body()} == Proxy.get(first_url)
     end
 
     test "follows 302 redirect" do
@@ -70,10 +70,10 @@ defmodule Shroud.ProxyTest do
         {:ok, %HTTPoison.Response{status_code: 302, headers: [{"Location", second_url}]}}
       end)
       |> expect(:get, fn ^second_url ->
-        {:ok, %HTTPoison.Response{status_code: 200, body: "bar"}}
+        {:ok, %HTTPoison.Response{status_code: 200, body: image_body()}}
       end)
 
-      assert {:ok, "bar"} == Proxy.get(first_url)
+      assert {:ok, image_body()} == Proxy.get(first_url)
     end
 
     test "does not follow redirect loop" do
@@ -89,5 +89,21 @@ defmodule Shroud.ProxyTest do
 
       assert {:error, :too_many_redirects} == Proxy.get("https://example.com/image.png")
     end
+
+    test "does not proxy non-image files" do
+      # even though the file extension is .png, we return the string "foo"
+      url = "https://example.com/foo.png"
+
+      Shroud.MockHTTPoison
+      |> expect(:get, fn ^url ->
+        {:ok, %HTTPoison.Response{status_code: 200, body: "foo"}}
+      end)
+
+      assert {:error, :not_an_image} == Proxy.get(url)
+    end
+  end
+
+  defp image_body do
+    File.read!("test/support/data/motherofalldemos.jpg")
   end
 end

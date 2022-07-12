@@ -84,7 +84,8 @@ defmodule Shroud.MixProject do
       {:ex_aws, "~> 2.3"},
       {:ex_aws_s3, "~> 2.3"},
       {:dotenv_parser, "~> 2.0", only: :dev},
-      {:html_sanitize_ex, "~> 1.4"}
+      {:html_sanitize_ex, "~> 1.4"},
+      {:ex_image_info, "~> 0.2.4"}
     ]
   end
 

@@ -1,7 +1,8 @@
 defmodule Shroud.Proxy do
   require Logger
 
-  @type proxy_error :: :invalid_uri | :non_200_status_code | :too_many_redirects | any
+  @type proxy_error ::
+          :invalid_uri | :non_200_status_code | :too_many_redirects | :not_an_image | any
 
   @spec get(String.t()) :: {:ok, any} | {:error, proxy_error}
   def get(url) do
@@ -33,7 +34,11 @@ defmodule Shroud.Proxy do
         end
 
       {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
-        {:ok, body}
+        if ExImageInfo.seems?(body) do
+          {:ok, body}
+        else
+          {:error, :not_an_image}
+        end
 
       {:ok, %HTTPoison.Response{status_code: status_code}} ->
         Logger.notice("Attempt to proxy \"#{url}\" failed; returned status code #{status_code}")
