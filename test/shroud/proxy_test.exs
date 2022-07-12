@@ -45,5 +45,49 @@ defmodule Shroud.ProxyTest do
 
       assert {:error, :non_200_status_code} == Proxy.get(url)
     end
+
+    test "follows 301 redirect" do
+      first_url = "https://example.com/foo.png"
+      second_url = "https://example.com/bar.png"
+
+      Shroud.MockHTTPoison
+      |> expect(:get, fn ^first_url ->
+        {:ok, %HTTPoison.Response{status_code: 301, headers: [{"Location", second_url}]}}
+      end)
+      |> expect(:get, fn ^second_url ->
+        {:ok, %HTTPoison.Response{status_code: 200, body: "bar"}}
+      end)
+
+      assert {:ok, "bar"} == Proxy.get(first_url)
+    end
+
+    test "follows 302 redirect" do
+      first_url = "https://example.com/foo.png"
+      second_url = "https://example.com/bar.png"
+
+      Shroud.MockHTTPoison
+      |> expect(:get, fn ^first_url ->
+        {:ok, %HTTPoison.Response{status_code: 302, headers: [{"Location", second_url}]}}
+      end)
+      |> expect(:get, fn ^second_url ->
+        {:ok, %HTTPoison.Response{status_code: 200, body: "bar"}}
+      end)
+
+      assert {:ok, "bar"} == Proxy.get(first_url)
+    end
+
+    test "does not follow redirect loop" do
+      # stub to always return a redirect
+      Shroud.MockHTTPoison
+      |> stub(:get, fn _url ->
+        {:ok,
+         %HTTPoison.Response{
+           status_code: 301,
+           headers: [{"Location", "https://example.com/redirect"}]
+         }}
+      end)
+
+      assert {:error, :too_many_redirects} == Proxy.get("https://example.com/image.png")
+    end
   end
 end
