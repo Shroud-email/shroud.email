@@ -31,10 +31,10 @@ COPY priv priv
 COPY assets assets
 COPY lib lib
 RUN npm --prefix assets ci
-RUN mix assets.deploy
-
 # compile and build the release
 RUN mix compile
+RUN mix assets.deploy
+
 # changes to config/runtime.exs don't require recompiling the code
 COPY config/runtime.exs config/
 # uncomment COPY if rel/ exists

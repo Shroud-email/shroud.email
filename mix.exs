@@ -90,8 +90,7 @@ defmodule Shroud.MixProject do
       {:ecto_psql_extras, "~> 0.7.4"},
       {:surface, "~> 0.7.4"},
       {:surface_catalogue, "~> 0.4.0"},
-      {:surface_heroicons, "~> 0.6.0"},
-      {:surface_formatter, "~> 0.7.5"}
+      {:surface_heroicons, "~> 0.6.0"}
     ]
   end
 
