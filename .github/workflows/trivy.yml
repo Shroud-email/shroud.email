@@ -40,7 +40,7 @@ jobs:
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@v0.5.1
         with:
-          image-ref: 'ghcr.io/shroud-email/shroud.email:main'
+          image-ref: ghcr.io/shroud-email/shroud.email:${{ github.sha }}
           format: 'sarif'
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
