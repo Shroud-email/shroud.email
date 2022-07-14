@@ -2,6 +2,7 @@ defmodule Shroud.Release do
   @app :shroud
 
   alias Shroud.Accounts
+  alias Shroud.Accounts.User
   alias ShroudWeb.Router.Helpers, as: Routes
 
   def migrate do
@@ -24,12 +25,13 @@ defmodule Shroud.Release do
     if email && is_nil(Accounts.get_user_by_email(email)) do
       # some random password, but we sent a password reset email so the user can set their own
       password = :crypto.strong_rand_bytes(32) |> Base.url_encode64()
-      {:ok, user} = Accounts.register_user(%{email: email, password: password, status: :lifetime})
+      now = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
 
-      Accounts.deliver_user_confirmation_instructions(
-        user,
-        &Routes.user_confirmation_url(ShroudWeb.Endpoint, :edit, &1)
-      )
+      user =
+        %User{}
+        |> User.registration_changeset(%{email: email, password: password, status: :lifetime})
+        |> Ecto.Changeset.change(%{confirmed_at: now, is_admin: true})
+        |> Shroud.Repo.insert!()
 
       Accounts.deliver_user_reset_password_instructions(
         user,

@@ -185,6 +185,32 @@ defmodule ShroudWeb.UserAuth do
     end
   end
 
+  @doc """
+  Used for routes that are only accessible to server admins (e.g. LiveDashboard).
+  """
+  def require_admin_user(conn, _opts) do
+    user = conn.assigns[:current_user]
+
+    case user do
+      nil ->
+        conn
+        |> put_flash(:error, "You must log in to access this page.")
+        |> maybe_store_return_to()
+        |> redirect(to: Routes.user_session_path(conn, :new))
+        |> halt()
+
+      %{is_admin: false} ->
+        conn
+        |> put_flash(:error, "You do not have permission to access this page.")
+        |> maybe_store_return_to()
+        |> redirect(to: Routes.email_alias_index_path(conn, :index))
+        |> halt()
+
+      _user ->
+        conn
+    end
+  end
+
   defp maybe_store_return_to(%{method: "GET"} = conn) do
     put_session(conn, :user_return_to, current_path(conn))
   end

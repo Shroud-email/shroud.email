@@ -8,6 +8,7 @@ defmodule Shroud.Accounts.User do
     field :password, :string, virtual: true, redact: true
     field :hashed_password, :string, redact: true
     field :confirmed_at, :naive_datetime
+    field :is_admin, :boolean
     # Ideally, we'd just see if `totp_secret` was non-null to determine if
     # TOTP is enabled. However, cloak_ecto seems to have trouble setting an
     # encrypted field to nil (!), so we use this extra field to work around it.

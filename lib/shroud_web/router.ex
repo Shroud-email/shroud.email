@@ -1,6 +1,7 @@
 defmodule ShroudWeb.Router do
   use ShroudWeb, :router
 
+  import Phoenix.LiveDashboard.Router
   import ShroudWeb.UserAuth
   import ShroudWeb.UserApiAuth
   import ShroudWeb.SpamCount
@@ -18,6 +19,9 @@ defmodule ShroudWeb.Router do
 
   pipeline :mounted_apps do
     plug :accepts, ["html"]
+    plug :fetch_session
+    plug :fetch_live_flash
+    plug :fetch_current_user
     plug :put_secure_browser_headers
   end
 
@@ -45,20 +49,14 @@ defmodule ShroudWeb.Router do
     resources "/aliases", EmailAliasController, only: [:index]
   end
 
-  # Enables LiveDashboard only for development
-  #
-  # If you want to use the LiveDashboard in production, you should put
-  # it behind authentication and allow only admins to access it.
-  # If your application does not have an admins-only section yet,
-  # you can use Plug.BasicAuth to set up some basic authentication
-  # as long as you are also using SSL (which you should anyway).
-  if Mix.env() in [:dev, :test] do
-    import Phoenix.LiveDashboard.Router
+  scope "/admin" do
+    pipe_through [:browser, :require_admin_user]
+    live_dashboard "/", metrics: ShroudWeb.Telemetry
+  end
 
-    scope "/" do
-      pipe_through :browser
-      live_dashboard "/dashboard", metrics: ShroudWeb.Telemetry
-    end
+  scope "/feature_flags" do
+    pipe_through [:mounted_apps, :require_admin_user]
+    forward "/", FunWithFlags.UI.Router, namespace: "feature_flags"
   end
 
   # Enables the Swoosh mailbox preview in development.
@@ -133,10 +131,5 @@ defmodule ShroudWeb.Router do
     post "/users/confirm/:token", UserConfirmationController, :update
     get "/email-report/:data", PageController, :email_report
     get "/proxy", ProxyController, :proxy
-  end
-
-  scope "/feature_flags" do
-    pipe_through [:mounted_apps]
-    forward "/", FunWithFlags.UI.Router, namespace: "feature_flags"
   end
 end

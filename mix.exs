@@ -25,7 +25,7 @@ defmodule Shroud.MixProject do
   def application do
     [
       mod: {Shroud.Application, []},
-      extra_applications: [:logger, :runtime_tools, :p1_utils]
+      extra_applications: [:logger, :runtime_tools, :p1_utils, :os_mon]
     ]
   end
 
@@ -85,7 +85,8 @@ defmodule Shroud.MixProject do
       {:ex_aws_s3, "~> 2.3"},
       {:dotenv_parser, "~> 2.0", only: :dev},
       {:html_sanitize_ex, "~> 1.4"},
-      {:ex_image_info, "~> 0.2.4"}
+      {:ex_image_info, "~> 0.2.4"},
+      {:ecto_psql_extras, "~> 0.7.4"}
     ]
   end
 
