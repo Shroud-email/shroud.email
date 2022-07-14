@@ -29,6 +29,8 @@ jobs:
           key: ${{ runner.os }}-buildx-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-buildx-
+      - name: Setup Docker buildx
+        uses: docker/setup-buildx-action@v2
       - name: Build container
         uses: docker/build-push-action@v3
         with:
