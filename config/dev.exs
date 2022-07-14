@@ -42,6 +42,7 @@ config :shroud, ShroudWeb.Endpoint,
   watchers: [
     # Start the esbuild watcher by calling Esbuild.install_and_run(:default, args)
     esbuild: {Esbuild, :install_and_run, [:default, ~w(--sourcemap=inline --watch)]},
+    esbuild_catalogue: {Esbuild, :install_and_run, [:catalogue, ~w(--sourcemap=inline --watch)]},
     npx: [
       "tailwindcss",
       "--input=css/app.css",
@@ -78,12 +79,14 @@ config :shroud, ShroudWeb.Endpoint,
 
 # Watch static and templates for browser reloading.
 config :shroud, ShroudWeb.Endpoint,
+  reloadable_compilers: [:gettext, :elixir, :surface],
   live_reload: [
     patterns: [
       ~r"priv/static/.*(js|css|png|jpeg|jpg|gif|svg)$",
       ~r"priv/gettext/.*(po)$",
-      ~r"lib/shroud_web/(live|views)/.*(ex)$",
-      ~r"lib/shroud_web/templates/.*(eex)$"
+      ~r"lib/shroud_web/(live|views|components)/.*(ex|sface|js)$",
+      ~r"lib/shroud_web/templates/.*(eex)$",
+      ~r"priv/catalogue/.*(ex)$"
     ]
   ]
 

@@ -7,7 +7,7 @@ defmodule Shroud.MixProject do
       version: "0.1.0",
       elixir: "~> 1.12",
       elixirc_paths: elixirc_paths(Mix.env()),
-      compilers: [:gettext] ++ Mix.compilers(),
+      compilers: [:gettext] ++ Mix.compilers() ++ [:surface],
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
       deps: deps(),
@@ -31,6 +31,7 @@ defmodule Shroud.MixProject do
 
   # Specifies which paths to compile per environment.
   defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(:dev), do: ["lib"] ++ catalogues()
   defp elixirc_paths(_), do: ["lib"]
 
   # Specifies your project dependencies.
@@ -86,7 +87,11 @@ defmodule Shroud.MixProject do
       {:dotenv_parser, "~> 2.0", only: :dev},
       {:html_sanitize_ex, "~> 1.4"},
       {:ex_image_info, "~> 0.2.4"},
-      {:ecto_psql_extras, "~> 0.7.4"}
+      {:ecto_psql_extras, "~> 0.7.4"},
+      {:surface, "~> 0.7.4"},
+      {:surface_catalogue, "~> 0.4.0"},
+      {:surface_heroicons, "~> 0.6.0"},
+      {:surface_formatter, "~> 0.7.5"}
     ]
   end
 
@@ -108,6 +113,12 @@ defmodule Shroud.MixProject do
         "esbuild default --minify",
         "phx.digest"
       ]
+    ]
+  end
+
+  def catalogues do
+    [
+      "priv/catalogue"
     ]
   end
 end

@@ -1,6 +1,8 @@
 defmodule ShroudWeb.Router do
   use ShroudWeb, :router
 
+  import Surface.Catalogue.Router
+
   import Phoenix.LiveDashboard.Router
   import ShroudWeb.UserAuth
   import ShroudWeb.UserApiAuth
@@ -68,6 +70,7 @@ defmodule ShroudWeb.Router do
       pipe_through :browser
 
       forward "/mailbox", Plug.Swoosh.MailboxPreview
+      surface_catalogue("/catalogue")
     end
   end
 
@@ -113,9 +116,7 @@ defmodule ShroudWeb.Router do
       live "/alias/:address", EmailAliasLive.Show, :show
     end
 
-    live_session :spam do
-      live "/detention", SpamEmailLive.Index, :index
-    end
+    live "/detention", SpamEmailLive.Index, :index
 
     get "/checkout", CheckoutController, :index
     get "/checkout/success", CheckoutController, :success

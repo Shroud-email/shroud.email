@@ -1,13 +1,14 @@
 defmodule ShroudWeb.EmailAliasLive.Index do
   import Canada, only: [can?: 2]
 
-  use Phoenix.HTML
-  use ShroudWeb, :live_view
+  use ShroudWeb, :surface_view
+  alias Surface.Components.LiveRedirect
 
   alias Shroud.Accounts
   alias Shroud.Aliases
   alias Shroud.Aliases.EmailAlias
   alias ShroudWeb.Router.Helpers, as: Routes
+  alias ShroudWeb.Components.{Alert, Button, EmptyState}
 
   @impl true
   def mount(_params, _session, socket) do

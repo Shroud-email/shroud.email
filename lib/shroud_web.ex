@@ -39,12 +39,24 @@ defmodule ShroudWeb do
 
       # Include shared imports and aliases for views
       unquote(view_helpers())
+      import Surface
     end
   end
 
+  # TODO: remove this
   def live_view do
     quote do
       use Phoenix.LiveView,
+        layout: {ShroudWeb.LayoutView, "live.html"}
+
+      on_mount ShroudWeb.UserLiveAuth
+      unquote(view_helpers())
+    end
+  end
+
+  def surface_view do
+    quote do
+      use Surface.LiveView,
         layout: {ShroudWeb.LayoutView, "live.html"}
 
       on_mount ShroudWeb.UserLiveAuth
