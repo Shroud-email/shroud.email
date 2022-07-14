@@ -96,6 +96,11 @@ defmodule Shroud.Email.TrackerRemover do
     |> Integer.parse()
   end
 
+  # Don't proxy inline-attached images!
+  defp proxify_src({"src", "cid:" <> cid_id}) do
+    {"src", "cid:" <> cid_id}
+  end
+
   defp proxify_src({"src", href}) do
     href = URI.encode(href)
     {"src", Routes.proxy_url(ShroudWeb.Endpoint, :proxy, %{url: href})}
