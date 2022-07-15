@@ -44,7 +44,8 @@ RUN mix release
 # start a new build stage so that the final image will only contain
 # the compiled release and other runtime necessities
 FROM hexpm/elixir:1.13.2-erlang-24.1.7-debian-bullseye-20210902-slim as app
-RUN apt-get update && apt-get install -y openssl libncurses6
+RUN apt-get update && apt-get install -y openssl libncurses6 ca-certificates
+RUN update-ca-certificates
 
 ARG MIX_ENV
 ENV USER="elixir"
