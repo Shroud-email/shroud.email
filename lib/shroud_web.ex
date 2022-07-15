@@ -40,6 +40,11 @@ defmodule ShroudWeb do
       # Include shared imports and aliases for views
       unquote(view_helpers())
       import Surface
+
+      # Use Surface components everywhere
+      use Surface.View, root: "lib/shroud_web/templates"
+      alias Surface.Components.LiveRedirect
+      alias ShroudWeb.Components.Notification
     end
   end
 
