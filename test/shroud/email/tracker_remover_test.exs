@@ -220,6 +220,27 @@ defmodule Shroud.Email.TrackerRemoverTest do
       assert remove_whitespace(email.swoosh_email.html_body) == remove_whitespace(html_body)
       assert Enum.empty?(email.removed_trackers)
     end
+
+    test "does not proxy inline images" do
+      html_body = """
+      <html>
+        <body>
+          <h1>An email</h1>
+          <p>Content</p>
+          <img src="data:image/png;base64, deadbeef" alt="an image" />
+        </body>
+      </html>
+      """
+
+      email =
+        html_email("sender@example.com", ["recipient@example.com"], "Subject", html_body)
+        |> :mimemail.decode()
+        |> ParsedEmail.parse()
+        |> TrackerRemover.process()
+
+      assert remove_whitespace(email.swoosh_email.html_body) == remove_whitespace(html_body)
+      assert Enum.empty?(email.removed_trackers)
+    end
   end
 
   defp remove_whitespace(text), do: String.replace(text, ~r/\s/, "")

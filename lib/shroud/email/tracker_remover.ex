@@ -101,6 +101,11 @@ defmodule Shroud.Email.TrackerRemover do
     {"src", "cid:" <> cid_id}
   end
 
+  # Don't proxy base64 images
+  defp proxify_src({"src", "data:" <> data}) do
+    {"src", "data:" <> data}
+  end
+
   defp proxify_src({"src", href}) do
     href = URI.encode(href)
     {"src", Routes.proxy_url(ShroudWeb.Endpoint, :proxy, %{url: href})}
