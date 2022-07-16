@@ -111,9 +111,11 @@ defmodule ShroudWeb.Router do
     # Route for changing email of an already-confirmed account
     get "/settings/confirm_email/:token", UserSettingsController, :confirm_email
 
-    live_session :aliases do
+    live_session :app, on_mount: ShroudWeb.UserLiveAuth do
       live "/", EmailAliasLive.Index, :index
       live "/alias/:address", EmailAliasLive.Show, :show
+      live "/domains", CustomDomainLive.Index, :index
+      live "/domains/:domain", CustomDomainLive.Show, :show
     end
 
     live "/detention", SpamEmailLive.Index, :index

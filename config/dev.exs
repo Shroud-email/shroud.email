@@ -23,7 +23,11 @@ config :shroud, Shroud.Vault,
     }
   ]
 
-config :shroud, :email_aliases, domain: "shroud.local"
+config :shroud, :email_aliases, domain: "example.com"
+
+config :shroud,
+  app_domain: "app.example.com",
+  email_domain: "example.com"
 
 # For development, we disable any cache and enable
 # debugging and code reloading.
@@ -42,7 +46,7 @@ config :shroud, ShroudWeb.Endpoint,
   watchers: [
     # Start the esbuild watcher by calling Esbuild.install_and_run(:default, args)
     esbuild: {Esbuild, :install_and_run, [:default, ~w(--sourcemap=inline --watch)]},
-    esbuild_catalogue: {Esbuild, :install_and_run, [:catalogue, ~w(--sourcemap=inline --watch)]},
+    esbuild: {Esbuild, :install_and_run, [:catalogue, ~w(--sourcemap=inline --watch)]},
     npx: [
       "tailwindcss",
       "--input=css/app.css",

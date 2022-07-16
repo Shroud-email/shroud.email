@@ -9,3 +9,6 @@ Application.put_env(:shroud, :s3_client, Shroud.S3.MockS3Client)
 
 Mox.defmock(Shroud.MockDateTime, for: Shroud.DateTimeBehaviour)
 Application.put_env(:shroud, :datetime_module, Shroud.MockDateTime)
+
+Mox.defmock(Shroud.MockDnsClient, for: Shroud.DnsClientBehaviour)
+Application.put_env(:shroud, :dns_client, Shroud.MockDnsClient)

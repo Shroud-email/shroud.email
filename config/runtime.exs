@@ -30,6 +30,13 @@ config :ex_aws,
 # any compile-time configuration in here, as it won't be applied.
 # The block below contains prod specific runtime configuration.
 if config_env() == :prod do
+  app_domain =
+    System.get_env("APP_DOMAIN") ||
+      raise """
+      environment variable APP_DOMAIN is missing.
+      For example: app.shroud.email
+      """
+
   email_domain =
     System.get_env("EMAIL_DOMAIN") ||
       raise """
@@ -88,7 +95,7 @@ if config_env() == :prod do
       port: String.to_integer(System.get_env("PORT") || "4000")
     ],
     url: [
-      host: System.get_env("APP_DOMAIN") || "app.shroud.email",
+      host: app_domain,
       port: 443,
       scheme: "https"
     ],
@@ -123,5 +130,7 @@ if config_env() == :prod do
     notifier_webhook_url: System.get_env("NOTIFIER_WEBHOOK_URL"),
     email_octopus_list_id: System.get_env("EMAIL_OCTOPUS_LIST_ID"),
     email_octopus_api_key: System.get_env("EMAIL_OCTOPUS_API_KEY"),
-    admin_user_email: System.get_env("ADMIN_EMAIL")
+    admin_user_email: System.get_env("ADMIN_EMAIL"),
+    app_domain: app_domain,
+    email_domain: email_domain
 end

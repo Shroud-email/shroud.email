@@ -1,0 +1,78 @@
+<div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+  <ShroudWeb.Components.LoggingWarning {=@current_user} />
+  {#if get_flash(@conn, :info)}
+    <p class="alert alert-info mb-6" role="alert">{get_flash(@conn, :info)}</p>
+  {/if}
+  {#if get_flash(@conn, :error)}
+    <p class="alert alert-error mb-6" role="alert">{get_flash(@conn, :error)}</p>
+  {/if}
+  <div class="lg:grid lg:grid-cols-12 lg:gap-x-5">
+    <aside class="px-2 sm:px-6 lg:px-0 lg:col-span-3">
+      <nav class="space-y-1">
+        <Surface.Components.Link
+          to={Routes.user_settings_path(@conn, :account)}
+          class={active_class(
+            @conn,
+            Routes.user_settings_path(@conn, :account),
+            "text-gray-900 hover:text-gray-900 hover:bg-gray-50 group rounded-md px-3 py-2 flex items-center text-sm font-medium",
+            "bg-gray-50 text-indigo-700 hover:text-indigo-700 hover:bg-white"
+          )}
+        >
+          <Heroicons.Outline.UserCircleIcon class={active_class(
+            @conn,
+            Routes.user_settings_path(@conn, :account),
+            "text-gray-400 group-hover:text-gray-500 flex-shrink-0 -ml-1 mr-3 h-6 w-6",
+            "text-indigo-500 group-hover:text-indigo-500"
+          )} />
+          <span class="truncate">
+            Account
+          </span>
+        </Surface.Components.Link>
+
+        <Surface.Components.Link
+          to={Routes.user_settings_path(@conn, :security)}
+          class={active_class(
+            @conn,
+            Routes.user_settings_path(@conn, :security),
+            "text-gray-900 hover:text-gray-900 hover:bg-gray-50 group rounded-md px-3 py-2 flex items-center text-sm font-medium",
+            "bg-gray-50 text-indigo-700 hover:text-indigo-700 hover:bg-white"
+          )}
+        >
+          <Heroicons.Outline.KeyIcon class={active_class(
+            @conn,
+            Routes.user_settings_path(@conn, :security),
+            "text-gray-400 group-hover:text-gray-500 flex-shrink-0 -ml-1 mr-3 h-6 w-6",
+            "text-indigo-500 group-hover:text-indigo-500"
+          )} />
+          <span class="truncate">
+            Security
+          </span>
+        </Surface.Components.Link>
+
+        <Surface.Components.Link
+          to={Routes.user_settings_path(@conn, :billing)}
+          class={active_class(
+            @conn,
+            Routes.user_settings_path(@conn, :billing),
+            "text-gray-900 hover:text-gray-900 hover:bg-gray-50 group rounded-md px-3 py-2 flex items-center text-sm font-medium",
+            "bg-gray-50 text-indigo-700 hover:text-indigo-700 hover:bg-white"
+          )}
+        >
+          <Heroicons.Outline.CreditCardIcon class={active_class(
+            @conn,
+            Routes.user_settings_path(@conn, :billing),
+            "text-gray-400 group-hover:text-gray-500 flex-shrink-0 -ml-1 mr-3 h-6 w-6",
+            "text-indigo-500 group-hover:text-indigo-500"
+          )} />
+          <span class="truncate">
+            Plan &amp; Billing
+          </span>
+        </Surface.Components.Link>
+      </nav>
+    </aside>
+
+    <div class="space-y-6 sm:px-6 lg:px-0 lg:col-span-9">
+      {@inner_content}
+    </div>
+  </div>
+</div>

@@ -191,23 +191,26 @@ defmodule ShroudWeb.UserAuth do
   def require_admin_user(conn, _opts) do
     user = conn.assigns[:current_user]
 
-    case user do
-      nil ->
+    cond do
+      Mix.env() == :dev ->
+        conn
+
+      user.is_admin ->
+        conn
+
+      is_nil(user) ->
         conn
         |> put_flash(:error, "You must log in to access this page.")
         |> maybe_store_return_to()
         |> redirect(to: Routes.user_session_path(conn, :new))
         |> halt()
 
-      %{is_admin: false} ->
+      true ->
         conn
         |> put_flash(:error, "You do not have permission to access this page.")
         |> maybe_store_return_to()
         |> redirect(to: Routes.email_alias_index_path(conn, :index))
         |> halt()
-
-      _user ->
-        conn
     end
   end
 

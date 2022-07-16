@@ -8,7 +8,8 @@ defmodule ShroudWeb.Components.Notification do
   def render(assigns) do
     [icon, icon_class] =
       case assigns.kind do
-        :info -> [Heroicons.Outline.CheckCircleIcon, "text-green-400"]
+        :success -> [Heroicons.Outline.CheckCircleIcon, "text-green-400"]
+        :info -> [Heroicons.Outline.InformationCircleIcon, "text-gray-400"]
         :error -> [Heroicons.Outline.ExclamationCircleIcon, "text-red-400"]
       end
 

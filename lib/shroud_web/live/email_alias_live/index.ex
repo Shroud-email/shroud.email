@@ -30,7 +30,7 @@ defmodule ShroudWeb.EmailAliasLive.Index do
         {:ok, email_alias} ->
           socket =
             socket
-            |> put_flash(:info, "Created new alias #{email_alias.address}.")
+            |> put_flash(:success, "Created new alias #{email_alias.address}.")
             |> assign(:aliases, [email_alias | socket.assigns.aliases])
 
           {:noreply,

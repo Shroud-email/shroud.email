@@ -43,8 +43,7 @@ defmodule ShroudWeb do
 
       # Use Surface components everywhere
       use Surface.View, root: "lib/shroud_web/templates"
-      alias Surface.Components.LiveRedirect
-      alias ShroudWeb.Components.Notification
+      alias ShroudWeb.Components.Page
     end
   end
 
