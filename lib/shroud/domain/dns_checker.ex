@@ -52,7 +52,11 @@ defmodule Shroud.Domain.DnsChecker do
       |> Repo.update!()
 
     PubSub.broadcast!(Shroud.PubSub, "dns_checker", :dns_check_complete)
+    deliver_notification_emails(was_verified_before, custom_domain)
+    :ok
+  end
 
+  defp deliver_notification_emails(was_verified_before, %CustomDomain{} = custom_domain) do
     # Notify the user if we just verified the domain
     if !was_verified_before and Domain.fully_verified?(custom_domain) do
       %{email_function: "deliver_domain_verified", email_args: [custom_domain.id]}
@@ -60,7 +64,12 @@ defmodule Shroud.Domain.DnsChecker do
       |> Oban.insert!()
     end
 
-    :ok
+    # Notify the user if the domain is no longer verified
+    if was_verified_before and !Domain.fully_verified?(custom_domain) do
+      %{email_function: "deliver_domain_no_longer_verified", email_args: [custom_domain.id]}
+      |> UserNotifierJob.new()
+      |> Oban.insert!()
+    end
   end
 
   defp has_records?(desired_records) when is_list(desired_records) do

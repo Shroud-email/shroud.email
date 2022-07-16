@@ -248,7 +248,7 @@ defmodule Shroud.Accounts.UserNotifier do
 
     Hi #{user.email},
 
-    Good news! Your domain #{custom_domain.domain} has been verified.
+    Good news! Your domain #{custom_domain.domain} has been verified on Shroud.email.
     You can now use it to create aliases.
 
     You can configure your domain, including catch-all, on the following URL:
@@ -258,5 +258,37 @@ defmodule Shroud.Accounts.UserNotifier do
     """
 
     deliver(user.email, "Your domain has been verified", html_body, text_body)
+  end
+
+  def deliver_domain_no_longer_verified(custom_domain_id) do
+    custom_domain = Repo.get(CustomDomain, custom_domain_id) |> Repo.preload(:user)
+    user = custom_domain.user
+    domain_url = Routes.custom_domain_show_path(Endpoint, :show, custom_domain.domain)
+
+    html_body =
+      EmailTemplate.DomainNoLongerVerified.render(
+        user_email: user.email,
+        domain: custom_domain.domain,
+        domain_url: domain_url,
+        current_year: DateTime.utc_now().year
+      )
+
+    text_body = """
+    ==============================
+
+    Hi #{user.email},
+
+    Your custom domain on Shroud.email, #{custom_domain.domain}, is no longer
+    verified as it no longer has the correct DNS records.
+
+    Please log in to our web app to verify it again or delete it. Until you do,
+    aliases on this domain will not work.
+
+    #{domain_url}
+
+    ==============================
+    """
+
+    deliver(user.email, "#{custom_domain.domain} is no longer verified", html_body, text_body)
   end
 end

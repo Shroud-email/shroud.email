@@ -196,7 +196,7 @@ defmodule Shroud.Domain.DnsCheckerTest do
     end
   end
 
-  describe "emails" do
+  describe "newly verified domain notifications" do
     test "sends an email to the user if the domain just got fully verified" do
       # unverified domain
       domain = custom_domain_fixture(%{domain: "domain.com", ownership_verified_at: nil})
@@ -250,6 +250,35 @@ defmodule Shroud.Domain.DnsCheckerTest do
             [{10, Application.fetch_env!(:shroud, :app_domain)}]
         end
       end)
+
+      perform_job(DnsChecker, %{custom_domain_id: domain.id})
+
+      refute_enqueued(worker: UserNotifierJob)
+    end
+  end
+
+  describe "newly un-verified domain notifications" do
+    test "sends an email to the user if the domain is no longer" do
+      # verified domain
+      domain = custom_domain_fixture(%{domain: "domain.com"})
+
+      Shroud.MockDnsClient
+      |> stub(:lookup, fn _domain, _record_type -> [] end)
+
+      perform_job(DnsChecker, %{custom_domain_id: domain.id})
+
+      assert_enqueued(
+        worker: UserNotifierJob,
+        args: %{email_function: "deliver_domain_no_longer_verified", email_args: [domain.id]}
+      )
+    end
+
+    test "does not send an email if the domain was already non-verified" do
+      # unverified domain
+      domain = custom_domain_fixture(%{domain: "domain.com", ownership_verified_at: nil})
+
+      Shroud.MockDnsClient
+      |> stub(:lookup, fn _, _record_type -> [] end)
 
       perform_job(DnsChecker, %{custom_domain_id: domain.id})
 
