@@ -1,7 +1,8 @@
 defmodule Shroud.Accounts.UserNotifier do
   import Swoosh.Email
 
-  alias Shroud.{Accounts, EmailTemplate, Mailer, Util}
+  alias Shroud.{Accounts, EmailTemplate, Mailer, Util, Repo}
+  alias Shroud.Domain.CustomDomain
   alias ShroudWeb.Endpoint
   alias ShroudWeb.Router.Helpers, as: Routes
 
@@ -227,5 +228,35 @@ defmodule Shroud.Accounts.UserNotifier do
     """
 
     deliver(user.email, "We blocked a spam email", html_body, text_body)
+  end
+
+  def deliver_domain_verified(custom_domain_id) do
+    custom_domain = Repo.get(CustomDomain, custom_domain_id) |> Repo.preload(:user)
+    user = custom_domain.user
+    domain_url = Routes.custom_domain_show_path(Endpoint, :show, custom_domain.domain)
+
+    html_body =
+      EmailTemplate.DomainVerified.render(
+        user_email: user.email,
+        domain: custom_domain.domain,
+        domain_url: domain_url,
+        current_year: DateTime.utc_now().year
+      )
+
+    text_body = """
+    ==============================
+
+    Hi #{user.email},
+
+    Good news! Your domain #{custom_domain.domain} has been verified.
+    You can now use it to create aliases.
+
+    You can configure your domain, including catch-all, on the following URL:
+    #{domain_url}
+
+    ==============================
+    """
+
+    deliver(user.email, "Your domain has been verified", html_body, text_body)
   end
 end

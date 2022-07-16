@@ -2,6 +2,7 @@ defmodule Shroud.Domain.DnsCheckerTest do
   use Shroud.DataCase, async: false
   import Mox
   use Oban.Testing, repo: Shroud.Repo
+  alias Shroud.Accounts.UserNotifierJob
   alias Shroud.Repo
   alias Shroud.Domain.DnsChecker
   import Shroud.DomainFixtures
@@ -192,6 +193,67 @@ defmodule Shroud.Domain.DnsCheckerTest do
       domain = Repo.reload!(domain)
 
       assert is_nil(domain.dmarc_verified_at)
+    end
+  end
+
+  describe "emails" do
+    test "sends an email to the user if the domain just got fully verified" do
+      # unverified domain
+      domain = custom_domain_fixture(%{domain: "domain.com", ownership_verified_at: nil})
+
+      Shroud.MockDnsClient
+      |> stub(:lookup, fn _, record_type ->
+        # return all-valid records
+        case record_type do
+          :txt ->
+            [
+              domain.verification_code,
+              "v=spf1 mx ~all",
+              "v=DMARC1; p=none; sp=none; aspf=r; adkim=r"
+            ]
+
+          :cname ->
+            ["shroudemail._domainkey.#{Application.fetch_env!(:shroud, :email_domain)}"]
+
+          :mx ->
+            [{10, Application.fetch_env!(:shroud, :app_domain)}]
+        end
+      end)
+
+      perform_job(DnsChecker, %{custom_domain_id: domain.id})
+
+      assert_enqueued(
+        worker: UserNotifierJob,
+        args: %{email_function: "deliver_domain_verified", email_args: [domain.id]}
+      )
+    end
+
+    test "does not send an email if the domain was already verified" do
+      # verified domain
+      domain = custom_domain_fixture(%{domain: "domain.com"})
+
+      Shroud.MockDnsClient
+      |> stub(:lookup, fn _, record_type ->
+        # return all-valid records
+        case record_type do
+          :txt ->
+            [
+              domain.verification_code,
+              "v=spf1 mx ~all",
+              "v=DMARC1; p=none; sp=none; aspf=r; adkim=r"
+            ]
+
+          :cname ->
+            ["shroudemail._domainkey.#{Application.fetch_env!(:shroud, :email_domain)}"]
+
+          :mx ->
+            [{10, Application.fetch_env!(:shroud, :app_domain)}]
+        end
+      end)
+
+      perform_job(DnsChecker, %{custom_domain_id: domain.id})
+
+      refute_enqueued(worker: UserNotifierJob)
     end
   end
 end

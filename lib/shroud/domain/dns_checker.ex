@@ -8,14 +8,16 @@ defmodule Shroud.Domain.DnsChecker do
 
   alias Phoenix.PubSub
   alias Shroud.Repo
+  alias Shroud.Accounts.UserNotifierJob
+  alias Shroud.Domain
   alias Shroud.Domain.CustomDomain
   alias Shroud.Domain.DnsRecord
 
-  # TODO: enqueue this every 12 hours (or more)
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"custom_domain_id" => id}}) do
     custom_domain = Repo.get!(CustomDomain, id)
     now = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
+    was_verified_before = Domain.fully_verified?(custom_domain)
 
     # Ownership
     desired_ownership_records = DnsRecord.desired_ownership_records(custom_domain)
@@ -38,17 +40,25 @@ defmodule Shroud.Domain.DnsChecker do
     dmarc_verified_at = if has_records?(desired_dmarc), do: now, else: nil
 
     # Save
-    custom_domain
-    |> Ecto.Changeset.change(%{
-      ownership_verified_at: ownership_verified_at,
-      mx_verified_at: mx_verified_at,
-      spf_verified_at: spf_verified_at,
-      dkim_verified_at: dkim_verified_at,
-      dmarc_verified_at: dmarc_verified_at
-    })
-    |> Repo.update!()
+    custom_domain =
+      custom_domain
+      |> Ecto.Changeset.change(%{
+        ownership_verified_at: ownership_verified_at,
+        mx_verified_at: mx_verified_at,
+        spf_verified_at: spf_verified_at,
+        dkim_verified_at: dkim_verified_at,
+        dmarc_verified_at: dmarc_verified_at
+      })
+      |> Repo.update!()
 
     PubSub.broadcast!(Shroud.PubSub, "dns_checker", :dns_check_complete)
+
+    # Notify the user if we just verified the domain
+    if !was_verified_before and Domain.fully_verified?(custom_domain) do
+      %{email_function: "deliver_domain_verified", email_args: [custom_domain.id]}
+      |> UserNotifierJob.new()
+      |> Oban.insert!()
+    end
 
     :ok
   end
