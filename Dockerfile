@@ -37,8 +37,8 @@ RUN mix assets.deploy
 
 # changes to config/runtime.exs don't require recompiling the code
 COPY config/runtime.exs config/
-# uncomment COPY if rel/ exists
-# COPY rel rel
+COPY rel rel
+COPY cfg_files cfg_files
 RUN mix release
 
 # start a new build stage so that the final image will only contain

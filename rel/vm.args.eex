@@ -1,0 +1,1 @@
+-kernel inetrc '"./cfg_files/erl_inetrc"'

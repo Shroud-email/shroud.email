@@ -1,0 +1,3 @@
+%% -- ERLANG INET CONFIGURATION FILE --
+%% cache DNS for 1 minute
+{cache_refresh, 60000}.
