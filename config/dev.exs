@@ -23,8 +23,6 @@ config :shroud, Shroud.Vault,
     }
   ]
 
-config :shroud, :email_aliases, domain: "example.com"
-
 config :shroud,
   app_domain: "app.example.com",
   email_domain: "example.com"

@@ -28,7 +28,7 @@ defmodule Shroud.Util do
 
   @spec email_domain() :: String.t()
   def email_domain() do
-    Application.get_env(:shroud, :email_aliases)[:domain]
+    Application.get_env(:shroud, :email_domain)
   end
 
   @spec crlf_to_lf(String.t() | nil) :: String.t() | nil

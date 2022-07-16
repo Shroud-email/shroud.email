@@ -16,8 +16,6 @@ config :shroud, Shroud.Repo,
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: 10
 
-config :shroud, :email_aliases, domain: "shroud.test"
-
 config :shroud, Shroud.Vault,
   ciphers: [
     default: {
@@ -36,6 +34,9 @@ config :shroud, :mailer,
   smtp_options: [
     port: 2526
   ]
+
+config :shroud,
+  email_domain: "shroud.test"
 
 # We don't run a server during test. If one is required,
 # you can enable the server option below.

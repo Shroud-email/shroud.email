@@ -37,15 +37,6 @@ if config_env() == :prod do
       For example: app.shroud.email
       """
 
-  email_domain =
-    System.get_env("EMAIL_DOMAIN") ||
-      raise """
-      environment variable EMAIL_DOMAIN is missing.
-      For example: fog.shroud.email
-      """
-
-  config :shroud, :email_aliases, domain: email_domain
-
   database_url =
     System.get_env("DATABASE_URL") ||
       raise """
@@ -125,6 +116,13 @@ if config_env() == :prod do
   config :swoosh, :api_client, Swoosh.ApiClient.Hackney
 
   config :appsignal, :config, push_api_key: System.get_env("APPSIGNAL_PUSH_API_KEY")
+
+  email_domain =
+    System.get_env("EMAIL_DOMAIN") ||
+      raise """
+      environment variable EMAIL_DOMAIN is missing.
+      For example: fog.shroud.email
+      """
 
   config :shroud,
     notifier_webhook_url: System.get_env("NOTIFIER_WEBHOOK_URL"),
