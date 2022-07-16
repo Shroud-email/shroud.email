@@ -1,5 +1,10 @@
 defmodule Shroud.Domain.DnsChecker do
-  use Oban.Worker, queue: :default
+  use Oban.Worker,
+    queue: :dns_checker,
+    unique: [
+      states: [:available, :scheduled, :executing, :retryable],
+      fields: [:worker, :args]
+    ]
 
   alias Phoenix.PubSub
   alias Shroud.Repo

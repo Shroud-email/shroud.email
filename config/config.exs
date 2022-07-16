@@ -51,7 +51,8 @@ config :shroud, Shroud.Scheduler,
     {"@daily", {Shroud.Scheduler, :update_trackers, []}},
     {"@daily", {Shroud.Scheduler, :email_expiring_trials, []}},
     {"@daily", {Shroud.Scheduler, :email_expired_trials, []}},
-    {"@hourly", {Shroud.Scheduler, :delete_spam_emails, []}}
+    {"@hourly", {Shroud.Scheduler, :delete_spam_emails, []}},
+    {"@hourly", {Shroud.Scheduler, :verify_custom_domains, []}}
   ]
 
 config :swoosh, :api_client, Swoosh.ApiClient.Hackney
@@ -59,7 +60,12 @@ config :swoosh, :api_client, Swoosh.ApiClient.Hackney
 config :shroud, Oban,
   repo: Shroud.Repo,
   plugins: [Oban.Plugins.Pruner],
-  queues: [default: 1, outgoing_email: 5, notifier: 1]
+  queues: [
+    default: 1,
+    outgoing_email: 5,
+    notifier: 1,
+    dns_checker: 3
+  ]
 
 # Configure esbuild (the version is required)
 config :esbuild,

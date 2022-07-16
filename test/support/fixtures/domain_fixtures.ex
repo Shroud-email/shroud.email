@@ -12,19 +12,20 @@ defmodule Shroud.DomainFixtures do
   Generate a custom_domain.
   """
   def custom_domain_fixture(attrs \\ %{}) do
+    now = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
     user_id = if Map.get(attrs, :user_id), do: attrs.user_id, else: user_fixture().id
 
     attrs =
       attrs
       |> Enum.into(%{
         catchall_enabled: true,
-        dkim_verified_at: ~N[2022-07-14 12:07:00],
-        dmarc_verified_at: ~N[2022-07-14 12:07:00],
-        domain: "domain.com",
-        mx_verified_at: ~N[2022-07-14 12:07:00],
-        spf_verified_at: ~N[2022-07-14 12:07:00],
+        dkim_verified_at: now,
+        dmarc_verified_at: now,
+        domain: "domain#{System.unique_integer()}.com",
+        mx_verified_at: now,
+        spf_verified_at: now,
         verification_code: "deadbeef",
-        ownership_verified_at: ~N[2022-07-14 12:07:00],
+        ownership_verified_at: now,
         user_id: user_id
       })
 
