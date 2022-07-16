@@ -32,7 +32,18 @@ defmodule ShroudWeb.CustomDomainLive.Index do
             to={Routes.custom_domain_show_path(ShroudWeb.Endpoint, :show, domain.domain)}
             class="rounded bg-white shadow hover:shadow-lg transition-shadow p-3 overflow-hidden focus:ring focus:ring-indigo-600"
           >
-            <h3 class="font-bold">{domain.domain}</h3>
+            <h3 class="font-bold flex items-center">
+              {domain.domain}
+              {#if Domain.fully_verified?(domain)}
+                <div x-init x-tooltip.raw="Verified" class="ml-2 mt-1">
+                  <Heroicons.Solid.CheckCircleIcon class="text-green-500 h-4 w-4" />
+                </div>
+              {#else}
+                <div x-init x-tooltip.raw="Waiting for DNS records" class="ml-2 mt-1">
+                  <Heroicons.Solid.DotsHorizontalIcon class="text-gray-500 h-4 w-4 animate-pulse" />
+                </div>
+              {/if}
+            </h3>
             <p class="text-sm text-slate-600">Added {Timex.format!(domain.inserted_at, "{D} {Mshort} {YYYY}")}</p>
             <div class="-translate-x-8 translate-y-10 -mt-10">
               <Heroicons.Solid.GlobeAltIcon class="text-gray-200 h-24 w-24" />

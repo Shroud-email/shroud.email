@@ -5,78 +5,88 @@ defmodule ShroudWeb.Components.DnsVerification do
 
   prop domain, :any, required: true
   prop verifying, :boolean, required: true
-  prop field, :atom, required: true
-  prop title, :string, required: true
-  prop records, :list, required: true
+  prop sections, :keyword, required: true
   prop verify, :event, required: true
 
   def render(assigns) do
-    verified = Domain.dns_record_verified?(assigns.domain, assigns.field)
+    all_verified = Domain.fully_verified?(assigns.domain)
+
+    verified =
+      Enum.reduce(assigns.sections, %{}, fn {_title, {field, _rows}}, acc ->
+        Map.put(acc, field, Domain.dns_record_verified?(assigns.domain, field))
+      end)
 
     ~F"""
-    <div class={"bg-white rounded " <> if verified, do: "opacity-50", else: ""}>
-      <div class="border-b border-gray-200 px-4 py-2 sm:px-6">
-        <h3 class="font-medium text-gray-900 flex items-center">
-          {@title}
-          {#if verified}
-            <div x-init x-tooltip.raw="DNS records verified">
-              <Heroicons.Solid.CheckCircleIcon class="h-4 w-4 text-green-500 ml-2" />
-            </div>
-          {#else}
-            <div x-init x-tooltip.raw="Waiting for DNS records">
-              <Heroicons.Solid.DotsHorizontalIcon class="h-4 w-4 text-gray-500 ml-2 animate-pulse" />
-            </div>
-          {/if}
-        </h3>
-      </div>
-      <div class="px-4 py-2 pb-4 sm:px-6">
-        <div class="-mx-4 flex flex-col sm:-mx-6 md:mx-0">
-          <table class="min-w-full divide-y divide-gray-300">
-            <thead>
-              <tr>
-                <th
-                  scope="col"
-                  class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6 md:pl-0 w-[20%]"
-                >Record</th>
-                <th
-                  scope="col"
-                  class="hidden py-3.5 px-3 text-right text-sm font-semibold text-gray-900 sm:table-cell w-[30%]"
-                >Domain</th>
-                <th
-                  scope="col"
-                  class="py-3.5 pl-3 pr-4 text-right text-sm font-semibold text-gray-900 sm:pr-6 md:pr-0"
-                >Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr :for={dns_record <- @records} class="border-b border-gray-200">
-                <td class="py-4 pl-4 pr-3 text-sm sm:pl-6 md:pl-0">
-                  <div class="font-medium text-gray-900">{dns_record.type |> Atom.to_string() |> String.upcase()}</div>
-                  <div class="mt-0.5 text-gray-500 sm:hidden">{dns_record.domain}</div>
-                </td>
-                <td class="hidden py-4 px-3 text-right text-sm text-gray-900 sm:table-cell">{dns_record.domain}</td>
-                <td class="py-4 pl-3 pr-4 text-right text-sm text-gray-800 sm:pr-6 md:pr-0">
-                  <pre class="ml-auto w-min font-mono px-3 py-1 bg-gray-50 border border-gray-100 rounded-sm">{dns_record.value}</pre>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div class="flex justify-between items-center mt-6">
-          <p class="text-gray-700 mr-3">
-            {#if verified}
-              Your DNS records have been verified!
-            {#else}
-              Please add the above DNS records to your domain.
-            {/if}
+    <div class="">
+      <div class="sm:flex sm:items-center">
+        <div class="sm:flex-auto">
+          <h1 class="text-xl font-semibold text-gray-900">{@domain.domain}</h1>
+          <p class="mt-2 text-sm text-gray-700">
+            Add the following DNS records to activate your domain.
           </p>
+          <p class="text-sm text-gray-700">
+            DNS propagation can take up to 24 hours. Once you've added these records, you can sit back and relax: we'll email you when your domain is verified.
+          </p>
+        </div>
+        <div class="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
           <Button
-            :if={!verified}
+            :if={not all_verified}
             disabled={@verifying}
             click={@verify}
             text="Verify"
             icon={Heroicons.Outline.RefreshIcon}
           />
+        </div>
+      </div>
+      <div class="mt-8 flex flex-col">
+        <div class="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
+          <div class="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
+            <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
+              <table class="min-w-full">
+                <thead class="bg-white">
+                  <tr>
+                    <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">Type</th>
+                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Domain</th>
+                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Value</th>
+                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Priority</th>
+                  </tr>
+                </thead>
+                <tbody class="bg-white">
+                  {#for {title, {field, rows}} <- @sections}
+                    <tr class="border-t border-gray-200">
+                      <th
+                        colspan="5"
+                        scope="colgroup"
+                        class="bg-gray-50 px-4 py-2 text-left text-sm font-semibold text-gray-900 sm:px-6 flex items-center"
+                      >
+                        {title}
+                        {#if Map.get(verified, field)}
+                          <div x-init x-tooltip.raw="Verified" class="ml-2">
+                            <Heroicons.Solid.CheckCircleIcon class="h-5 w-5 text-green-400" />
+                          </div>
+                        {#else}
+                          <div x-init x-tooltip.raw="Waiting for DNS records" class="ml-2">
+                            <Heroicons.Solid.DotsHorizontalIcon class="h-5 w-5 animate-pulse" />
+                          </div>
+                        {/if}
+                      </th>
+                    </tr>
+                    <tr
+                      :for={record <- rows}
+                      class={"border-t border-gray-300 " <> if Map.get(verified, field, false), do: "bg-green-50", else: ""}
+                    >
+                      <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">{record.type |> Atom.to_string() |> String.upcase()}</td>
+                      <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{record.domain}</td>
+                      <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 flex items-center justify-start">
+                        <pre class="bg-gray-100 border border-gray-200 font-mono p-1 shrink">{record.value}</pre>
+                      </td>
+                      <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{record.priority}</td>
+                    </tr>
+                  {/for}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
     </div>

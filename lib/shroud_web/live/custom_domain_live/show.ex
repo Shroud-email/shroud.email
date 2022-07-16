@@ -29,62 +29,18 @@ defmodule ShroudWeb.CustomDomainLive.Show do
       {=@flash}
       {=@current_user}
     >
-      <div class="bg-white px-4 py-5 border-b border-gray-200 sm:px-6">
-        <div class="-ml-4 -mt-4 flex justify-between items-center flex-wrap sm:flex-nowrap">
-          <div class="ml-4 mt-4">
-            <h2 class="text-lg leading-6 font-semibold text-gray-900">{@domain.domain}</h2>
-            <p class="mt-1 text-sm text-gray-500">{if Domain.fully_verified?(@domain),
-                do: "DNS records verified.",
-                else: "Set up your DNS records to use this domain."}</p>
-          </div>
-          {!--<div class="ml-4 mt-4 flex-shrink-0">
-            <button type="button" class="relative inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">Create new job</button>
-          </div>--}
-        </div>
-      </div>
-
-      <div class="mt-6 space-y-3">
-        <DnsVerification
-          {=@domain}
-          {=@verifying}
-          verify="verify"
-          field={:ownership_verified_at}
-          title="Ownership"
-          records={DnsRecord.desired_ownership_records(@domain)}
-        />
-        <DnsVerification
-          {=@domain}
-          {=@verifying}
-          verify="verify"
-          field={:mx_verified_at}
-          title="MX"
-          records={DnsRecord.desired_mx_records(@domain)}
-        />
-        <DnsVerification
-          {=@domain}
-          {=@verifying}
-          verify="verify"
-          field={:spf_verified_at}
-          title="SPF"
-          records={DnsRecord.desired_spf_records(@domain)}
-        />
-        <DnsVerification
-          {=@domain}
-          {=@verifying}
-          verify="verify"
-          field={:dkim_verified_at}
-          title="DKIM"
-          records={DnsRecord.desired_dkim_records(@domain)}
-        />
-        <DnsVerification
-          {=@domain}
-          {=@verifying}
-          verify="verify"
-          field={:dmarc_verified_at}
-          title="DMARC"
-          records={DnsRecord.desired_dmarc_records(@domain)}
-        />
-      </div>
+      <DnsVerification
+        {=@domain}
+        {=@verifying}
+        verify="verify"
+        sections={[
+          Ownership: {:ownership_verified_at, DnsRecord.desired_ownership_records(@domain)},
+          MX: {:mx_verified_at, DnsRecord.desired_mx_records(@domain)},
+          SPF: {:spf_verified_at, DnsRecord.desired_spf_records(@domain)},
+          DKIM: {:dkim_verified_at, DnsRecord.desired_dkim_records(@domain)},
+          DMARC: {:dmarc_verified_at, DnsRecord.desired_dmarc_records(@domain)}
+        ]}
+      />
     </Page>
     """
   end

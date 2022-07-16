@@ -3,7 +3,8 @@ defmodule Shroud.Domain.DnsRecord do
   @type dns_record :: %{
           type: dns_type,
           domain: String.t(),
-          value: String.t()
+          value: String.t(),
+          priority: integer() | nil
         }
 
   alias Shroud.Domain.CustomDomain
@@ -14,7 +15,8 @@ defmodule Shroud.Domain.DnsRecord do
       %{
         type: :txt,
         domain: domain.domain,
-        value: domain.verification_code
+        value: domain.verification_code,
+        priority: nil
       }
     ]
   end
@@ -27,7 +29,8 @@ defmodule Shroud.Domain.DnsRecord do
       %{
         type: :mx,
         domain: domain.domain,
-        value: app_domain
+        value: app_domain,
+        priority: 10
       }
     ]
   end
@@ -38,7 +41,8 @@ defmodule Shroud.Domain.DnsRecord do
       %{
         type: :txt,
         domain: domain.domain,
-        value: "v=spf1 mx ~all"
+        value: "v=spf1 mx ~all",
+        priority: nil
       }
     ]
   end
@@ -51,7 +55,8 @@ defmodule Shroud.Domain.DnsRecord do
       %{
         type: :cname,
         domain: "shroudemail._domainkey.#{domain.domain}",
-        value: "shroudemail._domainkey.#{email_domain}"
+        value: "shroudemail._domainkey.#{email_domain}",
+        priority: nil
       }
     ]
   end
@@ -62,7 +67,8 @@ defmodule Shroud.Domain.DnsRecord do
       %{
         type: :txt,
         domain: "_dmarc.#{domain.domain}",
-        value: "v=DMARC1; p=none; sp=none; aspf=r; adkim=r"
+        value: "v=DMARC1; p=none; sp=none; aspf=r; adkim=r",
+        priority: nil
       }
     ]
   end
