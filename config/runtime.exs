@@ -130,5 +130,6 @@ if config_env() == :prod do
     email_octopus_api_key: System.get_env("EMAIL_OCTOPUS_API_KEY"),
     admin_user_email: System.get_env("ADMIN_EMAIL"),
     app_domain: app_domain,
-    email_domain: email_domain
+    email_domain: email_domain,
+    env: :prod
 end

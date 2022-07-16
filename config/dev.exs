@@ -25,7 +25,8 @@ config :shroud, Shroud.Vault,
 
 config :shroud,
   app_domain: "app.example.com",
-  email_domain: "example.com"
+  email_domain: "example.com",
+  env: :dev
 
 # For development, we disable any cache and enable
 # debugging and code reloading.

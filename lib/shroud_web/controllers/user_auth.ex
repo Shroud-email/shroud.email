@@ -192,7 +192,7 @@ defmodule ShroudWeb.UserAuth do
     user = conn.assigns[:current_user]
 
     cond do
-      Mix.env() == :dev ->
+      Application.get_env(:shroud, :env, nil) == :dev ->
         conn
 
       user.is_admin ->
