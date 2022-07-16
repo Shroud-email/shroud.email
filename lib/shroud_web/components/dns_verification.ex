@@ -17,16 +17,18 @@ defmodule ShroudWeb.Components.DnsVerification do
       end)
 
     ~F"""
-    <div class="">
+    <div>
       <div class="sm:flex sm:items-center">
         <div class="sm:flex-auto">
-          <h1 class="text-xl font-semibold text-gray-900">{@domain.domain}</h1>
-          <p class="mt-2 text-sm text-gray-700">
-            Add the following DNS records to activate your domain.
-          </p>
-          <p class="text-sm text-gray-700">
-            DNS propagation can take up to 24 hours. Once you've added these records, you can sit back and relax: we'll email you when your domain is verified.
-          </p>
+          <h3 class="text-lg font-semibold text-gray-900">DNS settings</h3>
+          {#if !all_verified}
+            <p class="mt-2 text-sm text-gray-700">
+              Add the following DNS records to activate your domain.
+            </p>
+            <p class="text-sm text-gray-700">
+              DNS propagation can take up to 24 hours. Once you've added these records, you can sit back and relax: we'll email you when your domain is verified.
+            </p>
+          {/if}
         </div>
         <div class="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
           <Button
@@ -38,7 +40,7 @@ defmodule ShroudWeb.Components.DnsVerification do
           />
         </div>
       </div>
-      <div class="mt-8 flex flex-col">
+      <div class="mt-4 flex flex-col">
         <div class="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
           <div class="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
             <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">

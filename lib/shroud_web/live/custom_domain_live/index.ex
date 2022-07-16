@@ -45,8 +45,13 @@ defmodule ShroudWeb.CustomDomainLive.Index do
               {/if}
             </h3>
             <p class="text-sm text-slate-600">Added {Timex.format!(domain.inserted_at, "{D} {Mshort} {YYYY}")}</p>
-            <div class="-translate-x-8 translate-y-10 -mt-10">
-              <Heroicons.Solid.GlobeAltIcon class="text-gray-200 h-24 w-24" />
+            <div class="flex justify-between">
+              <div class="text-sm text-slate-600 self-end">
+                Catch-all {if domain.catchall_enabled, do: "enabled", else: "disabled"}.
+              </div>
+              <div class="translate-x-8 translate-y-10 -mt-16">
+                <Heroicons.Solid.GlobeAltIcon class="text-gray-200 h-32 w-32" />
+              </div>
             </div>
           </LivePatch>
           <div class="rounded border-2 border-dashed border-gray-300 flex p-3 items-center justify-center">

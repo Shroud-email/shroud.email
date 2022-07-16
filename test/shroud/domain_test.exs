@@ -67,13 +67,19 @@ defmodule Shroud.DomainTest do
     end
   end
 
-  describe "update_custom_domain/2" do
-    test "update_custom_domain/2 with valid data updates the custom_domain" do
-      custom_domain = custom_domain_fixture()
-      update_attrs = %{catchall_enabled: false}
+  describe "toggle_catchall!/1" do
+    test "toggle_catchall!/1 sets catchall to true" do
+      custom_domain = custom_domain_fixture(%{catchall_enabled: false})
 
-      assert {:ok, %CustomDomain{} = custom_domain} =
-               Domain.update_custom_domain(custom_domain, update_attrs)
+      assert custom_domain = Domain.toggle_catchall!(custom_domain)
+
+      assert custom_domain.catchall_enabled == true
+    end
+
+    test "toggle_catchall!/1 sets catchall to false" do
+      custom_domain = custom_domain_fixture(%{catchall_enabled: true})
+
+      assert custom_domain = Domain.toggle_catchall!(custom_domain)
 
       assert custom_domain.catchall_enabled == false
     end

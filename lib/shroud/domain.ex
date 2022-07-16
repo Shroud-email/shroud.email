@@ -52,10 +52,10 @@ defmodule Shroud.Domain do
     |> Repo.insert()
   end
 
-  def update_custom_domain(%CustomDomain{} = custom_domain, attrs \\ %{}) do
+  def toggle_catchall!(%CustomDomain{} = custom_domain) do
     custom_domain
-    |> CustomDomain.update_changeset(attrs)
-    |> Repo.update()
+    |> CustomDomain.update_changeset(%{catchall_enabled: !custom_domain.catchall_enabled})
+    |> Repo.update!()
   end
 
   @doc """

@@ -31,6 +31,6 @@ defmodule Shroud.Domain.CustomDomain do
   def update_changeset(custom_domain, attrs) do
     custom_domain
     |> cast(attrs, [:catchall_enabled])
-    |> validate_required([:catchall_enabled])
+    |> validate_required(:catchall_enabled)
   end
 end
