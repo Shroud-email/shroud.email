@@ -233,7 +233,7 @@ defmodule Shroud.Accounts.UserNotifier do
   def deliver_domain_verified(custom_domain_id) do
     custom_domain = Repo.get(CustomDomain, custom_domain_id) |> Repo.preload(:user)
     user = custom_domain.user
-    domain_url = Routes.custom_domain_show_path(Endpoint, :show, custom_domain.domain)
+    domain_url = Routes.custom_domain_show_url(Endpoint, :show, custom_domain.domain)
 
     html_body =
       EmailTemplate.DomainVerified.render(
@@ -263,7 +263,7 @@ defmodule Shroud.Accounts.UserNotifier do
   def deliver_domain_no_longer_verified(custom_domain_id) do
     custom_domain = Repo.get(CustomDomain, custom_domain_id) |> Repo.preload(:user)
     user = custom_domain.user
-    domain_url = Routes.custom_domain_show_path(Endpoint, :show, custom_domain.domain)
+    domain_url = Routes.custom_domain_show_url(Endpoint, :show, custom_domain.domain)
 
     html_body =
       EmailTemplate.DomainNoLongerVerified.render(
