@@ -5,7 +5,7 @@ defmodule Shroud.Email.EmailHandlerTest do
   import ExUnit.CaptureLog
   import Mox
 
-  import Shroud.{AccountsFixtures, AliasesFixtures, EmailFixtures}
+  import Shroud.{AccountsFixtures, AliasesFixtures, DomainFixtures, EmailFixtures}
 
   alias Shroud.Email
   alias Shroud.Email.EmailHandler
@@ -696,6 +696,55 @@ defmodule Shroud.Email.EmailHandlerTest do
         data: data
       })
 
+      assert_no_email_sent()
+    end
+
+    test "creates a new alias if catch-all is enabled", %{user: user} do
+      custom_domain = custom_domain_fixture(%{user_id: user.id, catchall_enabled: true})
+
+      data =
+        text_email(
+          "sender@example.com",
+          ["alias@#{custom_domain.domain}"],
+          "Catch-all test",
+          "Plain text content!"
+        )
+
+      perform_job(EmailHandler, %{
+        from: "sender@example.com",
+        to: "alias@#{custom_domain.domain}",
+        data: data
+      })
+
+      email_alias = Aliases.get_email_alias_by_address!("alias@#{custom_domain.domain}")
+      metric = Repo.get_by!(Aliases.EmailMetric, alias_id: email_alias.id)
+
+      assert metric.forwarded == 1
+      assert email_alias.user_id == user.id
+      assert email_alias.enabled
+      assert email_alias.notes == "Created by catch-all"
+      assert email_alias.forwarded == 1
+      assert_email_sent(to: {email_alias.address, user.email}, subject: "Catch-all test")
+    end
+
+    test "does not create an alias if catch-all is disabled", %{user: user} do
+      custom_domain = custom_domain_fixture(%{user_id: user.id, catchall_enabled: false})
+
+      data =
+        text_email(
+          "sender@example.com",
+          ["alias@#{custom_domain.domain}"],
+          "Catch-all test",
+          "Plain text content!"
+        )
+
+      perform_job(EmailHandler, %{
+        from: "sender@example.com",
+        to: "alias@#{custom_domain.domain}",
+        data: data
+      })
+
+      assert is_nil(Aliases.get_email_alias_by_address("alias@#{custom_domain.domain}"))
       assert_no_email_sent()
     end
   end

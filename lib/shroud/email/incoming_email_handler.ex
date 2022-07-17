@@ -4,6 +4,7 @@ defmodule Shroud.Email.IncomingEmailHandler do
   alias Shroud.Aliases
   alias Shroud.Mailer
   alias Shroud.Util
+  alias Shroud.Domain
   alias Shroud.Email.{SpamHandler, ParsedEmail, TrackerRemover, Enricher, ReplyAddress}
   import Shroud.Accounts.Logging, only: [maybe_log: 2, store_email: 3]
   require Logger
@@ -14,8 +15,28 @@ defmodule Shroud.Email.IncomingEmailHandler do
     # Lookup real email based on the receiving alias (`recipient`)
     recipient_user = Accounts.get_user_by_alias(recipient)
     email_alias = Aliases.get_email_alias_by_address(recipient)
+    # TODO: handle errors here?
+    [recipient_domain] = Regex.run(~r/(?<=@)[^.]+(?=\.).*/, recipient)
+    custom_domain = Domain.get_custom_domain(recipient_domain)
 
     cond do
+      not is_nil(custom_domain) and custom_domain.catchall_enabled ->
+        recipient_user = custom_domain.user
+
+        {:ok, _email_alias} =
+          Aliases.create_email_alias(%{
+            user_id: recipient_user.id,
+            address: recipient,
+            notes: "Created by catch-all"
+          })
+
+        maybe_log(
+          recipient_user,
+          "Created alias #{recipient} via catch-all. Forwarding incoming email from #{sender} to #{recipient_user.email}"
+        )
+
+        forward_incoming_email(recipient_user, sender, recipient, mimemail_email)
+
       recipient_user == nil || email_alias == nil ->
         Logger.notice(
           "Discarding incoming email to unknown address #{recipient} (from #{sender})"

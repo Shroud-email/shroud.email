@@ -41,6 +41,21 @@ defmodule Shroud.DomainTest do
     end
   end
 
+  describe "get_custom_domain/1" do
+    test "gets an existing custom domain with the user preloaded" do
+      user = user_fixture()
+      custom_domain = custom_domain_fixture(%{user_id: user.id, domain: "example.com"})
+
+      fetched_domain = Domain.get_custom_domain("example.com")
+      assert fetched_domain.id == custom_domain.id
+      assert fetched_domain.user == user
+    end
+
+    test "returns nil if the domain does not exist" do
+      assert is_nil(Domain.get_custom_domain("fake.com"))
+    end
+  end
+
   describe "create_custom_domain/2" do
     test "create_custom_domain/2 with valid data creates a custom_domain" do
       user = user_fixture()

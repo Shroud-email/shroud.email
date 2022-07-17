@@ -32,6 +32,14 @@ defmodule Shroud.Domain do
   end
 
   @doc """
+  Gets a single custom domain. Returns nil if it does not exist.
+  """
+  @spec get_custom_domain(String.t()) :: CustomDomain.t() | nil
+  def get_custom_domain(domain) do
+    Repo.get_by(CustomDomain, domain: domain) |> Repo.preload([:user])
+  end
+
+  @doc """
   Creates a custom_domain.
 
   ## Examples
