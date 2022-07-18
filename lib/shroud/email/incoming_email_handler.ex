@@ -15,8 +15,7 @@ defmodule Shroud.Email.IncomingEmailHandler do
     # Lookup real email based on the receiving alias (`recipient`)
     recipient_user = Accounts.get_user_by_alias(recipient)
     email_alias = Aliases.get_email_alias_by_address(recipient)
-    # TODO: handle errors here?
-    [recipient_domain] = Regex.run(~r/(?<=@)[^.]+(?=\.).*/, recipient)
+    {_local, recipient_domain} = Util.extract_email_parts(recipient)
     custom_domain = Domain.get_custom_domain(recipient_domain)
 
     cond do

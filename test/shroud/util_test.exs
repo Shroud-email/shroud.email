@@ -1,5 +1,6 @@
 defmodule Shroud.UtilTest do
   use ExUnit.Case, async: true
+  doctest Shroud.Util
 
   alias Shroud.Util
 

@@ -48,4 +48,27 @@ defmodule Shroud.Util do
     |> String.replace("\n", "\r\n")
     |> String.trim()
   end
+
+  @spec extract_email_parts(String.t()) :: {String.t(), String.t()}
+  @doc ~S"""
+  Extracts the local part and domain from an email address.
+
+  ## Examples
+
+      iex> Shroud.Util.extract_email_parts("user@domain.com")
+      {"user", "domain.com"}
+
+      iex> Shroud.Util.extract_email_parts("\"complex@address\"@domain.co.uk")
+      {"\"complex@address\"", "domain.co.uk"}
+  """
+  def extract_email_parts(email) do
+    [domain | locals] =
+      email
+      |> String.reverse()
+      |> String.split("@")
+      |> Enum.map(&String.reverse/1)
+
+    local_part = locals |> Enum.reverse() |> Enum.join("@")
+    {local_part, domain}
+  end
 end

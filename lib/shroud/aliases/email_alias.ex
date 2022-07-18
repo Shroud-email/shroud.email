@@ -24,6 +24,7 @@ defmodule Shroud.Aliases.EmailAlias do
     timestamps()
   end
 
+  # TODO: validate no underscore in local part
   @doc false
   def changeset(email_alias, attrs \\ %{}) do
     email_alias

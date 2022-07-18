@@ -110,7 +110,7 @@ defmodule Shroud.Email.EmailHandlerTest do
     end
 
     test "transforms reply-to headers to reply addresses", %{user: user} do
-      email_alias = alias_fixture(%{address: "alias@shroud.local", user_id: user.id})
+      email_alias = alias_fixture(%{address: "myalias@shroud.test", user_id: user.id})
 
       args = %{
         from: "sender@example.com",
@@ -132,8 +132,8 @@ defmodule Shroud.Email.EmailHandlerTest do
         assert recipient == user.email
 
         assert email.reply_to ==
-                 {"custom_at_example.com_alias@shroud.test",
-                  "custom_at_example.com_alias@shroud.test"}
+                 {"custom_at_example.com_myalias@shroud.test",
+                  "custom_at_example.com_myalias@shroud.test"}
       end)
     end
 
@@ -401,22 +401,22 @@ defmodule Shroud.Email.EmailHandlerTest do
 
     test "forwards bounces from outgoing emails" do
       user = user_fixture(%{status: :trial})
-      _email_alias = alias_fixture(%{user_id: user.id, address: "alias@shroud.local"})
+      email_alias = alias_fixture(%{user_id: user.id, address: "bouncetest@shroud.test"})
 
       data = File.read!("test/support/data/bounce.email") |> Util.lf_to_crlf()
 
       perform_job(EmailHandler, %{
         from: "MAILER-DAEMON@amazonses.com",
-        to: "alias@shroud.local",
+        to: [email_alias.address],
         data: data
       })
 
       assert_email_sent(fn email ->
-        assert email.to == [{"alias@shroud.local", user.email}]
+        assert email.to == [{email_alias.address, user.email}]
 
         assert email.from ==
                  {"MAILER-DAEMON@amazonses.com (via Shroud.email)",
-                  "MAILER-DAEMON_at_amazonses.com_alias@shroud.test"}
+                  "MAILER-DAEMON_at_amazonses.com_bouncetest@shroud.test"}
 
         assert email.subject == "Delivery Status Notification (Failure)"
 
