@@ -2,6 +2,8 @@ defmodule ShroudWeb.ProxyController do
   use ShroudWeb, :controller
   alias Shroud.Proxy
 
+  plug :set_appsignal_namespace
+
   def proxy(conn, %{"url" => url}) do
     case Proxy.get(url) do
       {:ok, data} ->
@@ -29,5 +31,12 @@ defmodule ShroudWeb.ProxyController do
     else
       MIME.from_path(image_path)
     end
+  end
+
+  # Proxy requests are often much slower than other requests due to upstream servers,
+  # so separate them out in AppSignal so we can accurately monitor our app's performance
+  defp set_appsignal_namespace(conn, _params) do
+    Appsignal.Span.set_namespace(Appsignal.Tracer.root_span(), "proxy")
+    conn
   end
 end
