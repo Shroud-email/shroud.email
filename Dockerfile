@@ -68,6 +68,7 @@ RUN \
 USER "${USER}"
 
 COPY scripts/entrypoint.sh ./
+COPY cfg_files ./cfg_files
 COPY --from=build --chown="${USER}":"${USER}" /app/_build/"${MIX_ENV}"/rel/shroud ./
 
 ENTRYPOINT ["./entrypoint.sh"]
