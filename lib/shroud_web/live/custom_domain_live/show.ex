@@ -37,7 +37,7 @@ defmodule ShroudWeb.CustomDomainLive.Show do
     >
       <h1 class="text-xl font-semibold text-gray-900 mb-3 flex items-center">
         {@domain.domain}
-        <div x-init x-tooltip.raw="DNS records verified" class="ml-1 mt-1">
+        <div :if={@verified} x-init x-tooltip.raw="DNS records verified" class="ml-1 mt-1">
           <Heroicons.Solid.CheckCircleIcon class="h-5 w-5 text-green-500" />
         </div>
       </h1>
