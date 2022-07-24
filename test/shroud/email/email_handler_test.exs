@@ -10,6 +10,7 @@ defmodule Shroud.Email.EmailHandlerTest do
   alias Shroud.Email
   alias Shroud.Email.EmailHandler
   alias Shroud.{Aliases, Util}
+  alias ShroudWeb.Router.Helpers, as: Routes
 
   @html_content """
     <html>
@@ -746,6 +747,36 @@ defmodule Shroud.Email.EmailHandlerTest do
 
       assert is_nil(Aliases.get_email_alias_by_address("alias@#{custom_domain.domain}"))
       assert_no_email_sent()
+    end
+
+    test "adds link to valid email report", %{email_alias: email_alias} do
+      data =
+        html_email(
+          "sender@example.com",
+          [email_alias.address],
+          "Subject",
+          "<p>Body</p>"
+        )
+
+      perform_job(EmailHandler, %{
+        from: "sender@example.com",
+        to: email_alias.address,
+        data: data
+      })
+
+      expected_report_data =
+        %{
+          sender: "sender@example.com",
+          email_alias: email_alias.address,
+          trackers: []
+        }
+        |> Util.uri_encode_map!()
+
+      expected_url = Routes.page_url(ShroudWeb.Endpoint, :email_report, expected_report_data)
+
+      assert_email_sent(fn email ->
+        assert email.html_body =~ expected_url
+      end)
     end
   end
 end
