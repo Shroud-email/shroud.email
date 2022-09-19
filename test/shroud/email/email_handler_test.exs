@@ -529,27 +529,33 @@ defmodule Shroud.Email.EmailHandlerTest do
 
       perform_job(EmailHandler, %{from: "sender@example.com", to: email_alias.address, data: data})
 
-      expected_content =
-        """
-        Date: Tue, 5 Jul 2022 16:51:05 +0100
-        Message-ID: <deadbeef@local>
-        To: #{email_alias.address}
-        From: sender@example.com
-        Subject: Text only
-        Content-Type: text/plain
-        MIME-Version: 1.0
-
-        Plain text content!
-        """
-        |> Util.lf_to_crlf()
-
       assert_enqueued(
         worker: Shroud.S3.S3UploadJob,
         args: %{
           path: "/emails/sender@example.com-#{email_alias.address}-1656361719.eml",
-          content: expected_content
+          content: data
         }
       )
+    end
+
+    test "does not log incoming emails if not enabled", %{user: user, email_alias: email_alias} do
+      FunWithFlags.disable(:email_data_logging, for_actor: user)
+
+      data =
+        text_email(
+          "sender@example.com",
+          [email_alias.address],
+          "Logging test",
+          "Plain text content!"
+        )
+
+      perform_job(EmailHandler, %{
+        from: "sender@example.com",
+        to: email_alias.address,
+        data: data
+      })
+
+      refute_enqueued(worker: Shroud.S3.S3UploadJob)
     end
 
     test "logs blocked emails if logging is enabled for user" do
@@ -806,52 +812,6 @@ defmodule Shroud.Email.EmailHandlerTest do
       assert_email_sent(fn email ->
         assert email.html_body =~ expected_url
       end)
-    end
-
-    test "stores incoming emails if enabled", %{user: user, email_alias: email_alias} do
-      FunWithFlags.enable(:email_data_logging, for_actor: user)
-
-      Shroud.MockDateTime
-      |> stub(:utc_now_unix, fn ->
-        1_656_358_048
-      end)
-
-      data =
-        text_email(
-          "sender@example.com",
-          [email_alias.address],
-          "Logging test",
-          "Plain text content!"
-        )
-
-      perform_job(EmailHandler, %{
-        from: "sender@example.com",
-        to: email_alias.address,
-        data: data
-      })
-
-      assert [%{args: %{"path" => "/emails/sender@example.com-alias@shroud.test-1656358048.eml"}}] =
-               all_enqueued(worker: Shroud.S3.S3UploadJob)
-    end
-
-    test "does not store incoming emails if not enabled", %{user: user, email_alias: email_alias} do
-      FunWithFlags.disable(:email_data_logging, for_actor: user)
-
-      data =
-        text_email(
-          "sender@example.com",
-          [email_alias.address],
-          "Logging test",
-          "Plain text content!"
-        )
-
-      perform_job(EmailHandler, %{
-        from: "sender@example.com",
-        to: email_alias.address,
-        data: data
-      })
-
-      refute_enqueued(worker: Shroud.S3.S3UploadJob)
     end
   end
 end

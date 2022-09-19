@@ -11,13 +11,14 @@ defmodule Shroud.Email.OutgoingEmailHandler do
 
   import Shroud.Accounts.Logging, only: [maybe_log: 2, store_email: 3]
 
-  @spec handle_outgoing_email(String.t(), String.t(), :mimemail.mimetuple()) ::
+  @spec handle_outgoing_email(String.t(), String.t(), String.t()) ::
           :ok | {:error, term()}
-  def handle_outgoing_email(sender, recipient, mimemail_email) do
+  def handle_outgoing_email(sender, recipient, data) do
     sender_user = Accounts.get_user_by_email(sender)
 
     cond do
-      SpamHandler.is_spam?(mimemail_email) ->
+      SpamHandler.is_spam?(data) ->
+        mimemail_email = :mimemail.decode(data)
         SpamHandler.handle_outgoing_spam_email(mimemail_email)
 
       sender_owns_alias?(sender_user, recipient) ->
@@ -26,7 +27,7 @@ defmodule Shroud.Email.OutgoingEmailHandler do
           "Forwarding outgoing email from #{sender} to external address #{recipient}"
         )
 
-        forward_outgoing_email(sender_user, sender, recipient, mimemail_email)
+        forward_outgoing_email(sender_user, sender, recipient, data)
 
       true ->
         Logger.notice(
@@ -37,15 +38,15 @@ defmodule Shroud.Email.OutgoingEmailHandler do
     :ok
   end
 
-  @spec forward_outgoing_email(User.t(), String.t(), String.t(), :mimemail.mimetuple()) ::
+  @spec forward_outgoing_email(User.t(), String.t(), String.t(), String.t()) ::
           :ok | {:error, term()}
   # Forwards a reply (sent to a reply address from a user) to the external address
-  defp forward_outgoing_email(%User{} = sender_user, sender, recipient, mimemail_email) do
+  defp forward_outgoing_email(%User{} = sender_user, sender, recipient, data) do
     if Accounts.Logging.email_logging_enabled?(sender_user) do
-      # TODO: test this
-      data = :mimemail.encode(mimemail_email)
       store_email(sender, recipient, data)
     end
+
+    mimemail_email = :mimemail.decode(data)
 
     case ParsedEmail.parse(mimemail_email)
          |> Map.get(:swoosh_email)

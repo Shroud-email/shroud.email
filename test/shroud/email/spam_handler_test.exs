@@ -17,7 +17,6 @@ defmodule Shroud.Email.SpamHandlerTest do
           "Mountains of viagra, free",
           "X-Spam-Status: Yes, score=5.1 required=5.0 tests=DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HTML_MESSAGE,RCVD_IN_MSPIKE_H2,SPF_HELO_NONE,SPF_PASS,T_SCC_BODY_TEXT_LINE autolearn=ham autolearn_force=no version=3.4.1"
         )
-        |> :mimemail.decode()
 
       assert SpamHandler.is_spam?(email)
     end
@@ -31,7 +30,6 @@ defmodule Shroud.Email.SpamHandlerTest do
           "I'm not trying to sell you anything",
           "X-Spam-Status: No, score=-0.1 required=5.0 tests=DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HTML_MESSAGE,RCVD_IN_MSPIKE_H2,SPF_HELO_NONE,SPF_PASS,T_SCC_BODY_TEXT_LINE autolearn=ham autolearn_force=no version=3.4.1"
         )
-        |> :mimemail.decode()
 
       refute SpamHandler.is_spam?(email)
     end
@@ -44,7 +42,6 @@ defmodule Shroud.Email.SpamHandlerTest do
           "My subject",
           "Lorem ipsum"
         )
-        |> :mimemail.decode()
 
       refute SpamHandler.is_spam?(email)
     end
@@ -57,7 +54,6 @@ defmodule Shroud.Email.SpamHandlerTest do
           "My subject",
           "Lorem ipsum"
         )
-        |> :mimemail.decode()
 
       assert capture_log(fn ->
                SpamHandler.is_spam?(email)

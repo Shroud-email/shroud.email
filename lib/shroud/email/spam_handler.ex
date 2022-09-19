@@ -22,8 +22,10 @@ defmodule Shroud.Email.SpamHandler do
   In other words, configuration of spam detection thresholds etc.
   is done in SpamAssassin, not here.
   """
-  @spec is_spam?(email) :: boolean()
-  def is_spam?(email) do
+  @spec is_spam?(String.t()) :: boolean()
+  def is_spam?(data) do
+    email = :mimemail.decode(data)
+
     email
     |> get_spamassassin_header()
     |> String.downcase()

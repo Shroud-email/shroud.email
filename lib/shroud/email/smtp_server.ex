@@ -55,7 +55,7 @@ defmodule Shroud.Email.SmtpServer do
   end
 
   def handle_DATA(from, to, data, state) do
-    %{from: from, to: hd(to), data: data}
+    %{from: from, to: to, data: data}
     |> EmailHandler.new()
     |> Oban.insert()
 

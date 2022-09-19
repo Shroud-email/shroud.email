@@ -1,0 +1,58 @@
+Authentication-Results: fog.shroud.email;
+	spf=pass smtp.mailfrom=shroud.email
+Received-SPF: Pass (fog.shroud.email: domain of shroud.email designates 81.3.6.165 as permitted sender) receiver=fog.shroud.email; identity=mailfrom; client-ip=81.3.6.165 helo=w4.tutanota.de; envelope-from=<sender@example.com>
+Received-SPF: Pass (fog.shroud.email: domain of w4.tutanota.de designates 81.3.6.165 as permitted sender) receiver=fog.shroud.email; identity=helo; client-ip=81.3.6.165 helo=w4.tutanota.de; envelope-from=<sender@example.com>
+Received: from w4.tutanota.de (w4.tutanota.de [81.3.6.165])
+	by fog.shroud.email (Haraka/2.8.28) with ESMTPS id AAA02117-53E3-42C6-B415-2B60ADC39675.1
+	envelope-from <sender@example.com>
+	tls TLS_AES_256_GCM_SHA384;
+	Mon, 19 Sep 2022 17:34:27 +0000
+Received: from w3.tutanota.de (unknown [192.168.1.164])
+	by w4.tutanota.de (Postfix) with ESMTP id E75F81060162
+	for <alias@example.com>; Mon, 19 Sep 2022 17:29:18 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; t=1663608558;
+	s=s1; d=shroud.email;
+	h=From:From:To:To:Subject:Subject:Content-Description:Content-ID:Content-Type:Content-Type:Content-Transfer-Encoding:Cc:Date:Date:In-Reply-To:MIME-Version:MIME-Version:Message-ID:Message-ID:Reply-To:References:Sender;
+	bh=N/Y85VHmeHrTU+arxzWaDF84Xk5xaYFWaca4bJ9EY1c=;
+	b=Y3S01zzfr+3Ou6wXT+EN6A+iPEJSOVNGwSudlSTsRPEQYzBy9VCNLqHpVTTBroZR
+	f4QcXf5PIT38Vnmjh3sM06hTImscuRwlhRuvTwi5Jilxfl9Drtw9RsoxII0NZuVY1Wd
+	iQkWo4mGY/ZdN2L5ZyXlkEDtpxB889iIpOWE+LTjFTISqdEBIXhpY7UE3MmXjCQlYkw
+	mS2MHp4yzile819uD0UOibhjEwgpw5upN+EqQd7Ckecce5SwytSKObEn2nYgfU045V4
+	zUs/9KBKJbSijlodVWSMsr8n0w73qsKlkRP5sphAy84LfFzI6MsFlSpzyYFZYSSWcMt
+	RPY00/oDXA==
+Date: Mon, 19 Sep 2022 19:29:18 +0200 (CEST)
+From: "Shroud.email" <sender@example.com>
+To: Whatever <alias@example.com>
+Message-ID: <NCLn0ID--3-2@shroud.email>
+Subject: heehee
+MIME-Version: 1.0
+Content-Type: multipart/alternative; 
+	boundary="----=_Part_43510_813758401.1663608558939"
+X-Spam-Checker-Version: SpamAssassin 3.4.1 (2015-04-28) on c0b933f33d93
+X-Spam-Status: No, score=-0.1 required=5.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HTML_MESSAGE,RCVD_IN_DNSWL_NONE,RCVD_IN_MSPIKE_H2,SPF_HELO_PASS,
+	SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.1
+
+------=_Part_43510_813758401.1663608558939
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+
+
+
+-- 
+ Shroud.email <https://shroud.email>
+Protect your inbox with unlimited email aliases that block trackers.
+
+------=_Part_43510_813758401.1663608558939
+Content-Type: text/html; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+
+<html>
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  </head>
+  <body>
+<br><div><br></div><div>-- <br></div><div> <a href="https://shroud.email">Shroud.email</a><br></div><div dir="auto">Protect your inbox with unlimited email aliases that block trackers.<br></div>  </body>
+</html>
+
+------=_Part_43510_813758401.1663608558939--
