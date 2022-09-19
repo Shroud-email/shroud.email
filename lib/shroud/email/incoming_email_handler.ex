@@ -105,7 +105,6 @@ defmodule Shroud.Email.IncomingEmailHandler do
   # Forwards an email (sent to an alias) to the user
   defp forward_incoming_email(%User{} = user, sender, recipient, mimemail_email) do
     if Accounts.Logging.email_logging_enabled?(user) do
-      # TODO: test this
       data = :mimemail.encode(mimemail_email)
       store_email(sender, recipient, data)
     end

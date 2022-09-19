@@ -807,5 +807,51 @@ defmodule Shroud.Email.EmailHandlerTest do
         assert email.html_body =~ expected_url
       end)
     end
+
+    test "stores incoming emails if enabled", %{user: user, email_alias: email_alias} do
+      FunWithFlags.enable(:email_data_logging, for_actor: user)
+
+      Shroud.MockDateTime
+      |> stub(:utc_now_unix, fn ->
+        1_656_358_048
+      end)
+
+      data =
+        text_email(
+          "sender@example.com",
+          [email_alias.address],
+          "Logging test",
+          "Plain text content!"
+        )
+
+      perform_job(EmailHandler, %{
+        from: "sender@example.com",
+        to: email_alias.address,
+        data: data
+      })
+
+      assert [%{args: %{"path" => "/emails/sender@example.com-alias@shroud.test-1656358048.eml"}}] =
+               all_enqueued(worker: Shroud.S3.S3UploadJob)
+    end
+
+    test "does not store incoming emails if not enabled", %{user: user, email_alias: email_alias} do
+      FunWithFlags.disable(:email_data_logging, for_actor: user)
+
+      data =
+        text_email(
+          "sender@example.com",
+          [email_alias.address],
+          "Logging test",
+          "Plain text content!"
+        )
+
+      perform_job(EmailHandler, %{
+        from: "sender@example.com",
+        to: email_alias.address,
+        data: data
+      })
+
+      refute_enqueued(worker: Shroud.S3.S3UploadJob)
+    end
   end
 end
