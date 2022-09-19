@@ -10,6 +10,13 @@ defmodule ShroudWeb.UserLiveAuth do
         Accounts.get_user_by_session_token(user_token)
       end)
 
+    if socket.assigns.current_user do
+      Sentry.Context.set_user_context(%{
+        id: socket.assigns.current_user.id,
+        email: socket.assigns.current_user.email
+      })
+    end
+
     if socket.assigns.current_user && socket.assigns.current_user.confirmed_at do
       {:cont, socket}
     else

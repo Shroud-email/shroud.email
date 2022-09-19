@@ -28,27 +28,17 @@ defmodule Shroud.Application do
       else
         Enum.concat(children, [
           {Shroud.Email.SmtpServer, Application.fetch_env!(:shroud, :mailer)[:smtp_options]},
-          Shroud.Scheduler,
-          {Registry,
-           [
-             name: Appsignal.Registry,
-             keys: :unique,
-             partitions: System.schedulers_online()
-           ]}
+          Shroud.Scheduler
         ])
       end
 
-    {:ok, _} = Application.ensure_all_started(:appsignal)
+    Logger.add_backend(Sentry.LoggerBackend)
 
-    :telemetry.attach_many(
-      "appsignal-oban",
-      [
-        [:oban, :job, :start],
-        [:oban, :job, :stop],
-        [:oban, :job, :exception]
-      ],
-      &Shroud.AppsignalOban.handle_event/4,
-      nil
+    :telemetry.attach(
+      "oban-errors",
+      [:oban, :job, :exception],
+      &Shroud.ErrorReporter.handle_event/4,
+      []
     )
 
     # See https://hexdocs.pm/elixir/Supervisor.html

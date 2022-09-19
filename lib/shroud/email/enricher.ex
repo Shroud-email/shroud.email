@@ -70,7 +70,6 @@ defmodule Shroud.Email.Enricher do
   # If we can't process the HTML properly, just plonk this notice in
   # before the top <html> element. Ugly, but a decent fallback.
   defp html_fallback(html_body, email) do
-    Appsignal.increment_counter("emails.html_fallback", 1)
     header = email |> shroud_header() |> Floki.raw_html()
 
     """

@@ -28,8 +28,6 @@ config :shroud, Shroud.Vault,
 
 config :shroud, Oban, testing: :manual
 
-config :appsignal, :config, active: false
-
 config :shroud, :mailer,
   smtp_options: [
     port: 2526

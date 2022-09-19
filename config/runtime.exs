@@ -115,8 +115,6 @@ if config_env() == :prod do
 
   config :swoosh, :api_client, Swoosh.ApiClient.Hackney
 
-  config :appsignal, :config, push_api_key: System.get_env("APPSIGNAL_PUSH_API_KEY")
-
   email_domain =
     System.get_env("EMAIL_DOMAIN") ||
       raise """

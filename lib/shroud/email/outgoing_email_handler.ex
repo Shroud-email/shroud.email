@@ -54,7 +54,6 @@ defmodule Shroud.Email.OutgoingEmailHandler do
       {:ok, _id} ->
         {_recipient_address, email_alias} = ReplyAddress.from_reply_address(recipient)
         email_alias = Aliases.get_email_alias_by_address!(email_alias)
-        Appsignal.increment_counter("emails.replied", 1)
         Aliases.increment_replied!(email_alias)
 
         :ok

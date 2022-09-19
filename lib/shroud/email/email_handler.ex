@@ -1,6 +1,5 @@
 defmodule Shroud.Email.EmailHandler do
   use Oban.Worker, queue: :outgoing_email, max_attempts: 100
-  use Appsignal.Instrumentation.Decorators
 
   require Logger
   alias Shroud.Accounts
@@ -17,14 +16,12 @@ defmodule Shroud.Email.EmailHandler do
   @type mimemail_email :: :mimemail.mimetuple()
 
   @impl Oban.Worker
-  @decorate transaction(:background_job)
   def perform(%Oban.Job{args: %{"from" => from, "to" => to, "data" => data}})
       when from in ["", nil] do
     BounceHandler.handle_haraka_bounce_report(to, data)
   end
 
   @impl Oban.Worker
-  @decorate transaction(:background_job)
   def perform(%Oban.Job{args: %{"from" => from, "to" => to, "data" => data}})
       when byte_size(data) > 26_214_400 do
     # when the email is too big, cancel
@@ -44,7 +41,6 @@ defmodule Shroud.Email.EmailHandler do
   end
 
   @impl Oban.Worker
-  @decorate transaction(:background_job)
   def perform(%Oban.Job{args: %{"from" => from, "to" => recipients, "data" => data}})
       when is_list(recipients) do
     # TODO: handle parsing failures from mimemail?
@@ -55,7 +51,6 @@ defmodule Shroud.Email.EmailHandler do
   end
 
   @impl Oban.Worker
-  @decorate transaction(:background_job)
   def perform(%Oban.Job{args: %{"from" => from, "to" => to, "data" => data}}) do
     email = :mimemail.decode(data)
     handle_recipient(from, to, email)

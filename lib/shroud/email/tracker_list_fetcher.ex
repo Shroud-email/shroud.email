@@ -1,7 +1,6 @@
 defmodule Shroud.Email.TrackerListFetcher do
   # Unique across all fields and states for one hour
   use Oban.Worker, queue: :default, unique: [period: 3600]
-  use Appsignal.Instrumentation.Decorators
 
   import Ecto.Query
   alias Shroud.{Email, Repo}
@@ -10,7 +9,6 @@ defmodule Shroud.Email.TrackerListFetcher do
   @list_uri Application.compile_env!(:shroud, :tracker_list_uri)
 
   @impl Oban.Worker
-  @decorate transaction(:background_job)
   def perform(_job) do
     now = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
 

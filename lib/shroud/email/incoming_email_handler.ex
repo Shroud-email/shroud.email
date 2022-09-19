@@ -41,8 +41,6 @@ defmodule Shroud.Email.IncomingEmailHandler do
           "Discarding incoming email to unknown address #{recipient} (from #{sender})"
         )
 
-        Appsignal.increment_counter("emails.discarded", 1)
-
       not email_alias.enabled ->
         maybe_log(
           recipient_user,
@@ -50,7 +48,6 @@ defmodule Shroud.Email.IncomingEmailHandler do
         )
 
         Aliases.increment_blocked!(email_alias)
-        Appsignal.increment_counter("emails.blocked", 1)
 
       Enum.member?(email_alias.blocked_addresses, String.downcase(sender)) ->
         maybe_log(
@@ -59,7 +56,6 @@ defmodule Shroud.Email.IncomingEmailHandler do
         )
 
         Aliases.increment_blocked!(email_alias)
-        Appsignal.increment_counter("emails.blocked", 1)
 
       SpamHandler.is_spam?(mimemail_email) ->
         maybe_log(
@@ -75,7 +71,6 @@ defmodule Shroud.Email.IncomingEmailHandler do
         )
 
         Aliases.increment_blocked!(email_alias)
-        Appsignal.increment_counter("emails.spam", 1)
 
       true ->
         maybe_log(
@@ -108,7 +103,6 @@ defmodule Shroud.Email.IncomingEmailHandler do
          |> Mailer.deliver() do
       {:ok, _id} ->
         email_alias = Aliases.get_email_alias_by_address!(recipient)
-        Appsignal.increment_counter("emails.forwarded", 1)
         Aliases.increment_forwarded!(email_alias)
 
       {:error, {_code, %{"error" => error}}} ->
