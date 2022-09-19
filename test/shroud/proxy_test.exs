@@ -101,6 +101,17 @@ defmodule Shroud.ProxyTest do
 
       assert {:error, :not_an_image} == Proxy.get(url)
     end
+
+    test "handles URLs with spaces" do
+      url = "https://example.com/foo bar.png"
+
+      Shroud.MockHTTPoison
+      |> expect(:get, fn ^url ->
+        {:ok, %HTTPoison.Response{status_code: 200, body: image_body()}}
+      end)
+
+      assert {:ok, image_body()} == Proxy.get(url)
+    end
   end
 
   defp image_body do
