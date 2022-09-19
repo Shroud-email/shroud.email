@@ -80,7 +80,7 @@ defmodule ShroudWeb.Components.PopupAlert do
                   </div>
                 </div>
                 <div class="bg-gray-50 px-4 py-3 sm:px-6 flex flex-col sm:flex-row-reverse gap-1">
-                  <#slot name="buttons" />
+                  <#slot {@buttons} />
                   <Button alpine_click="open = false" text="Cancel" intent={:secondary} />
                 </div>
               </div>
