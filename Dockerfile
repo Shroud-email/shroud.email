@@ -1,16 +1,21 @@
+# syntax = docker/dockerfile:1
 ARG MIX_ENV="prod"
 
 FROM hexpm/elixir:1.13.2-erlang-24.1.7-debian-bullseye-20210902-slim as build
 
 # install build dependencies
-RUN apt-get update && apt-get install -y build-essential git curl npm cargo
+RUN --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    apt-get update && apt-get install -y build-essential git curl npm cargo
 
 # prepare build dir
 WORKDIR /app
 
 # install hex + rebar
-RUN mix local.hex --force && \
-    mix local.rebar --force
+RUN --mount=type=cache,target=~/.cache/rebar3 \
+    mix do \
+    local.hex --force,\
+    local.rebar --force
 
 # set build ENV
 ARG MIX_ENV
@@ -18,7 +23,8 @@ ENV MIX_ENV="${MIX_ENV}"
 
 # install mix dependencies
 COPY mix.exs mix.lock ./
-RUN mix deps.get --only $MIX_ENV
+RUN --mount=type=cache,target=~/.hex/packages/hexpm \
+    mix deps.get --only $MIX_ENV
 RUN mkdir config
 
 # copy compile-time config files before we compile dependencies
@@ -30,7 +36,7 @@ RUN mix deps.compile
 COPY priv priv
 COPY assets assets
 COPY lib lib
-RUN npm --prefix assets ci
+RUN --mount=type=cache,target=/root/.npm npm --prefix assets ci
 # compile and build the release
 RUN mix compile
 RUN mix assets.deploy
@@ -44,7 +50,9 @@ RUN mix release
 # start a new build stage so that the final image will only contain
 # the compiled release and other runtime necessities
 FROM hexpm/elixir:1.13.2-erlang-24.1.7-debian-bullseye-20210902-slim as app
-RUN apt-get update && apt-get install -y openssl libncurses6 ca-certificates
+RUN --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    apt-get update && apt-get install -y openssl libncurses6 ca-certificates
 RUN update-ca-certificates
 
 ARG MIX_ENV
