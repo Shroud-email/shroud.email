@@ -11,6 +11,7 @@ defmodule Shroud.Email.IncomingEmailHandler do
 
   @spec handle_incoming_email(String.t(), String.t(), :mimemail.mimetuple()) ::
           :ok | {:error, term()}
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   def handle_incoming_email(sender, recipient, mimemail_email) do
     # Lookup real email based on the receiving alias (`recipient`)
     recipient_user = Accounts.get_user_by_alias(recipient)
@@ -19,22 +20,8 @@ defmodule Shroud.Email.IncomingEmailHandler do
     custom_domain = Domain.get_custom_domain(recipient_domain)
 
     cond do
-      not is_nil(custom_domain) and custom_domain.catchall_enabled ->
-        recipient_user = custom_domain.user
-
-        {:ok, _email_alias} =
-          Aliases.create_email_alias(%{
-            user_id: recipient_user.id,
-            address: recipient,
-            notes: "Created by catch-all"
-          })
-
-        maybe_log(
-          recipient_user,
-          "Created alias #{recipient} via catch-all. Forwarding incoming email from #{sender} to #{recipient_user.email}"
-        )
-
-        forward_incoming_email(recipient_user, sender, recipient, mimemail_email)
+      email_alias == nil and not is_nil(custom_domain) and custom_domain.catchall_enabled ->
+        create_catchall_address(custom_domain, recipient, sender, mimemail_email)
 
       recipient_user == nil || email_alias == nil ->
         Logger.notice(
@@ -82,6 +69,35 @@ defmodule Shroud.Email.IncomingEmailHandler do
     end
 
     :ok
+  end
+
+  @spec create_catchall_address(
+          Domain.CustomDomain.t(),
+          String.t(),
+          String.t(),
+          :mimemail.mimetuple()
+        ) :: :ok | {:error, term()}
+  defp create_catchall_address(
+         %Domain.CustomDomain{} = custom_domain,
+         recipient,
+         sender,
+         mimemail_email
+       ) do
+    recipient_user = custom_domain.user
+
+    {:ok, _email_alias} =
+      Aliases.create_email_alias(%{
+        user_id: recipient_user.id,
+        address: recipient,
+        notes: "Created by catch-all"
+      })
+
+    maybe_log(
+      recipient_user,
+      "Created alias #{recipient} via catch-all. Forwarding incoming email from #{sender} to #{recipient_user.email}"
+    )
+
+    forward_incoming_email(recipient_user, sender, recipient, mimemail_email)
   end
 
   @spec forward_incoming_email(User.t(), String.t(), String.t(), :mimemail.mimetuple()) ::

@@ -728,6 +728,35 @@ defmodule Shroud.Email.EmailHandlerTest do
       assert_email_sent(to: {email_alias.address, user.email}, subject: "Catch-all test")
     end
 
+    test "handles an already-existing alias", %{user: user} do
+      custom_domain = custom_domain_fixture(%{user_id: user.id, catchall_enabled: true})
+
+      data =
+        text_email(
+          "sender@example.com",
+          ["alias@#{custom_domain.domain}"],
+          "Catch-all test",
+          "Plain text content!"
+        )
+
+      perform_job(EmailHandler, %{
+        from: "sender@example.com",
+        to: "alias@#{custom_domain.domain}",
+        data: data
+      })
+
+      perform_job(EmailHandler, %{
+        from: "sender@example.com",
+        to: "alias@#{custom_domain.domain}",
+        data: data
+      })
+
+      email_alias = Aliases.get_email_alias_by_address!("alias@#{custom_domain.domain}")
+      metric = Repo.get_by!(Aliases.EmailMetric, alias_id: email_alias.id)
+
+      assert metric.forwarded == 2
+    end
+
     test "does not create an alias if catch-all is disabled", %{user: user} do
       custom_domain = custom_domain_fixture(%{user_id: user.id, catchall_enabled: false})
 
