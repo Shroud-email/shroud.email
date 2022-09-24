@@ -20,7 +20,13 @@ defmodule ShroudWeb.UserLiveAuth do
     if socket.assigns.current_user && socket.assigns.current_user.confirmed_at do
       {:cont, socket}
     else
-      {:halt, redirect(socket, to: "/users/log_in")}
+      {:halt, redirect_require_login(socket)}
     end
+  end
+
+  defp redirect_require_login(socket) do
+    socket
+    |> put_flash(:error, "Please sign in")
+    |> redirect(to: "/users/log_in")
   end
 end
