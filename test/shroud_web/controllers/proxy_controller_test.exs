@@ -26,6 +26,24 @@ defmodule ShroudWeb.ProxyControllerTest do
 
       assert response_content_type(conn, :png)
     end
+
+    test "handles URLs in query string", %{conn: conn} do
+      url = "https://cdn.com/image?url=https%3A%2F%2Fexample%2Ecom%2Ffoo%2Epng"
+
+      Shroud.MockHTTPoison
+      |> expect(:get, fn ^url ->
+        {:ok,
+         %HTTPoison.Response{
+           status_code: 200,
+           body: image_body(),
+           headers: [{"Content-Type", "image/png"}]
+         }}
+      end)
+
+      conn = get(conn, Routes.proxy_path(conn, :proxy), %{"url" => url})
+
+      assert response_content_type(conn, :png)
+    end
   end
 
   defp image_body do
