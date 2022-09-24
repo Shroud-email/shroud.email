@@ -14,6 +14,7 @@ alias Shroud.Aliases
 alias Shroud.Accounts.User
 alias Shroud.Repo
 alias Shroud.Domain
+alias Shroud.Email
 
 user =
   %User{}
@@ -78,4 +79,10 @@ user
   Enum.each(1..number_blocked, fn _ ->
     Aliases.increment_blocked!(email_alias)
   end)
+
+  Email.store_spam_email!(
+    %{text_body: "Lorem ipsum", from: "spammer@test.com", subject: "Spam"},
+    user,
+    email_alias
+  )
 end)
