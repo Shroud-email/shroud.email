@@ -3,6 +3,7 @@ defmodule Shroud.Permissions do
   alias Shroud.Accounts.User
   alias Shroud.Accounts
   alias Shroud.Email.SpamEmail
+  alias Shroud.Domain.CustomDomain
 
   defimpl Canada.Can, for: User do
     # Users can always read, update, destroy their own aliases
@@ -16,6 +17,10 @@ defmodule Shroud.Permissions do
     end
 
     def can?(%User{id: user_id}, action, %SpamEmail{email_alias: %EmailAlias{user_id: user_id}})
+        when action in [:read, :update, :destroy],
+        do: true
+
+    def can?(%User{id: user_id}, action, %CustomDomain{user_id: user_id})
         when action in [:read, :update, :destroy],
         do: true
   end

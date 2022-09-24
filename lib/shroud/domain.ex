@@ -6,6 +6,7 @@ defmodule Shroud.Domain do
   import Ecto.Query, warn: false
   alias Shroud.Repo
   alias Shroud.Accounts.User
+  alias Shroud.Aliases.EmailAlias
 
   alias Shroud.Domain.CustomDomain
 
@@ -78,8 +79,18 @@ defmodule Shroud.Domain do
       {:error, %Ecto.Changeset{}}
 
   """
-  def delete_custom_domain(%CustomDomain{} = custom_domain) do
-    Repo.delete(custom_domain)
+  def delete_custom_domain!(%CustomDomain{} = custom_domain) do
+    now = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
+    ilike = "%@#{custom_domain.domain}"
+
+    Repo.transaction(fn ->
+      Repo.delete!(custom_domain)
+
+      from(ea in EmailAlias, where: ilike(ea.address, ^ilike), update: [set: [deleted_at: ^now]])
+      |> Repo.update_all([])
+    end)
+
+    :ok
   end
 
   def dns_record_verified?(%CustomDomain{} = custom_domain, field) do

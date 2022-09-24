@@ -2,11 +2,13 @@ defmodule Shroud.DomainTest do
   use Shroud.DataCase
 
   alias Shroud.Domain
+  alias Shroud.Repo
 
   alias Shroud.Domain.CustomDomain
 
   import Shroud.DomainFixtures
   import Shroud.AccountsFixtures
+  import Shroud.AliasesFixtures
 
   describe "list_custom_domains/1" do
     test "list_custom_domains/1 returns all custom_domains for the user" do
@@ -100,16 +102,37 @@ defmodule Shroud.DomainTest do
     end
   end
 
-  describe "delete_custom_domain/1" do
-    test "delete_custom_domain/1 deletes the custom_domain" do
+  describe "delete_custom_domain!/1" do
+    test "deletes the custom_domain" do
       user = user_fixture()
       custom_domain = custom_domain_fixture(%{user_id: user.id})
 
-      assert {:ok, %CustomDomain{}} = Domain.delete_custom_domain(custom_domain)
+      assert :ok = Domain.delete_custom_domain!(custom_domain)
 
       assert_raise Ecto.NoResultsError, fn ->
         Domain.get_custom_domain!(user, custom_domain.domain)
       end
+    end
+
+    test "tombstones email aliases with the same domain" do
+      user = user_fixture()
+      custom_domain = custom_domain_fixture(%{user_id: user.id})
+      email_alias = alias_fixture(%{user_id: user.id, address: "hey@#{custom_domain.domain}"})
+
+      Domain.delete_custom_domain!(custom_domain)
+      email_alias = Repo.reload!(email_alias)
+      refute is_nil(email_alias.deleted_at)
+    end
+
+    test "does not delete other email aliases" do
+      user = user_fixture()
+      custom_domain = custom_domain_fixture(%{user_id: user.id})
+      _email_alias = alias_fixture(%{user_id: user.id, address: "hey@#{custom_domain.domain}"})
+      other_email_alias = alias_fixture(%{user_id: user.id, address: "hey@other.com"})
+
+      Domain.delete_custom_domain!(custom_domain)
+      other_email_alias = Repo.reload!(other_email_alias)
+      assert is_nil(other_email_alias.deleted_at)
     end
   end
 

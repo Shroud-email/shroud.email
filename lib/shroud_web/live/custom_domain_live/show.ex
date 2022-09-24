@@ -1,11 +1,12 @@
 defmodule ShroudWeb.CustomDomainLive.Show do
   use Surface.LiveView
   alias Phoenix.PubSub
+  import Canada, only: [can?: 2]
 
   alias Shroud.Domain
   alias Shroud.Domain.DnsRecord
   alias Shroud.Domain.DnsChecker
-  alias ShroudWeb.Components.{Page, DnsVerification, Toggle}
+  alias ShroudWeb.Components.{Button, Page, DnsVerification, Toggle, PopupAlert}
   alias ShroudWeb.Router.Helpers, as: Routes
 
   data domain, :any
@@ -78,6 +79,28 @@ defmodule ShroudWeb.CustomDomainLive.Show do
           DMARC: {:dmarc_verified_at, DnsRecord.desired_dmarc_records(@domain)}
         ]}
       />
+      <h3 class="font-semibold text-lg text-gray-900 mb-4 mt-8">Danger zone</h3>
+      <div class="bg-white rounded shadow md:rounded-lg ring-1 ring-black ring-opacity-5 p-4 mb-12">
+        <Button
+          intent={:danger}
+          click="open_delete_modal"
+          text="Delete domain"
+          icon={Heroicons.Solid.TrashIcon}
+        />
+      </div>
+
+      <form phx-submit="delete">
+        <PopupAlert
+          id="delete_warning"
+          title={"Delete #{@domain.domain}?"}
+          text="Are you sure you want to delete this domain? This will also delete all aliases associated with it, and they cannot be recovered!"
+          icon={Heroicons.Outline.TrashIcon}
+        >
+          <:buttons>
+            <Button intent={:danger} text="Delete" type="submit" />
+          </:buttons>
+        </PopupAlert>
+      </form>
     </Page>
     """
   end
@@ -102,6 +125,24 @@ defmodule ShroudWeb.CustomDomainLive.Show do
       |> put_flash(:success, "#{verb} catch-all for #{domain.domain}.")
 
     {:noreply, socket}
+  end
+
+  def handle_event("open_delete_modal", _value, socket) do
+    PopupAlert.show("delete_warning")
+    {:noreply, socket}
+  end
+
+  def handle_event("delete", _value, %{assigns: %{current_user: user, domain: domain}} = socket) do
+    if user |> can?(destroy(domain)) do
+      Domain.delete_custom_domain!(domain)
+
+      socket =
+        socket
+        |> put_flash(:success, "Deleted #{domain.domain}.")
+        |> redirect(to: Routes.custom_domain_index_path(ShroudWeb.Endpoint, :index))
+
+      {:noreply, socket}
+    end
   end
 
   def handle_info(:dns_check_complete, socket) do

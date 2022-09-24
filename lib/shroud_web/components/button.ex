@@ -14,6 +14,7 @@ defmodule ShroudWeb.Components.Button do
       case assigns.intent do
         :primary -> "text-white bg-indigo-600 hover:bg-indigo-700"
         :secondary -> "text-indigo-700 bg-indigo-100 hover:bg-indigo-200"
+        :danger -> "text-red-700 bg-red-100 hover:bg-red-200"
         :white -> "border-gray-300 text-gray-700 bg-white hover:bg-gray-50"
       end
 
