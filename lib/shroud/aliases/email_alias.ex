@@ -40,6 +40,7 @@ defmodule Shroud.Aliases.EmailAlias do
       :blocked_addresses
     ])
     |> validate_required([:address, :enabled, :user_id])
+    |> validate_format(:address, ~r/^[^\s]+@[^\s]+$/, message: "must have an @ sign and no spaces")
     |> unique_constraint(:address)
     |> validate_blocked_addresses()
   end
