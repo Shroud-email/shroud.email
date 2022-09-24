@@ -14,6 +14,28 @@
   {/case}
 </Alert>
 
+<form phx-submit="create_custom_alias">
+  <PopupAlert
+    id="add_alias_modal"
+    title="New alias"
+    text="What should your new alias be?"
+    icon={Heroicons.Outline.MailIcon}
+  >
+    <div class="mt-2">
+      <div class="flex items-center">
+        <TextInput name="alias_name" placeholder="john.doe" />
+        <span class="ml-3 text-sm text-gray-700">@fsf.com</span>
+      </div>
+      <p :if={@custom_alias_error} class="text-red-600 mt-1 text-sm">
+        {@custom_alias_error}
+      </p>
+    </div>
+    <:buttons>
+      <Button text="Create" type="submit" />
+    </:buttons>
+  </PopupAlert>
+</form>
+
 {#if Enum.empty?(@aliases) and @filter_query == ""}
   <EmptyState
     title="No aliases yet"
@@ -49,7 +71,16 @@
           <button type="submit" class="hidden">Apply filter</button>
         </form>
       </div>
-      <Button click="add_alias" text="New alias" icon={Heroicons.Solid.PlusIcon} />
+      {#if Enum.empty?(@custom_domains)}
+        <Button click="add_alias" text="New alias" icon={Heroicons.Solid.PlusIcon} />
+      {#else}
+        <ButtonWithDropdown click="add_alias" text="New alias" icon={Heroicons.Solid.PlusIcon}>
+          <DropdownItem index={0} click="add_alias" text={"@#{Util.email_domain()}"} />
+          {#for {domain, index} <- Enum.with_index(@custom_domains, 1)}
+            <DropdownItem index={index} click="open_custom_alias_modal" text={"@#{domain.domain}"} />
+          {/for}
+        </ButtonWithDropdown>
+      {/if}
     </div>
   </div>
   <div class="flex flex-col">

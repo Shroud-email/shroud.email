@@ -13,6 +13,7 @@
 alias Shroud.Aliases
 alias Shroud.Accounts.User
 alias Shroud.Repo
+alias Shroud.Domain
 
 user =
   %User{}
@@ -26,6 +27,23 @@ user =
 user
 |> User.confirm_changeset(%{status: :active})
 |> Repo.update!()
+
+now = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
+
+{:ok, domain} = Domain.create_custom_domain(user, %{domain: "verified.com"})
+
+domain
+|> Ecto.Changeset.change(%{
+  ownership_verified_at: now,
+  mx_verified_at: now,
+  spf_verified_at: now,
+  dkim_verified_at: now,
+  dmarc_verified_at: now
+})
+|> Repo.update!()
+
+user
+|> Domain.create_custom_domain(%{domain: "unverified.com"})
 
 aliases = [
   %{title: "e-shop.co"},

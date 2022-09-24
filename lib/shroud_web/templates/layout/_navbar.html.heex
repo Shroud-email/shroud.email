@@ -44,7 +44,7 @@
                   <%= link "Sign up now.", to: Routes.user_settings_path(@conn, :billing), class: "underline hover:text-gray-500" %>
                 </div>
               <% end %>
-              <div class="ml-3 relative" x-data="Components.menu({ open: false })" x-init="init()" @keydown.escape.stop="open = false; focusButton()" @click.away="onClickAway($event)">
+              <div class="ml-3 relative" x-data="AlpineComponents.menu({ open: false })" x-init="init()" @keydown.escape.stop="open = false; focusButton()" @click.away="onClickAway($event)">
                 <div>
                   <button type="button" class="max-w-xs bg-gray-800 rounded-full flex items-center text-sm text-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white" id="user-menu-button" aria-haspopup="true" x-ref="button" @click="onButtonClick()" :aria-expanded="open.toString()" @keydown.arrow-up.prevent="onArrowUp()" @keydown.arrow-down.prevent="onArrowDown()">
                     <span class="sr-only">Open user menu</span>
