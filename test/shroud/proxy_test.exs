@@ -15,7 +15,23 @@ defmodule Shroud.ProxyTest do
         {:ok, %HTTPoison.Response{status_code: 200, body: image_body()}}
       end)
 
-      assert {:ok, image_body()} == Proxy.get(url)
+      assert {:ok, {image_body(), nil}} == Proxy.get(url)
+    end
+
+    test "returns content-type header" do
+      url = "https://example.com/foo.png"
+
+      Shroud.MockHTTPoison
+      |> expect(:get, fn ^url ->
+        {:ok,
+         %HTTPoison.Response{
+           status_code: 200,
+           body: image_body(),
+           headers: [{"Content-Type", "image/png"}]
+         }}
+      end)
+
+      assert {:ok, {image_body(), "image/png"}} == Proxy.get(url)
     end
 
     test "invalid URL" do
@@ -32,7 +48,7 @@ defmodule Shroud.ProxyTest do
         {:ok, %HTTPoison.Response{status_code: 200, body: image_body()}}
       end)
 
-      assert {:ok, image_body()} == Proxy.get(url)
+      assert {:ok, {image_body(), nil}} == Proxy.get(url)
     end
 
     test "non-200 response" do
@@ -58,7 +74,7 @@ defmodule Shroud.ProxyTest do
         {:ok, %HTTPoison.Response{status_code: 200, body: image_body()}}
       end)
 
-      assert {:ok, image_body()} == Proxy.get(first_url)
+      assert {:ok, {image_body(), nil}} == Proxy.get(first_url)
     end
 
     test "follows 302 redirect" do
@@ -73,7 +89,7 @@ defmodule Shroud.ProxyTest do
         {:ok, %HTTPoison.Response{status_code: 200, body: image_body()}}
       end)
 
-      assert {:ok, image_body()} == Proxy.get(first_url)
+      assert {:ok, {image_body(), nil}} == Proxy.get(first_url)
     end
 
     test "does not follow redirect loop" do
@@ -110,7 +126,7 @@ defmodule Shroud.ProxyTest do
         {:ok, %HTTPoison.Response{status_code: 200, body: image_body()}}
       end)
 
-      assert {:ok, image_body()} == Proxy.get(url)
+      assert {:ok, {image_body(), nil}} == Proxy.get(url)
     end
   end
 

@@ -4,7 +4,7 @@ defmodule Shroud.Proxy do
   @type proxy_error ::
           :invalid_uri | :non_200_status_code | :too_many_redirects | :not_an_image | any
 
-  @spec get(String.t()) :: {:ok, any} | {:error, proxy_error}
+  @spec get(String.t()) :: {:ok, {any, String.t()}} | {:error, proxy_error}
   def get(url) do
     case URI.parse(url) do
       %URI{path: nil} ->
@@ -33,9 +33,14 @@ defmodule Shroud.Proxy do
             {:error, :non_200_status_code}
         end
 
-      {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
+      {:ok, %HTTPoison.Response{status_code: 200, body: body, headers: headers}} ->
         if ExImageInfo.seems?(body) do
-          {:ok, body}
+          {_header_name, content_type} =
+            List.keyfind(headers, "Content-Type", 0, {"Content-Type", nil})
+
+          {:ok, {body, content_type}}
+
+          {:ok, {body, content_type}}
         else
           {:error, :not_an_image}
         end

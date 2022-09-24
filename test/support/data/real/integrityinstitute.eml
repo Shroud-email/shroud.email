@@ -1,0 +1,386 @@
+Authentication-Results: fog.shroud.email;
+	spf=pass smtp.mailfrom=mail250.sea22.mcdlv.net
+Received-SPF: Pass (fog.shroud.email: domain of mail250.sea22.mcdlv.net designates 148.105.12.250 as permitted sender) receiver=fog.shroud.email; identity=mailfrom; client-ip=148.105.12.250 helo=mail250.sea22.mcdlv.net; envelope-from=<bounce-mc.us5_163014414.9156433-26b6e04522@mail250.sea22.mcdlv.net>
+Received-SPF: Pass (fog.shroud.email: domain of mail250.sea22.mcdlv.net designates 148.105.12.250 as permitted sender) receiver=fog.shroud.email; identity=helo; client-ip=148.105.12.250 helo=mail250.sea22.mcdlv.net; envelope-from=<bounce-mc.us5_163014414.9156433-26b6e04522@mail250.sea22.mcdlv.net>
+Received: from mail250.sea22.mcdlv.net (mail250.sea22.mcdlv.net [148.105.12.250])
+	by fog.shroud.email (Haraka/2.8.28) with ESMTPS id D3EB1545-A043-42AE-BE63-34B8D5D3114D.1
+	envelope-from <bounce-mc.us5_163014414.9156433-26b6e04522@mail250.sea22.mcdlv.net>
+	tls TLS_AES_256_GCM_SHA384;
+	Mon, 08 Aug 2022 21:03:41 +0000
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mailchimpapp.net;
+	s=k3; t=1659992619; x=1660295019;
+	i=katieharbath=3Dintegrityinstitute.org@mailchimpapp.net;
+	bh=SX+2K0nv84JfntcOmUc8/Fau+caFIGZKkVZiReTdQf8=;
+	h=Subject:From:Reply-To:To:Date:Message-ID:X-MC-User:Feedback-ID:
+	 List-ID:List-Unsubscribe:List-Unsubscribe-Post:Content-Type:
+	 MIME-Version:CC:Date:Subject:From;
+	b=CQ4nha1s2t7YcqagI/f2QsFEaK844NZy5ORpcKoBoZe0ch31TPd9NyLJLL5AQaXu8
+	 2cYkmgeMzanrRWVc22xLwH/TUB5tSEjOaIpjAGYuK8OL7lUUJWeQnQh3VmpKn0eZfn
+	 yc6Uxy2pyh3jtzV6CYV05Kkd0BsNq4nB5Ax7QtE7gCYtRypVYYpzL5TCK0MboZKhfP
+	 8itlfN7Y4wxishuXd690THO8jT6Y8JybeEVKuB3vIXn+HxBhQ6i88xKHq5u1DsSu+r
+	 XxVsZG+yFz1tP1TYaiOLa8HW1yk6WYm3mteJV+nhh8hST+32ANGaoMu5tFHzbuYT2J
+	 o8sX+sVuF/hhA==
+Received: from localhost (localhost [127.0.0.1])
+	by mail250.sea22.mcdlv.net (Mailchimp) with ESMTP id 4M1pZz5LTFzRKjgcl
+	for <alias@example.com>; Mon,  8 Aug 2022 21:03:39 +0000 (GMT)
+Subject: =?utf-8?Q?A=20Look=20Back=20at=20Tech=20and=20Elections=20from=202003=20to=20the=20Present?=
+From: =?utf-8?Q?Katie=20Harbath=20=28Integrity=20Institute=29?= <sender@example.com>
+Reply-To: =?utf-8?Q?Katie=20Harbath=20=28Integrity=20Institute=29?= <sender@example.com>
+To: =?utf-8?Q?T?= <alias@example.com>
+Date: Mon,  8 Aug 2022 21:03:38 +0000
+Message-ID: <adf0a954194486a685e4eb9db.26b6e04522.20220808210335.c5f200feba.ed4bd6e6@mail250.sea22.mcdlv.net>
+X-Mailer: Mailchimp Mailer - **CIDc5f200feba26b6e04522**
+X-Campaign: mailchimpadf0a954194486a685e4eb9db.c5f200feba
+X-campaignid: mailchimpadf0a954194486a685e4eb9db.c5f200feba
+X-Report-Abuse: Please report abuse for this campaign here: https://mailchimp.com/contact/abuse/?u=adf0a954194486a685e4eb9db&id=c5f200feba&e=26b6e04522
+X-MC-User: adf0a954194486a685e4eb9db
+Feedback-ID: 163014414:163014414.9156433:us5:mc
+List-ID: adf0a954194486a685e4eb9dbmc list <adf0a954194486a685e4eb9db.486602.list-id.mcsv.net>
+X-Accounttype: pd
+List-Unsubscribe: <https://integrityinstitute.us5.list-manage.com/unsubscribe?u=adf0a954194486a685e4eb9db&id=a8f1969ef9&e=26b6e04522&c=c5f200feba>, <mailto:unsubscribe-mc.us5_adf0a954194486a685e4eb9db.c5f200feba-26b6e04522@unsubscribe.mailchimpapp.net?subject=unsubscribe>
+List-Unsubscribe-Post: List-Unsubscribe=One-Click
+Content-Type: multipart/alternative; boundary="_----------=_MCPart_908757564"
+MIME-Version: 1.0
+X-Spam-Checker-Version: SpamAssassin 3.4.1 (2015-04-28) on d6f1d637bc81
+X-Spam-Status: No, score=0.2 required=5.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
+	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,HTML_MESSAGE,RCVD_IN_MSPIKE_H2,
+	SPF_HELO_PASS,SPF_PASS,T_SCC_BODY_TEXT_LINE,URIBL_BLOCKED autolearn=no
+	autolearn_force=no version=3.4.1
+
+This is a multi-part message in MIME format
+
+--_----------=_MCPart_908757564
+Content-Type: text/plain; charset="utf-8"; format="fixed"
+Content-Transfer-Encoding: quoted-printable
+
+We launched another project!
+
+View this email in your browser (https://mailchi.mp/1cbac89be568/a-look-ba=
+ck-at-tech-and-elections-from-2003-to-the-present?e=3D26b6e04522)
+Logo
+
+Happy Monday everyone! For those of you who don=E2=80=99t know me=2C my na=
+me is Katie Harbath. I=E2=80=99m a fellow at the Integrity Institute and s=
+pent ten years as a public policy director at Facebook where I helped buil=
+d the teams that work with politicians and governments around the globe as=
+ well as the team that coordinated the company=E2=80=99s work around elect=
+ions. Before that=2C I ran digital campaigns at places like the Republican=
+ National Committee and National Republican Senatorial Committee in the ea=
+rly 2000s.
+
+This is all to say that I=E2=80=99m a tech and elections nerd. Going back=
+ to my first campaign in 2004 where I first learned how to code an email=
+=2C build a website=2C and edit a video I=E2=80=99ve been a part of and an=
+ avid follower of how online technology is used in elections.
+
+This is why I=E2=80=99m so excited to share a new database today (https://=
+bipartisanpolicy.org/blog/tech-platforms-election-database/) that I=E2=80=
+=99ve done in conjunction with my work at the Bipartisan Policy Center and=
+ the Integrity Institute. Thanks to the help of John Hill - a researcher I=
+ found through Upwork - Collier Fernekes and Lia Joseph at the Bipartisan=
+ Policy Center and the members of the Integrity Institute we=E2=80=99ve cr=
+eated a collection of public links we could find to tech company announcem=
+ents about their work on elections going back to 2003. It=E2=80=99s update=
+d as of a few days ago with a little over 400 links covering nearly 50 com=
+panies.
+
+Right now it=E2=80=99s pretty simple as you can filter by published date (=
+If there is one)=2C date added to the database=2C company/platform=2C type=
+ of announcement=2C and country. However=2C down the road we want to add a=
+ lot more such as keywords=2C executives quoted=2C public statements that=
+ aren=E2=80=99t formal press releases or blog posts=2C etc.
+
+This is one of the first official outputs for us as the Institute for our=
+ elections program. We=E2=80=99re going to be getting more active in the e=
+lections integrity space - including doing an analysis of this data.
+
+I=E2=80=99d also love any feedback you have on the database. Especially if=
+ you - or someone you know - worked on these things in the early 2000s and=
+ might know where I can find old blog posts=2C etc.
+
+Thanks!
+
+Katie Harbath
+
+PS: I have a newsletter where I write weekly about technology=E2=80=99s im=
+pact on democracy called Anchor Change. Check it out and sign up if you=E2=
+=80=99re interested (https://anchorchange.substack.com/) . It=E2=80=99s fr=
+ee!
+https://twitter.com/Integrity_Inst https://www.linkedin.com/company/integr=
+ityinstitute/ mailto:hello@integrityinstitute.org
+http://integrityinstitute.org
+You are receiving this email because you opted in via our website.
+Our mailing address is:
+Integrity Institute
+103 Havemeyer St Apt 3A
+Brooklyn=2C NY 11211-4489
+USA
+Want to change how you receive these emails?
+You can update your preferences (https://integrityinstitute.us5.list-manag=
+e.com/profile?u=3Dadf0a954194486a685e4eb9db&id=3Da8f1969ef9&e=3D26b6e04522&c=
+=3Dc5f200feba) or unsubscribe (https://integrityinstitute.us5.list-manage.=
+com/unsubscribe?u=3Dadf0a954194486a685e4eb9db&id=3Da8f1969ef9&e=3D26b6e04522=
+&c=3Dc5f200feba)
+--_----------=_MCPart_908757564
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+<!DOCTYPE html><html xmlns=3D"http://www.w3.org/1999/xhtml" xmlns:v=3D"urn=
+:schemas-microsoft-com:vml" xmlns:o=3D"urn:schemas-microsoft-com:office:of=
+fice"><head>
+<!--[if gte mso 15]>
+<xml>
+<o:OfficeDocumentSettings>
+<o:AllowPNG/>
+<o:PixelsPerInch>96</o:PixelsPerInch>
+</o:OfficeDocumentSettings>
+</xml>
+<![endif]-->
+<meta charset=3D"UTF-8" />
+<meta http-equiv=3D"X-UA-Compatible" content=3D"IE=3Dedge" />
+<meta name=3D"viewport" content=3D"width=3Ddevice-width=2C initial-scale=
+=3D1" />
+<title>A Look Back at Tech and Elections from 2003 to the Present</title>
+<style> img{-ms-interpolation-mode:bicubic;} table=2C td{mso-table-lspace:=
+0pt; mso-table-rspace:0pt;} .mceStandardButton=2C .mceStandardButton td=2C=
+ .mceStandardButton td a{mso-hide:all !important;} p=2C a=2C li=2C td=2C b=
+lockquote{mso-line-height-rule:exactly;} p=2C a=2C li=2C td=2C body=2C tab=
+le=2C blockquote{-ms-text-size-adjust:100%; -webkit-text-size-adjust:100%;=
+} @media only screen and (max-width: 480px){ body=2C table=2C td=2C p=2C a=
+=2C li=2C blockquote{-webkit-text-size-adjust:none !important;} } .mcnPrev=
+iewText{display: none !important;} .bodyCell{margin:0 auto; padding:0; wid=
+th:100%;} .ExternalClass=2C .ExternalClass p=2C .ExternalClass td=2C .Exte=
+rnalClass div=2C .ExternalClass span=2C .ExternalClass font{line-height:10=
+0%;} .ReadMsgBody{width:100%;} .ExternalClass{width:100%;} a[x-apple-data=
+-detectors]{color:inherit !important; text-decoration:none !important; fon=
+t-size:inherit !important; font-family:inherit !important; font-weight:inh=
+erit !important; line-height:inherit !important;} body { height: 100%; mar=
+gin: 0px; padding: 0px; width: 100%; background: rgb(255=2C 255=2C 255); }=
+p { margin: 0px; padding: 0px; }table { border-collapse: collapse; }td=2C=
+ p=2C a { word-break: break-word; }img=2C a img { border: 0px; height: aut=
+o; outline: none; text-decoration: none; }@media only screen and (max-widt=
+h: 480px) {body { width: 100% !important; min-width: 100% !important; }col=
+group { display: none; }img { height: auto !important; }.mceColumn { displ=
+ay: block !important; width: 100% !important; }.mceSpacing-24 { padding-ri=
+ght: 12px !important; padding-left: 12px !important; }.mceFooterSection .m=
+ceText=2C .mceFooterSection .mceText p=2C .mceFooterSection span { font-si=
+ze: 16px !important; line-height: 150% !important; }.mceText=2C .mceText p=
+ { font-size: 16px !important; line-height: 150% !important; }}@media only=
+ screen and (max-width: 640px) {.mceClusterLayout td { padding: 4px !impor=
+tant; }} body { background-color: rgb(255=2C 255=2C 255); }.mceText=2C .mc=
+eLabel { font-family: Georgia=2C Times=2C "Times New Roman"=2C serif; }.mc=
+eText=2C .mceLabel { color: rgb(0=2C 44=2C 80); }.mceText a { color: rgb(2=
+55=2C 163=2C 18); }.mceSpacing-24 .last-child { margin-bottom: 0px; }.mceS=
+pacing-24 .last-child { margin-bottom: 0px; }.mceSpacing-24 .last-child {=
+ margin-bottom: 0px; }.mceSpacing-24 .last-child { margin-bottom: 0px; }.m=
+ceSpacing-24 p { margin-bottom: 24px; }.mceSpacing-24 p:last-child { margi=
+n-bottom: 0px; }.mceSpacing-24 .last-child { margin-bottom: 0px; }.mceSpac=
+ing-24 .last-child { margin-bottom: 0px; }.mceSpacing-24 .last-child { mar=
+gin-bottom: 0px; }.mceSpacing-24 label { margin-bottom: 24px; }.mceSpacing=
+-24 input { margin-bottom: 24px; }.mceSpacing-24 .last-child { margin-bott=
+om: 0px; }.mceSpacing-24 .mceInput + .mceErrorMessage { margin-top: -12px;=
+ }.mceSpacing-12 label { margin-bottom: 12px; }.mceSpacing-12 input { marg=
+in-bottom: 12px; }.mceSpacing-12 .mceInput + .mceErrorMessage { margin-top=
+: -6px; }.mceSpacing-48 label { margin-bottom: 48px; }.mceSpacing-48 input=
+ { margin-bottom: 48px; }.mceSpacing-48 .mceInput + .mceErrorMessage { mar=
+gin-top: -24px; }.mceInput { background-color: transparent; border: 2px so=
+lid rgb(208=2C 208=2C 208); width: 60%; color: rgb(77=2C 77=2C 77); displa=
+y: block; }.mceInput[type=3D"radio"]=2C .mceInput[type=3D"checkbox"] { f=
+loat: left; margin-right: 12px; display: inline; width: auto !important; }=
+=2EmceLabel > .mceInput { margin-bottom: 0px; margin-top: 2px; }.mceLabel {=
+ display: block; } @media only screen and (max-width: 480px) {.mobileClass=
+-42 {padding-left: 12 !important;padding-top: 0 !important;padding-right:=
+ 12 !important;}.mobileClass-42 {padding-left: 12 !important;padding-top:=
+ 0 !important;padding-right: 12 !important;}.mobileClass-42 {padding-left:=
+ 12 !important;padding-top: 0 !important;padding-right: 12 !important;}} @=
+media only screen and (min-width: 481px) and (max-width: 768px) {}</style>=
+</head>
+<body>
+<!--
+-->
+<!--[if !gte mso 9]><!----><span class=3D"mcnPreviewText" style=3D"displa=
+y:none; font-size:0px; line-height:0px; max-height:0px; max-width:0px; opa=
+city:0; overflow:hidden; visibility:hidden; mso-hide:all;">We launched ano=
+ther project!</span><!--<![endif]-->
+<!--
+-->
+<center>
+<table border=3D"0" cellpadding=3D"0" cellspacing=3D"0" height=3D"100%" wi=
+dth=3D"100%" id=3D"bodyTable" style=3D"background-color: rgb(255=2C 255=2C=
+ 255);">
+<tbody><tr>
+<td id=3D"root" class=3D"bodyCell" align=3D"center" valign=3D"top"><!--[i=
+f (gte mso 9)|(IE)]><table align=3D"center" border=3D"0" cellspacing=3D"0"=
+ cellpadding=3D"0" width=3D"660" style=3D"width:660px;"><tr><td><![endif]=
+--><table align=3D"center" border=3D"0" cellpadding=3D"0" cellspacing=3D"0=
+" width=3D"100%" style=3D"max-width:660px" role=3D"presentation"><tbody><t=
+r class=3D"mceRow"><td style=3D"background-position:center;background-repe=
+at:no-repeat;background-size:cover" valign=3D"top"><table border=3D"0" cel=
+lpadding=3D"0" cellspacing=3D"0" width=3D"100%" style=3D"table-layout:fixe=
+d" role=3D"presentation"><colgroup><col span=3D"1" /><col span=3D"1" /><co=
+l span=3D"1" /><col span=3D"1" /><col span=3D"1" /><col span=3D"1" /><col=
+ span=3D"1" /><col span=3D"1" /><col span=3D"1" /><col span=3D"1" /><col s=
+pan=3D"1" /><col span=3D"1" /></colgroup><tbody><tr><td style=3D"backgroun=
+d-color:#ffffff;background-position:center;background-repeat:no-repeat;bac=
+kground-size:cover;padding-top:24px" class=3D"mceColumn" valign=3D"top" co=
+lspan=3D"12" width=3D"100%"><table border=3D"0" cellpadding=3D"0" cellspac=
+ing=3D"0" width=3D"100%" role=3D"presentation"><tbody><tr><td style=3D"pad=
+ding-top:12px;padding-bottom:12px;padding-right:24px;padding-left:24px" cl=
+ass=3D"mceSpacing-24" valign=3D"top"><div class=3D"mceText" style=3D"font-=
+size:16px;text-align:right;width:100%"><p class=3D"last-child"><a href=3D"=
+https://mailchi.mp/1cbac89be568/a-look-back-at-tech-and-elections-from-200=
+3-to-the-present?e=3D26b6e04522"><span style=3D"font-size: 12px">View this e=
+mail in your browser</span></a></p></div></td></tr><tr><td style=3D"paddin=
+g-top:9px;padding-bottom:9px;padding-right:0;padding-left:0" class=3D"mceS=
+pacing-24" align=3D"center" valign=3D"top"><img width=3D"320.2234206471494=
+5" style=3D"width:320.22342064714945px;height:auto;max-width:100%;display:=
+block" alt=3D"Logo" src=3D"https://dim.mcusercontent.com/cs/adf0a954194486=
+a685e4eb9db/images/4c2e5e34-75f4-515a-034a-990510964614.png?w=3D320&dpr=3D=
+2" /></td></tr><tr><td style=3D"padding-top:12px;padding-bottom:12px;paddi=
+ng-right:24px;padding-left:24px" class=3D"mceSpacing-24" valign=3D"top"><d=
+iv class=3D"mceText" style=3D"font-size:16px;text-align:left;width:100%"><=
+p>Happy Monday everyone! For those of you who don=E2=80=99t know me=2C my=
+ name is Katie Harbath. I=E2=80=99m a fellow at the Integrity Institute an=
+d spent ten years as a public policy director at Facebook where I helped b=
+uild the teams that work with politicians and governments around the globe=
+ as well as the team that coordinated the company=E2=80=99s work around el=
+ections. Before that=2C I ran digital campaigns at places like the Republi=
+can National Committee and National Republican Senatorial Committee in the=
+ early 2000s.</p><p>This is all to say that I=E2=80=99m a tech and electio=
+ns nerd. Going back to my first campaign in 2004 where I first learned how=
+ to code an email=2C build a website=2C and edit a video I=E2=80=99ve been=
+ a part of and an avid follower of how online technology is used in electi=
+ons.</p><p>This is why I=E2=80=99m so <a href=3D"https://integrityinstitut=
+e.us5.list-manage.com/track/click?u=3Dadf0a954194486a685e4eb9db&id=3D9eb7a=
+f03f8&e=3D26b6e04522" target=3D"_blank">excited to share a new database t=
+oday</a> that I=E2=80=99ve done in conjunction with my work at the Biparti=
+san Policy Center and the Integrity Institute. Thanks to the help of John=
+ Hill - a researcher I found through Upwork - Collier Fernekes and Lia Jos=
+eph at the Bipartisan Policy Center and the members of the Integrity Insti=
+tute we=E2=80=99ve created a collection of public links we could find to t=
+ech company announcements about their work on elections going back to 2003=
+=2E It=E2=80=99s updated as of a few days ago with a little over 400 links c=
+overing nearly 50 companies.</p><p>Right now it=E2=80=99s pretty simple as=
+ you can filter by published date (If there is one)=2C date added to the d=
+atabase=2C company/platform=2C type of announcement=2C and country. Howeve=
+r=2C down the road we want to add a lot more such as keywords=2C executive=
+s quoted=2C public statements that aren=E2=80=99t formal press releases or=
+ blog posts=2C etc.</p><p>This is one of the first official outputs for us=
+ as the Institute for our elections program. We=E2=80=99re going to be get=
+ting more active in the elections integrity space - including doing an ana=
+lysis of this data. </p><p>I=E2=80=99d also love any feedback you have on=
+ the database. Especially if you - or someone you know - worked on these t=
+hings in the early 2000s and might know where I can find old blog posts=2C=
+ etc.</p><p>Thanks!</p><p>Katie Harbath</p><p class=3D"last-child">PS: I h=
+ave a newsletter where I write weekly about technology=E2=80=99s impact on=
+ democracy called Anchor Change. <a href=3D"https://integrityinstitute.us5=
+=2Elist-manage.com/track/click?u=3Dadf0a954194486a685e4eb9db&id=3D2024c2b5ed=
+&e=3D26b6e04522" target=3D"_blank">Check it out and sign up if you=E2=80=
+=99re interested</a>. It=E2=80=99s free!</p></div></td></tr><tr><td style=
+=3D"background-color:transparent;padding-top:12px;padding-bottom:12px;padd=
+ing-right:24px;padding-left:24px" class=3D"mceSpacing-24" valign=3D"top"><=
+table border=3D"0" cellpadding=3D"0" cellspacing=3D"0" width=3D"100%" styl=
+e=3D"background-color:transparent" role=3D"presentation"><tbody><tr><td st=
+yle=3D"min-width:100%;border-top:2px solid #000000" valign=3D"top"></td></=
+tr></tbody></table></td></tr><tr><td style=3D"padding-top:12px;padding-bot=
+tom:12px;padding-right:0;padding-left:0" class=3D"mceSpacing-24" valign=3D=
+"top"><table align=3D"center" border=3D"0" cellpadding=3D"0" cellspacing=
+=3D"0" width=3D"100%" role=3D"presentation"><tbody><tr class=3D"mceRow"><t=
+d style=3D"background-position:center;background-repeat:no-repeat;backgrou=
+nd-size:cover" valign=3D"top"><table border=3D"0" cellpadding=3D"0" cellsp=
+acing=3D"24" width=3D"100%" style=3D"table-layout:fixed" role=3D"presentat=
+ion"><colgroup><col span=3D"1" /><col span=3D"1" /><col span=3D"1" /><col=
+ span=3D"1" /><col span=3D"1" /><col span=3D"1" /><col span=3D"1" /><col s=
+pan=3D"1" /><col span=3D"1" /><col span=3D"1" /><col span=3D"1" /><col spa=
+n=3D"1" /></colgroup><tbody><tr><td style=3D"background-position:center;ba=
+ckground-repeat:no-repeat;background-size:cover" class=3D"mceColumn" valig=
+n=3D"top" colspan=3D"12" width=3D"100%"><table border=3D"0" cellpadding=3D=
+"0" cellspacing=3D"0" width=3D"100%" role=3D"presentation"><tbody><tr><td=
+ class=3D"mceSpacing-24" align=3D"center" valign=3D"top"><table border=3D"=
+0" cellpadding=3D"0" cellspacing=3D"0" width=3D"" role=3D"presentation" cl=
+ass=3D"mceClusterLayout"><tbody><tr><td style=3D"padding-left:24px;padding=
+-top:0;padding-right:24px" data-breakpoint=3D"42" valign=3D"top" class=3D"=
+mobileClass-42"><a href=3D"https://integrityinstitute.us5.list-manage.com/=
+track/click?u=3Dadf0a954194486a685e4eb9db&id=3D3f109c8b33&e=3D26b6e04522"=
+ style=3D"display:block" target=3D"_blank"><img width=3D"40" style=3D"bord=
+er:0;width:40px;height:auto;max-width:100%;display:block" alt=3D"Twitter i=
+con" src=3D"https://dim.mcusercontent.com/https/cdn-images.mailchimp.com%2=
+Ficons%2Fsocial-block-v3%2Fblock-icons-v3%2Ftwitter-filled-dark-40.png?w=
+=3D40&dpr=3D2" /></a></td><td style=3D"padding-left:24px;padding-top:0;pad=
+ding-right:24px" data-breakpoint=3D"42" valign=3D"top" class=3D"mobileClas=
+s-42"><a href=3D"https://integrityinstitute.us5.list-manage.com/track/clic=
+k?u=3Dadf0a954194486a685e4eb9db&id=3D87db4ef4c2&e=3D26b6e04522" style=3D"=
+display:block" target=3D"_blank"><img width=3D"40" style=3D"border:0;width=
+:40px;height:auto;max-width:100%;display:block" alt=3D"LinkedIn icon" src=
+=3D"https://dim.mcusercontent.com/https/cdn-images.mailchimp.com%2Ficons%2=
+Fsocial-block-v3%2Fblock-icons-v3%2Flinkedin-filled-dark-40.png?w=3D40&dpr=
+=3D2" /></a></td><td style=3D"padding-left:24px;padding-top:0;padding-righ=
+t:24px" data-breakpoint=3D"42" valign=3D"top" class=3D"mobileClass-42"><a=
+ href=3D"mailto:hello@integrityinstitute.org" style=3D"display:block" targ=
+et=3D"_blank"><img width=3D"40" style=3D"border:0;width:40px;height:auto;m=
+ax-width:100%;display:block" alt=3D"Email icon" src=3D"https://dim.mcuserc=
+ontent.com/https/cdn-images.mailchimp.com%2Ficons%2Fsocial-block-v3%2Fbloc=
+k-icons-v3%2Femail-filled-dark-40.png?w=3D40&dpr=3D2" /></a></td></tr></tb=
+ody></table></td></tr></tbody></table></td></tr></tbody></table></td></tr>=
+</tbody></table></td></tr><tr><td style=3D"padding-top:8px;padding-bottom:=
+8px;padding-right:8px;padding-left:8px" class=3D"mceSpacing-24" valign=3D"=
+top"><table align=3D"center" border=3D"0" cellpadding=3D"0" cellspacing=3D=
+"0" width=3D"100%" role=3D"presentation" id=3D"section_1fa583096c138415fe1=
+3d4831387535d" class=3D"mceFooterSection"><tbody><tr class=3D"mceRow"><td=
+ style=3D"background-position:center;background-repeat:no-repeat;backgroun=
+d-size:cover" valign=3D"top"><table border=3D"0" cellpadding=3D"0" cellspa=
+cing=3D"12" width=3D"100%" style=3D"table-layout:fixed" role=3D"presentati=
+on"><colgroup><col span=3D"1" /><col span=3D"1" /><col span=3D"1" /><col s=
+pan=3D"1" /><col span=3D"1" /><col span=3D"1" /><col span=3D"1" /><col spa=
+n=3D"1" /><col span=3D"1" /><col span=3D"1" /><col span=3D"1" /><col span=
+=3D"1" /></colgroup><tbody><tr><td style=3D"background-position:center;bac=
+kground-repeat:no-repeat;background-size:cover;padding-top:0;padding-botto=
+m:0" class=3D"mceColumn" valign=3D"top" colspan=3D"12" width=3D"100%"><tab=
+le border=3D"0" cellpadding=3D"0" cellspacing=3D"0" width=3D"100%" role=3D=
+"presentation"><tbody><tr><td style=3D"padding-top:12px;padding-bottom:12p=
+x;padding-right:0;padding-left:0" class=3D"mceSpacing-24" align=3D"center"=
+ valign=3D"top"><a href=3D"https://integrityinstitute.us5.list-manage.com/=
+track/click?u=3Dadf0a954194486a685e4eb9db&id=3Def3b7810fe&e=3D26b6e04522"=
+ style=3D"display:block" target=3D"_blank"><img width=3D"110" style=3D"bor=
+der:0;width:110px;height:auto;max-width:100%;display:block" alt=3D"Logo" s=
+rc=3D"https://dim.mcusercontent.com/cs/adf0a954194486a685e4eb9db/images/4c=
+2e5e34-75f4-515a-034a-990510964614.png?w=3D110&dpr=3D2" /></a></td></tr><t=
+r><td style=3D"padding-top:12px;padding-bottom:12px;padding-right:16px;pad=
+ding-left:16px" class=3D"mceSpacing-24" align=3D"center" valign=3D"top"><d=
+iv class=3D"mceText" style=3D"font-size:12px;display:inline-block;width:10=
+0%"><p class=3D"last-child">
+You are receiving this email because you opted in via our website.
+<br /><br />Our mailing address is:<br />
+<div class=3D"vcard"><span class=3D"org fn">Integrity Institute</span><div=
+ class=3D"adr"><div class=3D"street-address">103 Havemeyer St Apt 3A</div>=
+<span class=3D"locality">Brooklyn</span>=2C <span class=3D"region">NY</spa=
+n>  <span class=3D"postal-code">11211-4489</span></div><br><a href=3D"http=
+s://integrityinstitute.us5.list-manage.com/vcard?u=3Dadf0a954194486a685e4e=
+b9db&id=3Da8f1969ef9" class=3D"hcard-download">Add us to your address book=
+</a></div>
+<br /><br />Want to change how you receive these emails?<br />You can <a h=
+ref=3D"https://integrityinstitute.us5.list-manage.com/profile?u=3Dadf0a954=
+194486a685e4eb9db&id=3Da8f1969ef9&e=3D26b6e04522&c=3Dc5f200feba">update your=
+ preferences</a> or <a href=3D"https://integrityinstitute.us5.list-manage.=
+com/unsubscribe?u=3Dadf0a954194486a685e4eb9db&id=3Da8f1969ef9&e=3D26b6e04522=
+&c=3Dc5f200feba">unsubscribe</a></p></div></td></tr><tr><td class=3D"mceSp=
+acing-24" align=3D"center" valign=3D"top"><table align=3D"center" border=
+=3D"0" cellpadding=3D"0" cellspacing=3D"0" width=3D"100%" role=3D"presenta=
+tion"><tbody><tr class=3D"mceRow"><td style=3D"background-position:center;=
+background-repeat:no-repeat;background-size:cover;padding-top:0px;padding-=
+bottom:0px" valign=3D"top"><table border=3D"0" cellpadding=3D"0" cellspaci=
+ng=3D"24" width=3D"100%" style=3D"table-layout:fixed" role=3D"presentation=
+"><colgroup><col span=3D"1" /><col span=3D"1" /><col span=3D"1" /><col spa=
+n=3D"1" /><col span=3D"1" /><col span=3D"1" /><col span=3D"1" /><col span=
+=3D"1" /><col span=3D"1" /><col span=3D"1" /><col span=3D"1" /><col span=
+=3D"1" /></colgroup><tbody></tbody></table></td></tr></tbody></table></td>=
+</tr></tbody></table></td></tr></tbody></table></td></tr></tbody></table><=
+/td></tr></tbody></table></td></tr></tbody></table></td></tr></tbody></tab=
+le><!--[if (gte mso 9)|(IE)]></td></tr></table><![endif]--></td>
+</tr>
+</tbody></table>
+</center>
+<img src=3D"https://integrityinstitute.us5.list-manage.com/track/open.php?=
+u=3Dadf0a954194486a685e4eb9db&id=3Dc5f200feba&e=3D26b6e04522" height=3D"1=
+" width=3D"1" alt=3D""></body></html>
+--_----------=_MCPart_908757564--

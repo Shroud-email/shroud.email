@@ -43,25 +43,21 @@ defmodule Shroud.Email.EmailHandler do
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"from" => from, "to" => recipients, "data" => data}})
       when is_list(recipients) do
-    # TODO: handle parsing failures from mimemail?
-    email = :mimemail.decode(data)
-
     recipients
-    |> Enum.each(&handle_recipient(from, &1, email))
+    |> Enum.each(&handle_recipient(from, &1, data))
   end
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"from" => from, "to" => to, "data" => data}}) do
-    email = :mimemail.decode(data)
-    handle_recipient(from, to, email)
+    handle_recipient(from, to, data)
   end
 
-  @spec handle_recipient(String.t(), String.t(), mimemail_email) :: :ok | {:error, term()}
-  defp handle_recipient(sender, recipient, mimemail_email) do
+  @spec handle_recipient(String.t(), String.t(), String.t()) :: :ok | {:error, term()}
+  defp handle_recipient(sender, recipient, data) do
     if ReplyAddress.is_reply_address?(recipient) do
-      OutgoingEmailHandler.handle_outgoing_email(sender, recipient, mimemail_email)
+      OutgoingEmailHandler.handle_outgoing_email(sender, recipient, data)
     else
-      IncomingEmailHandler.handle_incoming_email(sender, recipient, mimemail_email)
+      IncomingEmailHandler.handle_incoming_email(sender, recipient, data)
     end
   end
 end

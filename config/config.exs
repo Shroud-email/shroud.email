@@ -93,7 +93,8 @@ config :phoenix, :json_library, Jason
 
 config :surface, :components, [
   {Surface.Components.Form.ErrorTag,
-   default_translator: {ShroudWeb.ErrorHelpers, :translate_error}}
+   default_translator: {ShroudWeb.ErrorHelpers, :translate_error}},
+  {ShroudWeb.Components.DropdownItem, propagate_context_to_slots: false}
 ]
 
 config :fun_with_flags, :cache,

@@ -4,8 +4,8 @@ defmodule ShroudWeb.ProxyController do
 
   def proxy(conn, %{"url" => url}) do
     case Proxy.get(url) do
-      {:ok, data} ->
-        mime_type = get_mime_type(url)
+      {:ok, {data, content_type}} ->
+        mime_type = if content_type, do: content_type, else: guess_mime_type(url)
 
         conn
         |> put_resp_content_type(mime_type)
@@ -18,7 +18,7 @@ defmodule ShroudWeb.ProxyController do
     end
   end
 
-  defp get_mime_type(url) do
+  defp guess_mime_type(url) do
     %{path: image_path} =
       url
       |> URI.decode()

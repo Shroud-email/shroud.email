@@ -1,8 +1,8 @@
 // Copied from Tailwind UI
 // https://tailwindui.com/js/components-v2.js?id=c08ed7087921a2a8b1bf
 
-;(window.Components = {}),
-  (window.Components.listbox = function (e) {
+;(window.AlpineComponents = {}),
+  (window.AlpineComponents.listbox = function (e) {
     return {
       init() {
         ;(this.optionCount = this.$refs.listbox.children.length),
@@ -68,7 +68,7 @@
       ...e,
     }
   }),
-  (window.Components.menu = function (e = { open: !1 }) {
+  (window.AlpineComponents.menu = function (e = { open: !1 }) {
     return {
       init() {
         ;(this.items = Array.from(
@@ -146,7 +146,7 @@
       },
     }
   }),
-  (window.Components.popoverGroup = function () {
+  (window.AlpineComponents.popoverGroup = function () {
     return {
       __type: "popoverGroup",
       init() {
@@ -163,7 +163,7 @@
       },
     }
   }),
-  (window.Components.popover = function ({ open: e = !1, focus: t = !1 } = {}) {
+  (window.AlpineComponents.popover = function ({ open: e = !1, focus: t = !1 } = {}) {
     const i = [
       "[contentEditable=true]",
       "[tabindex]",
@@ -229,7 +229,7 @@
       },
     }
   }),
-  (window.Components.radioGroup = function ({
+  (window.AlpineComponents.radioGroup = function ({
     initialCheckedIndex: e = 0,
   } = {}) {
     return {
@@ -257,16 +257,16 @@
       },
     }
   }),
-  (window.Components.tabs = function () {
+  (window.AlpineComponents.tabs = function () {
     return {
       selectedIndex: 0,
       onTabClick(e) {
         if (!this.$el.contains(e.detail)) return
         let t = Array.from(
-            this.$el.querySelectorAll('[x-data^="Components.tab("]'),
+            this.$el.querySelectorAll('[x-data^="AlpineComponents.tab("]'),
           ),
           i = Array.from(
-            this.$el.querySelectorAll('[x-data^="Components.tabPanel("]'),
+            this.$el.querySelectorAll('[x-data^="AlpineComponents.tabPanel("]'),
           ),
           n = t.indexOf(e.detail)
         ;(this.selectedIndex = n),
@@ -279,7 +279,7 @@
       onTabKeydown(e) {
         if (!this.$el.contains(e.detail.tab)) return
         let t = Array.from(
-            this.$el.querySelectorAll('[x-data^="Components.tab("]'),
+            this.$el.querySelectorAll('[x-data^="AlpineComponents.tab("]'),
           ),
           i = t.indexOf(e.detail.tab)
         "ArrowLeft" === e.detail.key
@@ -293,14 +293,14 @@
       },
     }
   }),
-  (window.Components.tab = function (e = 0) {
+  (window.AlpineComponents.tab = function (e = 0) {
     return {
       selected: !1,
       init() {
         let t = Array.from(
           this.$el
-            .closest('[x-data^="Components.tabs("]')
-            .querySelectorAll('[x-data^="Components.tab("]'),
+            .closest('[x-data^="AlpineComponents.tabs("]')
+            .querySelectorAll('[x-data^="AlpineComponents.tab("]'),
         )
         ;(this.selected = t.indexOf(this.$el) === e),
           this.$watch("selected", (e) => {
@@ -330,14 +330,14 @@
       },
     }
   }),
-  (window.Components.tabPanel = function (e = 0) {
+  (window.AlpineComponents.tabPanel = function (e = 0) {
     return {
       selected: !1,
       init() {
         let t = Array.from(
           this.$el
-            .closest('[x-data^="Components.tabs("]')
-            .querySelectorAll('[x-data^="Components.tabPanel("]'),
+            .closest('[x-data^="AlpineComponents.tabs("]')
+            .querySelectorAll('[x-data^="AlpineComponents.tabPanel("]'),
         )
         this.selected = t.indexOf(this.$el) === e
       },

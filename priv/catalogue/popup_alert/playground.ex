@@ -4,14 +4,13 @@ defmodule ShroudWeb.Catalogue.PopupAlert.Example do
     height: "300px"
   alias ShroudWeb.Components.Button
 
-  data props, :map,
-    default: %{
+  @props [
       show: false,
       id: "modal",
       title: "My modal",
       text: "Lorem ipsum dolor sit amet",
       icon: Heroicons.Outline.GlobeAltIcon
-    }
+  ]
 
   def render(assigns) do
     ~F"""

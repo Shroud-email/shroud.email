@@ -9,10 +9,10 @@ defmodule Shroud.Email.IncomingEmailHandler do
   import Shroud.Accounts.Logging, only: [maybe_log: 2, store_email: 3]
   require Logger
 
-  @spec handle_incoming_email(String.t(), String.t(), :mimemail.mimetuple()) ::
+  @spec handle_incoming_email(String.t(), String.t(), String.t()) ::
           :ok | {:error, term()}
   # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
-  def handle_incoming_email(sender, recipient, mimemail_email) do
+  def handle_incoming_email(sender, recipient, data) do
     # Lookup real email based on the receiving alias (`recipient`)
     recipient_user = Accounts.get_user_by_alias(recipient)
     email_alias = Aliases.get_email_alias_by_address(recipient)
@@ -21,7 +21,7 @@ defmodule Shroud.Email.IncomingEmailHandler do
 
     cond do
       email_alias == nil and not is_nil(custom_domain) and custom_domain.catchall_enabled ->
-        create_catchall_address(custom_domain, recipient, sender, mimemail_email)
+        create_catchall_address(custom_domain, recipient, sender, data)
 
       recipient_user == nil || email_alias == nil ->
         Logger.notice(
@@ -44,11 +44,13 @@ defmodule Shroud.Email.IncomingEmailHandler do
 
         Aliases.increment_blocked!(email_alias)
 
-      SpamHandler.is_spam?(mimemail_email) ->
+      SpamHandler.is_spam?(data) ->
         maybe_log(
           recipient_user,
           "Storing spam email from #{sender} to #{recipient_user.email} (via #{recipient})"
         )
+
+        mimemail_email = :mimemail.decode(data)
 
         SpamHandler.handle_incoming_spam_email(
           sender,
@@ -65,7 +67,7 @@ defmodule Shroud.Email.IncomingEmailHandler do
           "Forwarding incoming email from #{sender} to #{recipient_user.email} (via #{recipient})"
         )
 
-        forward_incoming_email(recipient_user, sender, recipient, mimemail_email)
+        forward_incoming_email(recipient_user, sender, recipient, data)
     end
 
     :ok
@@ -75,13 +77,13 @@ defmodule Shroud.Email.IncomingEmailHandler do
           Domain.CustomDomain.t(),
           String.t(),
           String.t(),
-          :mimemail.mimetuple()
+          String.t()
         ) :: :ok | {:error, term()}
   defp create_catchall_address(
          %Domain.CustomDomain{} = custom_domain,
          recipient,
          sender,
-         mimemail_email
+         data
        ) do
     recipient_user = custom_domain.user
 
@@ -97,17 +99,18 @@ defmodule Shroud.Email.IncomingEmailHandler do
       "Created alias #{recipient} via catch-all. Forwarding incoming email from #{sender} to #{recipient_user.email}"
     )
 
-    forward_incoming_email(recipient_user, sender, recipient, mimemail_email)
+    forward_incoming_email(recipient_user, sender, recipient, data)
   end
 
-  @spec forward_incoming_email(User.t(), String.t(), String.t(), :mimemail.mimetuple()) ::
+  @spec forward_incoming_email(User.t(), String.t(), String.t(), String.t()) ::
           :ok | {:error, term()}
   # Forwards an email (sent to an alias) to the user
-  defp forward_incoming_email(%User{} = user, sender, recipient, mimemail_email) do
+  defp forward_incoming_email(%User{} = user, sender, recipient, data) do
     if Accounts.Logging.email_logging_enabled?(user) do
-      data = :mimemail.encode(mimemail_email)
       store_email(sender, recipient, data)
     end
+
+    mimemail_email = :mimemail.decode(data)
 
     case ParsedEmail.parse(mimemail_email)
          |> TrackerRemover.process()

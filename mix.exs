@@ -7,7 +7,7 @@ defmodule Shroud.MixProject do
       version: "0.1.0",
       elixir: "~> 1.12",
       elixirc_paths: elixirc_paths(Mix.env()),
-      compilers: [:gettext] ++ Mix.compilers() ++ [:surface],
+      compilers: Mix.compilers() ++ [:surface],
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
       deps: deps(),
@@ -67,7 +67,7 @@ defmodule Shroud.MixProject do
       {:ranch, "~> 1.8.0", override: true},
       {:canada, "~> 2.0"},
       {:mjml, "~> 1.1"},
-      {:floki, "~> 0.32.0"},
+      {:floki, "~> 0.33.0"},
       {:sentry, "~> 8.0"},
       {:timex, "~> 3.7"},
       {:httpoison, "~> 1.8"},
@@ -87,8 +87,8 @@ defmodule Shroud.MixProject do
       {:html_sanitize_ex, "~> 1.4"},
       {:ex_image_info, "~> 0.2.4"},
       {:ecto_psql_extras, "~> 0.7.4"},
-      {:surface, "~> 0.7.4"},
-      {:surface_catalogue, "~> 0.4.0"},
+      {:surface, "~> 0.8.2"},
+      {:surface_catalogue, "~> 0.5.0"},
       {:surface_heroicons, "~> 0.6.0"}
     ]
   end
