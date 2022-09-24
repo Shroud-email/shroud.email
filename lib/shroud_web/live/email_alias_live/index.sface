@@ -24,7 +24,7 @@
     <div class="mt-2">
       <div class="flex items-center">
         <TextInput name="alias_name" placeholder="john.doe" />
-        <span class="ml-3 text-sm text-gray-700">@fsf.com</span>
+        <span class="ml-3 text-sm text-gray-700">{@custom_alias_domain}</span>
       </div>
       <p :if={@custom_alias_error} class="text-red-600 mt-1 text-sm">
         {@custom_alias_error}
