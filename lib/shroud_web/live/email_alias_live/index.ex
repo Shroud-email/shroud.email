@@ -13,6 +13,7 @@ defmodule ShroudWeb.EmailAliasLive.Index do
 
   alias ShroudWeb.Components.{
     Alert,
+    Page,
     ButtonWithDropdown,
     DropdownItem,
     Button,
@@ -27,9 +28,6 @@ defmodule ShroudWeb.EmailAliasLive.Index do
       socket
       |> update_email_aliases()
       |> update_custom_domains()
-      |> assign(:page_title, "Aliases")
-      |> assign(:page_title_url, nil)
-      |> assign(:subpage_title, nil)
       |> assign(:filter_query, "")
       |> assign(:custom_alias_domain, nil)
       |> assign(:custom_alias_error, "")

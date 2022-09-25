@@ -1,3 +1,0 @@
-<Page {=@page_title_url} {=@page_title} {=@subpage_title} {=@flash} {=@current_user}>
-  {@inner_content}
-</Page>

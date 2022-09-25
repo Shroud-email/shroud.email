@@ -49,8 +49,7 @@ defmodule ShroudWeb do
 
   def surface_view do
     quote do
-      use Surface.LiveView,
-        layout: {ShroudWeb.LayoutView, "live.html"}
+      use Surface.LiveView
 
       on_mount ShroudWeb.UserLiveAuth
       unquote(view_helpers())

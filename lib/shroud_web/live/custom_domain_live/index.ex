@@ -1,5 +1,5 @@
 defmodule ShroudWeb.CustomDomainLive.Index do
-  use Surface.LiveView
+  use ShroudWeb, :surface_view
   alias Surface.Components.LiveRedirect
   alias Shroud.Domain
   alias ShroudWeb.Components.{Page, Button, EmptyState, PopupAlert, TextInput}

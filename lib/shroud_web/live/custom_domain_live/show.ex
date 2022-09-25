@@ -1,5 +1,5 @@
 defmodule ShroudWeb.CustomDomainLive.Show do
-  use Surface.LiveView
+  use ShroudWeb, :surface_view
   alias Phoenix.PubSub
   import Canada, only: [can?: 2]
 
