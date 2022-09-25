@@ -28,7 +28,6 @@ defmodule Shroud.Email.ParsedEmail do
   def parse(mimemail_email) do
     swoosh_email = build_email(new(), mimemail_email)
 
-    # TODO: maybe log some detailed errors if there's a parsing failure here
     parsed_html =
       case Floki.parse_document(swoosh_email.html_body) do
         {:ok, []} -> nil

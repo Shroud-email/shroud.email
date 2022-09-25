@@ -28,7 +28,6 @@ defmodule Shroud.Email.TrackerListFetcher do
     deleted_patterns =
       MapSet.difference(current_trackers, new_trackers) |> Enum.map(&Map.get(&1, :pattern))
 
-    # TODO: add an index on pattern
     from(t in Tracker, where: t.pattern in ^deleted_patterns) |> Repo.delete_all()
 
     added_trackers =
