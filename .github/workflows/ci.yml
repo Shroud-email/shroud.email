@@ -91,5 +91,5 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=registry,ref=shroud-email/shroud.email:buildcache
-          cache-to: type=registry,ref=shroud-email/shroud.email:buildcache,mode=max
+          cache-from: type=registry,ref=shroud-email/shroud.email:latest
+          cache-to: type=registry,ref=shroud-email/shroud.email:latest,mode=max
