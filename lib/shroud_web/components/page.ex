@@ -1,6 +1,6 @@
 defmodule ShroudWeb.Components.Page do
   use Surface.Component
-  alias Surface.Components.LivePatch
+  alias Surface.Components.LiveRedirect
   alias ShroudWeb.Components.{Notification, LoggingWarning}
 
   prop page_title_url, :string, default: nil
@@ -16,11 +16,11 @@ defmodule ShroudWeb.Components.Page do
     <header class="bg-white shadow-sm">
       <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex items-center">
         {#if @page_title_url}
-          <LivePatch to={@page_title_url} class="text-gray-900 hover:text-indigo-600 transition-colors">
+          <LiveRedirect to={@page_title_url} class="text-gray-900 hover:text-indigo-600 transition-colors">
             <h1 class="text-lg leading-6 font-semibold">
               {@page_title}
             </h1>
-          </LivePatch>
+          </LiveRedirect>
         {#else}
           <h1 class="text-lg leading-6 font-semibold text-gray-900">
             {@page_title}
