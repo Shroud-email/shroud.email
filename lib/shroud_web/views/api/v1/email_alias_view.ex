@@ -19,7 +19,6 @@ defmodule ShroudWeb.Api.V1.EmailAliasView do
 
   def render("email_alias.json", %{data: data}) do
     %{
-      id: data.id,
       address: data.address,
       enabled: data.enabled,
       title: data.title,

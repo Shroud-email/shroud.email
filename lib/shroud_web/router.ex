@@ -50,7 +50,8 @@ defmodule ShroudWeb.Router do
   scope "/api/v1", ShroudWeb.Api.V1 do
     pipe_through [:api, :require_confirmed_api_user]
 
-    resources "/aliases", EmailAliasController, only: [:index]
+    resources "/aliases", EmailAliasController, only: [:index, :create]
+    resources "/domains", DomainController, only: [:index]
   end
 
   scope "/admin" do

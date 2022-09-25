@@ -20,7 +20,7 @@ defmodule Shroud.Domain do
 
   """
   def list_custom_domains(%User{} = user) do
-    Repo.all(from d in CustomDomain, where: d.user_id == ^user.id)
+    Repo.all(from d in CustomDomain, where: d.user_id == ^user.id, order_by: [desc: :inserted_at])
   end
 
   @doc """

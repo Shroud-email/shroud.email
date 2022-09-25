@@ -2,7 +2,9 @@ defmodule ShroudWeb.Api.V1.EmailAliasController do
   use ShroudWeb, :controller
   import Ecto.Query
   alias Shroud.Repo
+  alias Shroud.Aliases
   alias Shroud.Aliases.EmailAlias
+  alias Shroud.Domain.CustomDomain
 
   def index(conn, params) do
     page =
@@ -19,5 +21,44 @@ defmodule ShroudWeb.Api.V1.EmailAliasController do
       total_pages: page.total_pages,
       total_entries: page.total_entries
     )
+  end
+
+  def create(conn, %{"local_part" => local_part, "domain" => domain}) do
+    domain = Repo.get_by(CustomDomain, domain: domain, user_id: conn.assigns.current_user.id)
+
+    if is_nil(domain) do
+      conn
+      |> put_status(422)
+      |> put_view(ShroudWeb.ErrorView)
+      |> render("error.json", error: "Domain not found")
+    else
+      params = %{address: "#{local_part}@#{domain.domain}", user_id: conn.assigns.current_user.id}
+
+      case Aliases.create_email_alias(params) do
+        {:ok, email_alias} ->
+          render(conn, "email_alias.json", data: email_alias)
+
+        {:error, changeset} ->
+          {error, _} = Keyword.get(changeset.errors, :address)
+
+          conn
+          |> put_status(422)
+          |> put_view(ShroudWeb.ErrorView)
+          |> render("error.json", error: error)
+      end
+    end
+  end
+
+  def create(conn, _params) do
+    case Aliases.create_random_email_alias(conn.assigns.current_user) do
+      {:ok, email_alias} ->
+        render(conn, "email_alias.json", data: email_alias)
+
+      _ ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> put_view(ShroudWeb.ErrorView)
+        |> render("error.json", error: "Unable to create email alias")
+    end
   end
 end

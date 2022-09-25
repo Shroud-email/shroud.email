@@ -1,7 +1,7 @@
 defmodule ShroudWeb.Api.V1.EmailAliasControllerTest do
   use ShroudWeb.ConnCase, async: true
   alias Shroud.Accounts
-  import Shroud.{AccountsFixtures, AliasesFixtures}
+  import Shroud.{AccountsFixtures, AliasesFixtures, DomainFixtures}
   alias Shroud.Repo
 
   describe "index/2" do
@@ -39,7 +39,6 @@ defmodule ShroudWeb.Api.V1.EmailAliasControllerTest do
       assert json_response(conn, 200) == %{
                "email_aliases" => [
                  %{
-                   "id" => email_alias_2.id,
                    "address" => email_alias_2.address,
                    "enabled" => email_alias_2.enabled,
                    "title" => email_alias_2.title,
@@ -49,7 +48,6 @@ defmodule ShroudWeb.Api.V1.EmailAliasControllerTest do
                    "blocked_addresses" => []
                  },
                  %{
-                   "id" => email_alias_1.id,
                    "address" => email_alias_1.address,
                    "enabled" => email_alias_1.enabled,
                    "title" => email_alias_1.title,
@@ -80,7 +78,7 @@ defmodule ShroudWeb.Api.V1.EmailAliasControllerTest do
         authorized_get(conn, user, Routes.email_alias_path(conn, :index), %{"page_size" => 1})
 
       assert length(json_response(conn, 200)["email_aliases"]) == 1
-      assert hd(json_response(conn, 200)["email_aliases"])["id"] == email_alias_2.id
+      assert hd(json_response(conn, 200)["email_aliases"])["address"] == email_alias_2.address
     end
 
     test "handles page parameter", %{conn: conn, user: user, email_alias_1: email_alias_1} do
@@ -91,7 +89,85 @@ defmodule ShroudWeb.Api.V1.EmailAliasControllerTest do
         })
 
       assert length(json_response(conn, 200)["email_aliases"]) == 1
-      assert hd(json_response(conn, 200)["email_aliases"])["id"] == email_alias_1.id
+      assert hd(json_response(conn, 200)["email_aliases"])["address"] == email_alias_1.address
+    end
+  end
+
+  describe "create/2" do
+    setup do
+      conn = build_conn()
+      user = user_fixture()
+
+      user =
+        user
+        |> Accounts.User.confirm_changeset()
+        |> Repo.update!(returning: true)
+
+      %{conn: conn, user: user}
+    end
+
+    test "creates an email alias", %{conn: conn, user: user} do
+      conn = authorized_post(conn, user, Routes.email_alias_path(conn, :create))
+
+      response = json_response(conn, 200)
+
+      assert %{response | "address" => nil} == %{
+               "address" => nil,
+               "blocked" => 0,
+               "forwarded" => 0,
+               "title" => nil,
+               "notes" => nil,
+               "blocked_addresses" => [],
+               "enabled" => true
+             }
+
+      assert String.ends_with?(response["address"], "@shroud.test")
+    end
+
+    test "creates an email alias on a custom domain", %{conn: conn, user: user} do
+      custom_domain_fixture(%{user_id: user.id, domain: "custom.test"})
+
+      conn =
+        authorized_post(conn, user, Routes.email_alias_path(conn, :create), %{
+          local_part: "email",
+          domain: "custom.test"
+        })
+
+      assert json_response(conn, 200) == %{
+               "address" => "email@custom.test",
+               "blocked" => 0,
+               "forwarded" => 0,
+               "title" => nil,
+               "notes" => nil,
+               "blocked_addresses" => [],
+               "enabled" => true
+             }
+    end
+
+    test "prevents creating an email alias on an invalid domain", %{conn: conn, user: user} do
+      conn =
+        authorized_post(conn, user, Routes.email_alias_path(conn, :create), %{
+          local_part: "email",
+          domain: "custom.test"
+        })
+
+      assert json_response(conn, 422) == %{
+               "error" => "Domain not found"
+             }
+    end
+
+    test "prevents creating an invalid local part", %{conn: conn, user: user} do
+      custom_domain_fixture(%{user_id: user.id, domain: "custom.test"})
+
+      conn =
+        authorized_post(conn, user, Routes.email_alias_path(conn, :create), %{
+          local_part: "invalid local part",
+          domain: "custom.test"
+        })
+
+      assert json_response(conn, 422) == %{
+               "error" => "must have an @ sign and no spaces"
+             }
     end
   end
 
@@ -101,5 +177,13 @@ defmodule ShroudWeb.Api.V1.EmailAliasControllerTest do
     conn
     |> put_req_header("authorization", "Bearer #{Base.encode64(token)}")
     |> get(path, params)
+  end
+
+  defp authorized_post(conn, user, path, params \\ nil) do
+    token = Accounts.generate_user_session_token(user)
+
+    conn
+    |> put_req_header("authorization", "Bearer #{Base.encode64(token)}")
+    |> post(path, params)
   end
 end
