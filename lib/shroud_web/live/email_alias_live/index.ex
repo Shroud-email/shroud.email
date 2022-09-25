@@ -9,6 +9,7 @@ defmodule ShroudWeb.EmailAliasLive.Index do
   alias Shroud.Aliases.EmailAlias
   alias Shroud.Domain
   alias Shroud.Util
+  alias Shroud.Repo
   alias ShroudWeb.Router.Helpers, as: Routes
 
   alias ShroudWeb.Components.{
@@ -75,7 +76,8 @@ defmodule ShroudWeb.EmailAliasLive.Index do
         %{"alias_name" => alias_name},
         %{assigns: %{current_user: user, custom_alias_domain: domain}} = socket
       ) do
-    # TODO: test that the domain is theirs
+    # ensure that the domain belongs to the user
+    Repo.get_by!(Domain.CustomDomain, domain: String.trim_leading(domain, "@"), user_id: user.id)
     address = alias_name <> domain
 
     if user |> can?(create(EmailAlias)) do
