@@ -166,7 +166,7 @@ defmodule ShroudWeb.Api.V1.EmailAliasControllerTest do
         })
 
       assert json_response(conn, 422) == %{
-               "error" => "must have an @ sign and no spaces"
+               "error" => "must have an @ sign and no spaces or underscores"
              }
     end
   end
