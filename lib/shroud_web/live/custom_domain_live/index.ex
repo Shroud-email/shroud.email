@@ -1,6 +1,6 @@
 defmodule ShroudWeb.CustomDomainLive.Index do
   use Surface.LiveView
-  alias Surface.Components.LivePatch
+  alias Surface.Components.LiveRedirect
   alias Shroud.Domain
   alias ShroudWeb.Components.{Page, Button, EmptyState, PopupAlert, TextInput}
   alias ShroudWeb.Router.Helpers, as: Routes
@@ -27,7 +27,7 @@ defmodule ShroudWeb.CustomDomainLive.Index do
         </EmptyState>
       {#else}
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 auto-rows-fr">
-          <LivePatch
+          <LiveRedirect
             :for={domain <- @domains}
             to={Routes.custom_domain_show_path(ShroudWeb.Endpoint, :show, domain.domain)}
             class="rounded bg-white shadow hover:shadow-lg transition-shadow p-3 overflow-hidden focus:ring focus:ring-indigo-600"
@@ -53,7 +53,7 @@ defmodule ShroudWeb.CustomDomainLive.Index do
                 <Heroicons.Solid.GlobeAltIcon class="text-gray-200 h-32 w-32" />
               </div>
             </div>
-          </LivePatch>
+          </LiveRedirect>
           <div class="rounded border-2 border-dashed border-gray-300 flex p-3 items-center justify-center">
             <Button click="open_modal" icon={Heroicons.Solid.PlusIcon} text="Add domain" />
           </div>

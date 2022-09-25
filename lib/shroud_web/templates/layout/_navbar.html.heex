@@ -19,9 +19,7 @@
                     </span>
                   <% end %>
                 <% end %>
-                <%= if FunWithFlags.enabled?(:custom_domains, for: @current_user) do %>
-                  <%= live_redirect "Domains", to: Routes.custom_domain_index_path(@conn, :index), class: active_class(@conn, Routes.custom_domain_index_path(@conn, :index), "text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium", "bg-gray-900 text-white") %>
-                <% end %>
+                <%= live_redirect "Domains", to: Routes.custom_domain_index_path(@conn, :index), class: active_class(@conn, Routes.custom_domain_index_path(@conn, :index), "text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium", "bg-gray-900 text-white") %>
                 <%= if @current_user.is_admin do %>
                   <%= link "LiveDashboard", to: Routes.live_dashboard_path(@conn, :home), class: active_class(@conn, Routes.live_dashboard_path(@conn, :home), "text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium", "bg-gray-900 text-white") %>
                   <%= link "Flags", to: "/feature_flags", class: "text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium" %>
@@ -95,9 +93,7 @@
       <%= if @current_user do %>
         <%= live_redirect "Aliases", to: Routes.email_alias_index_path(@conn, :index), class: active_class(@conn, Routes.email_alias_index_path(@conn, :index), "text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium", "bg-gray-900 text-white") %>
         <%= live_redirect "Spam", to: Routes.spam_email_index_path(@conn, :index), class: active_class(@conn, Routes.spam_email_index_path(@conn, :index), "text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium", "bg-gray-900 text-white") %>
-        <%= if FunWithFlags.enabled?(:custom_domains, for: @current_user) do %>
-          <%= live_redirect "Domains", to: Routes.custom_domain_index_path(@conn, :index), class: active_class(@conn, Routes.custom_domain_index_path(@conn, :index), "text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium", "bg-gray-900 text-white") %>
-        <% end %>
+        <%= live_redirect "Domains", to: Routes.custom_domain_index_path(@conn, :index), class: active_class(@conn, Routes.custom_domain_index_path(@conn, :index), "text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium", "bg-gray-900 text-white") %>
         <%= if @current_user.is_admin do %>
           <%= link "LiveDashboard", to: Routes.live_dashboard_path(@conn, :home), class: active_class(@conn, Routes.live_dashboard_path(@conn, :home), "text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium", "bg-gray-900 text-white") %>
           <%= link "Flags", to: "/feature_flags", class: "text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium" %>
