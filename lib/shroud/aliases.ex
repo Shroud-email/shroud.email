@@ -7,6 +7,7 @@ defmodule Shroud.Aliases do
   alias Shroud.Repo
 
   alias Shroud.Util
+  alias Shroud.Domain.CustomDomain
   alias Shroud.Aliases.{EmailAlias, EmailMetric}
   alias Shroud.Accounts.User
 
@@ -31,6 +32,19 @@ defmodule Shroud.Aliases do
   end
 
   def create_email_alias(attrs) do
+    {_local, domain} = Util.extract_email_parts(attrs.address)
+
+    custom_domain = Repo.get_by(CustomDomain, domain: domain)
+
+    domain_id =
+      if is_nil(custom_domain) do
+        nil
+      else
+        custom_domain.id
+      end
+
+    attrs = Map.merge(attrs, %{domain_id: domain_id})
+
     %EmailAlias{}
     |> EmailAlias.changeset(attrs)
     |> Repo.insert()
@@ -110,12 +124,22 @@ defmodule Shroud.Aliases do
     |> create_email_alias()
   end
 
+  @doc """
+  Deletes an email alias. If it's on a custom domain, it gets hard deleted.
+  If not, it gets soft deleted to prevent other users from using it in the future.
+  (Presumably, if it's on a custom domain, the user is the owner of the domain)
+  """
   def delete_email_alias(id) do
     now = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
+    email_alias = get_email_alias!(id)
 
-    get_email_alias!(id)
-    |> EmailAlias.changeset(%{deleted_at: now})
-    |> Repo.update()
+    if is_nil(email_alias.domain_id) do
+      email_alias
+      |> EmailAlias.changeset(%{deleted_at: now})
+      |> Repo.update()
+    else
+      Repo.delete(email_alias)
+    end
   end
 
   def increment_forwarded!(%EmailAlias{} = email_alias) do

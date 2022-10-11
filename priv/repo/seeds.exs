@@ -66,6 +66,13 @@ Enum.each(aliases, fn alias_attrs ->
   :timer.sleep(500)
 end)
 
+Aliases.create_email_alias(%{
+  user_id: user.id,
+  title: "Airport WiFi",
+  description: "Created via catch-all",
+  address: "airport@verified.com"
+})
+
 user
 |> Aliases.list_aliases()
 |> Enum.each(fn email_alias ->

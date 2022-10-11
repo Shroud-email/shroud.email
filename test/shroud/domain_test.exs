@@ -114,14 +114,13 @@ defmodule Shroud.DomainTest do
       end
     end
 
-    test "tombstones email aliases with the same domain" do
+    test "deletes email aliases with the same domain" do
       user = user_fixture()
       custom_domain = custom_domain_fixture(%{user_id: user.id})
       email_alias = alias_fixture(%{user_id: user.id, address: "hey@#{custom_domain.domain}"})
 
       Domain.delete_custom_domain!(custom_domain)
-      email_alias = Repo.reload!(email_alias)
-      refute is_nil(email_alias.deleted_at)
+      assert is_nil(Repo.reload(email_alias))
     end
 
     test "does not delete other email aliases" do

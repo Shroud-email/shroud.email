@@ -4,7 +4,7 @@ defmodule Shroud.AliasesTest do
   alias Shroud.Aliases
   alias Shroud.Aliases.{EmailAlias, EmailMetric}
 
-  import Shroud.{AccountsFixtures, AliasesFixtures}
+  import Shroud.{AccountsFixtures, AliasesFixtures, DomainFixtures}
 
   describe "list_aliases/1" do
     test "lists only the user's aliases" do
@@ -176,6 +176,28 @@ defmodule Shroud.AliasesTest do
     end
   end
 
+  describe "create_email_alias/1" do
+    test "does not sets a domain_id if domain doesn't exist" do
+      %{id: user_id} = user_fixture()
+      custom_domain_fixture(%{user_id: user_id})
+      attrs = %{user_id: user_id, address: "alias@random.com"}
+
+      {:ok, email_alias} = Aliases.create_email_alias(attrs)
+
+      assert is_nil(email_alias.domain_id)
+    end
+
+    test "sets domain_id if one is present" do
+      %{id: user_id} = user_fixture()
+      %{id: domain_id, domain: domain} = custom_domain_fixture(%{user_id: user_id})
+      attrs = %{user_id: user_id, address: "alias@#{domain}"}
+
+      {:ok, email_alias} = Aliases.create_email_alias(attrs)
+
+      assert email_alias.domain_id == domain_id
+    end
+  end
+
   describe "delete_email_alias/1" do
     test "sets deleted_at" do
       %{id: id} = user_fixture()
@@ -188,6 +210,15 @@ defmodule Shroud.AliasesTest do
 
       assert email_alias.deleted_at != nil
       assert_in_delta deleted_at, now, 1
+    end
+
+    test "actually deletes an alias on a custom domain" do
+      %{id: user_id} = user_fixture()
+      %{domain: domain} = custom_domain_fixture(%{user_id: user_id})
+      email_alias = alias_fixture(%{user_id: user_id, address: "alias@#{domain}"})
+      Aliases.delete_email_alias(email_alias.id)
+
+      assert is_nil(Repo.get_by(EmailAlias, id: email_alias.id))
     end
   end
 

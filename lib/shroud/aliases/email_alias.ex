@@ -2,6 +2,7 @@ defmodule Shroud.Aliases.EmailAlias do
   use Ecto.Schema
   import Ecto.Changeset
   alias Shroud.Accounts.User
+  alias Shroud.Domain.CustomDomain
   alias Shroud.Aliases.EmailMetric
 
   schema "email_aliases" do
@@ -19,6 +20,7 @@ defmodule Shroud.Aliases.EmailAlias do
     field :blocked_addresses, {:array, :string}, default: []
 
     belongs_to :user, User
+    belongs_to :domain, CustomDomain
     has_many :metrics, EmailMetric, foreign_key: :alias_id
 
     timestamps()
@@ -36,7 +38,8 @@ defmodule Shroud.Aliases.EmailAlias do
       :replied,
       :user_id,
       :deleted_at,
-      :blocked_addresses
+      :blocked_addresses,
+      :domain_id
     ])
     |> validate_required([:address, :enabled, :user_id])
     |> validate_format(:address, ~r/^[^\s_]+@[^\s]+$/,
