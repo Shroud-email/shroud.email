@@ -117,7 +117,7 @@ defmodule Shroud.Email.IncomingEmailHandler do
          |> Enricher.process()
          # Now our pipeline is done, we just want our Swoosh email
          |> Map.get(:swoosh_email)
-         |> fix_incoming_sender_and_recipient(user.email, recipient)
+         |> fix_incoming_sender_and_recipient(user.email, sender, recipient)
          |> Mailer.deliver() do
       {:ok, _id} ->
         email_alias = Aliases.get_email_alias_by_address!(recipient)
@@ -137,9 +137,9 @@ defmodule Shroud.Email.IncomingEmailHandler do
     end
   end
 
-  @spec fix_incoming_sender_and_recipient(Swoosh.Email.t(), String.t(), String.t()) ::
+  @spec fix_incoming_sender_and_recipient(Swoosh.Email.t(), String.t(), String.t(), String.t()) ::
           Swoosh.Email.t()
-  defp fix_incoming_sender_and_recipient(email, recipient_address, email_alias) do
+  defp fix_incoming_sender_and_recipient(email, recipient_address, sender, email_alias) do
     # Modify the email to make it clear it came from us
     recipient_name =
       if is_list(email.to) and length(email.to) == 1 do
@@ -151,10 +151,17 @@ defmodule Shroud.Email.IncomingEmailHandler do
 
     {sender_name, sender_address} =
       if is_nil(email.from) do
-        {"", "noreply@#{Util.email_domain()}"}
+        {"", sender}
       else
         # { sender_name, sender_address }
         email.from
+      end
+
+    sender_name =
+      if sender_name == "" do
+        sender_address
+      else
+        sender_name
       end
 
     reply_address = ReplyAddress.to_reply_address(sender_address, email_alias)
