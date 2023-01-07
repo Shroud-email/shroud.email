@@ -38,7 +38,7 @@ defmodule Shroud.Email.TrackerRemoverTest do
       email =
         html_email("sender@example.com", ["recipient@example.com"], "Subject", html_body)
         |> :mimemail.decode()
-        |> ParsedEmail.parse()
+        |> ParsedEmail.parse("sender@example.com", "recipient@example.com")
         |> TrackerRemover.process()
 
       assert remove_whitespace(email.swoosh_email.html_body) == remove_whitespace(expected_result)
@@ -72,7 +72,7 @@ defmodule Shroud.Email.TrackerRemoverTest do
       email =
         html_email("sender@example.com", ["recipient@example.com"], "Subject", html_body)
         |> :mimemail.decode()
-        |> ParsedEmail.parse()
+        |> ParsedEmail.parse("sender@example.com", "recipient@example.com")
         |> TrackerRemover.process()
 
       assert remove_whitespace(email.swoosh_email.html_body) == remove_whitespace(expected_result)
@@ -107,7 +107,7 @@ defmodule Shroud.Email.TrackerRemoverTest do
       email =
         html_email("sender@example.com", ["recipient@example.com"], "Subject", html_body)
         |> :mimemail.decode()
-        |> ParsedEmail.parse()
+        |> ParsedEmail.parse("sender@example.com", "recipient@example.com")
         |> TrackerRemover.process()
 
       assert remove_whitespace(email.swoosh_email.html_body) == remove_whitespace(expected_result)
@@ -139,7 +139,7 @@ defmodule Shroud.Email.TrackerRemoverTest do
       email =
         html_email("sender@example.com", ["recipient@example.com"], "Subject", html_body)
         |> :mimemail.decode()
-        |> ParsedEmail.parse()
+        |> ParsedEmail.parse("sender@example.com", "recipient@example.com")
         |> TrackerRemover.process()
 
       assert remove_whitespace(email.swoosh_email.html_body) == remove_whitespace(expected_result)
@@ -171,7 +171,7 @@ defmodule Shroud.Email.TrackerRemoverTest do
       email =
         html_email("sender@example.com", ["recipient@example.com"], "Subject", html_body)
         |> :mimemail.decode()
-        |> ParsedEmail.parse()
+        |> ParsedEmail.parse("sender@example.com", "recipient@example.com")
         |> TrackerRemover.process()
 
       assert remove_whitespace(email.swoosh_email.html_body) == remove_whitespace(expected_result)
@@ -193,7 +193,7 @@ defmodule Shroud.Email.TrackerRemoverTest do
       email =
         html_email("sender@example.com", ["recipient@example.com"], "Subject", html_body)
         |> :mimemail.decode()
-        |> ParsedEmail.parse()
+        |> ParsedEmail.parse("sender@example.com", "recipient@example.com")
         |> TrackerRemover.process()
 
       assert remove_whitespace(email.swoosh_email.html_body) == remove_whitespace(html_body)
@@ -214,7 +214,7 @@ defmodule Shroud.Email.TrackerRemoverTest do
       email =
         html_email("sender@example.com", ["recipient@example.com"], "Subject", html_body)
         |> :mimemail.decode()
-        |> ParsedEmail.parse()
+        |> ParsedEmail.parse("sender@example.com", "recipient@example.com")
         |> TrackerRemover.process()
 
       assert remove_whitespace(email.swoosh_email.html_body) == remove_whitespace(html_body)
@@ -235,7 +235,7 @@ defmodule Shroud.Email.TrackerRemoverTest do
       email =
         html_email("sender@example.com", ["recipient@example.com"], "Subject", html_body)
         |> :mimemail.decode()
-        |> ParsedEmail.parse()
+        |> ParsedEmail.parse("sender@example.com", "recipient@example.com")
         |> TrackerRemover.process()
 
       assert remove_whitespace(email.swoosh_email.html_body) == remove_whitespace(html_body)

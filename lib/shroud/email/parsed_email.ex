@@ -6,10 +6,12 @@ defmodule Shroud.Email.ParsedEmail do
   import Swoosh.Email
   require Logger
 
-  defstruct [:swoosh_email, :parsed_html, removed_trackers: []]
+  defstruct [:from, :to, :swoosh_email, :parsed_html, removed_trackers: []]
 
   @type header_type :: {String.t(), String.t()}
   @type t :: %__MODULE__{
+          from: String.t(),
+          to: String.t(),
           swoosh_email: Swoosh.Email.t(),
           parsed_html: Floki.html_tree(),
           removed_trackers: [String.t()]
@@ -24,8 +26,8 @@ defmodule Shroud.Email.ParsedEmail do
     "delivered-to"
   ]
 
-  @spec parse(:mimemail.mimetuple()) :: t
-  def parse(mimemail_email) do
+  @spec parse(:mimemail.mimetuple(), String.t(), String.t()) :: t
+  def parse(mimemail_email, from, to) do
     swoosh_email = build_email(new(), mimemail_email)
 
     parsed_html =
@@ -36,6 +38,8 @@ defmodule Shroud.Email.ParsedEmail do
       end
 
     %__MODULE__{
+      from: from,
+      to: to,
       swoosh_email: swoosh_email,
       parsed_html: parsed_html
     }

@@ -48,7 +48,7 @@ defmodule Shroud.Email.OutgoingEmailHandler do
 
     mimemail_email = :mimemail.decode(data)
 
-    case ParsedEmail.parse(mimemail_email)
+    case ParsedEmail.parse(mimemail_email, sender, recipient)
          |> Map.get(:swoosh_email)
          |> fix_outgoing_sender_and_recipient(recipient)
          |> Mailer.deliver() do
