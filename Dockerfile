@@ -6,7 +6,9 @@ FROM hexpm/elixir:1.14.2-erlang-25.2-debian-bullseye-20221004-slim as build
 # install build dependencies
 RUN --mount=type=cache,target=/var/lib/apt,sharing=locked \
     --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    apt-get update && apt-get install -y build-essential git curl npm cargo
+    apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y build-essential git curl npm cargo
 
 # prepare build dir
 WORKDIR /app
@@ -52,7 +54,9 @@ RUN mix release
 FROM hexpm/elixir:1.14.2-erlang-25.2-debian-bullseye-20221004-slim as app
 RUN --mount=type=cache,target=/var/lib/apt,sharing=locked \
     --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    apt-get update && apt-get install -y openssl libncurses6 ca-certificates
+    apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y openssl libncurses6 ca-certificates
 RUN update-ca-certificates
 
 ARG MIX_ENV
