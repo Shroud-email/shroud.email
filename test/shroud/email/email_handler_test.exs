@@ -823,5 +823,28 @@ defmodule Shroud.Email.EmailHandlerTest do
         data: data
       })
     end
+
+    test "handles emails with no headers", %{email_alias: email_alias} do
+      data = File.read!("test/support/data/invalid.email") |> Util.lf_to_crlf()
+
+      perform_job(EmailHandler, %{
+        from: "sender@example.com",
+        to: [email_alias.address],
+        data: data
+      })
+
+      assert_email_sent(fn email ->
+        assert email.subject == ""
+
+        assert email.from ==
+                 {"sender@example.com (via Shroud.email)",
+                  "sender_at_example.com_alias@shroud.test"}
+
+        assert email.to == [{"", "user@example.com"}]
+
+        assert email.text_body ==
+                 "This email was forwarded from alias@shroud.test by Shroud.email.\n\nthis is not a valid email.\r\njust a bunch of text.\n"
+      end)
+    end
   end
 end
