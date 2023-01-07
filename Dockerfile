@@ -1,7 +1,7 @@
 # syntax = docker/dockerfile:1
 ARG MIX_ENV="prod"
 
-FROM hexpm/elixir:1.13.2-erlang-24.1.7-debian-bullseye-20210902-slim as build
+FROM hexpm/elixir:1.14.2-erlang-25.2-debian-bullseye-20221004-slim as build
 
 # install build dependencies
 RUN --mount=type=cache,target=/var/lib/apt,sharing=locked \
@@ -49,7 +49,7 @@ RUN mix release
 
 # start a new build stage so that the final image will only contain
 # the compiled release and other runtime necessities
-FROM hexpm/elixir:1.13.2-erlang-24.1.7-debian-bullseye-20210902-slim as app
+FROM hexpm/elixir:1.14.2-erlang-25.2-debian-bullseye-20221004-slim as app
 RUN --mount=type=cache,target=/var/lib/apt,sharing=locked \
     --mount=type=cache,target=/var/cache/apt,sharing=locked \
     apt-get update && apt-get install -y openssl libncurses6 ca-certificates
@@ -61,16 +61,16 @@ ENV USER="elixir"
 WORKDIR "/home/${USER}/app"
 # Creates an unprivileged user to be used exclusively to run the Phoenix app
 RUN \
-  addgroup \
-   --gid 1000 \
-   "${USER}" \
-  && adduser \
-   --shell /bin/sh \
-   --uid 1000 \
-   --ingroup "${USER}" \
-   --home "/home/${USER}" \
-   "${USER}" \
-  && su "${USER}"
+    addgroup \
+    --gid 1000 \
+    "${USER}" \
+    && adduser \
+    --shell /bin/sh \
+    --uid 1000 \
+    --ingroup "${USER}" \
+    --home "/home/${USER}" \
+    "${USER}" \
+    && su "${USER}"
 
 # Everything from this line onwards will run in the context of the unprivileged user.
 USER "${USER}"
