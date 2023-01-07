@@ -813,5 +813,15 @@ defmodule Shroud.Email.EmailHandlerTest do
         assert email.html_body =~ expected_url
       end)
     end
+
+    test "handles emails without a To field", %{email_alias: email_alias} do
+      data = File.read!("test/support/data/no_to_field.email") |> Util.lf_to_crlf()
+
+      perform_job(EmailHandler, %{
+        from: "sender@example.com",
+        to: [email_alias.address],
+        data: data
+      })
+    end
   end
 end

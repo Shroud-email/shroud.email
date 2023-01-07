@@ -112,7 +112,7 @@ defmodule Shroud.Email.IncomingEmailHandler do
 
     mimemail_email = :mimemail.decode(data)
 
-    case ParsedEmail.parse(mimemail_email)
+    case ParsedEmail.parse(mimemail_email, sender, recipient)
          |> TrackerRemover.process()
          |> Enricher.process()
          # Now our pipeline is done, we just want our Swoosh email

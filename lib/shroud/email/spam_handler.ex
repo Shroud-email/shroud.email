@@ -37,7 +37,7 @@ defmodule Shroud.Email.SpamHandler do
   def handle_incoming_spam_email(sender, recipient_user, email_alias, email) do
     parsed_email =
       email
-      |> ParsedEmail.parse()
+      |> ParsedEmail.parse(sender, email_alias.address)
       |> TrackerRemover.process()
 
     Email.store_spam_email!(

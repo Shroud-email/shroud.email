@@ -1,0 +1,5 @@
+From: "Sender" <sender@example.com>
+Subject: Text-only Email Example
+Content-Type: text/plain; charset="utf-8"
+
+This email has no To: field!

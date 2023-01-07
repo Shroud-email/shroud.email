@@ -18,11 +18,11 @@ defmodule Shroud.Email.Enricher do
   defp process_text(%ParsedEmail{swoosh_email: %{text_body: nil}} = email),
     do: email
 
-  defp process_text(%ParsedEmail{swoosh_email: swoosh_email} = email) do
+  defp process_text(%ParsedEmail{to: to_alias, swoosh_email: swoosh_email} = email) do
     [{}]
 
     text_body = """
-    This email was forwarded from #{recipient_alias(email)} by Shroud.email.
+    This email was forwarded from #{to_alias} by Shroud.email.
 
     #{swoosh_email.text_body}
     """
@@ -79,7 +79,7 @@ defmodule Shroud.Email.Enricher do
     """
   end
 
-  defp shroud_header(%ParsedEmail{} = email) do
+  defp shroud_header(%ParsedEmail{to: to_alias} = email) do
     {_sender_name, sender_address} = email.swoosh_email.from
 
     trackers = email.removed_trackers
@@ -87,7 +87,7 @@ defmodule Shroud.Email.Enricher do
     report_data =
       %{
         sender: sender_address,
-        email_alias: recipient_alias(email),
+        email_alias: to_alias,
         trackers: trackers
       }
       |> Util.uri_encode_map!()
@@ -128,15 +128,5 @@ defmodule Shroud.Email.Enricher do
         ]
       }
     }
-  end
-
-  defp recipient_alias(email) do
-    # TODO: we need to get this data from SmtpServer, otherwise
-    # there's an edge case when there are multiple recipients
-    {_name, recipient_address} =
-      email.swoosh_email.to
-      |> hd()
-
-    recipient_address
   end
 end
