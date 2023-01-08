@@ -6,15 +6,16 @@ defmodule ShroudWeb.CheckoutController do
   alias Shroud.Billing.Session
   alias ShroudWeb.Plugs.CachingBodyReader
 
-  # This is just to ensure that these atoms exist
-  # so String.to_existing_atom/1 works
-  @billing_periods [:monthly, :yearly]
+  @billing_periods %{
+    "monthly" => :monthly,
+    "yearly" => :yearly
+  }
 
   def index(conn, %{"period" => billing_period}) do
     # Don't use route helpers for the {CHECKOUT_SESSION_ID} template, because
     # then Phoenix will escape the brackets, which means that Stripe won't
     # substitute it properly.
-    billing_period = String.to_existing_atom(billing_period)
+    billing_period = Map.fetch!(@billing_periods, billing_period)
     success_url = Routes.checkout_url(conn, :success)
     cancel_url = Routes.user_settings_url(conn, :billing)
 
