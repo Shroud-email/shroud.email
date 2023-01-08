@@ -34,6 +34,7 @@ config :shroud, :mailer,
   ]
 
 config :shroud,
+  app_domain: "shroud.test",
   email_domain: "shroud.test"
 
 # We don't run a server during test. If one is required,
