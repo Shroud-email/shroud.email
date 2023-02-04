@@ -1,7 +1,9 @@
 defmodule Shroud.PermissionsTest do
   use Shroud.DataCase
+  alias Shroud.Repo
 
   alias Shroud.Aliases.EmailAlias
+  alias Shroud.Accounts.User
 
   import Shroud.{AccountsFixtures, AliasesFixtures}
   import Canada, only: [can?: 2]
@@ -31,8 +33,12 @@ defmodule Shroud.PermissionsTest do
     end
 
     test "expired trial users can read/update/destroy aliases", %{yesterday: yesterday} do
-      user = user_fixture(%{status: :trial, trial_expires_at: yesterday})
+      user = user_fixture(%{status: :trial})
       email_alias = alias_fixture(%{user_id: user.id})
+
+      user
+      |> User.status_changeset(%{trial_expires_at: yesterday})
+      |> Repo.update()
 
       assert user |> can?(read(email_alias))
       assert user |> can?(update(email_alias))

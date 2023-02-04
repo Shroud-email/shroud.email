@@ -9,7 +9,7 @@ defmodule Shroud.Email.EmailHandlerTest do
 
   alias Shroud.Email
   alias Shroud.Email.EmailHandler
-  alias Shroud.{Aliases, Util}
+  alias Shroud.{Aliases, Util, Accounts}
   alias ShroudWeb.Router.Helpers, as: Routes
 
   @html_content """
@@ -377,11 +377,14 @@ defmodule Shroud.Email.EmailHandlerTest do
     test "forwards to non-active account" do
       yesterday =
         NaiveDateTime.utc_now()
-        |> NaiveDateTime.add(-1 * 60 * 60 * 24)
-        |> NaiveDateTime.truncate(:second)
+        |> NaiveDateTime.add(-1, :day)
 
-      user = user_fixture(%{status: :trial, trial_expires_at: yesterday})
+      user = user_fixture()
       email_alias = alias_fixture(%{user_id: user.id})
+
+      user
+      |> Accounts.User.status_changeset(%{status: :trial, trial_expires_at: yesterday})
+      |> Repo.update()
 
       data =
         text_email(
