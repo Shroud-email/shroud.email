@@ -4,6 +4,7 @@ defmodule ShroudWeb.SpamEmailLive.Index do
   use Phoenix.HTML
   use ShroudWeb, :surface_view
   alias Surface.Components.LiveRedirect
+  alias ShroudWeb.Components.Page
 
   alias Shroud.Email
   alias Shroud.Aliases
