@@ -1,84 +1,85 @@
 defmodule ShroudWeb.CustomDomainLive.Index do
-  use ShroudWeb, :surface_view
-  alias Surface.Components.LiveRedirect
+  use ShroudWeb, :live_view
+  alias ShroudWeb.Components.PopupAlert
   alias Shroud.Domain
-  alias ShroudWeb.Components.{Page, Button, EmptyState, PopupAlert, TextInput}
   alias ShroudWeb.Router.Helpers, as: Routes
-
-  data domains, :list, default: []
-  data domain_to_add, :string, default: ""
-  data error, :string, default: nil
 
   def mount(_params, _session, socket) do
     domains = Domain.list_custom_domains(socket.assigns.current_user)
-    {:ok, assign(socket, :domains, domains)}
+
+    assigns =
+      assign(socket, :domains, domains)
+      |> assign(:page_title, "Domains")
+      |> assign(:page_title_url, nil)
+      |> assign(:subpage_title, nil)
+
+    {:ok, assigns}
   end
 
   def render(assigns) do
-    ~F"""
-    <Page page_title="Domains" {=@flash} {=@current_user}>
-      {#if Enum.empty?(@domains)}
-        <EmptyState
-          title="Custom domains"
-          description="Custom domains let you create aliases on your own domain like alias@yourdomain.com."
-          icon={Heroicons.Outline.GlobeAltIcon}
+    ~H"""
+    <%= if Enum.empty?(@domains) do %>
+      <.empty_state
+        title="Custom domains"
+        description="Custom domains let you create aliases on your own domain like alias@yourdomain.com."
+        icon={:globe_alt}
+      >
+        <.button click="open_modal" icon={:plus} text="Add domain" />
+      </.empty_state>
+    <% else %>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 auto-rows-fr">
+        <.link
+          :for={domain <- @domains}
+          navigate={Routes.custom_domain_show_path(ShroudWeb.Endpoint, :show, domain.domain)}
+          class="rounded bg-white shadow hover:shadow-lg transition-shadow p-3 overflow-hidden focus:ring focus:ring-indigo-600"
         >
-          <Button click="open_modal" icon={Heroicons.Solid.PlusIcon} text="Add domain" />
-        </EmptyState>
-      {#else}
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 auto-rows-fr">
-          <LiveRedirect
-            :for={domain <- @domains}
-            to={Routes.custom_domain_show_path(ShroudWeb.Endpoint, :show, domain.domain)}
-            class="rounded bg-white shadow hover:shadow-lg transition-shadow p-3 overflow-hidden focus:ring focus:ring-indigo-600"
-          >
-            <h3 class="font-bold flex items-center">
-              {domain.domain}
-              {#if Domain.fully_verified?(domain)}
-                <div x-init x-tooltip.raw="Verified" class="ml-2 mt-1">
-                  <Heroicons.Solid.CheckCircleIcon class="text-green-500 h-4 w-4" />
-                </div>
-              {#else}
-                <div x-init x-tooltip.raw="Waiting for DNS records" class="ml-2 mt-1">
-                  <Heroicons.Solid.DotsHorizontalIcon class="text-gray-500 h-4 w-4 animate-pulse" />
-                </div>
-              {/if}
-            </h3>
-            <p class="text-sm text-slate-600">Added {Timex.format!(domain.inserted_at, "{D} {Mshort} {YYYY}")}</p>
-            <div class="flex justify-between">
-              <div class="text-sm text-slate-600 self-end">
-                Catch-all {if domain.catchall_enabled, do: "enabled", else: "disabled"}.
+          <h3 class="font-bold flex items-center">
+            <%= domain.domain %>
+            <%= if Domain.fully_verified?(domain) do %>
+              <div x-init x-tooltip.raw="Verified" class="ml-2 mt-1">
+                <.icon name={:check_circle} solid class="text-green-500 h-4 w-4" />
               </div>
-              <div class="translate-x-8 translate-y-10 -mt-16">
-                <Heroicons.Solid.GlobeAltIcon class="text-gray-200 h-32 w-32" />
+            <% else %>
+              <div x-init x-tooltip.raw="Waiting for DNS records" class="ml-2 mt-1">
+                <icon name={:ellipsis_horizontal} solid class="text-gray-500 h-4 w-4 animate-pulse" />
               </div>
+            <% end %>
+          </h3>
+          <p class="text-sm text-slate-600">Added <%= Timex.format!(domain.inserted_at, "{D} {Mshort} {YYYY}") %></p>
+          <div class="flex justify-between">
+            <div class="text-sm text-slate-600 self-end">
+              Catch-all <%= if domain.catchall_enabled, do: "enabled", else: "disabled" %>.
             </div>
-          </LiveRedirect>
-          <div class="rounded border-2 border-dashed border-gray-300 flex p-3 items-center justify-center">
-            <Button click="open_modal" icon={Heroicons.Solid.PlusIcon} text="Add domain" />
+            <div class="translate-x-8 translate-y-10 -mt-16">
+              <.icon name={:globe_alt} solid class="text-gray-200 h-32 w-32" />
+            </div>
           </div>
+        </.link>
+        <div class="rounded border-2 border-dashed border-gray-300 flex p-3 items-center justify-center">
+          <.button click="open_modal" icon={:plus} text="Add domain" />
         </div>
-      {/if}
+      </div>
+    <% end %>
 
-      <form phx-submit="create">
-        <PopupAlert
-          id="add_domain_modal"
-          title="Add custom domain"
-          text="Enter your domain to get started."
-          icon={Heroicons.Outline.GlobeAltIcon}
-        >
-          <div class="mt-2">
-            <TextInput name="domain" placeholder="example.com" />
-            <p :if={@error} class="text-red-600 mt-1 text-sm">
-              {@error}
-            </p>
-          </div>
-          <:buttons>
-            <Button text="Add" type="submit" />
-          </:buttons>
-        </PopupAlert>
-      </form>
-    </Page>
+    <form phx-submit="create">
+      <.live_component
+        module={PopupAlert}
+        id="add_domain_modal"
+        title="Add custom domain"
+        text="Enter your domain to get started."
+        icon={:globe_alt}
+      >
+        <div class="mt-2">
+          <.text_input name="domain" placeholder="example.com" />
+          <p :if={@error} class="text-red-600 mt-1 text-sm">
+            <%= @error %>
+          </p>
+        </div>
+        <:buttons>
+          <.button text="Add" type="submit" />
+        </:buttons>
+      </.live_component>
+    </form>
     """
   end
 

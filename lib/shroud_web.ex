@@ -39,19 +39,20 @@ defmodule ShroudWeb do
 
       # Include shared imports and aliases for views
       unquote(view_helpers())
-      import Surface
-
-      # Use Surface components everywhere
-      use Surface.View, root: "lib/shroud_web/templates"
-      alias ShroudWeb.Components.Page
     end
   end
 
-  def surface_view do
+  def live_view(opts \\ []) do
     quote do
-      use Surface.LiveView
+      @opts Keyword.merge(
+              [
+                layout: {ShroudWeb.Layouts, :live}
+              ],
+              unquote(opts)
+            )
+      use Phoenix.LiveView, @opts
 
-      on_mount ShroudWeb.UserLiveAuth
+      on_mount(ShroudWeb.UserLiveAuth)
       unquote(view_helpers())
     end
   end
@@ -59,6 +60,14 @@ defmodule ShroudWeb do
   def live_component do
     quote do
       use Phoenix.LiveComponent
+
+      unquote(view_helpers())
+    end
+  end
+
+  def component do
+    quote do
+      use Phoenix.Component, global_prefixes: ~w(x-)
 
       unquote(view_helpers())
     end
@@ -88,6 +97,7 @@ defmodule ShroudWeb do
 
       # Import LiveView and .heex helpers (live_render, live_patch, <.form>, etc)
       import Phoenix.LiveView.Helpers
+      import Phoenix.Component
 
       # Import basic rendering functionality (render, render_layout, etc)
       import Phoenix.View
@@ -95,6 +105,8 @@ defmodule ShroudWeb do
       import ShroudWeb.ErrorHelpers
       import ShroudWeb.Gettext
       alias ShroudWeb.Router.Helpers, as: Routes
+
+      import ShroudWeb.Components.Atoms
     end
   end
 

@@ -1,11 +1,10 @@
 defmodule ShroudWeb.Components.CopyToClipboardButton do
-  use Surface.Component
+  use ShroudWeb, :component
 
-  prop text, :string, required: true
-  prop class, :css_class, required: false
-  data alpine_copy_function, :string
+  attr(:text, :string, required: true)
+  attr(:class, :string, required: false)
 
-  def render(assigns) do
+  def copy_to_clipboard_button(assigns) do
     assigns =
       assigns
       |> assign(:alpine_copy_function, """
@@ -14,7 +13,7 @@ defmodule ShroudWeb.Components.CopyToClipboardButton do
         setTimeout(() => tooltip = 'Copy to clipboard', 1500);
       """)
 
-    ~F"""
+    ~H"""
     <div x-data="{ tooltip: 'Copy to clipboard' }" class={@class}>
       <button
         x-tooltip="tooltip"
@@ -22,7 +21,7 @@ defmodule ShroudWeb.Components.CopyToClipboardButton do
         class="rounded p-1 focus:ring focus:ring-indigo-500"
         x-on:click={@alpine_copy_function}
       >
-        <Heroicons.Solid.ClipboardCopyIcon class="h-5 w-5" />
+        <.icon name={:clipboard_document} solid class="h-5 w-5" />
       </button>
     </div>
     """

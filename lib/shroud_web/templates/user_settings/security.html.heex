@@ -1,4 +1,4 @@
-<.form let={f} for={@password_changeset} action={Routes.user_settings_path(@conn, :update)} id="update_password">
+<.form :let={f} for={@password_changeset} action={Routes.user_settings_path(@conn, :update)} id="update_password">
   <div class="shadow sm:rounded-md sm:overflow-hidden">
     <div class="bg-white py-6 px-4 space-y-6 sm:p-6">
       <div>
@@ -56,7 +56,7 @@
 
     <%= cond do %>
     <% !@current_user.totp_enabled and is_nil(@otp_qr_code) -> %>
-      <.form let={f} for={@conn} action={Routes.user_settings_path(@conn, :update)} id="generate_totp_secret" method="put">
+      <.form :let={f} for={@conn} action={Routes.user_settings_path(@conn, :update)} id="generate_totp_secret" method="put">
         <%= hidden_input f, :action, name: "action", value: "generate_totp_secret" %>
         <div class="text-right">
           <%= submit "Enable two-factor authentication", class: "btn btn-primary" %>
@@ -72,7 +72,7 @@
       <div class="flex justify-center my-3">
         <%= raw @otp_qr_code %>
       </div>
-      <.form let={f} for={@conn} action={Routes.user_settings_path(@conn, :update)} id="enable_totp" method="put">
+      <.form :let={f} for={@conn} action={Routes.user_settings_path(@conn, :update)} id="enable_totp" method="put">
         <%= hidden_input f, :action, name: "action", value: "enable_totp" %>
 
         <div class="w-64 mx-auto">
@@ -106,7 +106,7 @@
         <div x-show="!showBackupCodes && !showDisableField" class="text-right">
           <button @click="showDisableField = true" class="btn btn-white">Disable two-factor authentication</button>
         </div>
-        <.form let={f} for={@conn} action={Routes.user_settings_path(@conn, :update)} x-show="!showBackupCodes && showDisableField" id="disable_totp" method="put">
+        <.form :let={f} for={@conn} action={Routes.user_settings_path(@conn, :update)} x-show="!showBackupCodes && showDisableField" id="disable_totp" method="put">
           <%= hidden_input f, :action, name: "action", value: "disable_totp" %>
 
           <%= label f, :verification_code, for: "verification_code", class: "block text-sm font-medium text-gray-700" %>

@@ -3,7 +3,7 @@
     <button
       @click="billingPeriod = 'monthly'"
       type="button"
-      :class="billingPeriod === 'monthly' ? 'bg-white border-gray-200 text-gray-900 shadow-sm' : 'border-transparent text-gray-700'"
+      x-bind:class="billingPeriod === 'monthly' ? 'bg-white border-gray-200 text-gray-900 shadow-sm' : 'border-transparent text-gray-700'"
       class="relative w-1/2 border rounded-md shadow-sm py-2 text-sm font-medium whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:z-10 sm:w-auto sm:px-8"
     >
       Monthly billing
@@ -11,7 +11,7 @@
     <button
       @click="billingPeriod = 'yearly'"
       type="button"
-      :class="billingPeriod === 'yearly' ? 'bg-white border-gray-200 text-gray-900 shadow-sm' : 'border-transparent text-gray-700'"
+      x-bind:class="billingPeriod === 'yearly' ? 'bg-white border-gray-200 text-gray-900 shadow-sm' : 'border-transparent text-gray-700'"
       class="ml-0.5 relative w-1/2 border rounded-md py-2 text-sm font-medium whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:z-10 sm:w-auto sm:px-8"
     >
       Yearly billing

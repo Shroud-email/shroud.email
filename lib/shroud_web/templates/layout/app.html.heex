@@ -1,0 +1,16 @@
+<main>
+  <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+    <div class="px-4 py-4 sm:px-0">
+      <p :if={get_flash(@conn, :info)} class="alert alert-info mb-6" role="alert">
+        <%= get_flash(@conn, :info) %>
+      </p>
+      <p :if={get_flash(@conn, :error)} class="alert alert-error mb-6" role="alert">
+        <%= get_flash(@conn, :error) %>
+      </p>
+
+      <.logging_warning current_user={@current_user} />
+
+      <%= @inner_content %>
+    </div>
+  </div>
+</main>

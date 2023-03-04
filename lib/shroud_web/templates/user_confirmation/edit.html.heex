@@ -7,7 +7,7 @@
 
   <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
     <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-      <.form let={_f} for={:user} action={Routes.user_confirmation_path(@conn, :update, @token)}>
+      <.form :let={_f} for={:user} action={Routes.user_confirmation_path(@conn, :update, @token)}>
         <%= submit "Confirm my account", class: "btn btn-primary w-full" %>
       </.form>
     </div>

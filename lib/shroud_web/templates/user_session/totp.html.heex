@@ -11,7 +11,7 @@
 
   <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
     <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-      <.form let={f} for={@conn} action={Routes.user_session_path(@conn, :create_totp)} as={:user}, class="space-y-6">
+      <.form :let={f} for={@conn} action={Routes.user_session_path(@conn, :create_totp)} as={:user}, class="space-y-6">
         <%= hidden_input f, :action, name: "action", value: "totp" %>
 
         <p class="text-gray-700 text-sm text-center">Enter the code from your authenticator app to continue.</p>
@@ -30,4 +30,3 @@
     </div>
   </div>
 </div>
-

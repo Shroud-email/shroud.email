@@ -1,14 +1,14 @@
 defmodule ShroudWeb.Components.DropdownMenu do
-  use Surface.Component
+  use ShroudWeb, :component
 
-  prop class, :string, default: ""
-  prop button_class, :string, default: ""
-  prop disabled, :boolean, default: false
-  slot default, required: true
-  slot button_content, required: true
+  attr(:class, :string, default: "")
+  attr(:button_class, :string, default: "")
+  attr(:disabled, :boolean, default: false)
+  slot(:inner_block, required: true)
+  slot(:button_content, required: true)
 
-  def render(assigns) do
-    ~F"""
+  def dropdown_menu(assigns) do
+    ~H"""
     <div
       class={@class <> " relative"}
       x-data="AlpineComponents.menu({ open: false })"
@@ -30,7 +30,7 @@ defmodule ShroudWeb.Components.DropdownMenu do
           @keydown.arrow-down.prevent="onArrowDown()"
         >
           <span class="sr-only">Open menu</span>
-          <#slot {@button_content} />
+          <%= render_slot(@button_content) %>
         </button>
       </div>
 
@@ -56,7 +56,7 @@ defmodule ShroudWeb.Components.DropdownMenu do
         @keyup.space.prevent="open = false; focusButton()"
         style="display: none;"
       >
-        <#slot />
+        <%= render_slot(@inner_block) %>
       </div>
     </div>
     """
