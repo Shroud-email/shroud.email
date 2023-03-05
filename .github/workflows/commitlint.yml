@@ -1,0 +1,19 @@
+name: Commitlint
+on:
+  pull_request:
+
+jobs:
+  commitlint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 50
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      - run: npm ci
+        shell: bash
+      - run: npx commitlint --from ${{ github.event.pull_request.head.sha }}~${{ github.event.pull_request.commits }} --to ${{ github.event.pull_request.head.sha }} --verbose
+        shell: bash
