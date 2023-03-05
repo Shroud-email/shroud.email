@@ -8,18 +8,20 @@ defmodule Shroud.Aliases do
 
   alias Shroud.Util
   alias Shroud.Domain.CustomDomain
+  alias Shroud.Accounts
   alias Shroud.Aliases.{EmailAlias, EmailMetric}
   alias Shroud.Accounts.User
 
   @spec list_aliases(User.t()) :: [EmailAlias.t()]
   def list_aliases(%User{} = user, search_query \\ nil) do
     query =
-      from ea in EmailAlias,
+      from(ea in EmailAlias,
         where: ea.user_id == ^user.id and is_nil(ea.deleted_at),
         left_join: m in subquery(recent_metrics()),
         on: m.alias_id == ea.id,
         select_merge: %{ea | forwarded_in_last_30_days: coalesce(m.forwarded, 0)},
         order_by: [desc: ea.inserted_at]
+      )
 
     query =
       if is_nil(search_query) or search_query == "" do
@@ -31,23 +33,23 @@ defmodule Shroud.Aliases do
     Repo.all(query)
   end
 
+  @spec create_email_alias(map()) ::
+          {:ok, EmailAlias.t()} | {:error, :inactive_user | :trial_limit_reached}
   def create_email_alias(attrs) do
-    {_local, domain} = Util.extract_email_parts(attrs.address)
+    user = Repo.get(User, attrs.user_id)
 
-    custom_domain = Repo.get_by(CustomDomain, domain: domain)
+    cond do
+      user.status == :trial and
+          Repo.aggregate(from(ea in EmailAlias, where: ea.user_id == ^attrs.user_id), :count) >=
+            10 ->
+        {:error, :trial_limit_reached}
 
-    domain_id =
-      if is_nil(custom_domain) do
-        nil
-      else
-        custom_domain.id
-      end
+      Accounts.active?(user) ->
+        insert_email_alias(attrs)
 
-    attrs = Map.merge(attrs, %{domain_id: domain_id})
-
-    %EmailAlias{}
-    |> EmailAlias.changeset(attrs)
-    |> Repo.insert()
+      true ->
+        {:error, :inactive_user}
+    end
   end
 
   def get_email_alias!(id) do
@@ -56,18 +58,19 @@ defmodule Shroud.Aliases do
 
   def get_email_alias_by_address(address) do
     query =
-      from ea in EmailAlias,
+      from(ea in EmailAlias,
         where: ea.address == ^address and is_nil(ea.deleted_at),
         left_join: m in subquery(recent_metrics()),
         on: m.alias_id == ea.id,
         select_merge: %{ea | forwarded_in_last_30_days: coalesce(m.forwarded, 0)}
+      )
 
     Repo.one(query)
   end
 
   def get_email_alias_by_address!(address) do
     query =
-      from ea in EmailAlias,
+      from(ea in EmailAlias,
         where: ea.address == ^address and is_nil(ea.deleted_at),
         left_join: m in subquery(recent_metrics()),
         on: m.alias_id == ea.id,
@@ -76,6 +79,7 @@ defmodule Shroud.Aliases do
           blocked_in_last_30_days: coalesce(m.blocked, 0),
           replied_in_last_30_days: coalesce(m.replied, 0)
         }
+      )
 
     Repo.one!(query)
   end
@@ -152,10 +156,11 @@ defmodule Shroud.Aliases do
       )
 
       alias_update =
-        from e in EmailAlias,
+        from(e in EmailAlias,
           where: e.id == ^email_alias.id,
           select: e.forwarded,
           update: [inc: [forwarded: 1]]
+        )
 
       {1, _} = Repo.update_all(alias_update, [])
     end)
@@ -171,10 +176,11 @@ defmodule Shroud.Aliases do
       )
 
       alias_update =
-        from e in EmailAlias,
+        from(e in EmailAlias,
           where: e.id == ^email_alias.id,
           select: e.blocked,
           update: [inc: [blocked: 1]]
+        )
 
       {1, _} = Repo.update_all(alias_update, [])
     end)
@@ -190,10 +196,11 @@ defmodule Shroud.Aliases do
       )
 
       alias_update =
-        from e in EmailAlias,
+        from(e in EmailAlias,
           where: e.id == ^email_alias.id,
           select: e.replied,
           update: [inc: [replied: 1]]
+        )
 
       {1, _} = Repo.update_all(alias_update, [])
     end)
@@ -208,7 +215,7 @@ defmodule Shroud.Aliases do
 
     address = address <> "@" <> Util.email_domain()
 
-    if Repo.exists?(from a in EmailAlias, where: a.address == ^address) do
+    if Repo.exists?(from(a in EmailAlias, where: a.address == ^address)) do
       generate_email_address()
     else
       address
@@ -218,7 +225,7 @@ defmodule Shroud.Aliases do
   defp recent_metrics do
     today = NaiveDateTime.utc_now() |> NaiveDateTime.to_date()
 
-    from m in EmailMetric,
+    from(m in EmailMetric,
       where: m.date > date_add(^today, -30, "day"),
       group_by: m.alias_id,
       select: %{
@@ -227,6 +234,7 @@ defmodule Shroud.Aliases do
         replied: sum(m.replied),
         alias_id: m.alias_id
       }
+    )
   end
 
   # Shamelessly copied from https://smartlogic.io/blog/dynamic-conditionals-with-ecto/
@@ -253,5 +261,24 @@ defmodule Shroud.Aliases do
 
     query
     |> where(^conditions)
+  end
+
+  defp insert_email_alias(attrs) do
+    {_local, domain} = Util.extract_email_parts(attrs.address)
+
+    custom_domain = Repo.get_by(CustomDomain, domain: domain)
+
+    domain_id =
+      if is_nil(custom_domain) do
+        nil
+      else
+        custom_domain.id
+      end
+
+    attrs = Map.merge(attrs, %{domain_id: domain_id})
+
+    %EmailAlias{}
+    |> EmailAlias.changeset(attrs)
+    |> Repo.insert()
   end
 end

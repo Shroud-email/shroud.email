@@ -12,12 +12,23 @@ defmodule Shroud.AccountsFixtures do
 
   def valid_user_attributes(attrs \\ %{}) do
     Enum.into(attrs, %{
+      status: :active,
       email: unique_user_email(),
       password: valid_user_password()
     })
   end
 
   def user_fixture(attrs \\ %{}) do
+    tomorrow = NaiveDateTime.utc_now() |> NaiveDateTime.add(1, :day)
+
+    attrs =
+      Map.merge(
+        %{
+          trial_expires_at: tomorrow
+        },
+        attrs
+      )
+
     {:ok, user} =
       attrs
       |> valid_user_attributes()

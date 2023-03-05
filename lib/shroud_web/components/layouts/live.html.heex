@@ -1,0 +1,40 @@
+<header class="bg-white shadow-sm">
+    <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex items-center">
+    <%= if @page_title_url do %>
+        <.link navigate={@page_title_url} class="text-gray-900 hover:text-indigo-600 transition-colors">
+            <h1 class="text-lg leading-6 font-semibold">
+                <%= @page_title %>
+            </h1>
+        </.link>
+    <% else %>
+        <h1 class="text-lg leading-6 font-semibold text-gray-900">
+        <%= @page_title %>
+        </h1>
+    <% end %>
+    <%= if @subpage_title do %>
+        <.icon name={:chevron_right} solid class="flex-shrink-0 h-5 w-5 text-gray-500 ml-1" />
+        <h2 class="text-sm text-gray-700 ml-1"><%= @subpage_title %></h2>
+    <% end %>
+    </div>
+</header>
+
+<main>
+    <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+    <div class="px-4 py-4 sm:px-0">
+        <.logging_warning current_user={@current_user} />
+        <%= @inner_content %>
+    </div>
+    </div>
+</main>
+
+<%# Notification container  %>
+<div
+    aria-live="assertive"
+    class="fixed inset-0 flex items-end px-4 py-6 pointer-events-none sm:p-6 sm:items-start"
+>
+    <div class="w-full flex flex-col items-center space-y-4 sm:items-end">
+    <.notification flash={@flash} kind={:success} />
+    <.notification flash={@flash} kind={:info} />
+    <.notification flash={@flash} kind={:error} />
+    </div>
+</div>

@@ -11,7 +11,7 @@
 
   <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
     <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-      <.form let={f} for={@changeset} action={Routes.user_reset_password_path(@conn, :update, @token)} class="space-y-6">
+      <.form :let={f} for={@changeset} action={Routes.user_reset_password_path(@conn, :update, @token)} class="space-y-6">
         <div>
           <%= label f, :password, "New password", class: "block text-sm font-medium text-gray-700" %>
           <div class="mt-1">

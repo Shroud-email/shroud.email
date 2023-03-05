@@ -1,7 +1,7 @@
-const defaultTheme = require("tailwindcss/defaultTheme")
+const defaultTheme = require("tailwindcss/defaultTheme");
 
 module.exports = {
-  content: ["./js/**/*.js", "../lib/shroud_web/**/*.*ex", "../lib/shroud_web/**/*.sface"],
+  content: ["./js/**/*.js", "../lib/shroud_web/**/*.*ex"],
   theme: {
     extend: {
       fontFamily: {
@@ -13,4 +13,4 @@ module.exports = {
     extend: {},
   },
   plugins: [require("@tailwindcss/forms"), require("@tailwindcss/typography")],
-}
+};

@@ -74,7 +74,7 @@ defmodule ShroudWeb.UserConfirmationControllerTest do
 
       conn = post(conn, Routes.user_confirmation_path(conn, :update, token))
       assert redirected_to(conn) == "/"
-      assert get_flash(conn, :info) =~ "Account confirmed successfully"
+      assert get_flash(conn, :info) =~ "Account confirmed."
       assert Accounts.get_user!(user.id).confirmed_at
       refute get_session(conn, :user_token)
       assert Repo.all(Accounts.UserToken) == []

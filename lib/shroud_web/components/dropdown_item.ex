@@ -1,14 +1,14 @@
 defmodule ShroudWeb.Components.DropdownItem do
-  use Surface.Component
+  use ShroudWeb, :component
 
-  prop index, :integer, required: true
-  prop text, :string, required: true
-  prop click, :event, required: false
+  attr(:index, :integer, required: true)
+  attr(:text, :string, required: true)
+  attr(:click, :string, required: false)
 
-  def render(assigns) do
-    ~F"""
+  def dropdown_item(assigns) do
+    ~H"""
     <button
-      :on-click={@click}
+      phx-click={@click}
       phx-value-text={@text}
       type="button"
       class="text-left px-4 py-2 text-sm text-gray-700"
@@ -19,7 +19,7 @@ defmodule ShroudWeb.Components.DropdownItem do
       @mouseleave="activeIndex = -1"
       @click="open = false; focusButton()"
     >
-      {@text}
+      <%= @text %>
     </button>
     """
   end

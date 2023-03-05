@@ -7,7 +7,7 @@ defmodule Shroud.MixProject do
       version: "0.1.0",
       elixir: "~> 1.12",
       elixirc_paths: elixirc_paths(Mix.env()),
-      compilers: Mix.compilers() ++ [:surface],
+      compilers: Mix.compilers(),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
       deps: deps(),
@@ -31,7 +31,7 @@ defmodule Shroud.MixProject do
 
   # Specifies which paths to compile per environment.
   defp elixirc_paths(:test), do: ["lib", "test/support"]
-  defp elixirc_paths(:dev), do: ["lib"] ++ catalogues()
+  defp elixirc_paths(:dev), do: ["lib"]
   defp elixirc_paths(_), do: ["lib"]
 
   # Specifies your project dependencies.
@@ -45,15 +45,14 @@ defmodule Shroud.MixProject do
       {:ecto_sql, "~> 3.9"},
       {:postgrex, ">= 0.0.0"},
       {:phoenix_html, "~> 3.0"},
-      {:phoenix_live_reload, "~> 1.2", only: :dev},
-      {:phoenix_live_view, "~> 0.17.0"},
-      {:phoenix_live_dashboard, "~> 0.5"},
+      {:phoenix_live_reload, "~> 1.4", only: :dev},
+      {:phoenix_live_view, "~> 0.18"},
+      {:phoenix_live_dashboard, "~> 0.7"},
       {:esbuild, "~> 0.2", runtime: Mix.env() == :dev},
       {:excoveralls, "~> 0.14.3", only: :test},
       {:mox, "~> 1.0", only: :test},
       {:sobelow, "~> 0.11.1", only: [:dev, :test], runtime: false},
       {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
-      {:husky, "~> 1.0", only: :dev, runtime: false},
       {:swoosh, "~> 1.6"},
       {:telemetry_metrics, "~> 0.6"},
       {:telemetry_poller, "~> 1.0"},
@@ -87,9 +86,7 @@ defmodule Shroud.MixProject do
       {:html_sanitize_ex, "~> 1.4"},
       {:ex_image_info, "~> 0.2.4"},
       {:ecto_psql_extras, "~> 0.7.4"},
-      {:surface, "~> 0.8.2"},
-      {:surface_catalogue, "~> 0.5.0"},
-      {:surface_heroicons, "~> 0.6.0"}
+      {:heroicons, "~> 0.5.2"}
     ]
   end
 
@@ -111,12 +108,6 @@ defmodule Shroud.MixProject do
         "esbuild default --minify",
         "phx.digest"
       ]
-    ]
-  end
-
-  def catalogues do
-    [
-      "priv/catalogue"
     ]
   end
 end

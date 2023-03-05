@@ -9,7 +9,7 @@
   class="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none"
   x-ref="menu-items"
   x-description="Dropdown menu, show/hide based on menu state."
-  :aria-activedescendant="activeDescendant"
+  x-bind:aria-activedescendant="activeDescendant"
   role="menu"
   aria-orientation="vertical"
   aria-labelledby="user-menu-button"
@@ -25,7 +25,7 @@
     link "Settings",
     to: Routes.user_settings_path(@conn, :account),
     class: "block px-4 py-2 text-sm text-gray-700",
-    ":class": "{ 'bg-gray-100': activeIndex === 0 }",
+    "x-bind:class": "{ 'bg-gray-100': activeIndex === 0 }",
     role: "menuitem",
     tabindex: "-1",
     id: "user-menu-item-0",
@@ -38,7 +38,7 @@
     to: Routes.user_session_path(@conn, :delete),
     method: :delete,
     class: "block px-4 py-2 text-sm text-gray-700",
-    ":class": "{ 'bg-gray-100': activeIndex === 1 }",
+    "x-bind:class": "{ 'bg-gray-100': activeIndex === 1 }",
     role: "menuitem",
     tabindex: "-1",
     id: "user-menu-item-1",

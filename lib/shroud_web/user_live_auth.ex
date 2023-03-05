@@ -1,5 +1,6 @@
 defmodule ShroudWeb.UserLiveAuth do
   import Phoenix.LiveView
+  import Phoenix.Component
   alias Shroud.Accounts
 
   # See https://hexdocs.pm/phoenix_live_view/security-model.html#mounting-considerations

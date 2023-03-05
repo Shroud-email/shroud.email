@@ -44,7 +44,17 @@
               <% end %>
               <div class="ml-3 relative" x-data="AlpineComponents.menu({ open: false })" x-init="init()" @keydown.escape.stop="open = false; focusButton()" @click.away="onClickAway($event)">
                 <div>
-                  <button type="button" class="max-w-xs bg-gray-800 rounded-full flex items-center text-sm text-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white" id="user-menu-button" aria-haspopup="true" x-ref="button" @click="onButtonClick()" :aria-expanded="open.toString()" @keydown.arrow-up.prevent="onArrowUp()" @keydown.arrow-down.prevent="onArrowDown()">
+                  <button
+                    type="button"
+                    class="max-w-xs bg-gray-800 rounded-full flex items-center text-sm text-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white"
+                    id="user-menu-button"
+                    aria-haspopup="true"
+                    x-ref="button"
+                    @click="onButtonClick()"
+                    @keydown.arrow-up.prevent="onArrowUp()"
+                    @keydown.arrow-down.prevent="onArrowDown()"
+                    x-bind:aria-expanded="open.toString()"
+                  >
                     <span class="sr-only">Open user menu</span>
                     <!-- HeroIcons user-cirle -->
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -62,7 +72,13 @@
         </div>
         <div class="-mr-2 flex md:hidden">
           <!-- Mobile menu button -->
-          <button @click="open = !open" type="button" class="bg-gray-800 inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white" aria-controls="mobile-menu" :aria-expanded="open.toString()">
+          <button
+            @click="open = !open"
+            type="button"
+            class="bg-gray-800 inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white"
+            aria-controls="mobile-menu"
+            x-bind:aria-expanded="open.toString()"
+          >
             <span class="sr-only">Open main menu</span>
             <!--
               Heroicon name: outline/menu

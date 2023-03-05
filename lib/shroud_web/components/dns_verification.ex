@@ -1,42 +1,42 @@
 defmodule ShroudWeb.Components.DnsVerification do
-  use Surface.Component
+  use ShroudWeb, :component
   alias Shroud.Domain
-  alias ShroudWeb.Components.Button
 
-  prop domain, :any, required: true
-  prop verifying, :boolean, required: true
-  prop sections, :keyword, required: true
-  prop verify, :event, required: true
+  attr(:domain, :any, required: true)
+  attr(:verifying, :boolean, required: true)
+  attr(:sections, :map, required: true)
+  attr(:verify, :string, required: true)
 
-  def render(assigns) do
-    all_verified = Domain.fully_verified?(assigns.domain)
-
+  def dns_verification(assigns) do
     verified =
       Enum.reduce(assigns.sections, %{}, fn {_title, {field, _rows}}, acc ->
         Map.put(acc, field, Domain.dns_record_verified?(assigns.domain, field))
       end)
 
-    ~F"""
+    assigns = assign(assigns, :all_verified, Domain.fully_verified?(assigns.domain))
+    assigns = assign(assigns, :verified, verified)
+
+    ~H"""
     <div>
       <div class="sm:flex sm:items-center">
         <div class="sm:flex-auto">
           <h3 class="text-lg font-semibold text-gray-900">DNS settings</h3>
-          {#if !all_verified}
+          <%= if !@all_verified do %>
             <p class="mt-2 text-sm text-gray-700">
               Add the following DNS records to activate your domain.
             </p>
             <p class="text-sm text-gray-700">
               DNS propagation can take up to 24 hours. Once you've added these records, you can sit back and relax: we'll email you when your domain is verified.
             </p>
-          {/if}
+          <% end %>
         </div>
         <div class="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
-          <Button
-            :if={not all_verified}
+          <.button
+            :if={not @all_verified}
             disabled={@verifying}
             click={@verify}
             text="Verify"
-            icon={Heroicons.Outline.RefreshIcon}
+            icon={:arrow_path}
           />
         </div>
       </div>
@@ -54,37 +54,37 @@ defmodule ShroudWeb.Components.DnsVerification do
                   </tr>
                 </thead>
                 <tbody class="bg-white">
-                  {#for {title, {field, rows}} <- @sections}
+                  <%= for {title, {field, rows}} <- @sections do %>
                     <tr class="border-t border-gray-200">
                       <th
                         colspan="5"
                         scope="colgroup"
                         class="bg-gray-50 px-4 py-2 text-left text-sm font-semibold text-gray-900 sm:px-6 flex items-center"
                       >
-                        {title}
-                        {#if Map.get(verified, field)}
+                        <%= title %>
+                        <%= if Map.get(@verified, field) do %>
                           <div x-init x-tooltip.raw="Verified" class="ml-2">
-                            <Heroicons.Solid.CheckCircleIcon class="h-5 w-5 text-green-400" />
+                            <.icon name={:check_circle} solid class="h-5 w-5 text-green-400" />
                           </div>
-                        {#else}
+                        <% else %>
                           <div x-init x-tooltip.raw="Waiting for DNS records" class="ml-2">
-                            <Heroicons.Solid.DotsHorizontalIcon class="h-5 w-5 animate-pulse" />
+                            <.icon name={:ellipsis_horizontal} solid class="h-5 w-5 animate-pulse" />
                           </div>
-                        {/if}
+                        <% end %>
                       </th>
                     </tr>
                     <tr
                       :for={record <- rows}
-                      class={"border-t border-gray-300 " <> if Map.get(verified, field, false), do: "bg-green-50", else: ""}
+                      class={"border-t border-gray-300 " <> if Map.get(@verified, field, false), do: "bg-green-50", else: ""}
                     >
-                      <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">{record.type |> Atom.to_string() |> String.upcase()}</td>
-                      <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{record.domain}</td>
+                      <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6"><%= record.type |> Atom.to_string() |> String.upcase() %></td>
+                      <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500"><%= record.domain %></td>
                       <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 flex items-center justify-start">
-                        <pre class="bg-gray-100 border border-gray-200 font-mono p-1 shrink">{record.value}</pre>
+                        <pre class="bg-gray-100 border border-gray-200 font-mono p-1 shrink"><%= record.value %></pre>
                       </td>
-                      <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{record.priority}</td>
+                      <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500"><%= record.priority %></td>
                     </tr>
-                  {/for}
+                  <% end %>
                 </tbody>
               </table>
             </div>

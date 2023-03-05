@@ -2,8 +2,7 @@ defmodule ShroudWeb.SpamEmailLive.Index do
   import Canada, only: [can?: 2]
 
   use Phoenix.HTML
-  use ShroudWeb, :surface_view
-  alias Surface.Components.LiveRedirect
+  use ShroudWeb, :live_view
 
   alias Shroud.Email
   alias Shroud.Aliases
@@ -12,7 +11,7 @@ defmodule ShroudWeb.SpamEmailLive.Index do
   def mount(_params, _session, socket) do
     socket =
       socket
-      |> assign(:page_title, "Spam Detention")
+      |> assign(:page_title, "Spam")
       |> assign(:page_title_url, nil)
       |> assign(:subpage_title, nil)
       |> load_spam_emails()

@@ -1,16 +1,16 @@
 defmodule ShroudWeb.Components.ButtonWithDropdown do
-  use Surface.Component
-  alias ShroudWeb.Components.{DropdownMenu}
+  use ShroudWeb, :component
+  import ShroudWeb.Components.DropdownMenu
 
-  prop text, :string, required: true
-  prop icon, :module, required: false
-  prop intent, :atom, default: :primary
-  prop disabled, :boolean, default: false
-  prop click, :event, required: false
+  attr(:text, :string, required: true)
+  attr(:icon, :atom, required: false)
+  attr(:intent, :atom, default: :primary)
+  attr(:disabled, :boolean, default: false)
+  attr(:click, :string, required: false)
 
-  slot default, required: true
+  slot(:inner_block, required: true)
 
-  def render(assigns) do
+  def button_with_dropdown(assigns) do
     class =
       case assigns.intent do
         :primary -> "border-indigo-400 text-white bg-indigo-600 hover:bg-indigo-700"
@@ -18,30 +18,32 @@ defmodule ShroudWeb.Components.ButtonWithDropdown do
         :white -> "border-gray-300 text-gray-700 bg-white hover:bg-gray-50"
       end
 
-    ~F"""
+    assigns = assign(assigns, :class, class)
+
+    ~H"""
     <div class="inline-flex rounded-md shadow-sm">
       <button
-        :on-click={@click}
+        phx-click={@click}
         type="button"
-        class={class <>
+        class={@class <>
           " relative inline-flex items-center rounded-l-md border px-4 py-2 text-sm font-medium focus:z-10 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"}
       >
         <span :if={@icon} class="-ml-1 mr-2 h-5 w-5">
-          <Component module={@icon} />
+          <.icon solid name={@icon} />
         </span>
-        {@text}
+        <%= @text %>
       </button>
-      <DropdownMenu
+      <.dropdown_menu
         class="-ml-px block"
-        button_class={class <>
+        button_class={@class <>
           " relative inline-flex items-center rounded-r-md border px-2 py-2 text-sm font-medium focus:z-10 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"}
         disabled={@disabled}
       >
         <:button_content>
-          <Heroicons.Solid.ChevronDownIcon class="h-5 w-5" />
+          <.icon name={:chevron_down} solid class="h-5 w-5" />
         </:button_content>
-        <#slot />
-      </DropdownMenu>
+        <%= render_slot(@inner_block) %>
+      </.dropdown_menu>
     </div>
     """
   end

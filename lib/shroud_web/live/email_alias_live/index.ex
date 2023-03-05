@@ -1,8 +1,7 @@
 defmodule ShroudWeb.EmailAliasLive.Index do
   import Canada, only: [can?: 2]
 
-  use ShroudWeb, :surface_view
-  alias Surface.Components.LiveRedirect
+  use ShroudWeb, :live_view
 
   alias Shroud.Accounts
   alias Shroud.Aliases
@@ -12,16 +11,12 @@ defmodule ShroudWeb.EmailAliasLive.Index do
   alias Shroud.Repo
   alias ShroudWeb.Router.Helpers, as: Routes
 
-  alias ShroudWeb.Components.{
-    Alert,
-    Page,
+  import ShroudWeb.Components.{
     ButtonWithDropdown,
-    DropdownItem,
-    Button,
-    EmptyState,
-    PopupAlert,
-    TextInput
+    DropdownItem
   }
+
+  alias ShroudWeb.Components.PopupAlert
 
   @impl true
   def mount(_params, _session, socket) do
@@ -32,6 +27,9 @@ defmodule ShroudWeb.EmailAliasLive.Index do
       |> assign(:filter_query, "")
       |> assign(:custom_alias_domain, nil)
       |> assign(:custom_alias_error, "")
+      |> assign(:page_title, "Aliases")
+      |> assign(:page_title_url, nil)
+      |> assign(:subpage_title, nil)
 
     {:ok, socket}
   end
