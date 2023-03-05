@@ -1,0 +1,20 @@
+on:
+  push:
+    branches:
+      - main
+
+name: release-please
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: google-github-actions/release-please-action@v3
+        with:
+          release-type: elixir
+          package-name: shroud.email
+          bootstrap-sha: b182fc93f050cab66c45bcd08a4701785881e822
