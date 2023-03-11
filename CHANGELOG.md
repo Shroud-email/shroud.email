@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.0.0](https://github.com/Shroud-email/shroud.email/compare/v0.2.4...v1.0.0) (2023-03-11)
+
+
+### ⚠ BREAKING CHANGES
+
+* **aliases:** admins must manually run the `make_emails_case_insensitive` command before deploying this.
+
+### Features
+
+* **aliases:** use citext column for alias addresses ([#53](https://github.com/Shroud-email/shroud.email/issues/53)) ([8e7800a](https://github.com/Shroud-email/shroud.email/commit/8e7800a9a77827224527a6e231f0d76695697b06))
+
 ## [0.2.4](https://github.com/Shroud-email/shroud.email/compare/v0.2.2...v0.2.4) (2023-03-11)
 
 
