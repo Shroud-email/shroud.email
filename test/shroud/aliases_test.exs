@@ -177,6 +177,25 @@ defmodule Shroud.AliasesTest do
   end
 
   describe "create_email_alias/1" do
+    test "does not allow creating the same alias with different cases" do
+      %{id: user_id} = user_fixture()
+
+      {:ok, _email_alias} =
+        Aliases.create_email_alias(%{user_id: user_id, address: "alias@random.com"})
+
+      {:error, _error} =
+        Aliases.create_email_alias(%{user_id: user_id, address: "ALIAS@random.com"})
+    end
+
+    test "saves the lowercase version of the alias" do
+      %{id: user_id} = user_fixture()
+
+      {:ok, email_alias} =
+        Aliases.create_email_alias(%{user_id: user_id, address: "ALIAS@random.com"})
+
+      assert email_alias.address == "alias@random.com"
+    end
+
     test "does not sets a domain_id if domain doesn't exist" do
       %{id: user_id} = user_fixture()
       custom_domain_fixture(%{user_id: user_id})
