@@ -1,7 +1,11 @@
 defmodule Shroud.Release do
   @app :shroud
 
+  alias Shroud.Repo
+  import Ecto.Query
+
   alias Shroud.Accounts
+  alias Shroud.Aliases.{EmailAlias, EmailMetric}
   alias Shroud.Accounts.User
   alias ShroudWeb.Router.Helpers, as: Routes
 
@@ -31,13 +35,109 @@ defmodule Shroud.Release do
         %User{}
         |> User.registration_changeset(%{email: email, password: password, status: :lifetime})
         |> Ecto.Changeset.change(%{confirmed_at: now, is_admin: true})
-        |> Shroud.Repo.insert!()
+        |> Repo.insert!()
 
       Accounts.deliver_user_reset_password_instructions(
         user,
         &Routes.user_reset_password_url(ShroudWeb.Endpoint, :edit, &1)
       )
     end
+  end
+
+  def make_emails_case_insensitive do
+    start_app()
+
+    Repo.transaction(fn ->
+      duplicate_aliases =
+        from(a in EmailAlias,
+          select: fragment("lower(?)", a.address),
+          group_by: fragment("lower(?)", a.address),
+          having: count("*") > 1
+        )
+        |> Repo.all()
+
+      duplicate_aliases
+      |> Enum.each(&handle_duplicate_alias/1)
+
+      from(a in EmailAlias, update: [set: [address: fragment("lower(?)", a.address)]])
+      |> Repo.update_all([])
+    end)
+  end
+
+  defp handle_duplicate_alias(email_alias) do
+    duplicates =
+      Repo.all(
+        from(a in EmailAlias,
+          where: fragment("lower(?)", a.address) == ^email_alias,
+          order_by: a.inserted_at
+        )
+      )
+
+    [first | rest] = duplicates
+
+    # Update metrics
+    dates =
+      Repo.all(
+        from(m in EmailMetric, where: m.alias_id in ^Enum.map(duplicates, & &1.id), select: m.date)
+      )
+
+    Enum.each(dates, fn date ->
+      metrics =
+        Repo.all(
+          from(m in EmailMetric,
+            where: m.alias_id in ^Enum.map(duplicates, & &1.id),
+            where: m.date == ^date
+          )
+        )
+
+      first_metric = Repo.get_by(EmailMetric, date: date, alias_id: first.id)
+
+      first_metric =
+        if is_nil(first_metric) do
+          %EmailMetric{}
+          |> EmailMetric.changeset(%{date: date, alias_id: first.id})
+          |> Repo.insert!()
+        else
+          first_metric
+        end
+
+      forwarded_sum = Enum.map(metrics, & &1.forwarded) |> Enum.sum()
+      blocked_sum = Enum.map(metrics, & &1.blocked) |> Enum.sum()
+      replied_sum = Enum.map(metrics, & &1.replied) |> Enum.sum()
+
+      EmailMetric.changeset(first_metric, %{
+        forwarded: forwarded_sum,
+        blocked: blocked_sum,
+        replied: replied_sum
+      })
+      |> Repo.update!()
+
+      Repo.delete_all(from m in EmailMetric, where: m.alias_id in ^Enum.map(rest, & &1.id))
+    end)
+
+    from(m in EmailMetric,
+      where: m.alias_id in ^Enum.map(rest, & &1.id)
+    )
+    |> Repo.update_all(set: [alias_id: first.id])
+
+    title = duplicates |> Enum.map_join("\n", & &1.title)
+    notes = duplicates |> Enum.map_join("\n", & &1.notes)
+
+    forwarded = duplicates |> Enum.map(& &1.forwarded) |> Enum.sum()
+    blocked = duplicates |> Enum.map(& &1.blocked) |> Enum.sum()
+    replied = duplicates |> Enum.map(& &1.replied) |> Enum.sum()
+
+    first =
+      EmailAlias.changeset(first, %{
+        title: title,
+        notes: notes,
+        forwarded: forwarded,
+        blocked: blocked,
+        replied: replied
+      })
+
+    Repo.update!(first)
+    Repo.delete_all(from a in EmailAlias, where: a.id in ^Enum.map(rest, & &1.id))
   end
 
   defp repos do
