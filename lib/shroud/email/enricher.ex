@@ -1,6 +1,6 @@
 defmodule Shroud.Email.Enricher do
   @moduledoc """
-  Adds a "Forwarded by Shroud.email" header to an email.
+  Adds a "Forwarded by Shroud.email" footer to an email.
   """
 
   alias Shroud.Util
@@ -21,9 +21,9 @@ defmodule Shroud.Email.Enricher do
     [{}]
 
     text_body = """
-    This email was forwarded from #{to_alias} by Shroud.email.
-
     #{swoosh_email.text_body}
+
+    This email was forwarded from #{to_alias} by Shroud.email.
     """
 
     swoosh_email = %Swoosh.Email{swoosh_email | text_body: text_body}
@@ -52,12 +52,12 @@ defmodule Shroud.Email.Enricher do
         parsed_html |> Floki.raw_html() |> html_fallback(email)
 
       _body ->
-        header = shroud_header(email)
+        footer = shroud_footer(email)
 
         parsed_html
         |> Floki.traverse_and_update(fn
           {"body", attrs, children} ->
-            {"body", attrs, [header | children]}
+            {"body", attrs, children ++ [footer]}
 
           other ->
             other
@@ -67,18 +67,18 @@ defmodule Shroud.Email.Enricher do
   end
 
   # If we can't process the HTML properly, just plonk this notice in
-  # before the top <html> element. Ugly, but a decent fallback.
+  # after the top <html> element. Ugly, but a decent fallback.
   defp html_fallback(html_body, email) do
-    header = email |> shroud_header() |> Floki.raw_html()
+    footer = email |> shroud_footer() |> Floki.raw_html()
 
     """
-    #{header}
-
     #{html_body}
+
+    #{footer}
     """
   end
 
-  defp shroud_header(%ParsedEmail{to: to_alias} = email) do
+  defp shroud_footer(%ParsedEmail{to: to_alias} = email) do
     {_sender_name, sender_address} = email.swoosh_email.from
 
     trackers = email.removed_trackers
@@ -95,7 +95,7 @@ defmodule Shroud.Email.Enricher do
 
     trackers_word = if length(trackers) == 1, do: "tracker", else: "trackers"
 
-    header_text =
+    footer_text =
       if Enum.empty?(trackers),
         do: "didn't find any trackers.",
         else: "removed #{length(trackers)} #{trackers_word}."
@@ -112,18 +112,14 @@ defmodule Shroud.Email.Enricher do
         "div",
         [
           {"style",
-           "background: #ffffff; background-color: #ffffff; margin:0px auto; padding: 5px; border-bottom: 3px solid #d271d2;"}
+           "background: #ffffff; background-color: #ffffff; margin:0px auto; padding: 5px;"}
         ],
         [
           {"p",
            [
              {"style",
               "font-family: sans-serif; font-size: 13px; text-align: center; color: #444444; margin: 5px auto;"}
-           ],
-           [
-             {"strong", [{"style", "color: #444444;"}], "Shroud.email "},
-             header_text
-           ]}
+           ], "This email was forwarded by Shroud.email. We #{footer_text}"}
         ]
       }
     }
