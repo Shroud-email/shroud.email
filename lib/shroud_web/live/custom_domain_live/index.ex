@@ -12,6 +12,7 @@ defmodule ShroudWeb.CustomDomainLive.Index do
       |> assign(:page_title, "Domains")
       |> assign(:page_title_url, nil)
       |> assign(:subpage_title, nil)
+      |> assign(:error, nil)
 
     {:ok, assigns}
   end
