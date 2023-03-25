@@ -1,9 +1,8 @@
 defmodule ShroudWeb.UserAuth do
   import Plug.Conn
-  import Phoenix.Controller
+  use ShroudWeb, :controller
 
   alias Shroud.Accounts
-  alias ShroudWeb.Router.Helpers, as: Routes
 
   # Make the remember me cookie valid for 60 days.
   # If you want bump or reduce this value, also change
@@ -31,7 +30,7 @@ defmodule ShroudWeb.UserAuth do
       if user.confirmed_at do
         get_session(conn, :user_return_to)
       else
-        Routes.user_confirmation_path(conn, :new)
+        ~p"/users/confirm"
       end
 
     conn
@@ -153,7 +152,7 @@ defmodule ShroudWeb.UserAuth do
       conn
       |> put_flash(:error, "You must log in to access this page.")
       |> maybe_store_return_to()
-      |> redirect(to: Routes.user_session_path(conn, :new))
+      |> redirect(to: ~p"/users/log_in")
       |> halt()
     end
   end
@@ -170,14 +169,14 @@ defmodule ShroudWeb.UserAuth do
         conn
         |> put_flash(:error, "You must log in to access this page.")
         |> maybe_store_return_to()
-        |> redirect(to: Routes.user_session_path(conn, :new))
+        |> redirect(to: ~p"/users/log_in")
         |> halt()
 
       %{confirmed_at: nil} ->
         conn
         |> put_flash(:error, "Confirm your account to access this page.")
         |> maybe_store_return_to()
-        |> redirect(to: Routes.user_confirmation_path(conn, :new))
+        |> redirect(to: ~p"/users/confirm")
         |> halt()
 
       _user ->
@@ -202,14 +201,14 @@ defmodule ShroudWeb.UserAuth do
         conn
         |> put_flash(:error, "You must log in to access this page.")
         |> maybe_store_return_to()
-        |> redirect(to: Routes.user_session_path(conn, :new))
+        |> redirect(to: ~p"/users/log_in")
         |> halt()
 
       true ->
         conn
         |> put_flash(:error, "You do not have permission to access this page.")
         |> maybe_store_return_to()
-        |> redirect(to: Routes.email_alias_index_path(conn, :index))
+        |> redirect(to: ~p"/")
         |> halt()
     end
   end

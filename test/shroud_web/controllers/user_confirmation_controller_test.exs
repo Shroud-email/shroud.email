@@ -36,7 +36,7 @@ defmodule ShroudWeb.UserConfirmationControllerTest do
         })
 
       assert redirected_to(conn) == "/users/confirm"
-      assert get_flash(conn, :info) =~ "If your email is in our system"
+      assert Flash.get(conn.assigns.flash, :info) =~ "If your email is in our system"
       assert Repo.get_by!(Accounts.UserToken, user_id: user.id, context: "confirm")
     end
 
@@ -74,7 +74,7 @@ defmodule ShroudWeb.UserConfirmationControllerTest do
 
       conn = post(conn, Routes.user_confirmation_path(conn, :update, token))
       assert redirected_to(conn) == "/"
-      assert get_flash(conn, :info) =~ "Account confirmed."
+      assert Flash.get(conn.assigns.flash, :info) =~ "Account confirmed."
       assert Accounts.get_user!(user.id).confirmed_at
       refute get_session(conn, :user_token)
       assert Repo.all(Accounts.UserToken) == []
@@ -82,7 +82,9 @@ defmodule ShroudWeb.UserConfirmationControllerTest do
       # When not logged in
       conn = post(conn, Routes.user_confirmation_path(conn, :update, token))
       assert redirected_to(conn) == "/"
-      assert get_flash(conn, :error) =~ "User confirmation link is invalid or it has expired"
+
+      assert Flash.get(conn.assigns.flash, :error) =~
+               "User confirmation link is invalid or it has expired"
 
       # When logged in
       conn =
@@ -91,13 +93,16 @@ defmodule ShroudWeb.UserConfirmationControllerTest do
         |> post(Routes.user_confirmation_path(conn, :update, token))
 
       assert redirected_to(conn) == "/"
-      refute get_flash(conn, :error)
+      refute Flash.get(conn.assigns.flash, :error)
     end
 
     test "does not confirm email with invalid token", %{conn: conn, user: user} do
       conn = post(conn, Routes.user_confirmation_path(conn, :update, "oops"))
       assert redirected_to(conn) == "/"
-      assert get_flash(conn, :error) =~ "User confirmation link is invalid or it has expired"
+
+      assert Flash.get(conn.assigns.flash, :error) =~
+               "User confirmation link is invalid or it has expired"
+
       refute Accounts.get_user!(user.id).confirmed_at
     end
   end

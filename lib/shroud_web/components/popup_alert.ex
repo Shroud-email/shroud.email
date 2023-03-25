@@ -72,7 +72,9 @@ defmodule ShroudWeb.Components.PopupAlert do
                     <.icon name={@icon} class="h-6 w-6 text-gray-600" />
                   </div>
                   <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                    <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title"><%= @title %></h3>
+                    <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                      <%= @title %>
+                    </h3>
                     <div class="mt-2">
                       <p class="text-sm text-gray-500"><%= @text %></p>
                     </div>

@@ -169,8 +169,10 @@ defmodule ShroudWeb.Components.Atoms do
 
   def logging_warning(assigns) do
     ~H"""
-    <p class="alert alert-warning mb-6" role="alert" :if={Logging.any_logging_enabled?(@current_user)}>
-      Logging is enabled on your account. Please <a href="mailto:hello@shroud.email" class="underline mx-1">contact support</a> if you did not expect this.
+    <p :if={Logging.any_logging_enabled?(@current_user)} class="alert alert-warning mb-6" role="alert">
+      Logging is enabled on your account. Please
+      <a href="mailto:hello@shroud.email" class="underline mx-1">contact support</a>
+      if you did not expect this.
     </p>
     """
   end
@@ -203,7 +205,9 @@ defmodule ShroudWeb.Components.Atoms do
             <.icon name={@icon} class={"h-6 w-6 " <> @icon_class} />
           </div>
           <div class="ml-3 w-0 flex-1 pt-0.5">
-            <p class="text-left text-sm font-medium text-gray-900"><%= live_flash(@flash, @kind) %></p>
+            <p class="text-left text-sm font-medium text-gray-900">
+              <%= live_flash(@flash, @kind) %>
+            </p>
           </div>
         </div>
       </div>

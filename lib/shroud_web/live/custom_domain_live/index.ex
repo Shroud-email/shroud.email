@@ -2,7 +2,6 @@ defmodule ShroudWeb.CustomDomainLive.Index do
   use ShroudWeb, :live_view
   alias ShroudWeb.Components.PopupAlert
   alias Shroud.Domain
-  alias ShroudWeb.Router.Helpers, as: Routes
 
   def mount(_params, _session, socket) do
     domains = Domain.list_custom_domains(socket.assigns.current_user)
@@ -31,7 +30,7 @@ defmodule ShroudWeb.CustomDomainLive.Index do
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 auto-rows-fr">
         <.link
           :for={domain <- @domains}
-          navigate={Routes.custom_domain_show_path(ShroudWeb.Endpoint, :show, domain.domain)}
+          navigate={~p"/domains/#{domain.domain}"}
           class="rounded bg-white shadow hover:shadow-lg transition-shadow p-3 overflow-hidden focus:ring focus:ring-indigo-600"
         >
           <h3 class="font-bold flex items-center">
@@ -46,7 +45,9 @@ defmodule ShroudWeb.CustomDomainLive.Index do
               </div>
             <% end %>
           </h3>
-          <p class="text-sm text-slate-600">Added <%= Timex.format!(domain.inserted_at, "{D} {Mshort} {YYYY}") %></p>
+          <p class="text-sm text-slate-600">
+            Added <%= Timex.format!(domain.inserted_at, "{D} {Mshort} {YYYY}") %>
+          </p>
           <div class="flex justify-between">
             <div class="text-sm text-slate-600 self-end">
               Catch-all <%= if domain.catchall_enabled, do: "enabled", else: "disabled" %>.
@@ -94,7 +95,7 @@ defmodule ShroudWeb.CustomDomainLive.Index do
       {:ok, _domain} ->
         {:noreply,
          push_redirect(socket,
-           to: Routes.custom_domain_show_path(ShroudWeb.Endpoint, :show, domain)
+           to: ~p"/domains/#{domain}"
          )}
 
       {:error, changeset} ->

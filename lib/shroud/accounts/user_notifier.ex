@@ -3,8 +3,7 @@ defmodule Shroud.Accounts.UserNotifier do
 
   alias Shroud.{Accounts, EmailTemplate, Mailer, Util, Repo}
   alias Shroud.Domain.CustomDomain
-  alias ShroudWeb.Endpoint
-  alias ShroudWeb.Router.Helpers, as: Routes
+  use ShroudWeb, :verified_routes
 
   # Delivers the email using the application mailer.
   defp deliver(recipient, subject, html_body, text_body) do
@@ -109,7 +108,7 @@ defmodule Shroud.Accounts.UserNotifier do
 
   def deliver_trial_expiring_notice(user_id) do
     user = Accounts.get_user!(user_id)
-    billing_url = Routes.user_settings_url(Endpoint, :billing)
+    billing_url = url(~p"/settings/billing")
     expiry_date = Timex.format!(user.trial_expires_at, "{D} {Mshort} '{YY}")
 
     html_body =
@@ -142,7 +141,7 @@ defmodule Shroud.Accounts.UserNotifier do
 
   def deliver_trial_expired_notice(user_id) do
     user = Accounts.get_user!(user_id)
-    billing_url = Routes.user_settings_url(Endpoint, :billing)
+    billing_url = url(~p"/settings/billing")
 
     html_body =
       EmailTemplate.TrialExpiredNotice.render(
@@ -202,7 +201,7 @@ defmodule Shroud.Accounts.UserNotifier do
 
   def deliver_incoming_email_marked_as_spam(user_id, email_alias) do
     user = Accounts.get_user!(user_id)
-    spam_url = Routes.spam_email_index_path(Endpoint, :index)
+    spam_url = url(~p"/detention")
 
     html_body =
       EmailTemplate.IncomingEmailMarkedAsSpam.render(
@@ -233,7 +232,7 @@ defmodule Shroud.Accounts.UserNotifier do
   def deliver_domain_verified(custom_domain_id) do
     custom_domain = Repo.get(CustomDomain, custom_domain_id) |> Repo.preload(:user)
     user = custom_domain.user
-    domain_url = Routes.custom_domain_show_url(Endpoint, :show, custom_domain.domain)
+    domain_url = url(~p"/domains/#{custom_domain.domain}")
 
     html_body =
       EmailTemplate.DomainVerified.render(
@@ -263,7 +262,7 @@ defmodule Shroud.Accounts.UserNotifier do
   def deliver_domain_no_longer_verified(custom_domain_id) do
     custom_domain = Repo.get(CustomDomain, custom_domain_id) |> Repo.preload(:user)
     user = custom_domain.user
-    domain_url = Routes.custom_domain_show_url(Endpoint, :show, custom_domain.domain)
+    domain_url = url(~p"/domains/#{custom_domain.domain}")
 
     html_body =
       EmailTemplate.DomainNoLongerVerified.render(

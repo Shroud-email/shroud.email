@@ -2,6 +2,7 @@ defmodule ShroudWeb.UserResetPasswordController do
   use ShroudWeb, :controller
 
   alias Shroud.Accounts
+  alias ShroudWeb.Router.Helpers, as: Routes
 
   plug :get_user_by_reset_password_token when action in [:edit, :update]
 
@@ -37,7 +38,7 @@ defmodule ShroudWeb.UserResetPasswordController do
       {:ok, _} ->
         conn
         |> put_flash(:info, "Password reset successfully.")
-        |> redirect(to: Routes.user_session_path(conn, :new))
+        |> redirect(to: ~p"/users/log_in")
 
       {:error, changeset} ->
         render(conn, "edit.html", changeset: changeset)

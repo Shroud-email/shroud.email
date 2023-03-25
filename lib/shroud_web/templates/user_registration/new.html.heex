@@ -5,13 +5,13 @@
     </h2>
     <p class="mt-2 text-center text-sm text-gray-600">
       Or
-      <%= link "sign in to an existing account", to: Routes.user_session_path(@conn, :new), class: "font-medium text-indigo-600 hover:text-indigo-500" %>
+      <%= link "sign in to an existing account", to: ~p"/users/log_in", class: "font-medium text-indigo-600 hover:text-indigo-500" %>
     </p>
   </div>
 
   <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
     <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-      <.form :let={f} for={@changeset} action={Routes.user_registration_path(@conn, :new)} as={:user}, class="space-y-6">
+      <.form :let={f} for={@changeset} action={~p"/users/register"} as={:user}, class="space-y-6">
         <%= if @lifetime do %>
           <p class="text-sm text-gray-600 text-center">Signing up for a lifetime account.</p>
           <%= select f, :status, [:lifetime], selected: :lifetime, class: "hidden" %>

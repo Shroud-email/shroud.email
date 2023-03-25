@@ -5,13 +5,13 @@
     </h2>
     <p class="mt-2 text-center text-sm text-gray-600">
       Or
-      <%= link "sign in", to: Routes.user_session_path(@conn, :new), class: "font-medium text-indigo-600 hover:text-indigo-500" %>
+      <%= link "sign in", to: ~p"/users/log_in", class: "font-medium text-indigo-600 hover:text-indigo-500" %>
     </p>
   </div>
 
   <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
     <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-      <.form :let={f} for={@changeset} action={Routes.user_reset_password_path(@conn, :update, @token)} class="space-y-6">
+      <.form :let={f} for={@changeset} action={~p"/users/reset_password/@token"} class="space-y-6">
         <div>
           <%= label f, :password, "New password", class: "block text-sm font-medium text-gray-700" %>
           <div class="mt-1">

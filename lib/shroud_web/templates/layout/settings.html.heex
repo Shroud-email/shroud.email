@@ -1,26 +1,26 @@
 <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
   <.logging_warning current_user={@current_user} />
-  <p :if={get_flash(@conn, :info)} class="alert alert-info mb-6" role="alert">
-    <%= get_flash(@conn, :info) %>
+  <p :if={Flash.get(@flash, :info)} class="alert alert-info mb-6" role="alert">
+    <%= Flash.get(@flash, :info) %>
   </p>
-  <p :if={get_flash(@conn, :error)} class="alert alert-error mb-6" role="alert">
-    <%= get_flash(@conn, :error) %>
+  <p :if={Flash.get(@flash, :error)} class="alert alert-error mb-6" role="alert">
+    <%= Flash.get(@flash, :error) %>
   </p>
   <div class="lg:grid lg:grid-cols-12 lg:gap-x-5">
     <aside class="px-2 sm:px-6 lg:px-0 lg:col-span-3">
       <nav class="space-y-1">
         <.link
-          patch={Routes.user_settings_path(@conn, :account)}
+          patch={~p"/settings/account"}
           class={active_class(
             @conn,
-            Routes.user_settings_path(@conn, :account),
+            ~p"/settings/account",
             "text-gray-900 hover:text-gray-900 hover:bg-gray-50 group rounded-md px-3 py-2 flex items-center text-sm font-medium",
             "bg-gray-50 text-indigo-700 hover:text-indigo-700 hover:bg-white"
           )}
         >
           <.icon name={:user_circle} class={active_class(
             @conn,
-            Routes.user_settings_path(@conn, :account),
+            ~p"/settings/account",
             "text-gray-400 group-hover:text-gray-500 flex-shrink-0 -ml-1 mr-3 h-6 w-6",
             "text-indigo-500 group-hover:text-indigo-500"
           )} />
@@ -30,17 +30,17 @@
         </.link>
 
         <.link
-          patch={Routes.user_settings_path(@conn, :security)}
+          patch={~p"/settings/security"}
           class={active_class(
             @conn,
-            Routes.user_settings_path(@conn, :security),
+            ~p"/settings/security",
             "text-gray-900 hover:text-gray-900 hover:bg-gray-50 group rounded-md px-3 py-2 flex items-center text-sm font-medium",
             "bg-gray-50 text-indigo-700 hover:text-indigo-700 hover:bg-white"
           )}
         >
           <.icon name={:key} class={active_class(
             @conn,
-            Routes.user_settings_path(@conn, :security),
+            ~p"/settings/security",
             "text-gray-400 group-hover:text-gray-500 flex-shrink-0 -ml-1 mr-3 h-6 w-6",
             "text-indigo-500 group-hover:text-indigo-500"
           )} />
@@ -50,17 +50,17 @@
         </.link>
 
         <.link
-          patch={Routes.user_settings_path(@conn, :billing)}
+          patch={~p"/settings/billing"}
           class={active_class(
             @conn,
-            Routes.user_settings_path(@conn, :billing),
+            ~p"/settings/billing",
             "text-gray-900 hover:text-gray-900 hover:bg-gray-50 group rounded-md px-3 py-2 flex items-center text-sm font-medium",
             "bg-gray-50 text-indigo-700 hover:text-indigo-700 hover:bg-white"
           )}
         >
           <.icon name={:credit_card} class={active_class(
             @conn,
-            Routes.user_settings_path(@conn, :billing),
+            ~p"/settings/billing",
             "text-gray-400 group-hover:text-gray-500 flex-shrink-0 -ml-1 mr-3 h-6 w-6",
             "text-indigo-500 group-hover:text-indigo-500"
           )} />

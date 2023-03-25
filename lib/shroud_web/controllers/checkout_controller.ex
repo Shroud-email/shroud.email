@@ -16,8 +16,8 @@ defmodule ShroudWeb.CheckoutController do
     # then Phoenix will escape the brackets, which means that Stripe won't
     # substitute it properly.
     billing_period = Map.fetch!(@billing_periods, billing_period)
-    success_url = Routes.checkout_url(conn, :success)
-    cancel_url = Routes.user_settings_url(conn, :billing)
+    success_url = ~p"/checkout/success"
+    cancel_url = ~p"/settings/billing"
 
     session =
       Session.create_checkout!(
@@ -40,9 +40,9 @@ defmodule ShroudWeb.CheckoutController do
     customer_id = conn.assigns.current_user.stripe_customer_id
 
     if is_nil(customer_id) do
-      redirect(conn, to: Routes.user_settings_path(conn, :billing))
+      redirect(conn, to: ~p"/settings/billing")
     else
-      return_url = Routes.user_settings_url(conn, :billing)
+      return_url = ~p"/settings/billing"
       billing_session = Session.create_billing!(customer_id, return_url)
 
       conn

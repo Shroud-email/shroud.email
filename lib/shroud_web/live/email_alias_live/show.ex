@@ -12,7 +12,7 @@ defmodule ShroudWeb.EmailAliasLive.Show do
     socket =
       socket
       |> assign(:page_title, "Aliases")
-      |> assign(:page_title_url, Routes.email_alias_index_path(socket, :index))
+      |> assign(:page_title_url, ~p"/")
       |> assign(:subpage_title, address)
       |> assign(:address, address)
       |> assign(:blocked_sender_error, "")
@@ -38,7 +38,9 @@ defmodule ShroudWeb.EmailAliasLive.Show do
                 phx-click="delete"
                 data-confirm={"Are you sure you want to permanently delete #{@alias.address}?"}
                 class="text-xs font-semibold uppercase text-red-700 hover:text-red-500"
-              >Delete</button>
+              >
+                Delete
+              </button>
             </div>
           </div>
           <div class="flex justify-end sm:justify-between items-center mt-2">
@@ -46,7 +48,9 @@ defmodule ShroudWeb.EmailAliasLive.Show do
               phx-click="delete"
               data-confirm={"Are you sure you want to permanently delete #{@alias.address}?"}
               class="sm:hidden text-xs font-semibold uppercase text-red-700 hover:text-red-500"
-            >Delete</button>
+            >
+              Delete
+            </button>
           </div>
         </div>
         <div class="border-t border-gray-200">
@@ -68,16 +72,18 @@ defmodule ShroudWeb.EmailAliasLive.Show do
             >
               <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                 <dt class="text-sm font-medium text-gray-500">
-                  <%= label f, :title %>
+                  <%= label(f, :title) %>
                 </dt>
                 <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2 flex">
-                  <%=
-                    text_input f, :title,
+                  <%= text_input(f, :title,
                     "x-show": "editingTitle",
                     placeholder: "Alias title",
-                    class: "flex-grow shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                  %>
-                  <span x-show="!editingTitle" class="flex-grow"><%= @alias.title || "No title yet" %></span>
+                    class:
+                      "flex-grow shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                  ) %>
+                  <span x-show="!editingTitle" class="flex-grow">
+                    <%= @alias.title || "No title yet" %>
+                  </span>
                   <span class="ml-4 flex-shrink-0">
                     <button
                       @click="editingTitle = true"
@@ -91,21 +97,26 @@ defmodule ShroudWeb.EmailAliasLive.Show do
                       type="submit"
                       x-show="editingTitle"
                       class="bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                    >Save</button>
+                    >
+                      Save
+                    </button>
                   </span>
                 </dd>
               </div>
               <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                 <dt class="text-sm font-medium text-gray-500">
-                  <%= label f, :notes %>
+                  <%= label(f, :notes) %>
                 </dt>
                 <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2 flex">
-                  <%= textarea f, :notes,
+                  <%= textarea(f, :notes,
                     "x-show": "editingNotes",
                     placeholder: "Notes about this alias",
-                    class: "shadow-sm block w-full focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm border border-gray-300 rounded-md"
-                  %>
-                  <span x-show="!editingNotes" class="flex-grow"><%= @alias.notes || "No notes" %></span>
+                    class:
+                      "shadow-sm block w-full focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm border border-gray-300 rounded-md"
+                  ) %>
+                  <span x-show="!editingNotes" class="flex-grow">
+                    <%= @alias.notes || "No notes" %>
+                  </span>
                   <span class="ml-4 flex-shrink-0">
                     <button
                       @click="editingNotes = true"
@@ -119,7 +130,9 @@ defmodule ShroudWeb.EmailAliasLive.Show do
                       type="submit"
                       x-show="editingNotes"
                       class="bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                    >Save</button>
+                    >
+                      Save
+                    </button>
                   </span>
                 </dd>
               </div>
@@ -183,8 +196,15 @@ defmodule ShroudWeb.EmailAliasLive.Show do
                 </div>
               </dt>
               <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                <ul :if={not Enum.empty?(@alias.blocked_addresses)} role="list" class="border border-gray-200 rounded-md divide-y divide-gray-200 mb-6">
-                  <li :for={blocked_sender <- @alias.blocked_addresses} class="pl-3 pr-4 py-3 flex items-center justify-between text-sm">
+                <ul
+                  :if={not Enum.empty?(@alias.blocked_addresses)}
+                  role="list"
+                  class="border border-gray-200 rounded-md divide-y divide-gray-200 mb-6"
+                >
+                  <li
+                    :for={blocked_sender <- @alias.blocked_addresses}
+                    class="pl-3 pr-4 py-3 flex items-center justify-between text-sm"
+                  >
                     <div class="w-0 flex-1 flex items-center">
                       <.icon name={:envelope} solid class="flex-shrink-0 h-5 w-5 text-gray-400" />
                       <span class="ml-2 flex-1 w-0 truncate">
@@ -228,7 +248,9 @@ defmodule ShroudWeb.EmailAliasLive.Show do
                       </button>
                     </div>
                   </div>
-                  <span :if={@blocked_sender_error} class="invalid-feedback"><%= @blocked_sender_error %></span>
+                  <span :if={@blocked_sender_error} class="invalid-feedback">
+                    <%= @blocked_sender_error %>
+                  </span>
                 </form>
               </dd>
             </div>
@@ -296,7 +318,7 @@ defmodule ShroudWeb.EmailAliasLive.Show do
 
         socket
         |> put_flash(:success, "Deleted alias #{deleted_alias.address}.")
-        |> push_redirect(to: Routes.email_alias_index_path(socket, :index))
+        |> push_redirect(to: ~p"/")
       else
         socket |> put_flash(:error, "You don't have permission to do that.")
       end

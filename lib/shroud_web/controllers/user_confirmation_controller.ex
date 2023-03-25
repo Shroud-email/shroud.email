@@ -2,6 +2,7 @@ defmodule ShroudWeb.UserConfirmationController do
   use ShroudWeb, :controller
 
   alias Shroud.Accounts
+  alias ShroudWeb.Router.Helpers, as: Routes
 
   def new(conn, _params) do
     render(conn, "new.html", page_title: "Confirm")
@@ -22,7 +23,7 @@ defmodule ShroudWeb.UserConfirmationController do
       "If your email is in our system and it has not been confirmed yet, " <>
         "you will receive an email with instructions shortly."
     )
-    |> redirect(to: Routes.user_confirmation_path(conn, :new))
+    |> redirect(to: ~p"/users/confirm")
   end
 
   def edit(conn, %{"token" => token}) do

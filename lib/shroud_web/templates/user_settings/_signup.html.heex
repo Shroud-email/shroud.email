@@ -96,10 +96,10 @@
       <div class="mt-6">
         <div class="rounded-md shadow">
           <template x-if="billingPeriod === 'monthly'">
-            <%= link "Sign up", to: Routes.checkout_path(@conn, :index, period: "monthly"), class: "flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-white bg-gray-800 hover:bg-gray-900" %>
+            <%= link "Sign up", to: ~p"/checkout?period=monthly", class: "flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-white bg-gray-800 hover:bg-gray-900" %>
           </template>
           <template x-if="billingPeriod === 'yearly'">
-            <%= link "Sign up", to: Routes.checkout_path(@conn, :index, period: "yearly"), class: "flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-white bg-gray-800 hover:bg-gray-900" %>
+            <%= link "Sign up", to: ~p"/checkout/?period=yearly", class: "flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-white bg-gray-800 hover:bg-gray-900" %>
           </template>
         </div>
       </div>

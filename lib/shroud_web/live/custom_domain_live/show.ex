@@ -6,7 +6,6 @@ defmodule ShroudWeb.CustomDomainLive.Show do
   alias Shroud.Domain
   alias Shroud.Domain.DnsRecord
   alias Shroud.Domain.DnsChecker
-  alias ShroudWeb.Router.Helpers, as: Routes
 
   import ShroudWeb.Components.DnsVerification
   alias ShroudWeb.Components.PopupAlert
@@ -17,7 +16,7 @@ defmodule ShroudWeb.CustomDomainLive.Show do
     socket =
       socket
       |> assign(:page_title, "Domains")
-      |> assign(:page_title_url, Routes.custom_domain_index_path(ShroudWeb.Endpoint, :index))
+      |> assign(:page_title_url, ~p"/domains")
       |> assign(:subpage_title, domain)
       |> assign(:domain, custom_domain)
       |> assign(:initially_verified, Domain.fully_verified?(custom_domain))
@@ -52,7 +51,9 @@ defmodule ShroudWeb.CustomDomainLive.Show do
       <div class="bg-white rounded shadow md:rounded-lg ring-1 ring-black ring-opacity-5 p-4 mb-12">
         <div class="flex items-center">
           <.toggle on={@domain.catchall_enabled} click="toggle_catchall" />
-          <label class="ml-3 font-semibold text-sm">Catch-all <%= if @domain.catchall_enabled, do: "enabled", else: "disabled" %>.</label>
+          <label class="ml-3 font-semibold text-sm">
+            Catch-all <%= if @domain.catchall_enabled, do: "enabled", else: "disabled" %>.
+          </label>
         </div>
         <p class="text-gray-700 text-sm mt-3">
           When catch-all is on, you don't need to manually create new aliases. The first time an email
@@ -64,22 +65,19 @@ defmodule ShroudWeb.CustomDomainLive.Show do
       domain={@domain}
       verifying={@verifying}
       verify="verify"
-      sections={%{
-        "Ownership" => {:ownership_verified_at, DnsRecord.desired_ownership_records(@domain)},
-        "MX" => {:mx_verified_at, DnsRecord.desired_mx_records(@domain)},
-        "SPF" => {:spf_verified_at, DnsRecord.desired_spf_records(@domain)},
-        "DKIM" => {:dkim_verified_at, DnsRecord.desired_dkim_records(@domain)},
-        "DMARC" => {:dmarc_verified_at, DnsRecord.desired_dmarc_records(@domain)}
-      }}
+      sections={
+        %{
+          "Ownership" => {:ownership_verified_at, DnsRecord.desired_ownership_records(@domain)},
+          "MX" => {:mx_verified_at, DnsRecord.desired_mx_records(@domain)},
+          "SPF" => {:spf_verified_at, DnsRecord.desired_spf_records(@domain)},
+          "DKIM" => {:dkim_verified_at, DnsRecord.desired_dkim_records(@domain)},
+          "DMARC" => {:dmarc_verified_at, DnsRecord.desired_dmarc_records(@domain)}
+        }
+      }
     />
     <h3 class="font-semibold text-lg text-gray-900 mb-4 mt-8">Danger zone</h3>
     <div class="bg-white rounded shadow md:rounded-lg ring-1 ring-black ring-opacity-5 p-4 mb-12">
-      <.button
-        intent={:danger}
-        click="open_delete_modal"
-        text="Delete domain"
-        icon={:trash}
-      />
+      <.button intent={:danger} click="open_delete_modal" text="Delete domain" icon={:trash} />
     </div>
 
     <form phx-submit="delete">
@@ -132,7 +130,7 @@ defmodule ShroudWeb.CustomDomainLive.Show do
       socket =
         socket
         |> put_flash(:success, "Deleted #{domain.domain}.")
-        |> redirect(to: Routes.custom_domain_index_path(ShroudWeb.Endpoint, :index))
+        |> redirect(to: ~p"/domains")
 
       {:noreply, socket}
     end

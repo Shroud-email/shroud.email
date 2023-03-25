@@ -55,7 +55,7 @@
             <span>To</span>
             <span>
               <.link
-                navigate={Routes.email_alias_show_path(@socket, :show, spam_email.email_alias.address)}
+                navigate={~p"/alias/#{spam_email.email_alias.address}"}
                 class="hover:underline text-indigo-800"
               >
                 <%= spam_email.email_alias.address %>

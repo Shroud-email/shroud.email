@@ -23,7 +23,7 @@
 >
   <%=
     link "Settings",
-    to: Routes.user_settings_path(@conn, :account),
+    to: ~p"/settings/account",
     class: "block px-4 py-2 text-sm text-gray-700",
     "x-bind:class": "{ 'bg-gray-100': activeIndex === 0 }",
     role: "menuitem",
@@ -35,7 +35,7 @@
   %>
   <%=
     link "Log out",
-    to: Routes.user_session_path(@conn, :delete),
+    to: ~p"/users/log_out",
     method: :delete,
     class: "block px-4 py-2 text-sm text-gray-700",
     "x-bind:class": "{ 'bg-gray-100': activeIndex === 1 }",
