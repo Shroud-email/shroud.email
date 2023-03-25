@@ -17,13 +17,16 @@ defmodule ShroudWeb do
   and import those modules here.
   """
 
+  def static_paths, do: ~w(assets fonts images favicon.ico robots.txt)
+
   def controller do
     quote do
       use Phoenix.Controller, namespace: ShroudWeb
 
       import Plug.Conn
       import ShroudWeb.Gettext
-      alias ShroudWeb.Router.Helpers, as: Routes
+
+      unquote(verified_routes())
     end
   end
 
@@ -35,7 +38,7 @@ defmodule ShroudWeb do
 
       # Import convenience functions from controllers
       import Phoenix.Controller,
-        only: [get_flash: 1, get_flash: 2, view_module: 1, view_template: 1]
+        only: [view_module: 1, view_template: 1]
 
       # Include shared imports and aliases for views
       unquote(view_helpers())
@@ -99,6 +102,9 @@ defmodule ShroudWeb do
       import Phoenix.LiveView.Helpers
       import Phoenix.Component
 
+      # Easy access to Flash.get(@flash, key)
+      alias Phoenix.Flash
+
       # Import basic rendering functionality (render, render_layout, etc)
       import Phoenix.View
 
@@ -107,6 +113,17 @@ defmodule ShroudWeb do
       alias ShroudWeb.Router.Helpers, as: Routes
 
       import ShroudWeb.Components.Atoms
+
+      unquote(verified_routes())
+    end
+  end
+
+  def verified_routes do
+    quote do
+      use Phoenix.VerifiedRoutes,
+        endpoint: ShroudWeb.Endpoint,
+        router: ShroudWeb.Router,
+        statics: ShroudWeb.static_paths()
     end
   end
 

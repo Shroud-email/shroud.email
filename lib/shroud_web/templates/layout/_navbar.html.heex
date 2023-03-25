@@ -10,8 +10,8 @@
           <div class="hidden md:block">
             <div class="ml-10 flex items-baseline space-x-4">
               <%= if @current_user do %>
-                <%= live_redirect "Aliases", to: Routes.email_alias_index_path(@conn, :index), class: active_class(@conn, Routes.email_alias_index_path(@conn, :index), "text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium", "bg-gray-900 text-white") %>
-                <%= live_redirect to: Routes.spam_email_index_path(@conn, :index), class: active_class(@conn, Routes.spam_email_index_path(@conn, :index), "text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium", "bg-gray-900 text-white") do %>
+                <%= live_redirect "Aliases", to: ~p"/", class: active_class(@conn, ~p"/", "text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium", "bg-gray-900 text-white") %>
+                <%= live_redirect to: ~p"/detention", class: active_class(@conn, ~p"/detention", "text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium", "bg-gray-900 text-white") do %>
                   Spam
                   <%= if @spam_count > 0 do %>
                     <span class="ml-1 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-700 text-gray-200">
@@ -19,10 +19,10 @@
                     </span>
                   <% end %>
                 <% end %>
-                <%= live_redirect "Domains", to: Routes.custom_domain_index_path(@conn, :index), class: active_class(@conn, Routes.custom_domain_index_path(@conn, :index), "text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium", "bg-gray-900 text-white") %>
+                <%= live_redirect "Domains", to: ~p"/domains", class: active_class(@conn, ~p"/domains", "text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium", "bg-gray-900 text-white") %>
                 <%= if @current_user.is_admin do %>
-                  <%= link "LiveDashboard", to: Routes.live_dashboard_path(@conn, :home), class: active_class(@conn, Routes.live_dashboard_path(@conn, :home), "text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium", "bg-gray-900 text-white") %>
-                  <%= link "Flags", to: "/feature_flags", class: "text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium" %>
+                  <%= link "LiveDashboard", to: ~p"/admin", class: "text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium" %>
+                  <%= link "Flags", to: ~p"/feature_flags", class: "text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium" %>
                 <% end %>
               <% end %>
             </div>
@@ -39,7 +39,7 @@
                   <% else %>
                     Your trial expires <%= Timex.from_now(@current_user.trial_expires_at) %>.
                   <% end %>
-                  <%= link "Sign up now.", to: Routes.user_settings_path(@conn, :billing), class: "underline hover:text-gray-500" %>
+                  <%= link "Sign up now.", to: ~p"/settings/billing", class: "underline hover:text-gray-500" %>
                 </div>
               <% end %>
               <div class="ml-3 relative" x-data="AlpineComponents.menu({ open: false })" x-init="init()" @keydown.escape.stop="open = false; focusButton()" @click.away="onClickAway($event)">
@@ -66,7 +66,7 @@
                 <%= render "_user_menu_desktop.html", assigns %>
               </div>
             <% else %>
-              <%= link "Log in", to: Routes.user_session_path(@conn, :new), class: "btn btn-primary" %>
+              <%= link "Log in", to: ~p"/users/log_in", class: "btn btn-primary" %>
             <% end %>
           </div>
         </div>
@@ -107,11 +107,11 @@
     <div class="px-2 py-3 space-y-1 sm:px-3">
       <!-- Current: "bg-gray-900 text-white", Default: "text-gray-300 hover:bg-gray-700 hover:text-white" -->
       <%= if @current_user do %>
-        <%= live_redirect "Aliases", to: Routes.email_alias_index_path(@conn, :index), class: active_class(@conn, Routes.email_alias_index_path(@conn, :index), "text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium", "bg-gray-900 text-white") %>
-        <%= live_redirect "Spam", to: Routes.spam_email_index_path(@conn, :index), class: active_class(@conn, Routes.spam_email_index_path(@conn, :index), "text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium", "bg-gray-900 text-white") %>
-        <%= live_redirect "Domains", to: Routes.custom_domain_index_path(@conn, :index), class: active_class(@conn, Routes.custom_domain_index_path(@conn, :index), "text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium", "bg-gray-900 text-white") %>
+        <%= live_redirect "Aliases", to: ~p"/", class: active_class(@conn, ~p"/", "text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium", "bg-gray-900 text-white") %>
+        <%= live_redirect "Spam", to: ~p"/detention", class: active_class(@conn, ~p"/detention", "text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium", "bg-gray-900 text-white") %>
+        <%= live_redirect "Domains", to: ~p"/domains", class: active_class(@conn, ~p"/domains", "text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium", "bg-gray-900 text-white") %>
         <%= if @current_user.is_admin do %>
-          <%= link "LiveDashboard", to: Routes.live_dashboard_path(@conn, :home), class: active_class(@conn, Routes.live_dashboard_path(@conn, :home), "text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium", "bg-gray-900 text-white") %>
+          <%= link "LiveDashboard", to: ~p"/admin", class: "text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium" %>
           <%= link "Flags", to: "/feature_flags", class: "text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium" %>
         <% end %>
       <% end %>
@@ -135,7 +135,7 @@
                   <% else %>
                     Your trial expires <%= Timex.from_now(@current_user.trial_expires_at) %>.
                   <% end %>
-                  <%= link "Sign up now.", to: Routes.user_settings_path(@conn, :billing), class: "underline hover:text-gray-500" %>
+                  <%= link "Sign up now.", to: ~p"/settings/billing", class: "underline hover:text-gray-500" %>
                 </div>
               <% end %>
             <% end %>
@@ -144,7 +144,7 @@
         <%= render "_user_menu_mobile.html", assigns %>
       <% else %>
         <%= link "Log in",
-          to: Routes.user_session_path(@conn, :new),
+          to: ~p"/users/log_in",
           class: "block px-3 py-2 rounded-md text-base font-medium text-gray-400 hover:text-white hover:bg-gray-700",
           role: "menuitem"
         %>

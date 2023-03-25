@@ -15,7 +15,8 @@ defmodule Shroud.MixProject do
       preferred_cli_env: [
         coveralls: :test,
         "coveralls.json": :test
-      ]
+      ],
+      xref: [exclude: [Phoenix.VerifiedRoutes]]
     ]
   end
 
@@ -40,14 +41,15 @@ defmodule Shroud.MixProject do
   defp deps do
     [
       {:bcrypt_elixir, "~> 3.0"},
-      {:phoenix, "~> 1.6.2"},
+      {:phoenix, "~> 1.7.0"},
       {:phoenix_ecto, "~> 4.4"},
       {:ecto_sql, "~> 3.9"},
       {:postgrex, ">= 0.0.0"},
       {:phoenix_html, "~> 3.0"},
       {:phoenix_live_reload, "~> 1.4", only: :dev},
-      {:phoenix_live_view, "~> 0.18"},
-      {:phoenix_live_dashboard, "~> 0.7"},
+      {:phoenix_view, "~> 2.0"},
+      {:phoenix_live_view, "~> 0.18.3"},
+      {:phoenix_live_dashboard, "~> 0.7.2"},
       {:esbuild, "~> 0.2", runtime: Mix.env() == :dev},
       {:excoveralls, "~> 0.14.3", only: :test},
       {:mox, "~> 1.0", only: :test},

@@ -5,8 +5,7 @@ defmodule Shroud.Email.Enricher do
 
   alias Shroud.Util
   alias Shroud.Email.ParsedEmail
-
-  alias ShroudWeb.Router.Helpers, as: Routes
+  use ShroudWeb, :verified_routes
 
   @spec process(ParsedEmail.t()) :: ParsedEmail.t()
   def process(%ParsedEmail{} = email) do
@@ -92,7 +91,7 @@ defmodule Shroud.Email.Enricher do
       }
       |> Util.uri_encode_map!()
 
-    report_uri = Routes.page_url(ShroudWeb.Endpoint, :email_report, report_data)
+    report_uri = url(~p"/email-report/#{report_data}")
 
     trackers_word = if length(trackers) == 1, do: "tracker", else: "trackers"
 

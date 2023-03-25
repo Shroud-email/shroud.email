@@ -5,13 +5,13 @@
     </h2>
     <p class="mt-2 text-center text-sm text-gray-600">
       Or
-      <%= link "start your 30-day free trial", to: Routes.user_registration_path(@conn, :new), class: "font-medium text-indigo-600 hover:text-indigo-500" %>
+      <%= link "start your 30-day free trial", to: ~p"/users/register", class: "font-medium text-indigo-600 hover:text-indigo-500" %>
     </p>
   </div>
 
   <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
     <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-      <.form :let={f} for={@conn} action={Routes.user_session_path(@conn, :create)} as={:user}, class="space-y-6">
+      <.form :let={f} for={@conn} action={~p"/users/log_in"} as={:user}, class="space-y-6">
         <%= if @error_message do %>
           <div class="alert alert-error">
             <%= @error_message %>
@@ -43,7 +43,7 @@
           </div>
 
           <div class="text-sm">
-            <%= link "Forgot your password?", to: Routes.user_reset_password_path(@conn, :new), class: "font-medium text-indigo-600 hover:text-indigo-500" %>
+            <%= link "Forgot your password?", to: ~p"/users/reset_password", class: "font-medium text-indigo-600 hover:text-indigo-500" %>
           </div>
         </div>
 

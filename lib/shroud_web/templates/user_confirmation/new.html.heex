@@ -11,7 +11,7 @@
         We sent you an email with a confirmation link.
         Please click the link in this email to continue.
       </p>
-      <.form :let={f} for={:user} action={Routes.user_confirmation_path(@conn, :create)} class="mt-6">
+      <.form :let={f} for={%{}} as={:user} action={~p"/users/confirm"} class="mt-6">
         <%= hidden_input f, :email, required: true, value: @current_user.email %>
         <div>
           <%= submit "Resend confirmation email", class: "btn btn-primary w-full" %>

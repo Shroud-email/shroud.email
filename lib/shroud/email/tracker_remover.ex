@@ -16,7 +16,7 @@ defmodule Shroud.Email.TrackerRemover do
 
   alias Shroud.Email
   alias Shroud.Email.{ParsedEmail, Tracker}
-  alias ShroudWeb.Router.Helpers, as: Routes
+  use ShroudWeb, :verified_routes
 
   @spec process(ParsedEmail.t()) :: ParsedEmail.t()
   def process(%ParsedEmail{parsed_html: nil} = email), do: email
@@ -108,7 +108,7 @@ defmodule Shroud.Email.TrackerRemover do
 
   defp proxify_src({"src", href}) do
     href = URI.encode(href)
-    {"src", Routes.proxy_url(ShroudWeb.Endpoint, :proxy, %{url: href})}
+    {"src", url(~p"/proxy?url=#{href}")}
   end
 
   defp proxify_src(attribute), do: attribute

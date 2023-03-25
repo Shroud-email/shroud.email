@@ -137,7 +137,7 @@
                         <% end %>
                       </dd>
                     </dl>
-                    <.link navigate={Routes.email_alias_show_path(@socket, :show, email_alias.address)} class="text-sm font-medium text-gray-900 hover:text-gray-500">
+                    <.link navigate={~p"/alias/#{email_alias.address}"} class="text-sm font-medium text-gray-900 hover:text-gray-500">
                       <%= email_alias.address %>
                     </.link>
                     <div class="text-sm text-gray-500">
@@ -169,7 +169,7 @@
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <.link
-                    navigate={Routes.email_alias_show_path(@socket, :show, email_alias.address)}
+                    navigate={~p"/alias/#{email_alias.address}"}
                     class="text-indigo-600 hover:text-indigo-900"
                   >
                     Edit

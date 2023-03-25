@@ -9,7 +9,6 @@ defmodule ShroudWeb.EmailAliasLive.Index do
   alias Shroud.Domain
   alias Shroud.Util
   alias Shroud.Repo
-  alias ShroudWeb.Router.Helpers, as: Routes
 
   import ShroudWeb.Components.{
     ButtonWithDropdown,
@@ -46,7 +45,7 @@ defmodule ShroudWeb.EmailAliasLive.Index do
 
           {:noreply,
            push_redirect(socket,
-             to: Routes.email_alias_show_path(socket, :show, email_alias.address)
+             to: ~p"/alias/#{email_alias.address}"
            )}
 
         {:error, _changeset} ->
@@ -87,7 +86,7 @@ defmodule ShroudWeb.EmailAliasLive.Index do
 
           {:noreply,
            push_redirect(socket,
-             to: Routes.email_alias_show_path(socket, :show, email_alias.address)
+             to: ~p"/alias/#{email_alias.address}"
            )}
 
         {:error, changeset} ->

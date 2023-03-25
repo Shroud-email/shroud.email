@@ -4,6 +4,7 @@ defmodule ShroudWeb.UserRegistrationController do
   alias Shroud.Accounts
   alias Shroud.Accounts.User
   alias ShroudWeb.UserAuth
+  alias ShroudWeb.Router.Helpers, as: Routes
 
   def new(conn, params) do
     lifetime = params["lifetime"] == "true"

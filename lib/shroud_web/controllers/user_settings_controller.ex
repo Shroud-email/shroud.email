@@ -4,13 +4,14 @@ defmodule ShroudWeb.UserSettingsController do
   alias Shroud.{Accounts, Billing}
   alias Shroud.Accounts.TOTP
   alias ShroudWeb.UserAuth
+  alias ShroudWeb.Router.Helpers, as: Routes
 
   plug :assign_email_and_password_changesets
   plug :assign_totp_fields
   plug :put_layout, "settings.html"
 
   def redirect_to_account(conn, _params) do
-    redirect(conn, to: Routes.user_settings_path(conn, :account))
+    redirect(conn, to: ~p"/settings/account")
   end
 
   def account(conn, _params) do
@@ -55,17 +56,17 @@ defmodule ShroudWeb.UserSettingsController do
       {:error, :invalid_code} ->
         conn
         |> put_flash(:error, "Invalid code.")
-        |> redirect(to: Routes.user_settings_path(conn, :lifetime))
+        |> redirect(to: ~p"/settings/billing/lifetime")
 
       {:error, :already_redeemed} ->
         conn
         |> put_flash(:error, "This code has already been redeemed.")
-        |> redirect(to: Routes.user_settings_path(conn, :lifetime))
+        |> redirect(to: ~p"/settings/billing/lifetime")
 
       :ok ->
         conn
         |> put_flash(:info, "You have successfully signed up for lifetime access!")
-        |> redirect(to: Routes.user_settings_path(conn, :billing))
+        |> redirect(to: ~p"/settings/billing")
     end
   end
 
@@ -74,12 +75,12 @@ defmodule ShroudWeb.UserSettingsController do
       :ok ->
         conn
         |> put_flash(:info, "Email changed successfully.")
-        |> redirect(to: Routes.user_settings_path(conn, :account))
+        |> redirect(to: ~p"/settings/account")
 
       :error ->
         conn
         |> put_flash(:error, "Email change link is invalid or it has expired.")
-        |> redirect(to: Routes.user_settings_path(conn, :account))
+        |> redirect(to: ~p"/settings/account")
     end
   end
 
@@ -100,7 +101,7 @@ defmodule ShroudWeb.UserSettingsController do
           :info,
           "A link to confirm your email change has been sent to the new address."
         )
-        |> redirect(to: Routes.user_settings_path(conn, :account))
+        |> redirect(to: ~p"/settings/account")
 
       {:error, changeset} ->
         render(conn, "account.html", email_changeset: changeset)
@@ -115,7 +116,7 @@ defmodule ShroudWeb.UserSettingsController do
       {:ok, user} ->
         conn
         |> put_flash(:info, "Password updated successfully.")
-        |> put_session(:user_return_to, Routes.user_settings_path(conn, :security))
+        |> put_session(:user_return_to, ~p"/settings/security")
         |> UserAuth.log_in_user(user)
 
       {:error, changeset} ->
@@ -128,7 +129,7 @@ defmodule ShroudWeb.UserSettingsController do
 
     conn
     |> put_session(:totp_secret, secret)
-    |> redirect(to: Routes.user_settings_path(conn, :security))
+    |> redirect(to: ~p"/settings/security")
   end
 
   def update(conn, %{"action" => "enable_totp"} = params) do
@@ -144,12 +145,12 @@ defmodule ShroudWeb.UserSettingsController do
       |> put_session(:totp_backup_codes, backup_codes)
       |> put_flash(:info, "Enabled two-factor authentication.")
       |> UserAuth.fetch_current_user([])
-      |> redirect(to: Routes.user_settings_path(conn, :security))
+      |> redirect(to: ~p"/settings/security")
     else
       conn
       |> put_session(:totp_secret, nil)
       |> put_flash(:error, "Invalid two-factor authentication code.")
-      |> redirect(to: Routes.user_settings_path(conn, :security))
+      |> redirect(to: ~p"/settings/security")
     end
   end
 
@@ -163,11 +164,11 @@ defmodule ShroudWeb.UserSettingsController do
       conn
       |> put_flash(:info, "Disabled two-factor authentication.")
       |> UserAuth.fetch_current_user([])
-      |> redirect(to: Routes.user_settings_path(conn, :security))
+      |> redirect(to: ~p"/settings/security")
     else
       conn
       |> put_flash(:error, "Invalid two-factor authentication code.")
-      |> redirect(to: Routes.user_settings_path(conn, :security))
+      |> redirect(to: ~p"/settings/security")
     end
   end
 

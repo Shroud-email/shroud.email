@@ -47,10 +47,21 @@ defmodule ShroudWeb.Components.DnsVerification do
               <table class="min-w-full">
                 <thead class="bg-white">
                   <tr>
-                    <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">Type</th>
-                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Domain</th>
-                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Value</th>
-                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Priority</th>
+                    <th
+                      scope="col"
+                      class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6"
+                    >
+                      Type
+                    </th>
+                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                      Domain
+                    </th>
+                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                      Value
+                    </th>
+                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                      Priority
+                    </th>
                   </tr>
                 </thead>
                 <tbody class="bg-white">
@@ -77,12 +88,18 @@ defmodule ShroudWeb.Components.DnsVerification do
                       :for={record <- rows}
                       class={"border-t border-gray-300 " <> if Map.get(@verified, field, false), do: "bg-green-50", else: ""}
                     >
-                      <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6"><%= record.type |> Atom.to_string() |> String.upcase() %></td>
-                      <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500"><%= record.domain %></td>
+                      <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
+                        <%= record.type |> Atom.to_string() |> String.upcase() %>
+                      </td>
+                      <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                        <%= record.domain %>
+                      </td>
                       <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 flex items-center justify-start">
                         <pre class="bg-gray-100 border border-gray-200 font-mono p-1 shrink"><%= record.value %></pre>
                       </td>
-                      <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500"><%= record.priority %></td>
+                      <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                        <%= record.priority %>
+                      </td>
                     </tr>
                   <% end %>
                 </tbody>

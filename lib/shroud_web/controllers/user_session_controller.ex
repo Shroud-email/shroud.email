@@ -19,7 +19,7 @@ defmodule ShroudWeb.UserSessionController do
       if user.totp_enabled do
         conn
         |> put_session(:totp_pending_user_params, user_params)
-        |> redirect(to: Routes.user_session_path(conn, :new_totp))
+        |> redirect(to: ~p"/users/totp")
       else
         UserAuth.log_in_user(conn, user, user_params)
       end

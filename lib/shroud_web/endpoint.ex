@@ -21,7 +21,7 @@ defmodule ShroudWeb.Endpoint do
     at: "/",
     from: :shroud,
     gzip: false,
-    only: ~w(assets fonts images favicon.ico robots.txt),
+    only: ShroudWeb.static_paths(),
     headers: %{"Access-Control-Allow-Origin" => "*"}
 
   # Code reloading can be explicitly enabled under the
