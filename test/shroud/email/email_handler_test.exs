@@ -846,7 +846,7 @@ defmodule Shroud.Email.EmailHandlerTest do
         assert email.to == [{"", "user@example.com"}]
 
         assert email.text_body ==
-                 "This email was forwarded from alias@shroud.test by Shroud.email.\n\nthis is not a valid email.\r\njust a bunch of text.\n"
+                 "this is not a valid email.\r\njust a bunch of text.\n\nThis email was forwarded from alias@shroud.test by Shroud.email.\n"
       end)
     end
   end
