@@ -4,7 +4,7 @@ defmodule Shroud.MixProject do
   def project do
     [
       app: :shroud,
-      version: "1.0.1",
+      version: "1.0.2",
       elixir: "~> 1.12",
       elixirc_paths: elixirc_paths(Mix.env()),
       compilers: Mix.compilers(),
