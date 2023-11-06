@@ -127,6 +127,7 @@ if config_env() == :prod do
     email_octopus_list_id: System.get_env("EMAIL_OCTOPUS_LIST_ID"),
     email_octopus_api_key: System.get_env("EMAIL_OCTOPUS_API_KEY"),
     admin_user_email: System.get_env("ADMIN_EMAIL"),
+    disable_signups: System.get_env("DISABLE_SIGNUPS", false) != false,
     app_domain: app_domain,
     email_domain: email_domain,
     env: :prod

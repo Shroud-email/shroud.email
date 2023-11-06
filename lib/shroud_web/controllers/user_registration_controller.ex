@@ -30,6 +30,12 @@ defmodule ShroudWeb.UserRegistrationController do
           changeset: changeset,
           lifetime: user_params["status"] == "lifetime"
         )
+
+      nil ->
+        render(conn, "new.html",
+          changeset: User.registration_changeset(%User{}, %{}),
+          lifetime: user_params["status"] == "lifetime"
+        )
     end
   end
 end

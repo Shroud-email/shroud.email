@@ -94,16 +94,18 @@ defmodule Shroud.Accounts do
 
   """
   def register_user(attrs) do
-    case %User{}
-         |> User.registration_changeset(attrs)
-         |> Repo.insert(returning: true) do
-      {:ok, user} ->
-        Notifier.notify_user_started_trial(user.email)
-        Logger.notice("User #{user.email} started a trial")
-        {:ok, user}
+    if not Application.fetch_env!(:shroud, :disable_signups) do
+      case %User{}
+           |> User.registration_changeset(attrs)
+           |> Repo.insert(returning: true) do
+        {:ok, user} ->
+          Notifier.notify_user_started_trial(user.email)
+          Logger.notice("User #{user.email} started a trial")
+          {:ok, user}
 
-      other ->
-        other
+        other ->
+          other
+      end
     end
   end
 
