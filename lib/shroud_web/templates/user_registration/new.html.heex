@@ -9,6 +9,12 @@
     </p>
   </div>
 
+  <%= if Application.fetch_env!(:shroud, :disable_signups) do %>
+    <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md alert alert alert-warning">
+      Signups are currently disabled.
+    </div>
+  <% end %>
+
   <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
     <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
       <.form :let={f} for={@changeset} action={~p"/users/register"} as={:user}, class="space-y-6">
@@ -19,7 +25,7 @@
         <div>
           <%= label f, :email, class: "block text-sm font-medium text-gray-700" %>
           <div class="mt-1">
-            <%= email_input f, :email, required: true, autocomplete: "email", class: "appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" %>
+            <%= email_input f, :email, required: true, autocomplete: "email",  class: "appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" %>
             <%= error_tag f, :email %>
           </div>
         </div>
@@ -33,7 +39,7 @@
         </div>
 
         <div>
-          <%= submit "Sign up", class: "w-full btn btn-primary" %>
+          <%= submit "Sign up", disabled: Application.fetch_env!(:shroud, :disable_signups), class: "w-full btn btn-primary disabled:cursor-not-allowed disabled:opacity-50" %>
           <p class="text-sm mt-3 text-center">
             By signing up for Shroud.email, you agree to our <a href="https://shroud.email/terms/" target="_blank" class="underline">terms of use</a>.
           </p>

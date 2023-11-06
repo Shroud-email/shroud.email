@@ -43,7 +43,8 @@ config :shroud, :mailer,
 
 config :shroud,
   http_client: HTTPoison,
-  tracker_list_uri: "https://trackers.shroud.email/list.txt"
+  tracker_list_uri: "https://trackers.shroud.email/list.txt",
+  disable_signups: false
 
 config :shroud, Shroud.Scheduler,
   jobs: [
