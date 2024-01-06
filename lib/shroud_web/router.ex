@@ -100,6 +100,15 @@ defmodule ShroudWeb.Router do
   end
 
   scope "/", ShroudWeb do
+    pipe_through([:browser, :require_admin_user])
+
+    live_session :authenticated_admin, on_mount: ShroudWeb.AdminUserLiveAuth do
+      live("/debug_emails", DebugEmailsLive.Index, :index)
+      live("/debug_emails/:id", DebugEmailsLive.Show, :show)
+    end
+  end
+
+  scope "/", ShroudWeb do
     pipe_through([:browser, :require_confirmed_user])
 
     get("/settings", UserSettingsController, :redirect_to_account)

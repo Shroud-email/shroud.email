@@ -402,6 +402,10 @@ defmodule Shroud.Accounts do
       (user.status == :trial && not Util.past?(user.trial_expires_at))
   end
 
+  def admin?(%User{} = user) do
+    user.is_admin
+  end
+
   def list_users_with_trial_expiry_between(from_datetime, to_datetime) do
     query =
       from u in User,

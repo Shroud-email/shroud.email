@@ -23,6 +23,7 @@
                 <%= if @current_user.is_admin do %>
                   <%= link "LiveDashboard", to: ~p"/admin", class: "text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium" %>
                   <%= link "Flags", to: ~p"/feature_flags", class: "text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium" %>
+                  <%= link "Debug", to: ~p"/debug_emails", class: "text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium" %>
                 <% end %>
               <% end %>
             </div>
@@ -113,6 +114,7 @@
         <%= if @current_user.is_admin do %>
           <%= link "LiveDashboard", to: ~p"/admin", class: "text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium" %>
           <%= link "Flags", to: "/feature_flags", class: "text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium" %>
+          <%= link "Debug", to: "/debug_emails", class: "text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium" %>
         <% end %>
       <% end %>
     </div>

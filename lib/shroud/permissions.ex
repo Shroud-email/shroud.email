@@ -23,5 +23,7 @@ defmodule Shroud.Permissions do
     def can?(%User{id: user_id}, action, %CustomDomain{user_id: user_id})
         when action in [:read, :update, :destroy],
         do: true
+
+    def can?(%User{} = user, :debug, _), do: Accounts.admin?(user)
   end
 end
