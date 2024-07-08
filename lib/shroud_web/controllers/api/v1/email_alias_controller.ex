@@ -66,6 +66,7 @@ defmodule ShroudWeb.Api.V1.EmailAliasController do
     alias =
       EmailAlias
       |> where([ea], is_nil(ea.deleted_at))
+      |> where([ea], ea.user_id == ^conn.assigns.current_user.id)
       |> Repo.get_by(address: address)
 
     if is_nil(alias) do
