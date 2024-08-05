@@ -76,6 +76,7 @@ defmodule ShroudWeb.Api.V1.EmailAliasController do
       |> render("error.json", error: "Alias not found")
     else
       Aliases.delete_email_alias(alias.id)
+
       conn
       |> send_resp(:no_content, "")
     end
