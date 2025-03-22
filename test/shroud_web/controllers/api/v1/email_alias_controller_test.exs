@@ -171,6 +171,39 @@ defmodule ShroudWeb.Api.V1.EmailAliasControllerTest do
     end
   end
 
+  describe "delete/2" do
+    setup do
+      conn = build_conn()
+      user = user_fixture()
+
+      user =
+        user
+        |> Accounts.User.confirm_changeset()
+        |> Repo.update!(returning: true)
+
+      email_alias = alias_fixture(%{user_id: user.id})
+
+      %{conn: conn, user: user, address: email_alias.address}
+    end
+
+    test "deletes an email alias", %{conn: conn, user: user, address: address} do
+
+      conn = authorized_delete(conn, user, Routes.email_alias_path(conn, :delete, address))
+      assert response(conn, 204)
+    end
+
+    test "prevents deleting an email alias if user does not own it", %{conn: conn, user: user} do
+      other_user = user_fixture()
+      other_alias = alias_fixture(%{user_id: other_user.id})
+      conn =
+        authorized_delete(conn, user, Routes.email_alias_path(conn, :delete, other_alias.address))
+
+        assert json_response(conn, 422) == %{
+          "error" => "Alias not found"
+        }
+    end
+  end
+
   defp authorized_get(conn, user, path, params \\ nil) do
     token = Accounts.generate_user_session_token(user)
 
@@ -185,5 +218,13 @@ defmodule ShroudWeb.Api.V1.EmailAliasControllerTest do
     conn
     |> put_req_header("authorization", "Bearer #{Base.encode64(token)}")
     |> post(path, params)
+  end
+
+  defp authorized_delete(conn, user, path, params \\ nil) do
+    token = Accounts.generate_user_session_token(user)
+
+    conn
+    |> put_req_header("authorization", "Bearer #{Base.encode64(token)}")
+    |> delete(path, params)
   end
 end

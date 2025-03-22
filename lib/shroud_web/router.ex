@@ -50,6 +50,7 @@ defmodule ShroudWeb.Router do
     pipe_through([:api, :require_confirmed_api_user])
 
     resources("/aliases", EmailAliasController, only: [:index, :create])
+    delete("/aliases/:address", EmailAliasController, :delete)
     resources("/domains", DomainController, only: [:index])
   end
 

@@ -61,4 +61,24 @@ defmodule ShroudWeb.Api.V1.EmailAliasController do
         |> render("error.json", error: "Unable to create email alias")
     end
   end
+
+  def delete(conn, %{"address" => address}) do
+    alias =
+      EmailAlias
+      |> where([ea], is_nil(ea.deleted_at))
+      |> where([ea], ea.user_id == ^conn.assigns.current_user.id)
+      |> Repo.get_by(address: address)
+
+    if is_nil(alias) do
+      conn
+      |> put_status(422)
+      |> put_view(ShroudWeb.ErrorView)
+      |> render("error.json", error: "Alias not found")
+    else
+      Aliases.delete_email_alias(alias.id)
+
+      conn
+      |> send_resp(:no_content, "")
+    end
+  end
 end
