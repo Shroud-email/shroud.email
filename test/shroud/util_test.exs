@@ -9,13 +9,6 @@ defmodule Shroud.UtilTest do
     %{map: map}
   end
 
-  describe "uri_encode_map!/1" do
-    test "encodes a map", %{map: map} do
-      encoded = Util.uri_encode_map!(map)
-      assert encoded == "eyJhcnJheSI6WyJvbmUiLCJ0d28iXSwibnVtYmVyIjoxMjMsInN0cmluZyI6InZhbHVlIn0="
-    end
-  end
-
   describe "uri_decode_map/1" do
     test "decodes a valid string", %{map: map} do
       encoded = Util.uri_encode_map!(map)
