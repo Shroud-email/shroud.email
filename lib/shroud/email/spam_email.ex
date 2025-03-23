@@ -9,6 +9,7 @@ defmodule Shroud.Email.SpamEmail do
     field :html_body, :string
     field :subject, :string
     field :text_body, :string
+    field :spamassassin_header, :string
 
     belongs_to :email_alias, EmailAlias
     belongs_to :user, User
@@ -19,7 +20,15 @@ defmodule Shroud.Email.SpamEmail do
   @doc false
   def changeset(spam_email, attrs) do
     spam_email
-    |> cast(attrs, [:from, :subject, :html_body, :text_body, :user_id, :email_alias_id])
+    |> cast(attrs, [
+      :from,
+      :subject,
+      :html_body,
+      :text_body,
+      :spamassassin_header,
+      :user_id,
+      :email_alias_id
+    ])
     |> validate_required([:from, :user_id, :email_alias_id])
   end
 end

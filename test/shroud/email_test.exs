@@ -37,6 +37,22 @@ defmodule Shroud.EmailTest do
       assert spam_email.email_alias_id == email_alias.id
     end
 
+    test "saves the SpamAssassin header", %{user: user, email_alias: email_alias} do
+      spam_header =
+        "Yes, score=5.1 required=5.0 tests=DKIM_SIGNED,DKIM_VALID autolearn=ham version=3.4.1"
+
+      attrs = %{
+        from: "spammer@example.com",
+        subject: "Spam",
+        text_body: "spam",
+        spamassassin_header: spam_header
+      }
+
+      spam_email = Email.store_spam_email!(attrs, user, email_alias)
+
+      assert spam_email.spamassassin_header == spam_header
+    end
+
     test "converts CRLF to LF", %{user: user, email_alias: email_alias} do
       attrs = %{
         from: "spammer@example.com",
