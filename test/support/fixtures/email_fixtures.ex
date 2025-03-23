@@ -79,6 +79,7 @@ defmodule Shroud.EmailFixtures do
         subject: "Spamspamspam",
         text_body: "Spam",
         html_body: "<html>spam</html>",
+        spamassassin_header: "Yes, score=5.0 required=5.0 tests=TEST autolearn=ham version=3.4.1",
         user_id: user.id,
         email_alias_id: email_alias.id
       })

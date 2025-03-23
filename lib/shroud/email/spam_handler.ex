@@ -40,12 +40,15 @@ defmodule Shroud.Email.SpamHandler do
       |> ParsedEmail.parse(sender, email_alias.address)
       |> TrackerRemover.process()
 
+    spamassassin_header = get_spamassassin_header(email)
+
     Email.store_spam_email!(
       %{
         from: sender,
         subject: parsed_email.swoosh_email.subject,
         html_body: parsed_email.swoosh_email.html_body,
-        text_body: parsed_email.swoosh_email.text_body
+        text_body: parsed_email.swoosh_email.text_body,
+        spamassassin_header: spamassassin_header
       },
       recipient_user,
       email_alias
@@ -86,7 +89,7 @@ defmodule Shroud.Email.SpamHandler do
   end
 
   @spec get_spamassassin_header(:mimemail.mimetuple()) :: String.t()
-  defp get_spamassassin_header({_mime_type, _mime_subtype, headers, _opts, _body}) do
+  def get_spamassassin_header({_mime_type, _mime_subtype, headers, _opts, _body}) do
     case get_header_value(headers, "x-spam-status") do
       "" ->
         sender = get_header_value(headers, "from")

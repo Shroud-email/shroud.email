@@ -5,6 +5,7 @@ defmodule Shroud.Email.SpamHandlerTest do
 
   alias Shroud.Email.SpamHandler
   alias Shroud.Email.ReplyAddress
+  alias Shroud.Email
   import Shroud.{AccountsFixtures, AliasesFixtures, EmailFixtures}
 
   describe "spam?/1" do
@@ -62,6 +63,40 @@ defmodule Shroud.Email.SpamHandlerTest do
     end
   end
 
+  describe "get_spamassassin_header/1" do
+    test "extracts the SpamAssassin header from an email" do
+      spam_header =
+        "Yes, score=5.1 required=5.0 tests=DKIM_SIGNED,DKIM_VALID autolearn=ham version=3.4.1"
+
+      email =
+        text_email(
+          "sender@example.com",
+          ["alias@shroud.test"],
+          "Test Subject",
+          "Test Content",
+          "X-Spam-Status: #{spam_header}"
+        )
+        |> :mimemail.decode()
+
+      assert SpamHandler.get_spamassassin_header(email) == spam_header
+    end
+
+    test "returns an empty string when no SpamAssassin header is present" do
+      email =
+        text_email(
+          "sender@example.com",
+          ["alias@shroud.test"],
+          "Test Subject",
+          "Test Content"
+        )
+        |> :mimemail.decode()
+
+      assert capture_log(fn ->
+               assert SpamHandler.get_spamassassin_header(email) == ""
+             end) =~ "without a SpamAssassin header"
+    end
+  end
+
   describe "handle_outgoing_spam_email/1" do
     setup do
       user = user_fixture()
@@ -88,6 +123,52 @@ defmodule Shroud.Email.SpamHandlerTest do
         args: %{
           email_function: :deliver_outgoing_email_marked_as_spam,
           email_args: [user.id, email_alias.address, "recipient@example.com"]
+        }
+      )
+    end
+  end
+
+  describe "handle_incoming_spam_email/4" do
+    setup do
+      user = user_fixture()
+      email_alias = alias_fixture(%{user_id: user.id})
+      %{user: user, email_alias: email_alias}
+    end
+
+    test "stores spam email with the SpamAssassin header", %{user: user, email_alias: email_alias} do
+      spam_header =
+        "Yes, score=5.1 required=5.0 tests=DKIM_SIGNED,DKIM_VALID autolearn=ham version=3.4.1"
+
+      email =
+        text_email(
+          "spammer@example.com",
+          [email_alias.address],
+          "Spam Subject",
+          "Spam Content",
+          "X-Spam-Status: #{spam_header}"
+        )
+        |> :mimemail.decode()
+
+      :ok =
+        SpamHandler.handle_incoming_spam_email("spammer@example.com", user, email_alias, email)
+
+      # Get the latest spam email for this user
+      spam_emails = Email.list_spam_emails(user)
+      assert length(spam_emails) > 0
+
+      # Get the most recently created spam email
+      spam_email = Enum.max_by(spam_emails, & &1.inserted_at)
+
+      # Verify the SpamAssassin header was stored
+      assert spam_email.spamassassin_header == spam_header
+      assert spam_email.from == "spammer@example.com"
+      assert spam_email.subject == "Spam Subject"
+
+      assert_enqueued(
+        worker: Shroud.Accounts.UserNotifierJob,
+        args: %{
+          email_function: :deliver_incoming_email_marked_as_spam,
+          email_args: [user.id, email_alias.address]
         }
       )
     end
