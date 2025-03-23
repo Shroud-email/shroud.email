@@ -90,26 +90,26 @@ defmodule Shroud.Email.ReplyAddressTest do
     end
   end
 
-  describe "is_reply_address?/1" do
+  describe "reply_address?/1" do
     test "returns true for legacy reply addresses" do
-      assert ReplyAddress.is_reply_address?("name_at_example.com_alias@shroud.test")
+      assert ReplyAddress.reply_address?("name_at_example.com_alias@shroud.test")
     end
 
     test "returns true for reply addresses on a custom domain" do
       custom_domain_fixture(%{domain: "custom.com"})
-      assert ReplyAddress.is_reply_address?("name_at_example.com_alias@custom.com")
+      assert ReplyAddress.reply_address?("name_at_example.com_alias@custom.com")
     end
 
     test "returns false for other domain" do
-      refute ReplyAddress.is_reply_address?("name_at_example.com_alias@other.com")
+      refute ReplyAddress.reply_address?("name_at_example.com_alias@other.com")
     end
 
     test "returns false for email aliases" do
-      refute ReplyAddress.is_reply_address?("deadbeef@shroud.test")
+      refute ReplyAddress.reply_address?("deadbeef@shroud.test")
     end
 
     test "returns false for any other email" do
-      refute ReplyAddress.is_reply_address?("example@example.com")
+      refute ReplyAddress.reply_address?("example@example.com")
     end
   end
 

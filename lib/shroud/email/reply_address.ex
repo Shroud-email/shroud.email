@@ -51,11 +51,11 @@ defmodule Shroud.Email.ReplyAddress do
     {email_address, alias_local_part <> "@" <> domain}
   end
 
-  @spec is_reply_address?(String.t()) :: boolean()
+  @spec reply_address?(String.t()) :: boolean()
   @doc """
   Returns true if the given email is a reply address.
   """
-  def is_reply_address?(address) do
+  def reply_address?(address) do
     # This code currently requires a DB call to check if the domain
     # is a user's custom domain. It'd be nice to eventually refactor
     # reply addresses so they don't require a DB call.

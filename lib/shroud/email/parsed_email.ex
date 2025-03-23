@@ -31,10 +31,14 @@ defmodule Shroud.Email.ParsedEmail do
     swoosh_email = build_email(new(), mimemail_email)
 
     parsed_html =
-      case Floki.parse_document(swoosh_email.html_body) do
-        {:ok, []} -> nil
-        {:ok, parsed} -> parsed
-        {:error, _error} -> nil
+      if swoosh_email.html_body do
+        case Floki.parse_document(swoosh_email.html_body) do
+          {:ok, []} -> nil
+          {:ok, parsed} -> parsed
+          {:error, _error} -> nil
+        end
+      else
+        nil
       end
 
     %__MODULE__{

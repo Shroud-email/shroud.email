@@ -17,7 +17,7 @@ defmodule Shroud.Email.OutgoingEmailHandler do
     sender_user = Accounts.get_user_by_email(sender)
 
     cond do
-      SpamHandler.is_spam?(data) ->
+      SpamHandler.spam?(data) ->
         mimemail_email = :mimemail.decode(data)
         SpamHandler.handle_outgoing_spam_email(mimemail_email)
 

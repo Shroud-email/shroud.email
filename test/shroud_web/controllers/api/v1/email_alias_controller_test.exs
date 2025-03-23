@@ -187,7 +187,6 @@ defmodule ShroudWeb.Api.V1.EmailAliasControllerTest do
     end
 
     test "deletes an email alias", %{conn: conn, user: user, address: address} do
-
       conn = authorized_delete(conn, user, Routes.email_alias_path(conn, :delete, address))
       assert response(conn, 204)
     end
@@ -195,12 +194,13 @@ defmodule ShroudWeb.Api.V1.EmailAliasControllerTest do
     test "prevents deleting an email alias if user does not own it", %{conn: conn, user: user} do
       other_user = user_fixture()
       other_alias = alias_fixture(%{user_id: other_user.id})
+
       conn =
         authorized_delete(conn, user, Routes.email_alias_path(conn, :delete, other_alias.address))
 
-        assert json_response(conn, 422) == %{
-          "error" => "Alias not found"
-        }
+      assert json_response(conn, 422) == %{
+               "error" => "Alias not found"
+             }
     end
   end
 
