@@ -7,7 +7,7 @@ defmodule Shroud.Email.SpamHandlerTest do
   alias Shroud.Email.ReplyAddress
   import Shroud.{AccountsFixtures, AliasesFixtures, EmailFixtures}
 
-  describe "is_spam?/1" do
+  describe "spam?/1" do
     test "detects spam emails" do
       email =
         text_email(
@@ -18,7 +18,7 @@ defmodule Shroud.Email.SpamHandlerTest do
           "X-Spam-Status: Yes, score=5.1 required=5.0 tests=DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HTML_MESSAGE,RCVD_IN_MSPIKE_H2,SPF_HELO_NONE,SPF_PASS,T_SCC_BODY_TEXT_LINE autolearn=ham autolearn_force=no version=3.4.1"
         )
 
-      assert SpamHandler.is_spam?(email)
+      assert SpamHandler.spam?(email)
     end
 
     test "detects non-spam emails" do
@@ -31,7 +31,7 @@ defmodule Shroud.Email.SpamHandlerTest do
           "X-Spam-Status: No, score=-0.1 required=5.0 tests=DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HTML_MESSAGE,RCVD_IN_MSPIKE_H2,SPF_HELO_NONE,SPF_PASS,T_SCC_BODY_TEXT_LINE autolearn=ham autolearn_force=no version=3.4.1"
         )
 
-      refute SpamHandler.is_spam?(email)
+      refute SpamHandler.spam?(email)
     end
 
     test "marks email without a SpamAssassin header as not spam" do
@@ -43,7 +43,7 @@ defmodule Shroud.Email.SpamHandlerTest do
           "Lorem ipsum"
         )
 
-      refute SpamHandler.is_spam?(email)
+      refute SpamHandler.spam?(email)
     end
 
     test "logs when it receives an email without a SpamAssassin header" do
@@ -56,7 +56,7 @@ defmodule Shroud.Email.SpamHandlerTest do
         )
 
       assert capture_log(fn ->
-               SpamHandler.is_spam?(email)
+               SpamHandler.spam?(email)
              end) =~
                "[warning] Received an email from sender@example.com to alias@shroud.test without a SpamAssassin header"
     end

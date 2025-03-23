@@ -44,7 +44,7 @@ defmodule Shroud.Email.IncomingEmailHandler do
 
         Aliases.increment_blocked!(email_alias)
 
-      SpamHandler.is_spam?(data) ->
+      SpamHandler.spam?(data) ->
         maybe_log(
           recipient_user,
           "Storing spam email from #{sender} to #{recipient_user.email} (via #{recipient})"

@@ -75,14 +75,14 @@ defmodule Shroud.Domain.DnsChecker do
   defp has_records?(desired_records) when is_list(desired_records) do
     Enum.all?(desired_records, fn desired_record ->
       actual_records = dns_impl().lookup(desired_record.domain, desired_record.type)
-      Enum.any?(actual_records, &is_desired_record?(&1, desired_record.value))
+      Enum.any?(actual_records, &desired_record?(&1, desired_record.value))
     end)
   end
 
-  defp is_desired_record?({_priority, record}, desired_record),
-    do: is_desired_record?(record, desired_record)
+  defp desired_record?({_priority, record}, desired_record),
+    do: desired_record?(record, desired_record)
 
-  defp is_desired_record?(record, desired_record) do
+  defp desired_record?(record, desired_record) do
     record = to_string(record)
     String.downcase(record) == String.downcase(desired_record)
   end
