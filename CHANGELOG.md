@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.2.0](https://github.com/Shroud-email/shroud.email/compare/v1.1.1...v1.2.0) (2025-03-23)
+
+
+### Features
+
+* add debug view for admins ([07ff176](https://github.com/Shroud-email/shroud.email/commit/07ff1761efb0c4e73e8857415e8b98c4fed924aa))
+* **api:** API Endpoint to delete Alias ([#84](https://github.com/Shroud-email/shroud.email/issues/84)) ([2dc1caa](https://github.com/Shroud-email/shroud.email/commit/2dc1caa308918586a070ee050beb129ad7d66e76))
+* store spamassassin headers ([#87](https://github.com/Shroud-email/shroud.email/issues/87)) ([b3364dd](https://github.com/Shroud-email/shroud.email/commit/b3364dde6950b434498a60784ea1e9395e1c9a0f))
+
 ## [1.1.1](https://github.com/Shroud-email/shroud.email/compare/v1.1.0...v1.1.1) (2023-11-07)
 
 
