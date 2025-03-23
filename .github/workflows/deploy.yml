@@ -48,7 +48,7 @@ jobs:
         with:
           context: .
           push: true
-          project: q9nlqb6nhx
+          project: m40w098qkx
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

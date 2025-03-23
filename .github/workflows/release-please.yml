@@ -17,5 +17,3 @@ jobs:
         with:
           token: ${{ secrets.PAT }}
           release-type: elixir
-          package-name: shroud.email
-          bootstrap-sha: b182fc93f050cab66c45bcd08a4701785881e822
