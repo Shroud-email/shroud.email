@@ -97,13 +97,6 @@ config :fun_with_flags, :persistence,
 
 config :fun_with_flags, :cache_bust_notifications, enabled: false
 
-if System.get_env("SENTRY_DSN") do
-  config :sentry,
-    dsn: System.get_env("SENTRY_DSN"),
-    included_environments: [:prod, :dev],
-    environment_name: Mix.env()
-end
-
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

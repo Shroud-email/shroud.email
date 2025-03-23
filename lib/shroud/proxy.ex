@@ -50,7 +50,7 @@ defmodule Shroud.Proxy do
         {:error, :non_200_status_code}
 
       {:error, %HTTPoison.Error{reason: reason}} ->
-        Logger.warn("Could not fetch #{url}: #{reason}")
+        Logger.warning("Could not fetch #{url}: #{reason}")
         {:error, reason}
     end
   end

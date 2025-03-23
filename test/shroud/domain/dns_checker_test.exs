@@ -9,11 +9,6 @@ defmodule Shroud.Domain.DnsCheckerTest do
 
   setup :verify_on_exit!
 
-  setup do
-    Application.put_env(:shroud, :app_domain, "app.shroud.email")
-    Application.put_env(:shroud, :email_domain, "fog.shroud.email")
-  end
-
   describe "ownership" do
     test "verifies ownership" do
       Shroud.MockDnsClient
@@ -61,7 +56,7 @@ defmodule Shroud.Domain.DnsCheckerTest do
       Shroud.MockDnsClient
       |> stub(:lookup, fn domain, record_type ->
         if domain == "example.com" and record_type == :mx do
-          [{10, "app.shroud.email"}]
+          [{10, "app.shroud.test"}]
         else
           []
         end
@@ -131,7 +126,7 @@ defmodule Shroud.Domain.DnsCheckerTest do
       Shroud.MockDnsClient
       |> stub(:lookup, fn domain, record_type ->
         if domain == "shroudemail._domainkey.example.com" and record_type == :cname do
-          ["shroudemail._domainkey.fog.shroud.email"]
+          ["shroudemail._domainkey.email.shroud.test"]
         else
           []
         end
@@ -186,7 +181,10 @@ defmodule Shroud.Domain.DnsCheckerTest do
       |> stub(:lookup, fn _, _ -> [] end)
 
       domain =
-        custom_domain_fixture(%{domain: "example.com", dmarc_verified_at: ~N[2022-07-16 00:00:00]})
+        custom_domain_fixture(%{
+          domain: "example.com",
+          dmarc_verified_at: ~N[2022-07-16 00:00:00]
+        })
 
       perform_job(DnsChecker, %{custom_domain_id: domain.id})
 

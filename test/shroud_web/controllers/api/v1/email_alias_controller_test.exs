@@ -121,7 +121,7 @@ defmodule ShroudWeb.Api.V1.EmailAliasControllerTest do
                "enabled" => true
              }
 
-      assert String.ends_with?(response["address"], "@shroud.test")
+      assert String.ends_with?(response["address"], "@email.shroud.test")
     end
 
     test "creates an email alias on a custom domain", %{conn: conn, user: user} do

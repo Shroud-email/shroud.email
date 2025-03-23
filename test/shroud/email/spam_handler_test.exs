@@ -12,7 +12,7 @@ defmodule Shroud.Email.SpamHandlerTest do
       email =
         text_email(
           "spammer@example.com",
-          ["alias@shroud.test"],
+          ["alias@email.shroud.test"],
           "I want to share my viagra fortune with you",
           "Mountains of viagra, free",
           "X-Spam-Status: Yes, score=5.1 required=5.0 tests=DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HTML_MESSAGE,RCVD_IN_MSPIKE_H2,SPF_HELO_NONE,SPF_PASS,T_SCC_BODY_TEXT_LINE autolearn=ham autolearn_force=no version=3.4.1"
@@ -25,7 +25,7 @@ defmodule Shroud.Email.SpamHandlerTest do
       email =
         text_email(
           "user@example.com",
-          ["alias@shroud.test"],
+          ["alias@email.shroud.test"],
           "My real email",
           "I'm not trying to sell you anything",
           "X-Spam-Status: No, score=-0.1 required=5.0 tests=DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HTML_MESSAGE,RCVD_IN_MSPIKE_H2,SPF_HELO_NONE,SPF_PASS,T_SCC_BODY_TEXT_LINE autolearn=ham autolearn_force=no version=3.4.1"
@@ -38,7 +38,7 @@ defmodule Shroud.Email.SpamHandlerTest do
       email =
         text_email(
           "sender@example.com",
-          ["alias@shroud.test"],
+          ["alias@email.shroud.test"],
           "My subject",
           "Lorem ipsum"
         )
@@ -50,7 +50,7 @@ defmodule Shroud.Email.SpamHandlerTest do
       email =
         text_email(
           "sender@example.com",
-          ["alias@shroud.test"],
+          ["alias@email.shroud.test"],
           "My subject",
           "Lorem ipsum"
         )
@@ -58,7 +58,7 @@ defmodule Shroud.Email.SpamHandlerTest do
       assert capture_log(fn ->
                SpamHandler.spam?(email)
              end) =~
-               "[warning] Received an email from sender@example.com to alias@shroud.test without a SpamAssassin header"
+               "[warning] Received an email from sender@example.com to alias@email.shroud.test without a SpamAssassin header"
     end
   end
 

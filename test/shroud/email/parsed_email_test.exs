@@ -73,7 +73,8 @@ defmodule Shroud.Email.ParsedEmailTest do
     test "handles unicode email bodies (quoted-printable)" do
       email = File.read!("test/support/data/unicode_body.email") |> :mimemail.decode()
 
-      %{swoosh_email: email} = ParsedEmail.parse(email, "sender@example.com", "alias@shroud.test")
+      %{swoosh_email: email} =
+        ParsedEmail.parse(email, "sender@example.com", "alias@email.shroud.test")
 
       assert email.html_body =~ "①"
       assert email.html_body =~ "㏨"
@@ -83,7 +84,8 @@ defmodule Shroud.Email.ParsedEmailTest do
     test "handles unicode headers (encoded-word)" do
       email = File.read!("test/support/data/unicode_header.email") |> :mimemail.decode()
 
-      %{swoosh_email: email} = ParsedEmail.parse(email, "sender@example.com", "alias@shroud.test")
+      %{swoosh_email: email} =
+        ParsedEmail.parse(email, "sender@example.com", "alias@email.shroud.test")
 
       {sender, _sender_email} = email.from
       assert sender == "Pärla Example"
@@ -93,7 +95,8 @@ defmodule Shroud.Email.ParsedEmailTest do
     test "handles an application/octet attachment" do
       email = File.read!("test/support/data/single_attachment.email") |> :mimemail.decode()
 
-      %{swoosh_email: email} = ParsedEmail.parse(email, "sender@example.com", "alias@shroud.test")
+      %{swoosh_email: email} =
+        ParsedEmail.parse(email, "sender@example.com", "alias@email.shroud.test")
 
       assert length(email.attachments) == 1
       assert hd(email.attachments).filename == "motherofalldemos.jpg"
@@ -103,7 +106,8 @@ defmodule Shroud.Email.ParsedEmailTest do
     test "handles an image/jpeg attachment" do
       email = File.read!("test/support/data/attachment_image.email") |> :mimemail.decode()
 
-      %{swoosh_email: email} = ParsedEmail.parse(email, "sender@example.com", "alias@shroud.test")
+      %{swoosh_email: email} =
+        ParsedEmail.parse(email, "sender@example.com", "alias@email.shroud.test")
 
       assert length(email.attachments) == 1
       assert hd(email.attachments).filename == "motherofalldemos.jpg"
@@ -113,7 +117,8 @@ defmodule Shroud.Email.ParsedEmailTest do
     test "handles multiple attachments" do
       email = File.read!("test/support/data/multiple_attachments.email") |> :mimemail.decode()
 
-      %{swoosh_email: email} = ParsedEmail.parse(email, "sender@example.com", "alias@shroud.test")
+      %{swoosh_email: email} =
+        ParsedEmail.parse(email, "sender@example.com", "alias@email.shroud.test")
 
       assert length(email.attachments) == 2
 
@@ -131,7 +136,8 @@ defmodule Shroud.Email.ParsedEmailTest do
     test "handles an inline attachment" do
       email = File.read!("test/support/data/inline_attachment.email") |> :mimemail.decode()
 
-      %{swoosh_email: email} = ParsedEmail.parse(email, "sender@example.com", "alias@shroud.test")
+      %{swoosh_email: email} =
+        ParsedEmail.parse(email, "sender@example.com", "alias@email.shroud.test")
 
       assert length(email.attachments) == 1
       attachment = hd(email.attachments)

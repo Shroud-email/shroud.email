@@ -193,7 +193,7 @@ defmodule ShroudWeb.Components.Atoms do
 
     ~H"""
     <button
-      :if={live_flash(@flash, @kind)}
+      :if={Phoenix.Flash.get(@flash, @kind)}
       phx-hook="Notification"
       id={"flash-#{@kind}"}
       class="fade-in-translate max-w-sm w-full bg-white shadow-lg rounded-lg pointer-events-auto ring-1 ring-black ring-opacity-5 overflow-hidden hover:shadow-xl transition-all duration-100"
@@ -206,7 +206,7 @@ defmodule ShroudWeb.Components.Atoms do
           </div>
           <div class="ml-3 w-0 flex-1 pt-0.5">
             <p class="text-left text-sm font-medium text-gray-900">
-              <%= live_flash(@flash, @kind) %>
+              <%= Phoenix.Flash.get(@flash, @kind) %>
             </p>
           </div>
         </div>

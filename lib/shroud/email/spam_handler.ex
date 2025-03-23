@@ -92,7 +92,7 @@ defmodule Shroud.Email.SpamHandler do
         sender = get_header_value(headers, "from")
         recipient = get_header_value(headers, "to")
 
-        Logger.warn(
+        Logger.warning(
           "Received an email from #{sender} to #{recipient} without a SpamAssassin header"
         )
 

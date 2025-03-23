@@ -21,7 +21,7 @@ defmodule Shroud.Email.BounceHandler do
     |> S3UploadJob.new()
     |> Oban.insert!()
 
-    Logger.warn("Received bounce report from Haraka! See #{s3_path}.")
+    Logger.warning("Received bounce report from Haraka! See #{s3_path}.")
     :ok
   end
 

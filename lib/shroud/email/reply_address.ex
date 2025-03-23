@@ -17,8 +17,8 @@ defmodule Shroud.Email.ReplyAddress do
 
   ## Examples:
 
-      iex> Shroud.Email.ReplyAddress.to_reply_address("test@test.com", "deadbeef@shroud.test")
-      "test_at_test.com_deadbeef@shroud.test"
+      iex> Shroud.Email.ReplyAddress.to_reply_address("test@test.com", "deadbeef@email.shroud.test")
+      "test_at_test.com_deadbeef@email.shroud.test"
   """
   def to_reply_address(address, email_alias) do
     {alias_local_part, alias_domain} = Util.extract_email_parts(email_alias)
@@ -34,8 +34,8 @@ defmodule Shroud.Email.ReplyAddress do
 
   ## Examples:
 
-      iex> Shroud.Email.ReplyAddress.from_reply_address("test_at_test.com_deadbeef@shroud.test")
-      {"test@test.com", "deadbeef@shroud.test"}
+      iex> Shroud.Email.ReplyAddress.from_reply_address("test_at_test.com_deadbeef@email.shroud.test")
+      {"test@test.com", "deadbeef@email.shroud.test"}
   """
   def from_reply_address(address) do
     {local_part, domain} = Util.extract_email_parts(address)

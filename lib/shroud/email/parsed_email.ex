@@ -182,7 +182,7 @@ defmodule Shroud.Email.ParsedEmail do
         {trim_quotes_and_whitespace(name_part), String.trim(address_part)}
 
       _other ->
-        Logger.warn("Failed to parse address: #{address}")
+        Logger.warning("Failed to parse address: #{address}")
         {nil, address}
     end
   end
