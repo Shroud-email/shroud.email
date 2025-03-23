@@ -94,7 +94,7 @@ defmodule ShroudWeb.CustomDomainLive.Index do
     case Domain.create_custom_domain(socket.assigns.current_user, %{domain: domain}) do
       {:ok, _domain} ->
         {:noreply,
-         push_redirect(socket,
+         push_navigate(socket,
            to: ~p"/domains/#{domain}"
          )}
 

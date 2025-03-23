@@ -4,7 +4,7 @@ Received: from devmicah.fusedsolutions.com (localhost.localdomain [127.0.0.1])
     via ESMTP; Tue, 06 Oct 2009 15:04:57 -0400 (EDT)
 Date: Tue, 6 Oct 2009 15:04:56 -0400
 From: Micah Warren <sender@example.com>
-To: Micah Warren(SpiceCSM) <alias@shroud.test>
+To: Micah Warren(SpiceCSM) <alias@email.shroud.test>
 Message-ID: <B43C8DB4-76AD-44B9-9BF0-F59F65AECD39@spicecsm.com>
 Subject: unicode body
 X-Mailer: Apple Mail (2.936)

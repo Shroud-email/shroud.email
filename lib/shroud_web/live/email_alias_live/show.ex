@@ -318,7 +318,7 @@ defmodule ShroudWeb.EmailAliasLive.Show do
 
         socket
         |> put_flash(:success, "Deleted alias #{deleted_alias.address}.")
-        |> push_redirect(to: ~p"/")
+        |> push_navigate(to: ~p"/")
       else
         socket |> put_flash(:error, "You don't have permission to do that.")
       end

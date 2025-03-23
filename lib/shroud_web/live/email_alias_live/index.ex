@@ -44,7 +44,7 @@ defmodule ShroudWeb.EmailAliasLive.Index do
             |> assign(:aliases, [email_alias | socket.assigns.aliases])
 
           {:noreply,
-           push_redirect(socket,
+           push_navigate(socket,
              to: ~p"/alias/#{email_alias.address}"
            )}
 
@@ -85,7 +85,7 @@ defmodule ShroudWeb.EmailAliasLive.Index do
           |> assign(:aliases, [email_alias | socket.assigns.aliases])
 
           {:noreply,
-           push_redirect(socket,
+           push_navigate(socket,
              to: ~p"/alias/#{email_alias.address}"
            )}
 

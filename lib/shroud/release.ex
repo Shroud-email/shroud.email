@@ -78,7 +78,10 @@ defmodule Shroud.Release do
     # Update metrics
     dates =
       Repo.all(
-        from(m in EmailMetric, where: m.alias_id in ^Enum.map(duplicates, & &1.id), select: m.date)
+        from(m in EmailMetric,
+          where: m.alias_id in ^Enum.map(duplicates, & &1.id),
+          select: m.date
+        )
       )
 
     Enum.each(dates, fn date ->

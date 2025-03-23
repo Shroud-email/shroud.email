@@ -58,3 +58,9 @@ config :shroud, :mailer,
 #       force_ssl: [hsts: true]
 #
 # Check `Plug.SSL` for all available options in `force_ssl`.
+
+if System.get_env("SENTRY_DSN") do
+  config :sentry,
+    dsn: System.get_env("SENTRY_DSN"),
+    environment_name: Mix.env()
+end

@@ -1,7 +1,7 @@
 # syntax = docker/dockerfile:1
 ARG MIX_ENV="prod"
 
-FROM hexpm/elixir:1.14.2-erlang-25.2-debian-bullseye-20221004-slim as build
+FROM hexpm/elixir:1.16.3-erlang-26.0.2-debian-bookworm-20250317-slim AS build
 
 # install build dependencies
 RUN --mount=type=cache,target=/var/lib/apt,sharing=locked \
@@ -47,11 +47,12 @@ RUN mix assets.deploy
 COPY config/runtime.exs config/
 COPY rel rel
 COPY cfg_files cfg_files
+RUN mix sentry.package_source_code
 RUN mix release
 
 # start a new build stage so that the final image will only contain
 # the compiled release and other runtime necessities
-FROM hexpm/elixir:1.14.2-erlang-25.2-debian-bullseye-20221004-slim as app
+FROM hexpm/elixir:1.16.3-erlang-26.0.2-debian-bookworm-20250317-slim AS app
 RUN --mount=type=cache,target=/var/lib/apt,sharing=locked \
     --mount=type=cache,target=/var/cache/apt,sharing=locked \
     apt-get update && \

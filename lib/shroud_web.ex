@@ -24,7 +24,7 @@ defmodule ShroudWeb do
       use Phoenix.Controller, namespace: ShroudWeb
 
       import Plug.Conn
-      import ShroudWeb.Gettext
+      use Gettext, backend: ShroudWeb.Gettext
 
       unquote(verified_routes())
     end
@@ -89,7 +89,7 @@ defmodule ShroudWeb do
   def channel do
     quote do
       use Phoenix.Channel
-      import ShroudWeb.Gettext
+      use Gettext, backend: ShroudWeb.Gettext
     end
   end
 
@@ -109,7 +109,7 @@ defmodule ShroudWeb do
       import Phoenix.View
 
       import ShroudWeb.ErrorHelpers
-      import ShroudWeb.Gettext
+      use Gettext, backend: ShroudWeb.Gettext
       alias ShroudWeb.Router.Helpers, as: Routes
 
       import ShroudWeb.Components.Atoms

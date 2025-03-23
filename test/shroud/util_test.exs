@@ -25,7 +25,7 @@ defmodule Shroud.UtilTest do
 
   describe "email_domain/0" do
     test "returns the email domain" do
-      assert Util.email_domain() == "shroud.test"
+      assert Util.email_domain() == "email.shroud.test"
     end
   end
 end

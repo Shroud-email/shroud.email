@@ -28,8 +28,8 @@ defmodule Shroud.Email.ReplyAddressTest do
 
   describe "to_reply_address/1" do
     test "translates email address to reply address" do
-      assert ReplyAddress.to_reply_address("test@test.com", "deadbeef@shroud.test") ==
-               "test_at_test.com_deadbeef@shroud.test"
+      assert ReplyAddress.to_reply_address("test@test.com", "deadbeef@email.shroud.test") ==
+               "test_at_test.com_deadbeef@email.shroud.test"
     end
 
     test "handles custom domains" do
@@ -38,18 +38,18 @@ defmodule Shroud.Email.ReplyAddressTest do
     end
 
     test "handles underscores" do
-      assert ReplyAddress.to_reply_address("test_one@test.com", "deadbeef@shroud.test") ==
-               "test_one_at_test.com_deadbeef@shroud.test"
+      assert ReplyAddress.to_reply_address("test_one@test.com", "deadbeef@email.shroud.test") ==
+               "test_one_at_test.com_deadbeef@email.shroud.test"
     end
 
     test "handles _at_" do
-      assert ReplyAddress.to_reply_address("email_at_test@test.com", "deadbeef@shroud.test") ==
-               "email_at_test_at_test.com_deadbeef@shroud.test"
+      assert ReplyAddress.to_reply_address("email_at_test@test.com", "deadbeef@email.shroud.test") ==
+               "email_at_test_at_test.com_deadbeef@email.shroud.test"
     end
 
     test "handles underscores in recipient domains" do
-      assert ReplyAddress.to_reply_address("test@test_one.com", "deadbeef@shroud.test") ==
-               "test_at_test_one.com_deadbeef@shroud.test"
+      assert ReplyAddress.to_reply_address("test@test_one.com", "deadbeef@email.shroud.test") ==
+               "test_at_test_one.com_deadbeef@email.shroud.test"
     end
 
     test "handles underscores in alias domains" do
@@ -60,8 +60,8 @@ defmodule Shroud.Email.ReplyAddressTest do
 
   describe "from_reply_address/1" do
     test "translates reply address to email address" do
-      assert ReplyAddress.from_reply_address("test_at_test.com_deadbeef@shroud.test") ==
-               {"test@test.com", "deadbeef@shroud.test"}
+      assert ReplyAddress.from_reply_address("test_at_test.com_deadbeef@email.shroud.test") ==
+               {"test@test.com", "deadbeef@email.shroud.test"}
     end
 
     test "translates reply address on custom domain to email address" do
@@ -70,18 +70,20 @@ defmodule Shroud.Email.ReplyAddressTest do
     end
 
     test "handles underscores" do
-      assert ReplyAddress.from_reply_address("test_one_at_test.com_deadbeef@shroud.test") ==
-               {"test_one@test.com", "deadbeef@shroud.test"}
+      assert ReplyAddress.from_reply_address("test_one_at_test.com_deadbeef@email.shroud.test") ==
+               {"test_one@test.com", "deadbeef@email.shroud.test"}
     end
 
     test "handles _at_" do
-      assert ReplyAddress.from_reply_address("email_at_test_at_test.com_deadbeef@shroud.test") ==
-               {"email_at_test@test.com", "deadbeef@shroud.test"}
+      assert ReplyAddress.from_reply_address(
+               "email_at_test_at_test.com_deadbeef@email.shroud.test"
+             ) ==
+               {"email_at_test@test.com", "deadbeef@email.shroud.test"}
     end
 
     test "handles underscores in recipient domains" do
-      assert ReplyAddress.from_reply_address("test_at_test_one.com_deadbeef@shroud.test") ==
-               {"test@test_one.com", "deadbeef@shroud.test"}
+      assert ReplyAddress.from_reply_address("test_at_test_one.com_deadbeef@email.shroud.test") ==
+               {"test@test_one.com", "deadbeef@email.shroud.test"}
     end
 
     test "handles underscores in alias domains" do
@@ -92,7 +94,7 @@ defmodule Shroud.Email.ReplyAddressTest do
 
   describe "reply_address?/1" do
     test "returns true for legacy reply addresses" do
-      assert ReplyAddress.reply_address?("name_at_example.com_alias@shroud.test")
+      assert ReplyAddress.reply_address?("name_at_example.com_alias@email.shroud.test")
     end
 
     test "returns true for reply addresses on a custom domain" do
@@ -105,7 +107,7 @@ defmodule Shroud.Email.ReplyAddressTest do
     end
 
     test "returns false for email aliases" do
-      refute ReplyAddress.reply_address?("deadbeef@shroud.test")
+      refute ReplyAddress.reply_address?("deadbeef@email.shroud.test")
     end
 
     test "returns false for any other email" do
@@ -116,7 +118,7 @@ defmodule Shroud.Email.ReplyAddressTest do
   describe "reversible" do
     test "handles valid email addresses" do
       Enum.each(@email_addresses, fn address ->
-        email_alias = "deadbeef@shroud.test"
+        email_alias = "deadbeef@email.shroud.test"
 
         assert {address, email_alias} ==
                  address
