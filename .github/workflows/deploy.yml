@@ -21,7 +21,7 @@ jobs:
       REGISTRY: ghcr.io
       IMAGE_NAME: ${{ github.repository }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup Depot
         uses: depot/setup-action@v1
       - name: Log in to the container registry
