@@ -4,6 +4,7 @@ on:
       - main
     tags:
       - "*"
+  workflow_dispatch:
 
 name: deploy
 
