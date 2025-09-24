@@ -17,14 +17,24 @@ permissions:
 
 jobs:
   deploy:
-    runs-on: blacksmith-2vcpu-ubuntu-2404
+    strategy:
+      matrix:
+        platform: [amd64, arm64]
+        include:
+          - platform: amd64
+            runner: blacksmith-4vcpu-ubuntu-2404
+            docker_platform: linux/amd64
+          - platform: arm64
+            runner: blacksmith-4vcpu-ubuntu-2404-arm
+            docker_platform: linux/arm64
+    runs-on: ${{ matrix.runner }}
     env:
       REGISTRY: ghcr.io
       IMAGE_NAME: ${{ github.repository }}
     steps:
       - uses: actions/checkout@v3
       - name: Setup Depot
-        uses: depot/setup-action@v1
+        uses: useblacksmith/setup-docker-builder@v1
       - name: Log in to the container registry
         uses: docker/login-action@v2
         with:
@@ -45,11 +55,10 @@ jobs:
             type=edge,branch=main
             type=sha
       - name: Build container
-        uses: depot/build-push-action@v1
+        uses: useblacksmith/build-push-action@v2
         with:
           context: .
           push: true
-          project: m40w098qkx
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ matrix.docker_platform }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
