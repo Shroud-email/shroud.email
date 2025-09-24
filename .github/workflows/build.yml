@@ -1,3 +1,5 @@
+name: Build
+
 on:
   push:
     branches:
@@ -6,14 +8,8 @@ on:
       - "*"
   workflow_dispatch:
 
-name: Build
-
 permissions:
   packages: write
-  contents: read
-  # allow issuing OIDC tokens for this workflow run
-  # (required for Depot)
-  id-token: write
 
 jobs:
   build:
@@ -32,17 +28,22 @@ jobs:
       REGISTRY: ghcr.io
       IMAGE_NAME: ${{ github.repository }}
     steps:
-      - uses: actions/checkout@v3
-      - name: Setup Depot
+      - uses: actions/checkout@v4
+
+      # Configure Blacksmith's BuildKit + layer cache
+      - name: Setup Blacksmith
         uses: useblacksmith/setup-docker-builder@v1
-      - name: Log in to the container registry
+
+      - name: Log in to GHCR
         uses: docker/login-action@v2
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
+
+      # Base (unsuffixed) tags used for final multi-arch manifest
+      - name: Extract base tags
+        id: meta_base
         uses: docker/metadata-action@v4
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
@@ -54,73 +55,102 @@ jobs:
             type=semver,pattern={{major}}
             type=edge,branch=main
             type=sha
-      - name: Build container
+
+      # Arch-suffixed tags pushed by each matrix job (avoids collisions)
+      - name: Extract arch-suffixed tags
+        id: meta_arch
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          flavor: |
+            latest=false
+            suffix=-${{ matrix.platform }},onlatest=true
+          tags: ${{ steps.meta_base.outputs.tags }}
+
+      - name: Build & push (single-arch)
         id: build
         uses: useblacksmith/build-push-action@v2
         with:
           context: .
           push: true
           platforms: ${{ matrix.docker_platform }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-      - name: Persist image digest
+          tags: ${{ steps.meta_arch.outputs.tags }}
+          labels: ${{ steps.meta_base.outputs.labels }}
+
+      # Save the digest produced by this job and the base tag list once
+      - name: Persist digest
         run: |
           echo "${{ steps.build.outputs.digest }}" > digest-${{ matrix.platform }}.txt
         shell: bash
-      - name: Upload image digest artifact
+
+      - name: Upload digest artifact
         uses: actions/upload-artifact@v4
         with:
           name: digest-${{ matrix.platform }}
           path: digest-${{ matrix.platform }}.txt
 
+      - name: Persist base tags (once)
+        if: matrix.platform == 'amd64'
+        run: |
+          echo "${{ steps.meta_base.outputs.tags }}" > tags.txt
+        shell: bash
+
+      - name: Upload base tags (once)
+        if: matrix.platform == 'amd64'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tags
+          path: tags.txt
+
   merge-manifests:
+    name: Merge multi-arch manifests
     needs: build
     runs-on: blacksmith-2vcpu-ubuntu-2404
     env:
       REGISTRY: ghcr.io
       IMAGE_NAME: ${{ github.repository }}
     steps:
-      - name: Log in to the container registry
+      - name: Log in to GHCR
         uses: docker/login-action@v2
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Download amd64 digest
+
+      - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          name: digest-amd64
-          path: digests
-      - name: Download arm64 digest
-        uses: actions/download-artifact@v4
-        with:
-          name: digest-arm64
-          path: digests
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v4
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          flavor: |
-            latest=false
-          tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=edge,branch=main
-            type=sha
-      - name: Create and push multi-arch manifests
+          pattern: "{tags,digest-*}"
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create & push multi-arch manifests (by digest)
         env:
-          AMD64_DIGEST_FILE: digests/digest-amd64.txt
-          ARM64_DIGEST_FILE: digests/digest-arm64.txt
-          IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          TAGS: ${{ steps.meta.outputs.tags }}
+          REGISTRY: ${{ env.REGISTRY }}
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
         run: |
-          amd64_digest=$(cat "$AMD64_DIGEST_FILE")
-          arm64_digest=$(cat "$ARM64_DIGEST_FILE")
-          for tag in $TAGS; do
-            docker manifest create "$tag" \
-              --amend "$IMAGE@$amd64_digest" \
-              --amend "$IMAGE@$arm64_digest"
-            docker manifest push "$tag"
+          set -euo pipefail
+
+          AMD_DIGEST="$(cat artifacts/digest-amd64.txt)"
+          ARM_DIGEST="$(cat artifacts/digest-arm64.txt)"
+          TAGS_FILE="artifacts/tags.txt"
+
+          # Ensure lowercase for GHCR (owner/repo can come mixed-case from GitHub)
+          IMAGE_REF="${REGISTRY}/${IMAGE_NAME}"
+          IMAGE_REF="${IMAGE_REF,,}"
+
+          if [[ -z "$AMD_DIGEST" || -z "$ARM_DIGEST" ]]; then
+            echo "Missing digests" >&2
+            exit 1
+          fi
+
+          mapfile -t REFS < "$TAGS_FILE"
+          for ref in "${REFS[@]}"; do
+            tag="${ref##*:}"
+
+            # Compose a multi-arch manifest purely from digests (most reliable)
+            docker buildx imagetools create \
+              -t "${IMAGE_REF}:${tag}" \
+              "${IMAGE_REF}@${AMD_DIGEST}" \
+              "${IMAGE_REF}@${ARM_DIGEST}"
           done
