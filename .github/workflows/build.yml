@@ -1,0 +1,126 @@
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "*"
+  workflow_dispatch:
+
+name: Build
+
+permissions:
+  packages: write
+  contents: read
+  # allow issuing OIDC tokens for this workflow run
+  # (required for Depot)
+  id-token: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        platform: [amd64, arm64]
+        include:
+          - platform: amd64
+            runner: blacksmith-4vcpu-ubuntu-2404
+            docker_platform: linux/amd64
+          - platform: arm64
+            runner: blacksmith-4vcpu-ubuntu-2404-arm
+            docker_platform: linux/arm64
+    runs-on: ${{ matrix.runner }}
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_NAME: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Depot
+        uses: useblacksmith/setup-docker-builder@v1
+      - name: Log in to the container registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          flavor: |
+            latest=false
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=edge,branch=main
+            type=sha
+      - name: Build container
+        id: build
+        uses: useblacksmith/build-push-action@v2
+        with:
+          context: .
+          push: true
+          platforms: ${{ matrix.docker_platform }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+      - name: Persist image digest
+        run: |
+          echo "${{ steps.build.outputs.digest }}" > digest-${{ matrix.platform }}.txt
+        shell: bash
+      - name: Upload image digest artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: digest-${{ matrix.platform }}
+          path: digest-${{ matrix.platform }}.txt
+
+  merge-manifests:
+    needs: build
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_NAME: ${{ github.repository }}
+    steps:
+      - name: Log in to the container registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Download amd64 digest
+        uses: actions/download-artifact@v4
+        with:
+          name: digest-amd64
+          path: digests
+      - name: Download arm64 digest
+        uses: actions/download-artifact@v4
+        with:
+          name: digest-arm64
+          path: digests
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          flavor: |
+            latest=false
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=edge,branch=main
+            type=sha
+      - name: Create and push multi-arch manifests
+        env:
+          AMD64_DIGEST_FILE: digests/digest-amd64.txt
+          ARM64_DIGEST_FILE: digests/digest-arm64.txt
+          IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          amd64_digest=$(cat "$AMD64_DIGEST_FILE")
+          arm64_digest=$(cat "$ARM64_DIGEST_FILE")
+          for tag in $TAGS; do
+            docker manifest create "$tag" \
+              --amend "$IMAGE@$amd64_digest" \
+              --amend "$IMAGE@$arm64_digest"
+            docker manifest push "$tag"
+          done
