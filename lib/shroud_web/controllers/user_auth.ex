@@ -194,15 +194,15 @@ defmodule ShroudWeb.UserAuth do
       Application.get_env(:shroud, :env, nil) == :dev ->
         conn
 
-      user.is_admin ->
-        conn
-
       is_nil(user) ->
         conn
         |> put_flash(:error, "You must log in to access this page.")
         |> maybe_store_return_to()
         |> redirect(to: ~p"/users/log_in")
         |> halt()
+
+      user.is_admin ->
+        conn
 
       true ->
         conn
