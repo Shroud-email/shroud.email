@@ -108,7 +108,7 @@ if config_env() == :prod do
     username: smtp_username,
     password: smtp_password,
     ssl: false,
-    tls: :if_available,
+    tls: :always,
     auth: :always,
     retries: 5,
     no_mx_lookups: true
