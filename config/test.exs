@@ -57,5 +57,5 @@ config :phoenix, :plug_init_mode, :runtime
 
 config :shroud,
   notifier_webhook_url: "webhook.com/webhook",
-  email_octopus_list_id: 123,
-  email_octopus_api_key: "deadbeef"
+  loops_newsletter_id: "loops_newsletter",
+  loops_api_key: "secret"
