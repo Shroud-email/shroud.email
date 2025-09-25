@@ -102,16 +102,22 @@ if config_env() == :prod do
   smtp_password =
     System.get_env("SMTP_PASSWORD") || raise "environment variable SMTP_PASSWORD is missing"
 
+  smtp_relay = System.get_env("SMTP_RELAY") || "localhost"
+
   config :shroud, Shroud.Mailer,
     adapter: Swoosh.Adapters.SMTP,
-    relay: System.get_env("SMTP_RELAY") || "localhost",
+    relay: smtp_relay,
     username: smtp_username,
     password: smtp_password,
     ssl: false,
     tls: :always,
     auth: :always,
+    port: 25,
     retries: 5,
-    no_mx_lookups: true
+    no_mx_lookups: true,
+    tls_options: [
+      verify: :verify_none
+    ]
 
   config :swoosh, :api_client, Swoosh.ApiClient.Hackney
 
