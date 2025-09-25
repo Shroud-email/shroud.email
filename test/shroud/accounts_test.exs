@@ -443,9 +443,9 @@ defmodule Shroud.AccountsTest do
       assert Repo.get_by(UserToken, user_id: user.id)
     end
 
-    test "subscribes the user in EmailOctopus", %{user: user, token: token} do
+    test "subscribes the user in Loops", %{user: user, token: token} do
       assert {:ok, _confirmed_user} = Accounts.confirm_user(token)
-      assert_enqueued(worker: Accounts.EmailOctopusJob, args: %{user_id: user.id})
+      assert_enqueued(worker: Accounts.LoopsJob, args: %{user_id: user.id})
     end
   end
 

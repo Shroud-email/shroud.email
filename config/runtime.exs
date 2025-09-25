@@ -23,6 +23,10 @@ config :ex_aws,
     host: s3_host
   ]
 
+config :shroud,
+  loops_api_key: System.get_env("LOOPS_API_KEY"),
+  loops_active_users_list_id: System.get_env("LOOPS_ACTIVE_USERS_LIST_ID")
+
 # config/runtime.exs is executed for all environments, including
 # during releases. It is executed after compilation and before the
 # system starts, so it is typically used to load production configuration
@@ -130,8 +134,6 @@ if config_env() == :prod do
 
   config :shroud,
     notifier_webhook_url: System.get_env("NOTIFIER_WEBHOOK_URL"),
-    email_octopus_list_id: System.get_env("EMAIL_OCTOPUS_LIST_ID"),
-    email_octopus_api_key: System.get_env("EMAIL_OCTOPUS_API_KEY"),
     admin_user_email: System.get_env("ADMIN_EMAIL"),
     disable_signups: System.get_env("DISABLE_SIGNUPS"),
     app_domain: app_domain,
