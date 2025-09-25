@@ -303,9 +303,23 @@ defmodule Shroud.Accounts do
     with {:ok, query} <- UserToken.verify_email_token_query(token, "confirm"),
          %User{} = user <- Repo.one(query),
          {:ok, %{user: user}} <- Repo.transaction(confirm_user_multi(user)) do
-      %{user_id: user.id}
-      |> LoopsJob.new()
-      |> Oban.insert!()
+      case Application.fetch_env(:shroud, :loops_active_users_list_id) do
+        {:ok, active_users_list_id} ->
+          %{
+            user_id: user.id,
+            event_name: "user_confirmed",
+            event_properties: %{},
+            mailing_lists: %{
+              active_users_list_id => true
+            }
+          }
+          |> LoopsJob.new()
+          |> Oban.insert!()
+
+        _ ->
+          Logger.debug("Loops active list not configured")
+          nil
+      end
 
       {:ok, user}
     else
@@ -323,6 +337,8 @@ defmodule Shroud.Accounts do
       trial_expires_at: thirty_days_from_now,
       status: status
     }
+
+    Logger.info("Confirming user #{user.email} with status #{status}")
 
     Ecto.Multi.new()
     |> Ecto.Multi.update(:user, User.confirm_changeset(user, attrs))

@@ -1,28 +1,38 @@
 defmodule Shroud.Accounts.LoopsJob do
   use Oban.Worker, queue: :default, max_attempts: 10
   alias Shroud.Accounts
+  require Logger
 
-  @loops_endpoint "https://app.loops.so/api/v1/contacts/create"
+  @loops_endpoint "https://app.loops.so/api/v1/events/send"
 
   @impl Oban.Worker
-  def perform(%Oban.Job{args: %{"user_id" => user_id}}) do
+  def perform(%Oban.Job{
+        args: %{
+          "user_id" => user_id,
+          "event_name" => event_name,
+          "event_properties" => event_properties,
+          "mailing_lists" => mailing_lists
+        }
+      }) do
     user = Accounts.get_user!(user_id)
 
-    with {:ok, api_key} <- Application.fetch_env(:shroud, :loops_api_key),
-         {:ok, newsletter_id} <- Application.fetch_env(:shroud, :loops_newsletter_id) do
-      subscribe(user, api_key, newsletter_id)
-    else
+    case Application.fetch_env(:shroud, :loops_api_key) do
+      {:ok, api_key} ->
+        track_event(user, event_name, event_properties, api_key, mailing_lists)
+
       :error ->
         # Not configured; do nothing
         :ok
     end
   end
 
-  defp subscribe(user, api_key, newsletter_id) do
+  defp track_event(user, event_name, properties, api_key, mailing_lists) do
     payload =
       Jason.encode!(%{
         "email" => user.email,
-        "newsletterId" => newsletter_id
+        "eventName" => event_name,
+        "eventProperties" => properties,
+        "mailingLists" => mailing_lists
       })
 
     headers = [
@@ -30,6 +40,7 @@ defmodule Shroud.Accounts.LoopsJob do
       Authorization: "Bearer #{api_key}"
     ]
 
+    Logger.info("Tracking #{event_name} for user #{user.email} in Loops")
     http().post(@loops_endpoint, payload, headers)
   end
 
