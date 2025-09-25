@@ -62,5 +62,11 @@ config :shroud, :mailer,
 if System.get_env("SENTRY_DSN") do
   config :sentry,
     dsn: System.get_env("SENTRY_DSN"),
-    environment_name: Mix.env()
+    environment_name: Mix.env(),
+    integrations: [
+      oban: [
+        capture_errors: true,
+        cron: [enabled: true]
+      ]
+    ]
 end
