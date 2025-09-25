@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.2.1](https://github.com/Shroud-email/shroud.email/compare/v1.2.0...v1.2.1) (2025-09-25)
+
+
+### Bug Fixes
+
+* fix KeyError when checking for admin ([#96](https://github.com/Shroud-email/shroud.email/issues/96)) ([08797de](https://github.com/Shroud-email/shroud.email/commit/08797de6b1add0fdafa4fcaed74be5f021a430b4))
+* ignore TLS when relaying to haraka ([#100](https://github.com/Shroud-email/shroud.email/issues/100)) ([8187006](https://github.com/Shroud-email/shroud.email/commit/8187006d164ac356a6fd3f34058313eabcab93d9))
+* revert gen_smtp update ([b84ca3d](https://github.com/Shroud-email/shroud.email/commit/b84ca3d079d4e27d59372981a462183ff56c7a81))
+* switch from emailoctopus to loops ([#101](https://github.com/Shroud-email/shroud.email/issues/101)) ([9fb17e8](https://github.com/Shroud-email/shroud.email/commit/9fb17e84be161fd68f88bd2a01fc4b39d952929f))
+
 ## [1.2.0](https://github.com/Shroud-email/shroud.email/compare/v1.1.1...v1.2.0) (2025-03-23)
 
 
