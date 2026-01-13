@@ -2,9 +2,9 @@ name: Sobelow
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]  
+    branches: ["main"]
 
 permissions:
   contents: read
@@ -12,15 +12,31 @@ permissions:
 jobs:
   security-scan:
     permissions:
-      contents: read # for actions/checkout to fetch code
-      security-events: write # for github/codeql-action/upload-sarif to upload SARIF results
+      contents: read
+      security-events: write
     runs-on: blacksmith-2vcpu-ubuntu-2404
 
     steps:
-      - uses: actions/checkout@v3 
-      - id: run-action
-        uses: sobelow/action@a9bf221c4eef7e7a4486fa1f06257511c9780b46
+      - uses: actions/checkout@v4
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1.18.2
+        with:
+          elixir-version: "1.16.3"
+          otp-version: "26"
+          version-type: "strict"
+      - name: Restore dependencies cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
+          restore-keys: ${{ runner.os }}-mix-
+      - name: Install dependencies
+        run: mix deps.get
+      - name: Run Sobelow
+        run: mix sobelow --format sarif --out results.sarif
       - name: Upload report
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: results.sarif
