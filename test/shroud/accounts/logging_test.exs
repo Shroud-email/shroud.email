@@ -16,11 +16,12 @@ defmodule Shroud.Accounts.LoggingTest do
 
       Logging.store_email("sender@example.com", "recipient@example.com", "data")
 
+      # Content is Base64 encoded to safely store as JSONB in Oban
       assert_enqueued(
         worker: S3UploadJob,
         args: %{
           path: "/emails/sender@example.com-recipient@example.com-1656358048.eml",
-          content: "data"
+          content: Base.encode64("data")
         }
       )
     end

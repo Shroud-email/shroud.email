@@ -16,14 +16,17 @@ defmodule Shroud.Email.EmailHandler do
   @type mimemail_email :: :mimemail.mimetuple()
 
   @impl Oban.Worker
-  def perform(%Oban.Job{args: %{"from" => from, "to" => to, "data" => data}})
-      when from in ["", nil] do
+  def perform(%Oban.Job{args: %{"from" => from, "to" => to, "data" => data}}) do
+    # Decode Base64 encoded email data (encoded in SmtpServer to safely store as JSONB)
+    decoded_data = decode_data(data)
+    do_perform(from, to, decoded_data)
+  end
+
+  defp do_perform(from, to, data) when from in ["", nil] do
     BounceHandler.handle_haraka_bounce_report(to, data)
   end
 
-  @impl Oban.Worker
-  def perform(%Oban.Job{args: %{"from" => from, "to" => to, "data" => data}})
-      when byte_size(data) > 26_214_400 do
+  defp do_perform(from, to, data) when byte_size(data) > 26_214_400 do
     # when the email is too big, cancel
 
     if is_list(to) do
@@ -40,16 +43,22 @@ defmodule Shroud.Email.EmailHandler do
     :ok
   end
 
-  @impl Oban.Worker
-  def perform(%Oban.Job{args: %{"from" => from, "to" => recipients, "data" => data}})
-      when is_list(recipients) do
+  defp do_perform(from, recipients, data) when is_list(recipients) do
     recipients
     |> Enum.each(&handle_recipient(from, &1, data))
   end
 
-  @impl Oban.Worker
-  def perform(%Oban.Job{args: %{"from" => from, "to" => to, "data" => data}}) do
+  defp do_perform(from, to, data) do
     handle_recipient(from, to, data)
+  end
+
+  # Decode Base64 encoded email data. Falls back to raw data for backwards
+  # compatibility with jobs created before encoding was added.
+  defp decode_data(data) do
+    case Base.decode64(data) do
+      {:ok, decoded} -> decoded
+      :error -> data
+    end
   end
 
   @spec handle_recipient(String.t(), String.t(), String.t()) :: :ok | {:error, term()}

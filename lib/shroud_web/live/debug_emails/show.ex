@@ -29,9 +29,18 @@ defmodule ShroudWeb.DebugEmailsLive.Show do
     <p>From: <%= @job.args["from"] %></p>
 
     <pre class="mt-4 bg-white p-4 rounded-md overflow-x-scroll">
-      <%= @job.args["data"] %>
+      <%= decode_email_data(@job.args["data"]) %>
     </pre>
     """
+  end
+
+  # Decode Base64 encoded email data for display.
+  # Falls back to raw data for legacy jobs created before encoding was added.
+  defp decode_email_data(data) do
+    case Base.decode64(data) do
+      {:ok, decoded} -> decoded
+      :error -> data
+    end
   end
 
   defp fetch_email(socket, job_id) do

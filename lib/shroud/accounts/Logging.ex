@@ -40,7 +40,11 @@ defmodule Shroud.Accounts.Logging do
     date_time = Application.get_env(:shroud, :datetime_module, Shroud.DateTime)
     s3_path = "/emails/#{sender}-#{recipient}-#{date_time.utc_now_unix()}.eml"
 
-    %{path: s3_path, content: data}
+    # Base64 encode the email data to safely store as JSONB in Oban.
+    # Raw email data can contain non-UTF-8 bytes which break JSON encoding.
+    encoded_data = Base.encode64(data)
+
+    %{path: s3_path, content: encoded_data}
     |> S3UploadJob.new()
     |> Oban.insert!()
 

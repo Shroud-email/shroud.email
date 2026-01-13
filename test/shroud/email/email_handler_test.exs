@@ -566,11 +566,12 @@ defmodule Shroud.Email.EmailHandlerTest do
 
       perform_job(EmailHandler, %{from: "sender@example.com", to: email_alias.address, data: data})
 
+      # Content is Base64 encoded to safely store as JSONB in Oban
       assert_enqueued(
         worker: Shroud.S3.S3UploadJob,
         args: %{
           path: "/emails/sender@example.com-#{email_alias.address}-1656361719.eml",
-          content: data
+          content: Base.encode64(data)
         }
       )
     end
@@ -881,6 +882,70 @@ defmodule Shroud.Email.EmailHandlerTest do
 
         assert email.text_body ==
                  "this is not a valid email.\r\njust a bunch of text.\n\nThis email was forwarded from alias@email.shroud.test by Shroud.email.\n"
+      end)
+    end
+
+    test "handles email data containing non-UTF-8 bytes", %{user: user, email_alias: email_alias} do
+      # Email data with raw non-UTF-8 bytes (0xE7 is part of a multi-byte UTF-8 sequence
+      # but appears without proper encoding in raw email headers)
+      # This simulates real-world emails that have improperly encoded headers
+      non_utf8_data =
+        text_email(
+          "sender@example.com",
+          [email_alias.address],
+          "Test subject",
+          "Plain text content"
+        )
+        # Inject raw non-UTF-8 byte sequence into the data
+        |> String.replace("Plain text content", "Content with \xE7 invalid byte")
+
+      # Base64 encode the data as SmtpServer.handle_DATA now does
+      encoded_data = Base.encode64(non_utf8_data)
+
+      # This should NOT raise Jason.EncodeError when inserting the job
+      # The issue is that Oban stores job args as JSONB, and raw email data
+      # can contain non-UTF-8 bytes which break JSON encoding
+      assert {:ok, job} =
+               %{from: "sender@example.com", to: email_alias.address, data: encoded_data}
+               |> EmailHandler.new()
+               |> Oban.insert()
+
+      assert job.id != nil
+
+      # Drain the queue to process the job
+      assert %{success: 1, failure: 0} = Oban.drain_queue(queue: :outgoing_email)
+
+      # Verify the email was forwarded successfully
+      assert_email_sent(fn email ->
+        assert hd(email.to) == {email_alias.address, user.email}
+      end)
+    end
+
+    test "handles legacy jobs with non-Base64 encoded data", %{
+      user: user,
+      email_alias: email_alias
+    } do
+      # Legacy jobs (created before Base64 encoding was added) have raw email data.
+      # This test ensures backwards compatibility during deployment transition.
+      raw_data =
+        text_email(
+          "sender@example.com",
+          [email_alias.address],
+          "Legacy job test",
+          "Plain text content"
+        )
+
+      # Simulate a legacy job by passing raw (non-Base64) data directly to perform_job
+      perform_job(EmailHandler, %{
+        from: "sender@example.com",
+        to: email_alias.address,
+        data: raw_data
+      })
+
+      # Verify the email was forwarded successfully
+      assert_email_sent(fn email ->
+        assert hd(email.to) == {email_alias.address, user.email}
+        assert email.text_body =~ "Plain text content"
       end)
     end
   end
