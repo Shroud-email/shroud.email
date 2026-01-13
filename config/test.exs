@@ -56,6 +56,4 @@ config :logger, :console, level: :error
 config :phoenix, :plug_init_mode, :runtime
 
 config :shroud,
-  notifier_webhook_url: "webhook.com/webhook",
-  loops_activer_users_list_id: "loops_active_users_list",
-  loops_api_key: "secret"
+  notifier_webhook_url: "webhook.com/webhook"
