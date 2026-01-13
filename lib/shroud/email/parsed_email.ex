@@ -176,14 +176,31 @@ defmodule Shroud.Email.ParsedEmail do
   defp parse_address(address) do
     case Regex.run(~r/^(.*)<(.*@.*)>/, address) do
       nil ->
-        {address, address}
+        sanitized = sanitize_email_address(address)
+        {sanitized, sanitized}
 
       [_string, name_part, address_part] ->
-        {trim_quotes_and_whitespace(name_part), String.trim(address_part)}
+        {trim_quotes_and_whitespace(name_part), sanitize_email_address(String.trim(address_part))}
 
       _other ->
         Logger.warning("Failed to parse address: #{address}")
-        {nil, address}
+        {nil, sanitize_email_address(address)}
+    end
+  end
+
+  # Sanitizes malformed email addresses by removing spaces from the local part.
+  # This handles (likely spam) emails that have invalid addresses like "foo bar@example.com"
+  # which would otherwise cause gen_smtp/mimemail to crash during encoding.
+  # It's not great that we're modifying the email address, but it's better than crashing.
+  defp sanitize_email_address(address) do
+    case String.split(address, "@", parts: 2) do
+      [local_part, domain] ->
+        sanitized_local = String.replace(local_part, ~r/\s+/, "")
+        "#{sanitized_local}@#{domain}"
+
+      _ ->
+        # No @ sign found, just remove spaces
+        String.replace(address, ~r/\s+/, "")
     end
   end
 

@@ -145,5 +145,35 @@ defmodule Shroud.Email.ParsedEmailTest do
       assert attachment.content_type == "image/jpeg"
       assert attachment.cid == "708f1df0@example.com"
     end
+
+    test "sanitizes email addresses with spaces in the local part" do
+      # This reproduces an error where malformed email addresses with spaces
+      # cause gen_smtp/mimemail to fail with:
+      # (ArgumentError) errors were found at the given arguments:
+      #   * 1st argument: not an atom
+      #   :erlang.atom_to_list(~c"bar_at_example")
+      email_raw =
+        text_email(
+          {"foo bar", "foo bar@example.com"},
+          ["info@example.com"],
+          "Test email with malformed address",
+          "Test body",
+          "Reply-To: \"foo bar\" <foo bar@example.com>"
+        )
+
+      mimemail_email = :mimemail.decode(email_raw)
+
+      %{swoosh_email: email} =
+        ParsedEmail.parse(mimemail_email, "sender@example.com", "alias@email.shroud.test")
+
+      # Verify the address was sanitized (spaces removed from local part)
+      {from_name, from_address} = email.from
+      assert from_name == "foo bar"
+      assert from_address == "foobar@example.com"
+
+      # Verify reply_to was also sanitized
+      {_reply_to_name, reply_to_address} = email.reply_to
+      assert reply_to_address == "foobar@example.com"
+    end
   end
 end
