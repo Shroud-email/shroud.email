@@ -286,6 +286,33 @@ defmodule Shroud.Email.EmailHandlerTest do
       end)
     end
 
+    test "handles sender name containing parentheses", %{user: user, email_alias: email_alias} do
+      # Sender names with parentheses like "John (Marketing)" can cause RFC 5322 parsing errors
+      # when we append " (via Shroud.email)" suffix
+      data =
+        text_email(
+          {"Sender (Marketing)", "sender@example.com"},
+          [{"Recipient", email_alias.address}],
+          "Text only",
+          "Plain text content!"
+        )
+
+      args = %{from: "sender@example.com", to: email_alias.address, data: data}
+      perform_job(EmailHandler, args)
+
+      assert_email_sent(fn email ->
+        assert hd(email.to) == {"Recipient", user.email}
+
+        # Parentheses should be removed from the sender name to avoid RFC 5322 encoding issues
+        assert email.from ==
+                 {"Sender Marketing (via Shroud.email)",
+                  "sender_at_example.com_alias@email.shroud.test"}
+
+        assert is_nil(email.reply_to)
+        assert email.text_body =~ "Plain text content!"
+      end)
+    end
+
     test "handles text/html email", %{user: user, email_alias: email_alias} do
       data = html_email("sender@example.com", [email_alias.address], "HTML only", @html_content)
       args = %{from: "sender@example.com", to: email_alias.address, data: data}
