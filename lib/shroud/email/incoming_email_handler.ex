@@ -5,7 +5,16 @@ defmodule Shroud.Email.IncomingEmailHandler do
   alias Shroud.Mailer
   alias Shroud.Util
   alias Shroud.Domain
-  alias Shroud.Email.{SpamHandler, ParsedEmail, TrackerRemover, Enricher, ReplyAddress}
+
+  alias Shroud.Email.{
+    SpamHandler,
+    ParsedEmail,
+    TrackerRemover,
+    Enricher,
+    ReplyAddress,
+    IncomingEmailDecoder
+  }
+
   import Shroud.Accounts.Logging, only: [maybe_log: 2, store_email: 3]
   require Logger
 
@@ -50,13 +59,17 @@ defmodule Shroud.Email.IncomingEmailHandler do
           "Storing spam email from #{sender} to #{recipient_user.email} (via #{recipient})"
         )
 
-        mimemail_email = :mimemail.decode(data)
+        decoded_email =
+          case IncomingEmailDecoder.decode(data, recipient_user) do
+            {:mimemail, mimemail_tuple} -> mimemail_tuple
+            {:mailex, mailex_msg} -> mailex_msg
+          end
 
         SpamHandler.handle_incoming_spam_email(
           sender,
           recipient_user,
           email_alias,
-          mimemail_email
+          decoded_email
         )
 
         Aliases.increment_blocked!(email_alias)
@@ -110,9 +123,15 @@ defmodule Shroud.Email.IncomingEmailHandler do
       store_email(sender, recipient, data)
     end
 
-    mimemail_email = :mimemail.decode(data)
+    decoded = IncomingEmailDecoder.decode(data, user)
 
-    case ParsedEmail.parse(mimemail_email, sender, recipient)
+    parsed_email =
+      case decoded do
+        {:mimemail, mimemail_tuple} -> ParsedEmail.parse(mimemail_tuple, sender, recipient)
+        {:mailex, mailex_msg} -> ParsedEmail.parse(mailex_msg, sender, recipient)
+      end
+
+    case parsed_email
          |> TrackerRemover.process()
          |> Enricher.process()
          # Now our pipeline is done, we just want our Swoosh email

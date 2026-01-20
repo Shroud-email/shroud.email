@@ -26,7 +26,29 @@ defmodule Shroud.Email.ParsedEmail do
     "delivered-to"
   ]
 
-  @spec parse(:mimemail.mimetuple(), String.t(), String.t()) :: t
+  @spec parse(:mimemail.mimetuple() | Mailex.Message.t(), String.t(), String.t()) :: t
+  def parse(%Mailex.Message{} = mailex_msg, from, to) do
+    swoosh_email = build_email_from_mailex(new(), mailex_msg)
+
+    parsed_html =
+      if swoosh_email.html_body do
+        case Floki.parse_document(swoosh_email.html_body) do
+          {:ok, []} -> nil
+          {:ok, parsed} -> parsed
+          {:error, _error} -> nil
+        end
+      else
+        nil
+      end
+
+    %__MODULE__{
+      from: from,
+      to: to,
+      swoosh_email: swoosh_email,
+      parsed_html: parsed_html
+    }
+  end
+
   def parse(mimemail_email, from, to) do
     swoosh_email = build_email(new(), mimemail_email)
 
@@ -209,4 +231,139 @@ defmodule Shroud.Email.ParsedEmail do
     |> String.replace(~r/^['"\s\\]+/, "")
     |> String.replace(~r/['"\s\\]+$/, "")
   end
+
+  # Mailex support
+
+  @spec build_email_from_mailex(Swoosh.Email.t(), Mailex.Message.t()) :: Swoosh.Email.t()
+  defp build_email_from_mailex(email, %Mailex.Message{} = msg) do
+    email
+    |> process_mailex_content(msg)
+    |> process_mailex_headers(msg.headers)
+  end
+
+  defp build_email_from_mailex_part(email, %Mailex.Message{} = msg) do
+    process_mailex_content_part(email, msg)
+  end
+
+  defp process_mailex_content(email, %Mailex.Message{parts: parts})
+       when is_list(parts) and parts != [] do
+    Enum.reduce(parts, email, fn part, acc -> build_email_from_mailex_part(acc, part) end)
+  end
+
+  defp process_mailex_content(
+         email,
+         %Mailex.Message{content_type: %{type: "text", subtype: "html"}} = msg
+       ) do
+    html_body(email, msg.body || "")
+  end
+
+  defp process_mailex_content(
+         email,
+         %Mailex.Message{content_type: %{type: "text", subtype: "plain"}} = msg
+       ) do
+    text_body(email, msg.body || "")
+  end
+
+  defp process_mailex_content(email, %Mailex.Message{
+         content_type: %{type: "message", subtype: "rfc822"}
+       }) do
+    email
+  end
+
+  defp process_mailex_content(email, %Mailex.Message{} = msg) do
+    if mailex_attachment?(msg) do
+      process_mailex_attachment(email, msg)
+    else
+      email
+    end
+  end
+
+  defp process_mailex_content_part(email, %Mailex.Message{
+         content_type: %{type: "message", subtype: "rfc822"}
+       }) do
+    email
+  end
+
+  defp process_mailex_content_part(email, %Mailex.Message{
+         content_type: %{type: "message", subtype: "delivery-status"}
+       }) do
+    email
+  end
+
+  defp process_mailex_content_part(email, %Mailex.Message{parts: parts})
+       when is_list(parts) and parts != [] do
+    Enum.reduce(parts, email, fn part, acc -> build_email_from_mailex_part(acc, part) end)
+  end
+
+  defp process_mailex_content_part(
+         email,
+         %Mailex.Message{content_type: %{type: "text", subtype: "html"}} = msg
+       ) do
+    html_body(email, msg.body || "")
+  end
+
+  defp process_mailex_content_part(
+         email,
+         %Mailex.Message{content_type: %{type: "text", subtype: "plain"}} = msg
+       ) do
+    text_body(email, msg.body || "")
+  end
+
+  defp process_mailex_content_part(email, %Mailex.Message{} = msg) do
+    if mailex_attachment?(msg) do
+      process_mailex_attachment(email, msg)
+    else
+      email
+    end
+  end
+
+  defp mailex_attachment?(%Mailex.Message{} = msg) do
+    msg.disposition_type in ["attachment", "inline"] or
+      not is_nil(msg.filename) or
+      (msg.content_type.type != "text" and msg.content_type.type != "multipart" and
+         is_binary(msg.body) and msg.body != "")
+  end
+
+  defp process_mailex_attachment(email, %Mailex.Message{} = msg) do
+    cid = normalize_cid(msg.content_id)
+    is_inline = msg.disposition_type == "inline" or not is_nil(cid)
+
+    name = msg.filename || Map.get(msg.content_type.params, "name") || "attachment"
+
+    mime_type = "#{msg.content_type.type}/#{msg.content_type.subtype}"
+
+    type = if is_inline, do: :inline, else: :attachment
+
+    swoosh_attachment =
+      Swoosh.Attachment.new(
+        {:data, msg.body || ""},
+        filename: name,
+        content_type: mime_type,
+        type: type,
+        cid: cid
+      )
+
+    attachment(email, swoosh_attachment)
+  end
+
+  defp normalize_cid(nil), do: nil
+
+  defp normalize_cid(cid) do
+    cid
+    |> String.replace_leading("<", "")
+    |> String.replace_trailing(">", "")
+  end
+
+  defp process_mailex_headers(email, headers) when is_map(headers) do
+    headers
+    |> Enum.filter(fn {key, _value} -> Enum.member?(@allowed_headers, key) end)
+    |> Enum.reduce(email, fn {key, value}, acc ->
+      value_str = mailex_header_value_to_string(value)
+      process_header(acc, {key, value_str})
+    end)
+  end
+
+  defp mailex_header_value_to_string(value) when is_binary(value), do: value
+  defp mailex_header_value_to_string([head | _]), do: mailex_header_value_to_string(head)
+  defp mailex_header_value_to_string(_), do: ""
 end
