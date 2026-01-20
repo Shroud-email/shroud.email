@@ -175,5 +175,55 @@ defmodule Shroud.Email.ParsedEmailTest do
       {_reply_to_name, reply_to_address} = email.reply_to
       assert reply_to_address == "foobar@example.com"
     end
+
+    test "sanitizes email addresses with invalid bracket domains like [domain]" do
+      # This reproduces an error where bracket domains that are not valid IP addresses
+      # cause gen_smtp/mimemail to crash with:
+      # (MatchError) no match of right hand side value:
+      #   {:error, {1, :smtp_rfc5322_parse, [~c"syntax error before: ", [~c"\"[invalid]\""]]}}
+      # Brackets in domains are only valid for IP address literals like [192.168.1.1]
+      email_raw =
+        text_email(
+          {"John Doe", "john@[invalid]"},
+          ["info@example.com"],
+          "Test email with bracket domain",
+          "Test body",
+          "Reply-To: \"Jane Doe\" <jane@[invalid]>"
+        )
+
+      mimemail_email = :mimemail.decode(email_raw)
+
+      %{swoosh_email: email} =
+        ParsedEmail.parse(mimemail_email, "sender@example.com", "alias@email.shroud.test")
+
+      # Verify the address was sanitized (brackets removed from invalid domain)
+      {from_name, from_address} = email.from
+      assert from_name == "John Doe"
+      assert from_address == "john@invalid"
+
+      # Verify reply_to was also sanitized
+      {_reply_to_name, reply_to_address} = email.reply_to
+      assert reply_to_address == "jane@invalid"
+    end
+
+    test "preserves valid IP address bracket notation in domains" do
+      # Valid IP address literals in brackets should be preserved
+      email_raw =
+        text_email(
+          {"Test Sender", "user@[192.168.1.1]"},
+          ["info@example.com"],
+          "Test email with IP literal domain",
+          "Test body"
+        )
+
+      mimemail_email = :mimemail.decode(email_raw)
+
+      %{swoosh_email: email} =
+        ParsedEmail.parse(mimemail_email, "sender@example.com", "alias@email.shroud.test")
+
+      # Valid IP address literals should be preserved
+      {_from_name, from_address} = email.from
+      assert from_address == "user@[192.168.1.1]"
+    end
   end
 end
