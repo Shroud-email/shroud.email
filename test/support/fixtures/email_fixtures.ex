@@ -69,6 +69,30 @@ defmodule Shroud.EmailFixtures do
     |> Util.lf_to_crlf()
   end
 
+  @doc """
+  Creates an email with invalid quoted-printable encoding in the body.
+  This simulates malformed emails that contain sequences like =p, =m, =g
+  instead of valid =XX hex sequences, which cause :mimemail.decode to throw :badchar.
+  """
+  @spec invalid_quoted_printable_email(String.t(), [String.t()], String.t(), String.t()) ::
+          String.t()
+  def invalid_quoted_printable_email(sender, recipients, subject, extra_header \\ nil) do
+    # Invalid quoted-printable: =p is invalid (should be =XX where XX are hex digits)
+    invalid_body = "Test content with invalid =p quoted-printable =m encoding =g here"
+
+    """
+    Content-Type: text/plain; charset=UTF-8
+    Content-Transfer-Encoding: quoted-printable
+
+    #{invalid_body}
+    """
+    |> add_subject(subject)
+    |> add_sender(sender)
+    |> add_recipients(recipients)
+    |> add_header(extra_header)
+    |> Util.lf_to_crlf()
+  end
+
   def spam_email_fixture(attrs \\ %{}, user \\ nil, email_alias \\ nil) do
     user = if user, do: user, else: user_fixture()
     email_alias = if email_alias, do: email_alias, else: alias_fixture(%{user_id: user.id})
