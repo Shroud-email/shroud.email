@@ -210,19 +210,64 @@ defmodule Shroud.Email.ParsedEmail do
     end
   end
 
-  # Sanitizes malformed email addresses by removing spaces from the local part.
+  # Sanitizes malformed email addresses by:
+  # 1. Removing spaces from the local part
+  # 2. Stripping invalid bracket notation from domains (e.g., [domain] -> domain)
   # This handles (likely spam) emails that have invalid addresses like "foo bar@example.com"
-  # which would otherwise cause gen_smtp/mimemail to crash during encoding.
+  # or "user@[domain]" which would otherwise cause gen_smtp/mimemail to crash during encoding.
   # It's not great that we're modifying the email address, but it's better than crashing.
   defp sanitize_email_address(address) do
     case String.split(address, "@", parts: 2) do
       [local_part, domain] ->
         sanitized_local = String.replace(local_part, ~r/\s+/, "")
-        "#{sanitized_local}@#{domain}"
+        sanitized_domain = sanitize_domain(domain)
+        "#{sanitized_local}@#{sanitized_domain}"
 
       _ ->
         # No @ sign found, just remove spaces
         String.replace(address, ~r/\s+/, "")
+    end
+  end
+
+  # Sanitizes the domain part of an email address.
+  # RFC 5321 allows IP address literals in brackets like [192.168.1.1] or [IPv6:...],
+  # but some spam emails use invalid bracket notation like [domain].
+  # This strips brackets from invalid bracket notation while preserving valid IP literals.
+  defp sanitize_domain(domain) do
+    case Regex.run(~r/^\[(.+)\]$/, domain) do
+      [_full, content] ->
+        if valid_ip_literal?(content) do
+          # Valid IP literal, keep the brackets
+          domain
+        else
+          # Invalid bracket notation, strip the brackets
+          content
+        end
+
+      nil ->
+        # No brackets, return as-is
+        domain
+    end
+  end
+
+  defp valid_ip_literal?(content) do
+    # Check for IPv4
+    case :inet.parse_address(String.to_charlist(content)) do
+      {:ok, _} ->
+        true
+
+      {:error, _} ->
+        # Check for IPv6 with "IPv6:" prefix (RFC 5321)
+        case content do
+          "IPv6:" <> ipv6 ->
+            case :inet.parse_address(String.to_charlist(ipv6)) do
+              {:ok, {_, _, _, _, _, _, _, _}} -> true
+              _ -> false
+            end
+
+          _ ->
+            false
+        end
     end
   end
 
