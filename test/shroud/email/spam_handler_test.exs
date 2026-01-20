@@ -61,6 +61,34 @@ defmodule Shroud.Email.SpamHandlerTest do
              end) =~
                "[warning] Received an email from sender@example.com to alias@email.shroud.test without a SpamAssassin header"
     end
+
+    test "handles emails with invalid quoted-printable encoding" do
+      # This email has invalid quoted-printable sequences (e.g., =p, =m, =g instead of =XX hex)
+      # which would cause :mimemail.decode to throw :badchar
+      email =
+        invalid_quoted_printable_email(
+          "sender@example.com",
+          ["alias@email.shroud.test"],
+          "Test Subject",
+          "X-Spam-Status: Yes, score=5.1 required=5.0 tests=TEST autolearn=ham version=3.4.1"
+        )
+
+      # Should not crash, and should detect spam from the header
+      assert SpamHandler.spam?(email)
+    end
+
+    test "handles non-spam emails with invalid quoted-printable encoding" do
+      email =
+        invalid_quoted_printable_email(
+          "sender@example.com",
+          ["alias@email.shroud.test"],
+          "Test Subject",
+          "X-Spam-Status: No, score=-1.0 required=5.0 tests=TEST autolearn=ham version=3.4.1"
+        )
+
+      # Should not crash, and should detect as not spam
+      refute SpamHandler.spam?(email)
+    end
   end
 
   describe "get_spamassassin_header/1" do

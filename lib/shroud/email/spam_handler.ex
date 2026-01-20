@@ -24,9 +24,8 @@ defmodule Shroud.Email.SpamHandler do
   """
   @spec spam?(String.t()) :: boolean()
   def spam?(data) do
-    email = :mimemail.decode(data)
-
-    email
+    data
+    |> Mailex.parse!()
     |> get_spamassassin_header()
     |> String.downcase()
     |> String.trim_leading()
