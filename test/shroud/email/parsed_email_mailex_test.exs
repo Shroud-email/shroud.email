@@ -72,5 +72,26 @@ defmodule Shroud.Email.ParsedEmailMailexTest do
       assert normalize.(mailex_result.swoosh_email.html_body) ==
                normalize.(mimemail_result.swoosh_email.html_body)
     end
+
+    test "handles empty Reply-To header without crashing" do
+      email_with_empty_reply_to = """
+      From: "Sender" <sender@example.com>
+      To: recipient@example.com
+      Subject: Test email
+      Reply-To: 
+      Date: Tue, 28 Oct 2025 13:11:03 +0000
+      Content-Type: text/plain; charset=UTF-8
+
+      Hello, world!
+      """
+
+      {:ok, mailex_msg} = Mailex.parse(email_with_empty_reply_to)
+
+      result = ParsedEmail.parse(mailex_msg, "sender@example.com", "recipient@example.com")
+
+      assert %ParsedEmail{} = result
+      assert result.swoosh_email.subject == "Test email"
+      assert result.swoosh_email.reply_to == nil
+    end
   end
 end

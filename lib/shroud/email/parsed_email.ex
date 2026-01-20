@@ -359,7 +359,12 @@ defmodule Shroud.Email.ParsedEmail do
     |> Enum.filter(fn {key, _value} -> Enum.member?(@allowed_headers, key) end)
     |> Enum.reduce(email, fn {key, value}, acc ->
       value_str = mailex_header_value_to_string(value)
-      process_header(acc, {key, value_str})
+
+      if String.trim(value_str) == "" do
+        acc
+      else
+        process_header(acc, {key, value_str})
+      end
     end)
   end
 
