@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.3.0](https://github.com/Shroud-email/shroud.email/compare/v1.2.0...v1.3.0) (2026-01-20)
+
+
+### Features
+
+* add task to export failed emails for debugging ([#106](https://github.com/Shroud-email/shroud.email/issues/106)) ([b86bdd7](https://github.com/Shroud-email/shroud.email/commit/b86bdd75224c42105616b5ba36291eccc490e49b))
+* use mailex (experimental) ([#105](https://github.com/Shroud-email/shroud.email/issues/105)) ([6053f09](https://github.com/Shroud-email/shroud.email/commit/6053f09747bb6ee6208c4a9bb63ef04d1ee91c05))
+
+
+### Bug Fixes
+
+* fix KeyError when checking for admin ([#96](https://github.com/Shroud-email/shroud.email/issues/96)) ([08797de](https://github.com/Shroud-email/shroud.email/commit/08797de6b1add0fdafa4fcaed74be5f021a430b4))
+* handle empty reply-to headers ([#107](https://github.com/Shroud-email/shroud.email/issues/107)) ([10fd0ec](https://github.com/Shroud-email/shroud.email/commit/10fd0eca7076553c668a4b47ade92bc4e0ac9010))
+* handle invalid bracket domains in email addresses ([#109](https://github.com/Shroud-email/shroud.email/issues/109)) ([75ea13b](https://github.com/Shroud-email/shroud.email/commit/75ea13b75705a400e760e17a4b0f4a7618e211aa))
+* handle invalid emails with spaces in local part ([#104](https://github.com/Shroud-email/shroud.email/issues/104)) ([36df157](https://github.com/Shroud-email/shroud.email/commit/36df157b3db950c4deda5768ce9abe34484b531f))
+* handle non-UTF8 bytes in incoming emails ([17bbdf8](https://github.com/Shroud-email/shroud.email/commit/17bbdf8f04c353843fd153b90b6c1c2f07691474))
+* handle parentheses in sender name ([0189458](https://github.com/Shroud-email/shroud.email/commit/0189458632bef916816b398c88a0dbad49213df6))
+* handle quotes in email addresses ([ed04f41](https://github.com/Shroud-email/shroud.email/commit/ed04f4141359f20ab78ce42b392a7f8e74a3ea8e))
+* ignore TLS when relaying to haraka ([#100](https://github.com/Shroud-email/shroud.email/issues/100)) ([8187006](https://github.com/Shroud-email/shroud.email/commit/8187006d164ac356a6fd3f34058313eabcab93d9))
+* revert gen_smtp update ([b84ca3d](https://github.com/Shroud-email/shroud.email/commit/b84ca3d079d4e27d59372981a462183ff56c7a81))
+* switch from emailoctopus to loops ([#101](https://github.com/Shroud-email/shroud.email/issues/101)) ([9fb17e8](https://github.com/Shroud-email/shroud.email/commit/9fb17e84be161fd68f88bd2a01fc4b39d952929f))
+* use mailex to parse emails in spam check ([#108](https://github.com/Shroud-email/shroud.email/issues/108)) ([2e294dd](https://github.com/Shroud-email/shroud.email/commit/2e294ddb9faa4fa5139e4de5ee2e503d2c1e5a09))
+
 ## [1.2.0](https://github.com/Shroud-email/shroud.email/compare/v1.1.1...v1.2.0) (2025-03-23)
 
 
