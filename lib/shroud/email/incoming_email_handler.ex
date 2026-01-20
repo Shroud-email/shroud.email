@@ -183,13 +183,16 @@ defmodule Shroud.Email.IncomingEmailHandler do
         sender_name
       end
 
-    # Remove parentheses from sender name to avoid RFC 5322 encoding issues.
+    # Remove parentheses and double quotes from sender name to avoid RFC 5322 encoding issues.
     # Parentheses in email display names can cause gen_smtp's mimemail encoder to fail
     # with {:error, {1, :smtp_rfc5322_scan, {:illegal, ~c"("}}} when combined with
     # our " (via Shroud.email)" suffix.
+    # Double quotes inside display names cause FunctionClauseError in smtp_util.parse_rfc5322_addresses/1
+    # when mimemail tries to re-encode the headers for SMTP delivery.
+    # Single quotes (apostrophes) are safe - they're not special characters in RFC 5322.
     sanitized_sender_name =
       sender_name
-      |> String.replace(~r/[()]/, "")
+      |> String.replace(~r/[()"]/, "")
       |> String.replace(~r/\s+/, " ")
       |> String.trim()
 

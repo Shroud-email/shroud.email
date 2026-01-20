@@ -313,6 +313,61 @@ defmodule Shroud.Email.EmailHandlerTest do
       end)
     end
 
+    test "handles sender name containing double quotes", %{user: user, email_alias: email_alias} do
+      # Sender names with double quotes like 'Ash — "Keywords.am"' can cause
+      # FunctionClauseError in smtp_util.parse_rfc5322_addresses/1 when mimemail
+      # tries to re-encode the headers for SMTP delivery
+      data =
+        text_email(
+          {"Ash \"Keywords.am\"", "sender@example.com"},
+          [{"Recipient", email_alias.address}],
+          "Text only",
+          "Plain text content!"
+        )
+
+      args = %{from: "sender@example.com", to: email_alias.address, data: data}
+      perform_job(EmailHandler, args)
+
+      assert_email_sent(fn email ->
+        assert hd(email.to) == {"Recipient", user.email}
+
+        # Double quotes should be removed from the sender name to avoid RFC 5322 encoding issues
+        assert email.from ==
+                 {"Ash Keywords.am (via Shroud.email)",
+                  "sender_at_example.com_alias@email.shroud.test"}
+
+        assert is_nil(email.reply_to)
+        assert email.text_body =~ "Plain text content!"
+      end)
+    end
+
+    test "preserves single quotes in sender name", %{user: user, email_alias: email_alias} do
+      # Single quotes (apostrophes) are NOT special characters in RFC 5322
+      # and should be preserved in sender names like "O'Brien"
+      data =
+        text_email(
+          {"John O'Brien", "sender@example.com"},
+          [{"Recipient", email_alias.address}],
+          "Text only",
+          "Plain text content!"
+        )
+
+      args = %{from: "sender@example.com", to: email_alias.address, data: data}
+      perform_job(EmailHandler, args)
+
+      assert_email_sent(fn email ->
+        assert hd(email.to) == {"Recipient", user.email}
+
+        # Single quotes should be preserved
+        assert email.from ==
+                 {"John O'Brien (via Shroud.email)",
+                  "sender_at_example.com_alias@email.shroud.test"}
+
+        assert is_nil(email.reply_to)
+        assert email.text_body =~ "Plain text content!"
+      end)
+    end
+
     test "handles text/html email", %{user: user, email_alias: email_alias} do
       data = html_email("sender@example.com", [email_alias.address], "HTML only", @html_content)
       args = %{from: "sender@example.com", to: email_alias.address, data: data}
@@ -951,7 +1006,7 @@ defmodule Shroud.Email.EmailHandlerTest do
   end
 
   describe "mailex parsing feature flag" do
-    test "uses mimemail by default", %{user: user, email_alias: email_alias} do
+    test "uses mimemail by default", %{user: _user, email_alias: email_alias} do
       args = %{
         from: "sender@example.com",
         to: email_alias.address,
