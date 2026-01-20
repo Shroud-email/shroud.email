@@ -33,7 +33,12 @@ defmodule Shroud.Email.SpamHandler do
     |> String.starts_with?("yes, ")
   end
 
-  @spec handle_incoming_spam_email(String.t(), User.t(), EmailAlias.t(), email) :: :ok
+  @spec handle_incoming_spam_email(
+          String.t(),
+          User.t(),
+          EmailAlias.t(),
+          :mimemail.mimetuple() | Mailex.Message.t()
+        ) :: :ok
   def handle_incoming_spam_email(sender, recipient_user, email_alias, email) do
     parsed_email =
       email
@@ -88,7 +93,27 @@ defmodule Shroud.Email.SpamHandler do
     end
   end
 
-  @spec get_spamassassin_header(:mimemail.mimetuple()) :: String.t()
+  @spec get_spamassassin_header(:mimemail.mimetuple() | Mailex.Message.t()) :: String.t()
+  def get_spamassassin_header(%Mailex.Message{headers: headers}) do
+    case Map.get(headers, "x-spam-status", "") do
+      "" ->
+        sender = Map.get(headers, "from", "")
+        recipient = Map.get(headers, "to", "")
+
+        Logger.warning(
+          "Received an email from #{sender} to #{recipient} without a SpamAssassin header"
+        )
+
+        ""
+
+      value when is_binary(value) ->
+        value
+
+      [value | _] ->
+        value
+    end
+  end
+
   def get_spamassassin_header({_mime_type, _mime_subtype, headers, _opts, _body}) do
     case get_header_value(headers, "x-spam-status") do
       "" ->

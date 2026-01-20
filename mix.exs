@@ -88,7 +88,8 @@ defmodule Shroud.MixProject do
       {:html_sanitize_ex, "~> 1.4"},
       {:ex_image_info, "~> 0.2.4"},
       {:ecto_psql_extras, "~> 0.7.4"},
-      {:heroicons, "~> 0.5.2"}
+      {:heroicons, "~> 0.5.2"},
+      {:mailex, "~> 0.1.2"}
     ]
   end
 

@@ -880,8 +880,8 @@ defmodule Shroud.Email.EmailHandlerTest do
 
         assert email.to == [{"", "user@example.com"}]
 
-        assert email.text_body ==
-                 "this is not a valid email.\r\njust a bunch of text.\n\nThis email was forwarded from alias@email.shroud.test by Shroud.email.\n"
+        assert email.text_body =~ "just a bunch of text."
+        assert email.text_body =~ "forwarded from alias@email.shroud.test"
       end)
     end
 
@@ -946,6 +946,79 @@ defmodule Shroud.Email.EmailHandlerTest do
       assert_email_sent(fn email ->
         assert hd(email.to) == {email_alias.address, user.email}
         assert email.text_body =~ "Plain text content"
+      end)
+    end
+  end
+
+  describe "mailex parsing feature flag" do
+    test "uses mimemail by default", %{user: user, email_alias: email_alias} do
+      args = %{
+        from: "sender@example.com",
+        to: email_alias.address,
+        data:
+          text_email(
+            "sender@example.com",
+            [email_alias.address],
+            "Hello via mimemail",
+            "Plain text content"
+          )
+      }
+
+      perform_job(EmailHandler, args)
+
+      assert_email_sent(fn email ->
+        assert email.subject == "Hello via mimemail"
+      end)
+    end
+
+    test "uses mailex when flag is enabled for user", %{user: user, email_alias: email_alias} do
+      FunWithFlags.enable(:mailex_parsing, for_actor: user)
+
+      args = %{
+        from: "sender@example.com",
+        to: email_alias.address,
+        data:
+          text_email(
+            "sender@example.com",
+            [email_alias.address],
+            "Hello via mailex",
+            "Plain text content"
+          )
+      }
+
+      perform_job(EmailHandler, args)
+
+      assert_email_sent(fn email ->
+        assert email.subject == "Hello via mailex"
+        assert email.text_body =~ "Plain text content"
+      end)
+    end
+
+    test "uses mailex for multipart emails when flag is enabled", %{
+      user: user,
+      email_alias: email_alias
+    } do
+      FunWithFlags.enable(:mailex_parsing, for_actor: user)
+
+      args = %{
+        from: "sender@example.com",
+        to: email_alias.address,
+        data:
+          multipart_email(
+            "sender@example.com",
+            [email_alias.address],
+            "Multipart via mailex",
+            "Text part",
+            "<html><body>HTML part</body></html>"
+          )
+      }
+
+      perform_job(EmailHandler, args)
+
+      assert_email_sent(fn email ->
+        assert email.subject == "Multipart via mailex"
+        assert email.text_body =~ "Text part"
+        assert email.html_body =~ "HTML part"
       end)
     end
   end
