@@ -188,7 +188,7 @@ defmodule Shroud.Accounts do
 
   ## Examples
 
-      iex> deliver_update_email_instructions(user, current_email, &Routes.user_update_email_url(conn, :edit, &1))
+      iex> deliver_update_email_instructions(user, current_email, &url(~p"/settings/confirm_email/\#{&1}"))
       {:ok, %{to: ..., body: ...}}
 
   """
@@ -275,10 +275,10 @@ defmodule Shroud.Accounts do
 
   ## Examples
 
-      iex> deliver_user_confirmation_instructions(user, &Routes.user_confirmation_url(conn, :edit, &1))
+      iex> deliver_user_confirmation_instructions(user, &url(~p"/users/confirm/\#{&1}"))
       {:ok, %{to: ..., body: ...}}
 
-      iex> deliver_user_confirmation_instructions(confirmed_user, &Routes.user_confirmation_url(conn, :edit, &1))
+      iex> deliver_user_confirmation_instructions(confirmed_user, &url(~p"/users/confirm/\#{&1}"))
       {:error, :already_confirmed}
 
   """
@@ -352,7 +352,7 @@ defmodule Shroud.Accounts do
 
   ## Examples
 
-      iex> deliver_user_reset_password_instructions(user, &Routes.user_reset_password_url(conn, :edit, &1))
+      iex> deliver_user_reset_password_instructions(user, &url(~p"/users/reset_password/\#{&1}"))
       {:ok, %{to: ..., body: ...}}
 
   """

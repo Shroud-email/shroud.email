@@ -8,22 +8,22 @@ defmodule ShroudWeb.UserSettingsControllerTest do
 
   describe "GET /settings/account" do
     test "renders settings page", %{conn: conn} do
-      conn = get(conn, Routes.user_settings_path(conn, :account))
+      conn = get(conn, ~p"/settings/account")
       response = html_response(conn, 200)
       assert response =~ "Account settings"
     end
 
     test "redirects if user is not logged in" do
       conn = build_conn()
-      conn = get(conn, Routes.user_settings_path(conn, :account))
-      assert redirected_to(conn) == Routes.user_session_path(conn, :new)
+      conn = get(conn, ~p"/settings/account")
+      assert redirected_to(conn) == ~p"/users/log_in"
     end
   end
 
   describe "PUT /settings (change password form)" do
     test "updates the user password and resets tokens", %{conn: conn, user: user} do
       new_password_conn =
-        put(conn, Routes.user_settings_path(conn, :update), %{
+        put(conn, ~p"/settings", %{
           "action" => "update_password",
           "current_password" => valid_user_password(),
           "user" => %{
@@ -32,7 +32,7 @@ defmodule ShroudWeb.UserSettingsControllerTest do
           }
         })
 
-      assert redirected_to(new_password_conn) == Routes.user_settings_path(conn, :security)
+      assert redirected_to(new_password_conn) == ~p"/settings/security"
       assert get_session(new_password_conn, :user_token) != get_session(conn, :user_token)
       assert Flash.get(new_password_conn.assigns.flash, :info) =~ "Password updated successfully"
       assert Accounts.get_user_by_email_and_password(user.email, "new valid password")
@@ -40,7 +40,7 @@ defmodule ShroudWeb.UserSettingsControllerTest do
 
     test "does not update password on invalid data", %{conn: conn} do
       old_password_conn =
-        put(conn, Routes.user_settings_path(conn, :update), %{
+        put(conn, ~p"/settings", %{
           "action" => "update_password",
           "current_password" => "invalid",
           "user" => %{
@@ -62,20 +62,20 @@ defmodule ShroudWeb.UserSettingsControllerTest do
     @tag :capture_log
     test "updates the user email", %{conn: conn, user: user} do
       conn =
-        put(conn, Routes.user_settings_path(conn, :update), %{
+        put(conn, ~p"/settings", %{
           "action" => "update_email",
           "current_password" => valid_user_password(),
           "user" => %{"email" => unique_user_email()}
         })
 
-      assert redirected_to(conn) == Routes.user_settings_path(conn, :account)
+      assert redirected_to(conn) == ~p"/settings/account"
       assert Flash.get(conn.assigns.flash, :info) =~ "A link to confirm your email"
       assert Accounts.get_user_by_email(user.email)
     end
 
     test "does not update email on invalid data", %{conn: conn} do
       conn =
-        put(conn, Routes.user_settings_path(conn, :update), %{
+        put(conn, ~p"/settings", %{
           "action" => "update_email",
           "current_password" => "invalid",
           "user" => %{"email" => "with spaces"}
@@ -100,22 +100,22 @@ defmodule ShroudWeb.UserSettingsControllerTest do
     end
 
     test "updates the user email once", %{conn: conn, user: user, token: token, email: email} do
-      conn = get(conn, Routes.user_settings_path(conn, :confirm_email, token))
-      assert redirected_to(conn) == Routes.user_settings_path(conn, :account)
+      conn = get(conn, ~p"/settings/confirm_email/#{token}")
+      assert redirected_to(conn) == ~p"/settings/account"
       assert Flash.get(conn.assigns.flash, :info) =~ "Email changed successfully"
       refute Accounts.get_user_by_email(user.email)
       assert Accounts.get_user_by_email(email)
 
-      conn = get(conn, Routes.user_settings_path(conn, :confirm_email, token))
-      assert redirected_to(conn) == Routes.user_settings_path(conn, :account)
+      conn = get(conn, ~p"/settings/confirm_email/#{token}")
+      assert redirected_to(conn) == ~p"/settings/account"
 
       assert Flash.get(conn.assigns.flash, :error) =~
                "Email change link is invalid or it has expired"
     end
 
     test "does not update email with invalid token", %{conn: conn, user: user} do
-      conn = get(conn, Routes.user_settings_path(conn, :confirm_email, "oops"))
-      assert redirected_to(conn) == Routes.user_settings_path(conn, :account)
+      conn = get(conn, ~p"/settings/confirm_email/oops")
+      assert redirected_to(conn) == ~p"/settings/account"
 
       assert Flash.get(conn.assigns.flash, :error) =~
                "Email change link is invalid or it has expired"
@@ -125,8 +125,8 @@ defmodule ShroudWeb.UserSettingsControllerTest do
 
     test "redirects if user is not logged in", %{token: token} do
       conn = build_conn()
-      conn = get(conn, Routes.user_settings_path(conn, :confirm_email, token))
-      assert redirected_to(conn) == Routes.user_session_path(conn, :new)
+      conn = get(conn, ~p"/settings/confirm_email/#{token}")
+      assert redirected_to(conn) == ~p"/users/log_in"
     end
   end
 end

@@ -2,7 +2,6 @@ defmodule ShroudWeb.UserConfirmationController do
   use ShroudWeb, :controller
 
   alias Shroud.Accounts
-  alias ShroudWeb.Router.Helpers, as: Routes
 
   def new(conn, _params) do
     render(conn, "new.html", page_title: "Confirm")
@@ -12,7 +11,7 @@ defmodule ShroudWeb.UserConfirmationController do
     if user = Accounts.get_user_by_email(email) do
       Accounts.deliver_user_confirmation_instructions(
         user,
-        &Routes.user_confirmation_url(conn, :edit, &1)
+        &url(~p"/users/confirm/#{&1}")
       )
     end
 

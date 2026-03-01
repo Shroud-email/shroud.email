@@ -16,14 +16,14 @@ defmodule ShroudWeb.UserApiAuth do
     case user do
       nil ->
         conn
-        |> put_view(ShroudWeb.ErrorView)
+        |> put_view(ShroudWeb.ErrorJSON)
         |> put_status(403)
         |> render("error.json", %{error: "Invalid token"})
         |> halt()
 
       %{confirmed_at: nil} ->
         conn
-        |> put_view(ShroudWeb.ErrorView)
+        |> put_view(ShroudWeb.ErrorJSON)
         |> put_status(403)
         |> render("error.json", %{error: "Please confirm your account"})
         |> halt()

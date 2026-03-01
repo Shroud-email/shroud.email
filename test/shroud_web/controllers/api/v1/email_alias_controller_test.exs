@@ -34,7 +34,7 @@ defmodule ShroudWeb.Api.V1.EmailAliasControllerTest do
       email_alias_1: email_alias_1,
       email_alias_2: email_alias_2
     } do
-      conn = authorized_get(conn, user, Routes.email_alias_path(conn, :index))
+      conn = authorized_get(conn, user, ~p"/api/v1/aliases")
 
       assert json_response(conn, 200) == %{
                "email_aliases" => [
@@ -68,14 +68,14 @@ defmodule ShroudWeb.Api.V1.EmailAliasControllerTest do
       other_user = user_fixture()
       _other_alias = alias_fixture(%{user_id: other_user.id})
 
-      conn = authorized_get(conn, user, Routes.email_alias_path(conn, :index))
+      conn = authorized_get(conn, user, ~p"/api/v1/aliases")
 
       assert length(json_response(conn, 200)["email_aliases"]) == 2
     end
 
     test "handles page_size parameter", %{conn: conn, user: user, email_alias_2: email_alias_2} do
       conn =
-        authorized_get(conn, user, Routes.email_alias_path(conn, :index), %{"page_size" => 1})
+        authorized_get(conn, user, ~p"/api/v1/aliases", %{"page_size" => 1})
 
       assert length(json_response(conn, 200)["email_aliases"]) == 1
       assert hd(json_response(conn, 200)["email_aliases"])["address"] == email_alias_2.address
@@ -83,7 +83,7 @@ defmodule ShroudWeb.Api.V1.EmailAliasControllerTest do
 
     test "handles page parameter", %{conn: conn, user: user, email_alias_1: email_alias_1} do
       conn =
-        authorized_get(conn, user, Routes.email_alias_path(conn, :index), %{
+        authorized_get(conn, user, ~p"/api/v1/aliases", %{
           "page_size" => 1,
           "page" => 2
         })
@@ -107,7 +107,7 @@ defmodule ShroudWeb.Api.V1.EmailAliasControllerTest do
     end
 
     test "creates an email alias", %{conn: conn, user: user} do
-      conn = authorized_post(conn, user, Routes.email_alias_path(conn, :create))
+      conn = authorized_post(conn, user, ~p"/api/v1/aliases")
 
       response = json_response(conn, 200)
 
@@ -128,7 +128,7 @@ defmodule ShroudWeb.Api.V1.EmailAliasControllerTest do
       custom_domain_fixture(%{user_id: user.id, domain: "custom.test"})
 
       conn =
-        authorized_post(conn, user, Routes.email_alias_path(conn, :create), %{
+        authorized_post(conn, user, ~p"/api/v1/aliases", %{
           local_part: "email",
           domain: "custom.test"
         })
@@ -146,7 +146,7 @@ defmodule ShroudWeb.Api.V1.EmailAliasControllerTest do
 
     test "prevents creating an email alias on an invalid domain", %{conn: conn, user: user} do
       conn =
-        authorized_post(conn, user, Routes.email_alias_path(conn, :create), %{
+        authorized_post(conn, user, ~p"/api/v1/aliases", %{
           local_part: "email",
           domain: "custom.test"
         })
@@ -160,7 +160,7 @@ defmodule ShroudWeb.Api.V1.EmailAliasControllerTest do
       custom_domain_fixture(%{user_id: user.id, domain: "custom.test"})
 
       conn =
-        authorized_post(conn, user, Routes.email_alias_path(conn, :create), %{
+        authorized_post(conn, user, ~p"/api/v1/aliases", %{
           local_part: "invalid local part",
           domain: "custom.test"
         })
@@ -187,7 +187,7 @@ defmodule ShroudWeb.Api.V1.EmailAliasControllerTest do
     end
 
     test "deletes an email alias", %{conn: conn, user: user, address: address} do
-      conn = authorized_delete(conn, user, Routes.email_alias_path(conn, :delete, address))
+      conn = authorized_delete(conn, user, ~p"/api/v1/aliases/#{address}")
       assert response(conn, 204)
     end
 
@@ -196,7 +196,7 @@ defmodule ShroudWeb.Api.V1.EmailAliasControllerTest do
       other_alias = alias_fixture(%{user_id: other_user.id})
 
       conn =
-        authorized_delete(conn, user, Routes.email_alias_path(conn, :delete, other_alias.address))
+        authorized_delete(conn, user, ~p"/api/v1/aliases/#{other_alias.address}")
 
       assert json_response(conn, 422) == %{
                "error" => "Alias not found"

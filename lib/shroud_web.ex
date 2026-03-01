@@ -1,16 +1,16 @@
 defmodule ShroudWeb do
   @moduledoc """
   The entrypoint for defining your web interface, such
-  as controllers, views, channels and so on.
+  as controllers, components, channels and so on.
 
   This can be used in your application as:
 
       use ShroudWeb, :controller
-      use ShroudWeb, :view
+      use ShroudWeb, :html
 
-  The definitions below will be executed for every view,
-  controller, etc, so keep them short and clean, focused
-  on imports, uses and aliases.
+  The definitions below will be executed for every
+  controller, component, etc, so keep them short and clean,
+  focused on imports, uses and aliases.
 
   Do NOT define functions inside the quoted expressions
   below. Instead, define any helper function in modules
@@ -21,7 +21,7 @@ defmodule ShroudWeb do
 
   def controller do
     quote do
-      use Phoenix.Controller, namespace: ShroudWeb
+      use Phoenix.Controller, formats: [:html, :json]
 
       import Plug.Conn
       use Gettext, backend: ShroudWeb.Gettext
@@ -30,18 +30,21 @@ defmodule ShroudWeb do
     end
   end
 
-  def view do
+  def html do
     quote do
-      use Phoenix.View,
-        root: "lib/shroud_web/templates",
-        namespace: ShroudWeb
+      use Phoenix.Component
 
-      # Import convenience functions from controllers
-      import Phoenix.Controller,
-        only: [view_module: 1, view_template: 1]
+      import Phoenix.HTML
+      use PhoenixHTMLHelpers
 
-      # Include shared imports and aliases for views
-      unquote(view_helpers())
+      alias Phoenix.Flash
+
+      import ShroudWeb.ErrorHelpers
+      import ShroudWeb.Components.Atoms
+
+      use Gettext, backend: ShroudWeb.Gettext
+
+      unquote(verified_routes())
     end
   end
 
@@ -95,22 +98,15 @@ defmodule ShroudWeb do
 
   defp view_helpers do
     quote do
-      # Use all HTML functionality (forms, tags, etc)
-      use Phoenix.HTML
+      import Phoenix.HTML
+      use PhoenixHTMLHelpers
 
-      # Import LiveView and .heex helpers (live_render, live_patch, <.form>, etc)
-      import Phoenix.LiveView.Helpers
       import Phoenix.Component
 
-      # Easy access to Flash.get(@flash, key)
       alias Phoenix.Flash
-
-      # Import basic rendering functionality (render, render_layout, etc)
-      import Phoenix.View
 
       import ShroudWeb.ErrorHelpers
       use Gettext, backend: ShroudWeb.Gettext
-      alias ShroudWeb.Router.Helpers, as: Routes
 
       import ShroudWeb.Components.Atoms
 

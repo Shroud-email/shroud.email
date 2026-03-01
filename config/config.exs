@@ -14,9 +14,8 @@ config :shroud,
 config :shroud, ShroudWeb.Endpoint,
   url: [host: "localhost"],
   render_errors: [
-    view: ShroudWeb.ErrorView,
-    accepts: ~w(html json),
-    layout: {ShroudWeb.LayoutView, "error.html"}
+    formats: [html: ShroudWeb.ErrorHTML, json: ShroudWeb.ErrorJSON],
+    layout: false
   ],
   pubsub_server: Shroud.PubSub,
   live_view: [signing_salt: "OFJWqfW8"]
@@ -70,7 +69,7 @@ config :shroud, Oban,
 
 # Configure esbuild (the version is required)
 config :esbuild,
-  version: "0.12.18",
+  version: "0.24.2",
   default: [
     args:
       ~w(js/app.js --bundle --target=es2017 --outdir=../priv/static/assets --external:/fonts/* --external:/images/* --loader:.ttf=file),

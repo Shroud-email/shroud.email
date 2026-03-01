@@ -11,7 +11,7 @@ defmodule ShroudWeb.Api.V1.TokenControllerTest do
       user = user_fixture(%{password: password})
 
       conn =
-        post(conn, Routes.token_path(conn, :create), %{
+        post(conn, ~p"/api/v1/token", %{
           "email" => user.email,
           "password" => password
         })
@@ -32,7 +32,7 @@ defmodule ShroudWeb.Api.V1.TokenControllerTest do
       totp_code = user.totp_secret |> NimbleTOTP.verification_code() |> String.to_integer()
 
       conn =
-        post(conn, Routes.token_path(conn, :create), %{
+        post(conn, ~p"/api/v1/token", %{
           "email" => user.email,
           "password" => password,
           "totp" => totp_code
@@ -53,7 +53,7 @@ defmodule ShroudWeb.Api.V1.TokenControllerTest do
       user = Repo.reload!(user)
 
       conn =
-        post(conn, Routes.token_path(conn, :create), %{
+        post(conn, ~p"/api/v1/token", %{
           "email" => user.email,
           "password" => password
         })
@@ -69,7 +69,7 @@ defmodule ShroudWeb.Api.V1.TokenControllerTest do
       user = Repo.reload!(user)
 
       conn =
-        post(conn, Routes.token_path(conn, :create), %{
+        post(conn, ~p"/api/v1/token", %{
           "email" => user.email,
           "password" => password,
           "totp" => 1234

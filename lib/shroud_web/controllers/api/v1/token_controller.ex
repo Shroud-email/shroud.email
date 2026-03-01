@@ -9,7 +9,7 @@ defmodule ShroudWeb.Api.V1.TokenController do
     else
       conn
       |> put_status(403)
-      |> put_view(ShroudWeb.ErrorView)
+      |> put_view(ShroudWeb.ErrorJSON)
       |> render("error.json", error: "Invalid email, password or TOTP code")
     end
   end

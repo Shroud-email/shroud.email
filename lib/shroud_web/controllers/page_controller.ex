@@ -16,7 +16,7 @@ defmodule ShroudWeb.PageController do
       :error ->
         conn
         |> put_status(:not_found)
-        |> put_view(ShroudWeb.ErrorView)
+        |> put_view(ShroudWeb.ErrorHTML)
         |> render(:"404")
     end
   end

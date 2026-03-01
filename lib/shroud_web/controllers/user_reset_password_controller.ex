@@ -2,7 +2,6 @@ defmodule ShroudWeb.UserResetPasswordController do
   use ShroudWeb, :controller
 
   alias Shroud.Accounts
-  alias ShroudWeb.Router.Helpers, as: Routes
 
   plug :get_user_by_reset_password_token when action in [:edit, :update]
 
@@ -14,7 +13,7 @@ defmodule ShroudWeb.UserResetPasswordController do
     if user = Accounts.get_user_by_email(email) do
       Accounts.deliver_user_reset_password_instructions(
         user,
-        &Routes.user_reset_password_url(conn, :edit, &1)
+        &url(~p"/users/reset_password/#{&1}")
       )
     end
 

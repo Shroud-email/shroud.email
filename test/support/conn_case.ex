@@ -27,7 +27,6 @@ defmodule ShroudWeb.ConnCase do
       import ShroudWeb.ConnCase
       alias Phoenix.Flash
 
-      alias ShroudWeb.Router.Helpers, as: Routes
       use ShroudWeb, :verified_routes
 
       # The default endpoint for testing

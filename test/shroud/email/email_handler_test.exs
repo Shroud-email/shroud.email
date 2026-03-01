@@ -10,7 +10,7 @@ defmodule Shroud.Email.EmailHandlerTest do
   alias Shroud.Email
   alias Shroud.Email.EmailHandler
   alias Shroud.{Aliases, Util, Accounts}
-  alias ShroudWeb.Router.Helpers, as: Routes
+  use ShroudWeb, :verified_routes
 
   @html_content """
     <html>
@@ -900,7 +900,7 @@ defmodule Shroud.Email.EmailHandlerTest do
         }
         |> Util.uri_encode_map!()
 
-      expected_url = Routes.page_url(ShroudWeb.Endpoint, :email_report, expected_report_data)
+      expected_url = ShroudWeb.Endpoint.url() <> ~p"/email-report/#{expected_report_data}"
 
       assert_email_sent(fn email ->
         assert email.html_body =~ expected_url

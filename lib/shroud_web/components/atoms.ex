@@ -46,7 +46,7 @@ defmodule ShroudWeb.Components.Atoms do
       <span :if={@icon} class="-ml-1 mr-2 h-5 w-5">
         <.icon name={@icon} />
       </span>
-      <%= @text %>
+      {@text}
     </button>
     """
   end
@@ -54,18 +54,18 @@ defmodule ShroudWeb.Components.Atoms do
   attr(:title, :string, required: true)
   attr(:description, :string, required: false)
   attr(:icon, :atom, required: true)
-  slot(:inner_block, required: false, default: nil)
+  slot(:inner_block, required: false)
 
   def empty_state(assigns) do
     ~H"""
     <div class="text-center">
       <.icon name={@icon} class="h-12 w-12 mx-auto text-gray-400" />
-      <h3 class="mt-2 text-sm font-medium text-gray-900"><%= @title %></h3>
+      <h3 class="mt-2 text-sm font-medium text-gray-900">{@title}</h3>
       <p :if={@description} class="mt-1 text-sm text-gray-500 max-w-lg mx-auto">
-        <%= @description %>
+        {@description}
       </p>
       <div class="mt-6">
-        <%= render_slot(@inner_block) %>
+        {render_slot(@inner_block)}
       </div>
     </div>
     """
@@ -118,7 +118,7 @@ defmodule ShroudWeb.Components.Atoms do
     ~H"""
     <button type="button" class={@button_class} role="switch" aria-checked={@on} phx-click={@click}>
       <span class="sr-only">
-        <%= @sr_text %>
+        {@sr_text}
       </span>
       <span aria-hidden="true" class={@toggle_class} />
     </button>
@@ -153,11 +153,11 @@ defmodule ShroudWeb.Components.Atoms do
       </div>
       <div class="ml-3">
         <h3 class="font-medium text-yellow-800">
-          <%= @title %>
+          {@title}
         </h3>
         <div class="mt-2 text-sm">
           <p>
-            <%= render_slot(@inner_block) %>
+            {render_slot(@inner_block)}
           </p>
         </div>
       </div>
@@ -206,7 +206,7 @@ defmodule ShroudWeb.Components.Atoms do
           </div>
           <div class="ml-3 w-0 flex-1 pt-0.5">
             <p class="text-left text-sm font-medium text-gray-900">
-              <%= Phoenix.Flash.get(@flash, @kind) %>
+              {Phoenix.Flash.get(@flash, @kind)}
             </p>
           </div>
         </div>

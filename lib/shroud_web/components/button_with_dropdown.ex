@@ -31,7 +31,7 @@ defmodule ShroudWeb.Components.ButtonWithDropdown do
         <span :if={@icon} class="-ml-1 mr-2 h-5 w-5">
           <.icon solid name={@icon} />
         </span>
-        <%= @text %>
+        {@text}
       </button>
       <.dropdown_menu
         class="-ml-px block"
@@ -42,7 +42,7 @@ defmodule ShroudWeb.Components.ButtonWithDropdown do
         <:button_content>
           <.icon name={:chevron_down} solid class="h-5 w-5" />
         </:button_content>
-        <%= render_slot(@inner_block) %>
+        {render_slot(@inner_block)}
       </.dropdown_menu>
     </div>
     """
