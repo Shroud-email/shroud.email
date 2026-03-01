@@ -182,7 +182,7 @@ defmodule Shroud.Email.SpamHandlerTest do
 
       # Get the latest spam email for this user
       spam_emails = Email.list_spam_emails(user)
-      assert length(spam_emails) > 0
+      assert spam_emails != []
 
       # Get the most recently created spam email
       spam_email = Enum.max_by(spam_emails, & &1.inserted_at)
