@@ -7,7 +7,7 @@ defmodule Shroud.Release do
   alias Shroud.Accounts
   alias Shroud.Aliases.{EmailAlias, EmailMetric}
   alias Shroud.Accounts.User
-  alias ShroudWeb.Router.Helpers, as: Routes
+  use ShroudWeb, :verified_routes
 
   def migrate do
     load_app()
@@ -39,7 +39,7 @@ defmodule Shroud.Release do
 
       Accounts.deliver_user_reset_password_instructions(
         user,
-        &Routes.user_reset_password_url(ShroudWeb.Endpoint, :edit, &1)
+        &(ShroudWeb.Endpoint.url() <> ~p"/users/reset_password/#{&1}")
       )
     end
   end

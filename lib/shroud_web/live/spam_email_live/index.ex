@@ -1,7 +1,6 @@
 defmodule ShroudWeb.SpamEmailLive.Index do
   import Canada, only: [can?: 2]
 
-  use Phoenix.HTML
   use ShroudWeb, :live_view
 
   alias Shroud.Email

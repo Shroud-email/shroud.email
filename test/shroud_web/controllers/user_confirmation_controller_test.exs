@@ -11,14 +11,14 @@ defmodule ShroudWeb.UserConfirmationControllerTest do
 
   describe "GET /users/confirm" do
     test "redirects to login page for unauthenticated user", %{conn: conn} do
-      conn = get(conn, Routes.user_confirmation_path(conn, :new))
+      conn = get(conn, ~p"/users/confirm")
 
       assert redirected_to(conn) == "/users/log_in"
     end
 
     test "renders the resend confirmation page when authenticated", %{conn: conn, user: user} do
       conn = log_in_user(conn, user)
-      conn = get(conn, Routes.user_confirmation_path(conn, :new))
+      conn = get(conn, ~p"/users/confirm")
       response = html_response(conn, 200)
       assert response =~ "Almost there"
       assert response =~ "We sent you an email with a confirmation link."
@@ -31,7 +31,7 @@ defmodule ShroudWeb.UserConfirmationControllerTest do
       conn = log_in_user(conn, user)
 
       conn =
-        post(conn, Routes.user_confirmation_path(conn, :create), %{
+        post(conn, ~p"/users/confirm", %{
           "user" => %{"email" => user.email}
         })
 
@@ -45,7 +45,7 @@ defmodule ShroudWeb.UserConfirmationControllerTest do
       conn = log_in_user(conn, user)
 
       conn =
-        post(conn, Routes.user_confirmation_path(conn, :create), %{
+        post(conn, ~p"/users/confirm", %{
           "user" => %{"email" => user.email}
         })
 
@@ -56,11 +56,11 @@ defmodule ShroudWeb.UserConfirmationControllerTest do
 
   describe "GET /users/confirm/:token" do
     test "renders the confirmation page", %{conn: conn} do
-      conn = get(conn, Routes.user_confirmation_path(conn, :edit, "some-token"))
+      conn = get(conn, ~p"/users/confirm/some-token")
       response = html_response(conn, 200)
       assert response =~ "Confirm account"
 
-      form_action = Routes.user_confirmation_path(conn, :update, "some-token")
+      form_action = ~p"/users/confirm/some-token"
       assert response =~ "action=\"#{form_action}\""
     end
   end
@@ -72,7 +72,7 @@ defmodule ShroudWeb.UserConfirmationControllerTest do
           Accounts.deliver_user_confirmation_instructions(user, url)
         end)
 
-      conn = post(conn, Routes.user_confirmation_path(conn, :update, token))
+      conn = post(conn, ~p"/users/confirm/#{token}")
       assert redirected_to(conn) == "/"
       assert Flash.get(conn.assigns.flash, :info) =~ "Account confirmed."
       assert Accounts.get_user!(user.id).confirmed_at
@@ -80,7 +80,7 @@ defmodule ShroudWeb.UserConfirmationControllerTest do
       assert Repo.all(Accounts.UserToken) == []
 
       # When not logged in
-      conn = post(conn, Routes.user_confirmation_path(conn, :update, token))
+      conn = post(conn, ~p"/users/confirm/#{token}")
       assert redirected_to(conn) == "/"
 
       assert Flash.get(conn.assigns.flash, :error) =~
@@ -90,14 +90,14 @@ defmodule ShroudWeb.UserConfirmationControllerTest do
       conn =
         build_conn()
         |> log_in_user(user)
-        |> post(Routes.user_confirmation_path(conn, :update, token))
+        |> post(~p"/users/confirm/#{token}")
 
       assert redirected_to(conn) == "/"
       refute Flash.get(conn.assigns.flash, :error)
     end
 
     test "does not confirm email with invalid token", %{conn: conn, user: user} do
-      conn = post(conn, Routes.user_confirmation_path(conn, :update, "oops"))
+      conn = post(conn, ~p"/users/confirm/oops")
       assert redirected_to(conn) == "/"
 
       assert Flash.get(conn.assigns.flash, :error) =~

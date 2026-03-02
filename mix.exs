@@ -5,19 +5,18 @@ defmodule Shroud.MixProject do
     [
       app: :shroud,
       version: "1.2.0",
-      elixir: "~> 1.12",
+      elixir: "~> 1.16",
       elixirc_paths: elixirc_paths(Mix.env()),
-      compilers: Mix.compilers(),
+      compilers: [:phoenix_live_view] ++ Mix.compilers(),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
       deps: deps(),
-      test_coverage: [tool: ExCoveralls],
-      preferred_cli_env: [
-        coveralls: :test,
-        "coveralls.json": :test
-      ],
-      xref: [exclude: [Phoenix.VerifiedRoutes]]
+      test_coverage: [tool: ExCoveralls]
     ]
+  end
+
+  def cli do
+    [preferred_envs: [coveralls: :test, "coveralls.json": :test]]
   end
 
   # Configuration for the OTP application.
@@ -41,34 +40,35 @@ defmodule Shroud.MixProject do
   defp deps do
     [
       {:bcrypt_elixir, "~> 3.0"},
-      {:phoenix, "~> 1.7.0"},
-      {:phoenix_ecto, "~> 4.4"},
+      {:phoenix, "~> 1.8.0"},
+      {:phoenix_ecto, "~> 4.7"},
       {:ecto_sql, "~> 3.9"},
       {:postgrex, ">= 0.0.0"},
-      {:phoenix_html, "~> 3.0"},
-      {:phoenix_live_reload, "~> 1.4", only: :dev},
-      {:phoenix_view, "~> 2.0"},
-      {:phoenix_live_view, "~> 0.20.0"},
-      {:phoenix_live_dashboard, "~> 0.8.6"},
-      {:esbuild, "~> 0.2", runtime: Mix.env() == :dev},
+      {:phoenix_html, "~> 4.0"},
+      {:phoenix_html_helpers, "~> 1.0"},
+      {:phoenix_live_reload, "~> 1.6", only: :dev},
+      {:phoenix_live_view, "~> 1.1.0"},
+      {:phoenix_live_dashboard, "~> 0.8.7"},
+      {:esbuild, "~> 0.8", runtime: Mix.env() == :dev},
       {:excoveralls, "~> 0.14.3", only: :test},
+      {:lazy_html, ">= 0.0.0", only: :test},
       {:mox, "~> 1.0", only: :test},
       {:sobelow, "~> 0.11.1", only: [:dev, :test], runtime: false},
-      {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:swoosh, "~> 1.6"},
       {:telemetry_metrics, "~> 0.6"},
       {:telemetry_poller, "~> 1.0"},
       {:gettext, "~> 0.18"},
       {:jason, "~> 1.2"},
-      {:plug_cowboy, "~> 2.5"},
-      {:gen_smtp, "~> 1.2"},
+      {:plug_cowboy, "~> 2.7"},
+      {:gen_smtp, "~> 1.3"},
       {:iconv, "~> 1.0"},
       {:oban, "~> 2.9"},
       {:hackney, "~> 1.18"},
       {:ranch, "~> 1.8.0", override: true},
       {:canada, "~> 2.0"},
       {:mjml, "~> 1.1"},
-      {:floki, "~> 0.37.0"},
+      {:floki, "~> 0.37"},
       {:sentry, "~> 10.8"},
       {:timex, "~> 3.7"},
       {:httpoison, "~> 1.8"},

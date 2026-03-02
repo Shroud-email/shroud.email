@@ -30,7 +30,7 @@ defmodule ShroudWeb.EmailAliasLive.Show do
         <div class="px-4 py-5 sm:px-6">
           <div class="flex flex-col sm:flex-row items-center w-full">
             <h3 class="text-lg leading-6 font-medium text-gray-900">
-              <%= @address %>
+              {@address}
             </h3>
             <.copy_to_clipboard_button class="ml-2 mt-2 sm:mt-0" text={@address} />
             <div class="hidden sm:block ml-auto">
@@ -72,17 +72,17 @@ defmodule ShroudWeb.EmailAliasLive.Show do
             >
               <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                 <dt class="text-sm font-medium text-gray-500">
-                  <%= label(f, :title) %>
+                  {label(f, :title)}
                 </dt>
                 <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2 flex">
-                  <%= text_input(f, :title,
+                  {text_input(f, :title,
                     "x-show": "editingTitle",
                     placeholder: "Alias title",
                     class:
                       "flex-grow shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                  ) %>
+                  )}
                   <span x-show="!editingTitle" class="flex-grow">
-                    <%= @alias.title || "No title yet" %>
+                    {@alias.title || "No title yet"}
                   </span>
                   <span class="ml-4 flex-shrink-0">
                     <button
@@ -105,17 +105,17 @@ defmodule ShroudWeb.EmailAliasLive.Show do
               </div>
               <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                 <dt class="text-sm font-medium text-gray-500">
-                  <%= label(f, :notes) %>
+                  {label(f, :notes)}
                 </dt>
                 <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2 flex">
-                  <%= textarea(f, :notes,
+                  {textarea(f, :notes,
                     "x-show": "editingNotes",
                     placeholder: "Notes about this alias",
                     class:
                       "shadow-sm block w-full focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm border border-gray-300 rounded-md"
-                  ) %>
+                  )}
                   <span x-show="!editingNotes" class="flex-grow">
-                    <%= @alias.notes || "No notes" %>
+                    {@alias.notes || "No notes"}
                   </span>
                   <span class="ml-4 flex-shrink-0">
                     <button
@@ -172,7 +172,7 @@ defmodule ShroudWeb.EmailAliasLive.Show do
                         <%= if @reverse_alias_recipient == "" do %>
                           <span class="pl-2">-</span>
                         <% else %>
-                          <%= ReplyAddress.to_reply_address(@reverse_alias_recipient, @address) %>
+                          {ReplyAddress.to_reply_address(@reverse_alias_recipient, @address)}
                           <.copy_to_clipboard_button
                             class="ml-2 mt-2 sm:mt-0"
                             text={ReplyAddress.to_reply_address(@reverse_alias_recipient, @address)}
@@ -208,7 +208,7 @@ defmodule ShroudWeb.EmailAliasLive.Show do
                     <div class="w-0 flex-1 flex items-center">
                       <.icon name={:envelope} solid class="flex-shrink-0 h-5 w-5 text-gray-400" />
                       <span class="ml-2 flex-1 w-0 truncate">
-                        <%= blocked_sender %>
+                        {blocked_sender}
                       </span>
                     </div>
                     <div class="ml-4 flex-shrink-0">
@@ -249,7 +249,7 @@ defmodule ShroudWeb.EmailAliasLive.Show do
                     </div>
                   </div>
                   <span :if={@blocked_sender_error} class="invalid-feedback">
-                    <%= @blocked_sender_error %>
+                    {@blocked_sender_error}
                   </span>
                 </form>
               </dd>
@@ -263,10 +263,10 @@ defmodule ShroudWeb.EmailAliasLive.Show do
             Emails forwarded
           </dt>
           <dd class="mt-1 text-3xl font-semibold text-gray-900">
-            <%= @alias.forwarded %>
+            {@alias.forwarded}
           </dd>
           <div class="sm:text-sm text-gray-600 ml-1 mt-1">
-            <%= @alias.forwarded_in_last_30_days %> in the last month
+            {@alias.forwarded_in_last_30_days} in the last month
           </div>
         </div>
 
@@ -275,10 +275,10 @@ defmodule ShroudWeb.EmailAliasLive.Show do
             Replies sent
           </dt>
           <dd class="mt-1 text-3xl font-semibold text-gray-900">
-            <%= @alias.replied %>
+            {@alias.replied}
           </dd>
           <div class="sm:text-sm text-gray-600 ml-1 mt-1">
-            <%= @alias.replied_in_last_30_days %> in the last month
+            {@alias.replied_in_last_30_days} in the last month
           </div>
         </div>
 
@@ -287,10 +287,10 @@ defmodule ShroudWeb.EmailAliasLive.Show do
             Emails blocked
           </dt>
           <dd class="mt-1 text-3xl font-semibold text-gray-900">
-            <%= @alias.blocked %>
+            {@alias.blocked}
           </dd>
           <div class="sm:text-sm text-gray-600 ml-1 mt-1">
-            <%= @alias.blocked_in_last_30_days %> in the last month
+            {@alias.blocked_in_last_30_days} in the last month
           </div>
         </div>
 
@@ -299,7 +299,7 @@ defmodule ShroudWeb.EmailAliasLive.Show do
             Created
           </dt>
           <dd class="mt-1 text-3xl font-semibold text-gray-900">
-            <%= Timex.format!(@alias.inserted_at, "{D} {Mshort} '{YY}") %>
+            {Timex.format!(@alias.inserted_at, "{D} {Mshort} '{YY}")}
           </dd>
         </div>
       </dl>

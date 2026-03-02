@@ -22,7 +22,7 @@ defmodule ShroudWeb.ProxyControllerTest do
         {:ok, %HTTPoison.Response{status_code: 200, body: image_body()}}
       end)
 
-      conn = get(conn, Routes.proxy_path(conn, :proxy, %{"url" => url}))
+      conn = get(conn, ~p"/proxy?#{%{"url" => url}}")
 
       assert response_content_type(conn, :png)
     end
@@ -40,7 +40,7 @@ defmodule ShroudWeb.ProxyControllerTest do
          }}
       end)
 
-      conn = get(conn, Routes.proxy_path(conn, :proxy), %{"url" => url})
+      conn = get(conn, ~p"/proxy", %{"url" => url})
 
       assert response_content_type(conn, :png)
     end
@@ -59,7 +59,7 @@ defmodule ShroudWeb.ProxyControllerTest do
          }}
       end)
 
-      conn = get(conn, Routes.proxy_path(conn, :proxy), %{"url" => url})
+      conn = get(conn, ~p"/proxy", %{"url" => url})
 
       assert response_content_type(conn, :png)
     end

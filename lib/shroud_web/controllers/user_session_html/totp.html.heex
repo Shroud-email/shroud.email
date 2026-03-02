@@ -1,0 +1,32 @@
+<div class="min-h-full flex flex-col justify-center sm:px-6 lg:px-8">
+  <div class="sm:mx-auto sm:w-full sm:max-w-md">
+    <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
+      Sign in to your account
+    </h2>
+    <p class="mt-2 text-center text-sm text-gray-600">
+      Or
+      <.link href={~p"/users/register"} class="font-medium text-indigo-600 hover:text-indigo-500">start your 30-day free trial</.link>
+    </p>
+  </div>
+
+  <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+    <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+      <.form :let={f} for={@conn} action={~p"/users/totp"} as={:user} class="space-y-6">
+        <%= hidden_input f, :action, name: "action", value: "totp" %>
+
+        <p class="text-gray-700 text-sm text-center">Enter the code from your authenticator app to continue.</p>
+
+        <div>
+          <%= label f, :verification_code, for: "verification_code", class: "block text-sm font-medium text-gray-700" %>
+          <div class="mt-1">
+            <%= number_input f, :verification_code, required: true, minlength: 6, maxlength: 8, name: "verification_code", id: "verification_code", class: "appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" %>
+          </div>
+        </div>
+
+        <div>
+          <%= submit "Sign in", class: "btn btn-primary w-full" %>
+        </div>
+      </.form>
+    </div>
+  </div>
+</div>

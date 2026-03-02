@@ -19,7 +19,7 @@ defmodule ShroudWeb.Components.DropdownItem do
       @mouseleave="activeIndex = -1"
       @click="open = false; focusButton()"
     >
-      <%= @text %>
+      {@text}
     </button>
     """
   end

@@ -34,7 +34,7 @@ defmodule ShroudWeb.CustomDomainLive.Index do
           class="rounded bg-white shadow hover:shadow-lg transition-shadow p-3 overflow-hidden focus:ring focus:ring-indigo-600"
         >
           <h3 class="font-bold flex items-center">
-            <%= domain.domain %>
+            {domain.domain}
             <%= if Domain.fully_verified?(domain) do %>
               <div x-init x-tooltip.raw="Verified" class="ml-2 mt-1">
                 <.icon name={:check_circle} solid class="text-green-500 h-4 w-4" />
@@ -46,11 +46,11 @@ defmodule ShroudWeb.CustomDomainLive.Index do
             <% end %>
           </h3>
           <p class="text-sm text-slate-600">
-            Added <%= Timex.format!(domain.inserted_at, "{D} {Mshort} {YYYY}") %>
+            Added {Timex.format!(domain.inserted_at, "{D} {Mshort} {YYYY}")}
           </p>
           <div class="flex justify-between">
             <div class="text-sm text-slate-600 self-end">
-              Catch-all <%= if domain.catchall_enabled, do: "enabled", else: "disabled" %>.
+              Catch-all {if domain.catchall_enabled, do: "enabled", else: "disabled"}.
             </div>
             <div class="translate-x-8 translate-y-10 -mt-16">
               <.icon name={:globe_alt} solid class="text-gray-200 h-32 w-32" />
@@ -74,7 +74,7 @@ defmodule ShroudWeb.CustomDomainLive.Index do
         <div class="mt-2">
           <.text_input name="domain" placeholder="example.com" />
           <p :if={@error} class="text-red-600 mt-1 text-sm">
-            <%= @error %>
+            {@error}
           </p>
         </div>
         <:buttons>

@@ -4,11 +4,10 @@ defmodule ShroudWeb.UserSettingsController do
   alias Shroud.{Accounts, Billing}
   alias Shroud.Accounts.TOTP
   alias ShroudWeb.UserAuth
-  alias ShroudWeb.Router.Helpers, as: Routes
 
   plug :assign_email_and_password_changesets
   plug :assign_totp_fields
-  plug :put_layout, "settings.html"
+  plug :put_layout, html: {ShroudWeb.Layouts, :settings}
 
   def redirect_to_account(conn, _params) do
     redirect(conn, to: ~p"/settings/account")
@@ -93,7 +92,7 @@ defmodule ShroudWeb.UserSettingsController do
         Accounts.deliver_update_email_instructions(
           applied_user,
           user.email,
-          &Routes.user_settings_url(conn, :confirm_email, &1)
+          &url(~p"/settings/confirm_email/#{&1}")
         )
 
         conn

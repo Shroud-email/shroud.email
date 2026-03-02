@@ -82,8 +82,7 @@ config :shroud, ShroudWeb.Endpoint,
     patterns: [
       ~r"priv/static/.*(js|css|png|jpeg|jpg|gif|svg)$",
       ~r"priv/gettext/.*(po)$",
-      ~r"lib/shroud_web/(live|views|components)/.*(ex|js)$",
-      ~r"lib/shroud_web/templates/.*(eex)$"
+      ~r"lib/shroud_web/(live|controllers|components)/.*(ex|heex)$"
     ]
   ]
 

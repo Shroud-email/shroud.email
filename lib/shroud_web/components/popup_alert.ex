@@ -5,7 +5,7 @@ defmodule ShroudWeb.Components.PopupAlert do
   attr(:text, :string, required: true)
   attr(:icon, :atom, required: true)
 
-  slot(:inner_block, required: false, default: nil)
+  slot(:inner_block, required: false)
   slot(:buttons, required: false)
 
   def mount(socket) do
@@ -73,17 +73,17 @@ defmodule ShroudWeb.Components.PopupAlert do
                   </div>
                   <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
                     <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-                      <%= @title %>
+                      {@title}
                     </h3>
                     <div class="mt-2">
-                      <p class="text-sm text-gray-500"><%= @text %></p>
+                      <p class="text-sm text-gray-500">{@text}</p>
                     </div>
-                    <%= render_slot(@inner_block) %>
+                    {render_slot(@inner_block)}
                   </div>
                 </div>
               </div>
               <div class="bg-gray-50 px-4 py-3 sm:px-6 flex flex-col sm:flex-row-reverse gap-1">
-                <%= render_slot(@buttons) %>
+                {render_slot(@buttons)}
                 <.button alpine_click="open = false" text="Cancel" intent={:secondary} />
               </div>
             </div>

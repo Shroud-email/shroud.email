@@ -53,19 +53,19 @@ defmodule ShroudWeb.DebugEmailsLive.Index do
               <%= for job <- @failed_jobs do %>
                 <tr>
                   <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                    <%= job.args["from"] %>
+                    {job.args["from"]}
                   </td>
                   <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                    <%= job.args["to"] %>
+                    {job.args["to"]}
                   </td>
                   <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                    <%= job.attempt %> / <%= job.max_attempts %>
+                    {job.attempt} / {job.max_attempts}
                   </td>
                   <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                    <%= Timex.format!(job.inserted_at, "{ISOdate} {h24}:{m}") %>
+                    {Timex.format!(job.inserted_at, "{ISOdate} {h24}:{m}")}
                   </td>
                   <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                    <%= Timex.format!(job.scheduled_at, "{ISOdate} {h24}:{m}") %>
+                    {Timex.format!(job.scheduled_at, "{ISOdate} {h24}:{m}")}
                   </td>
                   <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
                     <a

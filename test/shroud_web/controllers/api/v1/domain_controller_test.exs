@@ -25,7 +25,7 @@ defmodule ShroudWeb.Api.V1.DomainControllerTest do
       user: user,
       domain_1: domain_1
     } do
-      conn = authorized_get(conn, user, Routes.domain_path(conn, :index))
+      conn = authorized_get(conn, user, ~p"/api/v1/domains")
 
       assert json_response(conn, 200) == %{
                "domains" => [
@@ -44,7 +44,7 @@ defmodule ShroudWeb.Api.V1.DomainControllerTest do
       other_user = user_fixture()
       _other_domain = custom_domain_fixture(%{user_id: other_user.id})
 
-      conn = authorized_get(conn, user, Routes.domain_path(conn, :index))
+      conn = authorized_get(conn, user, ~p"/api/v1/domains")
 
       assert length(json_response(conn, 200)["domains"]) == 1
     end

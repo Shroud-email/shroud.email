@@ -72,7 +72,7 @@ defmodule ShroudWeb.Components.DnsVerification do
                         scope="colgroup"
                         class="bg-gray-50 px-4 py-2 text-left text-sm font-semibold text-gray-900 sm:px-6 flex items-center"
                       >
-                        <%= title %>
+                        {title}
                         <%= if Map.get(@verified, field) do %>
                           <div x-init x-tooltip.raw="Verified" class="ml-2">
                             <.icon name={:check_circle} solid class="h-5 w-5 text-green-400" />
@@ -89,16 +89,16 @@ defmodule ShroudWeb.Components.DnsVerification do
                       class={"border-t border-gray-300 " <> if Map.get(@verified, field, false), do: "bg-green-50", else: ""}
                     >
                       <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
-                        <%= record.type |> Atom.to_string() |> String.upcase() %>
+                        {record.type |> Atom.to_string() |> String.upcase()}
                       </td>
                       <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                        <%= record.domain %>
+                        {record.domain}
                       </td>
                       <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 flex items-center justify-start">
                         <pre class="bg-gray-100 border border-gray-200 font-mono p-1 shrink"><%= record.value %></pre>
                       </td>
                       <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                        <%= record.priority %>
+                        {record.priority}
                       </td>
                     </tr>
                   <% end %>

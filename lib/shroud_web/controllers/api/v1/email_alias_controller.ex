@@ -29,7 +29,7 @@ defmodule ShroudWeb.Api.V1.EmailAliasController do
     if is_nil(domain) do
       conn
       |> put_status(422)
-      |> put_view(ShroudWeb.ErrorView)
+      |> put_view(ShroudWeb.ErrorJSON)
       |> render("error.json", error: "Domain not found")
     else
       params = %{address: "#{local_part}@#{domain.domain}", user_id: conn.assigns.current_user.id}
@@ -43,7 +43,7 @@ defmodule ShroudWeb.Api.V1.EmailAliasController do
 
           conn
           |> put_status(422)
-          |> put_view(ShroudWeb.ErrorView)
+          |> put_view(ShroudWeb.ErrorJSON)
           |> render("error.json", error: error)
       end
     end
@@ -57,7 +57,7 @@ defmodule ShroudWeb.Api.V1.EmailAliasController do
       _ ->
         conn
         |> put_status(:unprocessable_entity)
-        |> put_view(ShroudWeb.ErrorView)
+        |> put_view(ShroudWeb.ErrorJSON)
         |> render("error.json", error: "Unable to create email alias")
     end
   end
@@ -72,7 +72,7 @@ defmodule ShroudWeb.Api.V1.EmailAliasController do
     if is_nil(alias) do
       conn
       |> put_status(422)
-      |> put_view(ShroudWeb.ErrorView)
+      |> put_view(ShroudWeb.ErrorJSON)
       |> render("error.json", error: "Alias not found")
     else
       Aliases.delete_email_alias(alias.id)

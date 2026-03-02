@@ -25,8 +25,8 @@ defmodule ShroudWeb.DebugEmailsLive.Show do
     </pre>
 
     <h2 class="text-lg font-bold mt-8">Email</h2>
-    <p>To: <%= @job.args["to"] %></p>
-    <p>From: <%= @job.args["from"] %></p>
+    <p>To: {@job.args["to"]}</p>
+    <p>From: {@job.args["from"]}</p>
 
     <pre class="mt-4 bg-white p-4 rounded-md overflow-x-scroll">
       <%= decode_email_data(@job.args["data"]) %>

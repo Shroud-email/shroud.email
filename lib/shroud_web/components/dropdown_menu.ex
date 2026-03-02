@@ -30,7 +30,7 @@ defmodule ShroudWeb.Components.DropdownMenu do
           @keydown.arrow-down.prevent="onArrowDown()"
         >
           <span class="sr-only">Open menu</span>
-          <%= render_slot(@button_content) %>
+          {render_slot(@button_content)}
         </button>
       </div>
 
@@ -56,7 +56,7 @@ defmodule ShroudWeb.Components.DropdownMenu do
         @keyup.space.prevent="open = false; focusButton()"
         style="display: none;"
       >
-        <%= render_slot(@inner_block) %>
+        {render_slot(@inner_block)}
       </div>
     </div>
     """
