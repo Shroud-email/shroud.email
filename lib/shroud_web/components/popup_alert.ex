@@ -46,7 +46,7 @@ defmodule ShroudWeb.Components.PopupAlert do
           x-transition:leave="ease-in duration-200"
           x-transition:leave-start="opacity-100"
           x-transition:leave-end="opacity-0"
-          class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          class="fixed inset-0 bg-gray-500 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-80 transition-opacity"
         />
 
         <div class="fixed z-10 inset-0 overflow-y-auto">

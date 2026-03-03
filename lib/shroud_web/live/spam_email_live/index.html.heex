@@ -114,9 +114,9 @@
     </div>
     <div class="p-3 bg-white dark:bg-gray-800">
       <%= if spam_email.html_body do %>
-        <iframe srcdoc={spam_email.html_body} class="w-full min-h-[800px]" />
+        <iframe srcdoc={spam_email.html_body} class="w-full min-h-[800px] bg-white rounded" />
       <% else %>
-        <iframe srcdoc={"<html><body>#{spam_email.text_body}</body></html>"} class="w-full" />
+        <iframe srcdoc={"<html><body>#{spam_email.text_body}</body></html>"} class="w-full bg-white rounded" />
       <% end %>
     </div>
   </div>

@@ -79,18 +79,20 @@ defmodule ShroudWeb.Components.DnsVerification do
                       <th
                         colspan="5"
                         scope="colgroup"
-                        class="bg-gray-50 dark:bg-gray-700 px-4 py-2 text-left text-sm font-semibold text-gray-900 dark:text-gray-100 sm:px-6 flex items-center"
+                        class="bg-gray-50 dark:bg-gray-800 px-4 py-2 text-left text-sm font-semibold text-gray-900 dark:text-gray-100 sm:px-6"
                       >
-                        {title}
-                        <%= if Map.get(@verified, field) do %>
-                          <div x-init x-tooltip.raw="Verified" class="ml-2">
-                            <.icon name={:check_circle} solid class="h-5 w-5 text-green-400" />
-                          </div>
-                        <% else %>
-                          <div x-init x-tooltip.raw="Waiting for DNS records" class="ml-2">
-                            <.icon name={:ellipsis_horizontal} solid class="h-5 w-5 animate-pulse" />
-                          </div>
-                        <% end %>
+                        <span class="inline-flex items-center">
+                          {title}
+                          <%= if Map.get(@verified, field) do %>
+                            <div x-init x-tooltip.raw="Verified" class="ml-2">
+                              <.icon name={:check_circle} solid class="h-5 w-5 text-green-400" />
+                            </div>
+                          <% else %>
+                            <div x-init x-tooltip.raw="Waiting for DNS records" class="ml-2">
+                              <.icon name={:ellipsis_horizontal} solid class="h-5 w-5 animate-pulse" />
+                            </div>
+                          <% end %>
+                        </span>
                       </th>
                     </tr>
                     <tr

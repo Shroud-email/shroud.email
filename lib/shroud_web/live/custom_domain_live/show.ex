@@ -51,7 +51,7 @@ defmodule ShroudWeb.CustomDomainLive.Show do
       <div class="bg-white dark:bg-gray-800 rounded shadow dark:shadow-gray-900/50 md:rounded-lg ring-1 ring-black ring-opacity-5 dark:ring-gray-700 p-4 mb-12">
         <div class="flex items-center">
           <.toggle on={@domain.catchall_enabled} click="toggle_catchall" />
-          <label class="ml-3 font-semibold text-sm">
+          <label class="ml-3 font-semibold text-sm text-gray-900 dark:text-gray-100">
             Catch-all {if @domain.catchall_enabled, do: "enabled", else: "disabled"}.
           </label>
         </div>
