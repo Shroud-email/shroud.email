@@ -70,7 +70,7 @@
           class="ml-4 mt-4 flex-shrink-0 flex items-center space-x-2"
         >
           <%= if spam_email.from in spam_email.email_alias.blocked_addresses do %>
-            <p class="text-red-900 text-xs max-w-sm">
+            <p class="text-red-900 dark:text-red-400 text-xs max-w-sm">
               Going forward, this alias will block emails from this sender.
             </p>
           <% else %>
@@ -114,9 +114,9 @@
     </div>
     <div class="p-3 bg-white dark:bg-gray-800">
       <%= if spam_email.html_body do %>
-        <iframe srcdoc={spam_email.html_body} class="w-full min-h-[800px] bg-white rounded" />
+        <iframe srcdoc={spam_email.html_body} class="w-full min-h-[800px] bg-gray-200 rounded" />
       <% else %>
-        <iframe srcdoc={"<html><body>#{spam_email.text_body}</body></html>"} class="w-full bg-white rounded" />
+        <iframe srcdoc={"<html><body>#{spam_email.text_body}</body></html>"} class="w-full bg-gray-200 rounded" />
       <% end %>
     </div>
   </div>
