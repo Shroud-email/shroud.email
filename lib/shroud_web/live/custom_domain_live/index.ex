@@ -31,7 +31,7 @@ defmodule ShroudWeb.CustomDomainLive.Index do
         <.link
           :for={domain <- @domains}
           navigate={~p"/domains/#{domain.domain}"}
-          class="rounded bg-white shadow hover:shadow-lg transition-shadow p-3 overflow-hidden focus:ring focus:ring-indigo-600"
+          class="rounded bg-white dark:bg-gray-800 shadow dark:shadow-gray-900/50 hover:shadow-lg transition-shadow p-3 overflow-hidden focus:ring focus:ring-indigo-600"
         >
           <h3 class="font-bold flex items-center">
             {domain.domain}
@@ -45,19 +45,19 @@ defmodule ShroudWeb.CustomDomainLive.Index do
               </div>
             <% end %>
           </h3>
-          <p class="text-sm text-slate-600">
+          <p class="text-sm text-slate-600 dark:text-slate-400">
             Added {Timex.format!(domain.inserted_at, "{D} {Mshort} {YYYY}")}
           </p>
           <div class="flex justify-between">
-            <div class="text-sm text-slate-600 self-end">
+            <div class="text-sm text-slate-600 dark:text-slate-400 self-end">
               Catch-all {if domain.catchall_enabled, do: "enabled", else: "disabled"}.
             </div>
             <div class="translate-x-8 translate-y-10 -mt-16">
-              <.icon name={:globe_alt} solid class="text-gray-200 h-32 w-32" />
+              <.icon name={:globe_alt} solid class="text-gray-200 dark:text-gray-700 h-32 w-32" />
             </div>
           </div>
         </.link>
-        <div class="rounded border-2 border-dashed border-gray-300 flex p-3 items-center justify-center">
+        <div class="rounded border-2 border-dashed border-gray-300 dark:border-gray-600 flex p-3 items-center justify-center">
           <.button click="open_modal" icon={:plus} text="Add domain" />
         </div>
       </div>

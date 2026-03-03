@@ -58,6 +58,11 @@
   width: 80%;
 }
 
+.dark .phx-modal-content {
+  background-color: #1f2937;
+  border-color: #4b5563;
+}
+
 .phx-modal-close {
   color: #aaa;
   float: right;
@@ -70,4 +75,9 @@
   color: black;
   text-decoration: none;
   cursor: pointer;
+}
+
+.dark .phx-modal-close:hover,
+.dark .phx-modal-close:focus {
+  color: white;
 }

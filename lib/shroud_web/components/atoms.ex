@@ -25,10 +25,17 @@ defmodule ShroudWeb.Components.Atoms do
   def button(assigns) do
     class =
       case assigns.intent do
-        :primary -> "text-white bg-indigo-600 hover:bg-indigo-700"
-        :secondary -> "text-indigo-700 bg-indigo-100 hover:bg-indigo-200"
-        :danger -> "text-red-700 bg-red-100 hover:bg-red-200"
-        :white -> "border-gray-300 text-gray-700 bg-white hover:bg-gray-50"
+        :primary ->
+          "text-white bg-indigo-600 hover:bg-indigo-700"
+
+        :secondary ->
+          "text-indigo-700 bg-indigo-100 hover:bg-indigo-200 dark:text-indigo-300 dark:bg-indigo-900/50 dark:hover:bg-indigo-900/70"
+
+        :danger ->
+          "text-red-700 bg-red-100 hover:bg-red-200 dark:text-red-300 dark:bg-red-900/50 dark:hover:bg-red-900/70"
+
+        :white ->
+          "border-gray-300 text-gray-700 bg-white hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600"
       end
 
     assigns = assign(assigns, :class, class)
@@ -40,7 +47,7 @@ defmodule ShroudWeb.Components.Atoms do
       type={@type}
       disabled={@disabled}
       class={@class <>
-        " inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 justify-center disabled:opacity-80 disabled:cursor-wait"}
+        " inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 justify-center disabled:opacity-80 disabled:cursor-wait dark:focus:ring-offset-gray-900"}
       {@rest}
     >
       <span :if={@icon} class="-ml-1 mr-2 h-5 w-5">
@@ -60,8 +67,8 @@ defmodule ShroudWeb.Components.Atoms do
     ~H"""
     <div class="text-center">
       <.icon name={@icon} class="h-12 w-12 mx-auto text-gray-400" />
-      <h3 class="mt-2 text-sm font-medium text-gray-900">{@title}</h3>
-      <p :if={@description} class="mt-1 text-sm text-gray-500 max-w-lg mx-auto">
+      <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">{@title}</h3>
+      <p :if={@description} class="mt-1 text-sm text-gray-500 dark:text-gray-400 max-w-lg mx-auto">
         {@description}
       </p>
       <div class="mt-6">
@@ -85,7 +92,7 @@ defmodule ShroudWeb.Components.Atoms do
           name={@name}
           id={@name}
           placeholder={@placeholder}
-          class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
+          class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
         />
       </div>
     </div>
@@ -97,7 +104,7 @@ defmodule ShroudWeb.Components.Atoms do
 
   def toggle(assigns) do
     button_class =
-      "relative inline-flex flex-shrink-0 h-6 w-11 border-2 border-transparent rounded-full cursor-pointer transition-colors ease-in-out duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+      "relative inline-flex flex-shrink-0 h-6 w-11 border-2 border-transparent rounded-full cursor-pointer transition-colors ease-in-out duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-900"
 
     toggle_class =
       "pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition ease-in-out duration-200"
@@ -106,7 +113,7 @@ defmodule ShroudWeb.Components.Atoms do
       if assigns.on do
         [button_class <> " bg-indigo-600", toggle_class <> " translate-x-5"]
       else
-        [button_class <> " bg-gray-200", toggle_class <> " translate-x-0"]
+        [button_class <> " bg-gray-200 dark:bg-gray-600", toggle_class <> " translate-x-0"]
       end
 
     sr_text = if assigns.on, do: "Disable", else: "Enable"
@@ -134,13 +141,22 @@ defmodule ShroudWeb.Components.Atoms do
     [icon_class, alert_class] =
       case assigns.type do
         :info ->
-          ["text-blue-400", "bg-blue-50 text-blue-700 border-blue-100"]
+          [
+            "text-blue-400",
+            "bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800"
+          ]
 
         :warning ->
-          ["text-yellow-400", "bg-yellow-50 text-yellow-700 border-yellow-100"]
+          [
+            "text-yellow-400",
+            "bg-yellow-50 text-yellow-700 border-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800"
+          ]
 
         :error ->
-          ["text-red-400", "bg-red-50 text-red-700 border-red-100"]
+          [
+            "text-red-400",
+            "bg-red-50 text-red-700 border-red-100 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800"
+          ]
       end
 
     assigns = assign(assigns, :icon_class, icon_class)
@@ -152,7 +168,7 @@ defmodule ShroudWeb.Components.Atoms do
         <.icon name={@icon} solid class={"text-base h-5 w-5 " <> @icon_class} />
       </div>
       <div class="ml-3">
-        <h3 class="font-medium text-yellow-800">
+        <h3 class="font-medium text-yellow-800 dark:text-yellow-200">
           {@title}
         </h3>
         <div class="mt-2 text-sm">
@@ -196,7 +212,7 @@ defmodule ShroudWeb.Components.Atoms do
       :if={Phoenix.Flash.get(@flash, @kind)}
       phx-hook="Notification"
       id={"flash-#{@kind}"}
-      class="fade-in-translate max-w-sm w-full bg-white shadow-lg rounded-lg pointer-events-auto ring-1 ring-black ring-opacity-5 overflow-hidden hover:shadow-xl transition-all duration-100"
+      class="fade-in-translate max-w-sm w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg pointer-events-auto ring-1 ring-black ring-opacity-5 dark:ring-gray-700 overflow-hidden hover:shadow-xl transition-all duration-100"
       phx-click={close("#flash", @kind)}
     >
       <div class="p-4">
@@ -205,7 +221,7 @@ defmodule ShroudWeb.Components.Atoms do
             <.icon name={@icon} class={"h-6 w-6 " <> @icon_class} />
           </div>
           <div class="ml-3 w-0 flex-1 pt-0.5">
-            <p class="text-left text-sm font-medium text-gray-900">
+            <p class="text-left text-sm font-medium text-gray-900 dark:text-gray-100">
               {Phoenix.Flash.get(@flash, @kind)}
             </p>
           </div>

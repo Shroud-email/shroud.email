@@ -1,9 +1,18 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark" class="h-full bg-gray-100">
+<html lang="en" class="h-full bg-gray-100 dark:bg-gray-900">
   <head>
     <meta charset="utf-8"/>
     <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta name="theme" content={if assigns[:current_user], do: to_string(@current_user.theme), else: "system"} />
+    <script>
+      (function() {
+        var meta = document.querySelector('meta[name="theme"]');
+        var pref = (meta && meta.content) || localStorage.getItem('shroud-theme') || 'system';
+        var dark = pref === 'dark' || (pref === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        if (dark) document.documentElement.classList.add('dark');
+      })();
+    </script>
     <%= csrf_meta_tag() %>
     <.live_title suffix=" · Shroud.email">
       <%= assigns[:page_title] || "Home" %>

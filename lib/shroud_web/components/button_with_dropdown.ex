@@ -13,9 +13,14 @@ defmodule ShroudWeb.Components.ButtonWithDropdown do
   def button_with_dropdown(assigns) do
     class =
       case assigns.intent do
-        :primary -> "border-indigo-400 text-white bg-indigo-600 hover:bg-indigo-700"
-        :secondary -> "text-indigo-700 bg-indigo-100 hover:bg-indigo-200"
-        :white -> "border-gray-300 text-gray-700 bg-white hover:bg-gray-50"
+        :primary ->
+          "border-indigo-400 text-white bg-indigo-600 hover:bg-indigo-700"
+
+        :secondary ->
+          "text-indigo-700 bg-indigo-100 hover:bg-indigo-200 dark:text-indigo-300 dark:bg-indigo-900/50 dark:hover:bg-indigo-900/70"
+
+        :white ->
+          "border-gray-300 text-gray-700 bg-white hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600"
       end
 
     assigns = assign(assigns, :class, class)

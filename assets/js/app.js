@@ -24,12 +24,17 @@ import topbar from "../vendor/topbar";
 import "../vendor/components";
 import { Modal, Notification } from "./hooks";
 
+import { initTheme, setTheme } from "./theme";
 import Alpine from "alpinejs";
 import Tooltip from "@ryangjchandler/alpine-tooltip";
 
 Alpine.plugin(Tooltip);
 window.Alpine = Alpine;
 Alpine.start();
+
+// Initialize theme (dark mode support)
+initTheme();
+window.setTheme = setTheme;
 
 let csrfToken = document
   .querySelector("meta[name='csrf-token']")

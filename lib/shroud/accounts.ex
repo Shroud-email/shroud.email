@@ -407,6 +407,12 @@ defmodule Shroud.Accounts do
     end
   end
 
+  def update_user_theme(user, attrs) do
+    user
+    |> User.theme_changeset(attrs)
+    |> Repo.update()
+  end
+
   def update_stripe_details!(user, attrs \\ %{}) do
     user
     |> User.stripe_changeset(attrs)

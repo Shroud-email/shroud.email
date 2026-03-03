@@ -22,6 +22,7 @@ defmodule Shroud.Accounts.User do
     field :trial_expires_at, :naive_datetime
     field :plan_expires_at, :naive_datetime
     field :status, Ecto.Enum, values: [:lead, :trial, :active, :inactive, :lifetime]
+    field :theme, Ecto.Enum, values: [:system, :light, :dark], default: :system
 
     has_many :aliases, EmailAlias
 
@@ -182,5 +183,11 @@ defmodule Shroud.Accounts.User do
   def inserted_at_changeset(user, attrs) do
     user
     |> cast(attrs, [:inserted_at])
+  end
+
+  def theme_changeset(user, attrs) do
+    user
+    |> cast(attrs, [:theme])
+    |> validate_inclusion(:theme, [:system, :light, :dark])
   end
 end

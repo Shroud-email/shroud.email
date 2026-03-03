@@ -6,7 +6,7 @@
   x-transition:leave="transition ease-in duration-75"
   x-transition:leave-start="transform opacity-100 scale-100"
   x-transition:leave-end="transform opacity-0 scale-95"
-  class="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none"
+  class="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 dark:ring-gray-700 focus:outline-none"
   x-ref="menu-items"
   x-description="Dropdown menu, show/hide based on menu state."
   x-bind:aria-activedescendant="activeDescendant"
@@ -23,8 +23,8 @@
 >
   <a
     href={~p"/settings/account"}
-    class="block px-4 py-2 text-sm text-gray-700"
-    x-bind:class="{ 'bg-gray-100': activeIndex === 0 }"
+    class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300"
+    x-bind:class="{ 'bg-gray-100 dark:bg-gray-700': activeIndex === 0 }"
     role="menuitem"
     tabindex="-1"
     id="user-menu-item-0"
@@ -35,7 +35,7 @@
   <.link
     href={~p"/users/log_out"}
     method="delete"
-    class="block px-4 py-2 text-sm text-gray-700"
+    class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300"
     role="menuitem"
     tabindex="-1"
     id="user-menu-item-1"

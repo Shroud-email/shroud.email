@@ -1,0 +1,44 @@
+<div class="shadow sm:rounded-md sm:overflow-hidden">
+  <div class="bg-white dark:bg-gray-800 py-6 px-4 space-y-6 sm:p-6">
+    <div>
+      <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100">Theme</h3>
+      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Choose how Shroud.email looks to you.</p>
+    </div>
+
+    <.form for={%{}} action={~p"/settings"} method="put">
+      <input type="hidden" name="action" value="update_theme" />
+      <fieldset class="space-y-3">
+        <label class={"flex items-center gap-3 rounded-lg border p-4 cursor-pointer #{if @current_user.theme == :system, do: "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20", else: "border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"}"}>
+          <input type="radio" name="theme" value="system" checked={@current_user.theme == :system} class="text-indigo-600 focus:ring-indigo-500" />
+          <.icon name={:computer_desktop} class="h-5 w-5 text-gray-500 dark:text-gray-400" />
+          <div>
+            <div class="text-sm font-medium text-gray-900 dark:text-gray-100">System</div>
+            <div class="text-sm text-gray-500 dark:text-gray-400">Match your operating system setting</div>
+          </div>
+        </label>
+
+        <label class={"flex items-center gap-3 rounded-lg border p-4 cursor-pointer #{if @current_user.theme == :light, do: "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20", else: "border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"}"}>
+          <input type="radio" name="theme" value="light" checked={@current_user.theme == :light} class="text-indigo-600 focus:ring-indigo-500" />
+          <.icon name={:sun} class="h-5 w-5 text-gray-500 dark:text-gray-400" />
+          <div>
+            <div class="text-sm font-medium text-gray-900 dark:text-gray-100">Light</div>
+            <div class="text-sm text-gray-500 dark:text-gray-400">Always use light mode</div>
+          </div>
+        </label>
+
+        <label class={"flex items-center gap-3 rounded-lg border p-4 cursor-pointer #{if @current_user.theme == :dark, do: "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20", else: "border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"}"}>
+          <input type="radio" name="theme" value="dark" checked={@current_user.theme == :dark} class="text-indigo-600 focus:ring-indigo-500" />
+          <.icon name={:moon} class="h-5 w-5 text-gray-500 dark:text-gray-400" />
+          <div>
+            <div class="text-sm font-medium text-gray-900 dark:text-gray-100">Dark</div>
+            <div class="text-sm text-gray-500 dark:text-gray-400">Always use dark mode</div>
+          </div>
+        </label>
+      </fieldset>
+
+      <div class="mt-6">
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+    </.form>
+  </div>
+</div>

@@ -115,6 +115,7 @@ defmodule ShroudWeb.Router do
     get("/settings", UserSettingsController, :redirect_to_account)
     get("/settings/account", UserSettingsController, :account)
     get("/settings/security", UserSettingsController, :security)
+    get("/settings/appearance", UserSettingsController, :appearance)
     get("/settings/billing", UserSettingsController, :billing)
     get("/settings/billing/lifetime", UserSettingsController, :lifetime)
     post("/settings/billing/lifetime", UserSettingsController, :lifetime_signup)
