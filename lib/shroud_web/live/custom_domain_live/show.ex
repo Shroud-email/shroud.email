@@ -29,7 +29,7 @@ defmodule ShroudWeb.CustomDomainLive.Show do
     assigns = assign(assigns, :verified, Domain.fully_verified?(assigns.domain))
 
     ~H"""
-    <h1 class="text-xl font-semibold text-gray-900 mb-3 flex items-center">
+    <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center">
       {@domain.domain}
       <div :if={@verified} x-init x-tooltip.raw="DNS records verified" class="ml-1 mt-1">
         <.icon name={:check_circle} solid class="h-5 w-5 text-green-500" />
@@ -44,18 +44,18 @@ defmodule ShroudWeb.CustomDomainLive.Show do
       x-transition:enter-start="opacity-0"
       x-transition:enter-end="opacity-100"
     >
-      <p class="mt-2 mb-6 text-sm text-gray-700">
+      <p class="mt-2 mb-6 text-sm text-gray-700 dark:text-gray-300">
         Your domain is verified and you can create aliases @{@domain.domain}.
       </p>
-      <h3 class="font-semibold text-lg text-gray-900 mb-4">Catch-all</h3>
-      <div class="bg-white rounded shadow md:rounded-lg ring-1 ring-black ring-opacity-5 p-4 mb-12">
+      <h3 class="font-semibold text-lg text-gray-900 dark:text-gray-100 mb-4">Catch-all</h3>
+      <div class="bg-white dark:bg-gray-800 rounded shadow dark:shadow-gray-900/50 md:rounded-lg ring-1 ring-black ring-opacity-5 dark:ring-gray-700 p-4 mb-12">
         <div class="flex items-center">
           <.toggle on={@domain.catchall_enabled} click="toggle_catchall" />
-          <label class="ml-3 font-semibold text-sm">
+          <label class="ml-3 font-semibold text-sm text-gray-900 dark:text-gray-100">
             Catch-all {if @domain.catchall_enabled, do: "enabled", else: "disabled"}.
           </label>
         </div>
-        <p class="text-gray-700 text-sm mt-3">
+        <p class="text-gray-700 dark:text-gray-300 text-sm mt-3">
           When catch-all is on, you don't need to manually create new aliases. The first time an email
           is sent to anything@{@domain.domain}, a new alias will automatically be created.
         </p>
@@ -75,8 +75,8 @@ defmodule ShroudWeb.CustomDomainLive.Show do
         }
       }
     />
-    <h3 class="font-semibold text-lg text-gray-900 mb-4 mt-8">Danger zone</h3>
-    <div class="bg-white rounded shadow md:rounded-lg ring-1 ring-black ring-opacity-5 p-4 mb-12">
+    <h3 class="font-semibold text-lg text-gray-900 dark:text-gray-100 mb-4 mt-8">Danger zone</h3>
+    <div class="bg-white dark:bg-gray-800 rounded shadow dark:shadow-gray-900/50 md:rounded-lg ring-1 ring-black ring-opacity-5 dark:ring-gray-700 p-4 mb-12">
       <.button intent={:danger} click="open_delete_modal" text="Delete domain" icon={:trash} />
     </div>
 

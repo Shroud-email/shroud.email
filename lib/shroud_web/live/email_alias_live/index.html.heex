@@ -25,7 +25,7 @@
     <div class="mt-2">
       <div class="flex items-center">
         <.text_input name="alias_name" placeholder="john.doe" />
-        <span class="ml-3 text-sm text-gray-700"><%= @custom_alias_domain %></span>
+        <span class="ml-3 text-sm text-gray-700 dark:text-gray-300"><%= @custom_alias_domain %></span>
       </div>
       <p :if={@custom_alias_error} class="text-red-600 mt-1 text-sm">
         <%= @custom_alias_error %>
@@ -48,7 +48,7 @@
   </.empty_state>
 <% else %>
   <div class="mb-3 flex items-center justify-between">
-    <div class="text-gray-600 text-sm hidden sm:block">
+    <div class="text-gray-600 dark:text-gray-400 text-sm hidden sm:block">
       <%= length(@aliases) %>
       <%= if length(@aliases) == 1 do %>
         alias
@@ -67,7 +67,7 @@
             type="text"
             name="query"
             id="query"
-            class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full text-sm border-gray-300 px-4 rounded-full"
+            class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full text-sm border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400 px-4 rounded-full"
             placeholder="Filter"
           />
           <button type="submit" class="hidden">Apply filter</button>
@@ -86,31 +86,31 @@
   <div class="flex flex-col">
     <div class="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
       <div class="py-2 align-middle inline-block min-w-full sm:px-6 lg:px-8">
-        <div class="shadow overflow-hidden border-b border-gray-200 sm:rounded-lg">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
+        <div class="shadow dark:shadow-gray-900/50 overflow-hidden border-b border-gray-200 dark:border-gray-700 sm:rounded-lg">
+          <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead class="bg-gray-50 dark:bg-gray-700">
               <tr>
                 <th
                   scope="col"
-                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                 >
                   Address
                 </th>
                 <th
                   scope="col"
-                  class="hidden px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:table-cell"
+                  class="hidden px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider sm:table-cell"
                 >
                   Forwarded
                 </th>
                 <th
                   scope="col"
-                  class="hidden px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider lg:table-cell"
+                  class="hidden px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider lg:table-cell"
                 >
                   Status
                 </th>
                 <th
                   scope="col"
-                  class="hidden px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:table-cell"
+                  class="hidden px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider sm:table-cell"
                 >
                   Created
                 </th>
@@ -119,58 +119,58 @@
                 </th>
               </tr>
             </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
+            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               <tr :for={email_alias <- @aliases}>
                 <td class="px-6 py-4 whitespace-nowrap">
                   <div>
                     <dl class="text-sm lg:hidden">
                       <dt class="sr-only">Status</dt>
-                      <dd class="mt-1 truncate text-gray-700">
+                      <dd class="mt-1 truncate text-gray-700 dark:text-gray-300">
                         <%= if email_alias.enabled do %>
-                          <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                          <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">
                             Enabled
                           </span>
                         <% else %>
-                          <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                          <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300">
                             Disabled
                           </span>
                         <% end %>
                       </dd>
                     </dl>
-                    <.link navigate={~p"/alias/#{email_alias.address}"} class="text-sm font-medium text-gray-900 hover:text-gray-500">
+                    <.link navigate={~p"/alias/#{email_alias.address}"} class="text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-gray-500 dark:hover:text-gray-400">
                       <%= email_alias.address %>
                     </.link>
-                    <div class="text-sm text-gray-500">
+                    <div class="text-sm text-gray-500 dark:text-gray-400">
                       <%= email_alias.title %>
                     </div>
                     <dl class="text-sm lg:hidden">
                       <dt class="sr-only sm:hidden">Forwarded</dt>
-                      <dd class="mt-1 truncate text-gray-500 sm:hidden"><%= email_alias.forwarded %> forwarded</dd>
+                      <dd class="mt-1 truncate text-gray-500 dark:text-gray-400 sm:hidden"><%= email_alias.forwarded %> forwarded</dd>
                     </dl>
                   </div>
                 </td>
                 <td class="hidden px-6 py-4 whitespace-nowrap sm:table-cell">
-                  <div class="text-sm text-gray-900"><%= email_alias.forwarded %></div>
-                  <div class="text-sm text-gray-500"><%= email_alias.forwarded_in_last_30_days %> in the last month</div>
+                  <div class="text-sm text-gray-900 dark:text-gray-100"><%= email_alias.forwarded %></div>
+                  <div class="text-sm text-gray-500 dark:text-gray-400"><%= email_alias.forwarded_in_last_30_days %> in the last month</div>
                 </td>
                 <td class="hidden px-6 py-4 whitespace-nowrap lg:table-cell">
                   <%= if email_alias.enabled do %>
-                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">
                       Enabled
                     </span>
                   <% else %>
-                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300">
                       Disabled
                     </span>
                   <% end %>
                 </td>
-                <td class="hidden px-6 py-4 whitespace-nowrap text-sm text-gray-500 sm:table-cell">
+                <td class="hidden px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 sm:table-cell">
                   <%= Timex.format!(email_alias.inserted_at, "{ISOdate}") %>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <.link
                     navigate={~p"/alias/#{email_alias.address}"}
-                    class="text-indigo-600 hover:text-indigo-900"
+                    class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300"
                   >
                     Edit
                   </.link>

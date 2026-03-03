@@ -2,24 +2,24 @@
   @apply rounded-md p-4 flex text-sm border;
 }
 .alert-info {
-  @apply bg-blue-50 text-blue-700 border-blue-100;
+  @apply bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800;
 }
 .alert-warning {
-  @apply bg-yellow-50 text-yellow-700 border-yellow-100;
+  @apply bg-yellow-50 text-yellow-700 border-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800;
 }
 .alert-error {
-  @apply bg-red-50 text-red-700 border-red-100;
+  @apply bg-red-50 text-red-700 border-red-100 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800;
 }
 
 .btn {
-  @apply inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 justify-center;
+  @apply inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 justify-center dark:focus:ring-offset-gray-900;
 }
 .btn-primary {
   @apply text-white bg-indigo-600 hover:bg-indigo-700;
 }
 .btn-secondary {
-  @apply text-indigo-700 bg-indigo-100 hover:bg-indigo-200;
+  @apply text-indigo-700 bg-indigo-100 hover:bg-indigo-200 dark:text-indigo-300 dark:bg-indigo-900/50 dark:hover:bg-indigo-900/70;
 }
 .btn-white {
-  @apply border-gray-300 text-gray-700 bg-white hover:bg-gray-50;
+  @apply border-gray-300 text-gray-700 bg-white hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600;
 }

@@ -39,6 +39,10 @@ defmodule ShroudWeb.UserSettingsController do
     )
   end
 
+  def appearance(conn, _params) do
+    render(conn, "appearance.html", page_title: "Appearance settings")
+  end
+
   def billing(conn, _params) do
     render(conn, "billing.html", page_title: "Billing settings")
   end
@@ -80,6 +84,22 @@ defmodule ShroudWeb.UserSettingsController do
         conn
         |> put_flash(:error, "Email change link is invalid or it has expired.")
         |> redirect(to: ~p"/settings/account")
+    end
+  end
+
+  def update(conn, %{"action" => "update_theme", "theme" => theme}) do
+    user = conn.assigns.current_user
+
+    case Accounts.update_user_theme(user, %{theme: theme}) do
+      {:ok, _user} ->
+        conn
+        |> put_flash(:info, "Appearance updated.")
+        |> redirect(to: ~p"/settings/appearance")
+
+      {:error, _changeset} ->
+        conn
+        |> put_flash(:error, "Invalid theme preference.")
+        |> redirect(to: ~p"/settings/appearance")
     end
   end
 
