@@ -447,6 +447,12 @@ defmodule Shroud.AccountsTest do
       assert {:ok, _confirmed_user} = Accounts.confirm_user(token)
       assert_enqueued(worker: Accounts.LoopsJob, args: %{user_id: user.id})
     end
+
+    test "sets user status to :free after confirmation", %{user: user, token: token} do
+      assert {:ok, confirmed_user} = Accounts.confirm_user(token)
+      assert confirmed_user.status == :free
+      assert is_nil(confirmed_user.trial_expires_at)
+    end
   end
 
   describe "deliver_user_reset_password_instructions/2" do
@@ -571,6 +577,45 @@ defmodule Shroud.AccountsTest do
       user = user_fixture(%{status: :trial, trial_expires_at: yesterday})
 
       refute Accounts.active?(user)
+    end
+
+    test "returns true for free users" do
+      user = user_fixture(%{status: :free})
+
+      assert Accounts.active?(user)
+    end
+  end
+
+  describe "paid?/1" do
+    test "returns true for active users" do
+      user = user_fixture(%{status: :active})
+      assert Accounts.paid?(user)
+    end
+
+    test "returns true for lifetime users" do
+      user = user_fixture(%{status: :lifetime})
+      assert Accounts.paid?(user)
+    end
+
+    test "returns false for free users" do
+      user = user_fixture(%{status: :free})
+      refute Accounts.paid?(user)
+    end
+
+    test "returns false for inactive users" do
+      user = user_fixture(%{status: :inactive})
+      refute Accounts.paid?(user)
+    end
+
+    test "returns false for trial users" do
+      tomorrow = NaiveDateTime.utc_now() |> NaiveDateTime.add(1, :day)
+      user = user_fixture(%{status: :trial, trial_expires_at: tomorrow})
+      refute Accounts.paid?(user)
+    end
+
+    test "returns false for lead users" do
+      user = user_fixture(%{status: :lead})
+      refute Accounts.paid?(user)
     end
   end
 end

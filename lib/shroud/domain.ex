@@ -5,6 +5,7 @@ defmodule Shroud.Domain do
 
   import Ecto.Query, warn: false
   alias Shroud.Repo
+  alias Shroud.Accounts
   alias Shroud.Accounts.User
   alias Shroud.Aliases.EmailAlias
 
@@ -53,12 +54,16 @@ defmodule Shroud.Domain do
 
   """
   def create_custom_domain(%User{} = user, attrs \\ %{}) do
-    verification_code = "shroud-verify=#{generate_random_string()}"
+    if Accounts.paid?(user) do
+      verification_code = "shroud-verify=#{generate_random_string()}"
 
-    %CustomDomain{verification_code: verification_code}
-    |> CustomDomain.create_changeset(attrs)
-    |> Ecto.Changeset.put_assoc(:user, user)
-    |> Repo.insert()
+      %CustomDomain{verification_code: verification_code}
+      |> CustomDomain.create_changeset(attrs)
+      |> Ecto.Changeset.put_assoc(:user, user)
+      |> Repo.insert()
+    else
+      {:error, :paid_feature}
+    end
   end
 
   def toggle_catchall!(%CustomDomain{} = custom_domain) do

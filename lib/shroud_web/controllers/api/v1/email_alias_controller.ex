@@ -38,6 +38,20 @@ defmodule ShroudWeb.Api.V1.EmailAliasController do
         {:ok, email_alias} ->
           render(conn, "email_alias.json", data: email_alias)
 
+        {:error, :free_limit_reached} ->
+          conn
+          |> put_status(:forbidden)
+          |> put_view(ShroudWeb.ErrorJSON)
+          |> render("error.json",
+            error: "Free plan alias limit reached. Upgrade to create more aliases."
+          )
+
+        {:error, :inactive_user} ->
+          conn
+          |> put_status(:forbidden)
+          |> put_view(ShroudWeb.ErrorJSON)
+          |> render("error.json", error: "Account is inactive")
+
         {:error, changeset} ->
           {error, _} = Keyword.get(changeset.errors, :address)
 
@@ -53,6 +67,20 @@ defmodule ShroudWeb.Api.V1.EmailAliasController do
     case Aliases.create_random_email_alias(conn.assigns.current_user) do
       {:ok, email_alias} ->
         render(conn, "email_alias.json", data: email_alias)
+
+      {:error, :free_limit_reached} ->
+        conn
+        |> put_status(:forbidden)
+        |> put_view(ShroudWeb.ErrorJSON)
+        |> render("error.json",
+          error: "Free plan alias limit reached. Upgrade to create more aliases."
+        )
+
+      {:error, :inactive_user} ->
+        conn
+        |> put_status(:forbidden)
+        |> put_view(ShroudWeb.ErrorJSON)
+        |> render("error.json", error: "Account is inactive")
 
       _ ->
         conn

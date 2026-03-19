@@ -24,6 +24,11 @@ defmodule Shroud.Permissions do
         when action in [:read, :update, :destroy],
         do: true
 
+    # Only paid users can create custom domains
+    def can?(%User{} = user, :create, CustomDomain) do
+      Accounts.paid?(user)
+    end
+
     def can?(%User{} = user, :debug, _), do: Accounts.admin?(user)
   end
 end

@@ -1,17 +1,11 @@
 <.alert
-  :if={!Accounts.active?(@current_user)}
-  title="Attention needed"
-  type={:warning}
-  icon={:exclamation_triangle}
+  :if={@current_user.status == :free}
+  title="Free plan"
+  type={:info}
+  icon={:information_circle}
 >
-  <%= case @current_user.status do %>
-    <% :trial -> %>
-      Your trial has expired. Sign up to create new aliases!
-    <% :inactive -> %>
-      Your account is inactive. You cannot create new aliases until you sign up.
-    <% _any -> %>
-      <!-- Nothing -->
-  <% end %>
+  You're on the free plan ({@alias_count}/5 aliases used).
+  <.link href={~p"/settings/billing"} class="underline font-medium">Upgrade</.link> for unlimited aliases, custom domains, and outgoing email.
 </.alert>
 
 <form phx-submit="create_custom_alias">
@@ -44,7 +38,13 @@
     description="Get started by adding your first alias."
     icon={:envelope}
   >
-    <.button click="add_alias" text="New alias" icon={:plus} />
+    <%= if @at_free_limit do %>
+      <div x-init x-tooltip.raw="Upgrade to create more aliases">
+        <.button text="New alias" icon={:plus} disabled={true} />
+      </div>
+    <% else %>
+      <.button click="add_alias" text="New alias" icon={:plus} />
+    <% end %>
   </.empty_state>
 <% else %>
   <div class="mb-3 flex items-center justify-between">
@@ -73,13 +73,19 @@
           <button type="submit" class="hidden">Apply filter</button>
         </form>
       </div>
-      <%= if Enum.empty?(@custom_domains) do %>
-        <.button click="add_alias" text="New alias" icon={:plus} />
+      <%= if @at_free_limit do %>
+        <div x-init x-tooltip.raw="Upgrade to create more aliases">
+          <.button text="New alias" icon={:plus} disabled={true} />
+        </div>
       <% else %>
-        <.button_with_dropdown click="add_alias" text="New alias" icon={:plus}>
-          <.dropdown_item index={0} click="add_alias" text={"@#{Util.email_domain()}"} />
-          <.dropdown_item :for={{domain, index} <- Enum.with_index(@custom_domains, 1)} index={index} click="open_custom_alias_modal" text={"@#{domain.domain}"} />
-        </.button_with_dropdown>
+        <%= if Enum.empty?(@custom_domains) do %>
+          <.button click="add_alias" text="New alias" icon={:plus} />
+        <% else %>
+          <.button_with_dropdown click="add_alias" text="New alias" icon={:plus}>
+            <.dropdown_item index={0} click="add_alias" text={"@#{Util.email_domain()}"} />
+            <.dropdown_item :for={{domain, index} <- Enum.with_index(@custom_domains, 1)} index={index} click="open_custom_alias_modal" text={"@#{domain.domain}"} />
+          </.button_with_dropdown>
+        <% end %>
       <% end %>
     </div>
   </div>

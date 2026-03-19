@@ -179,7 +179,7 @@ defmodule Shroud.Email.EmailHandlerTest do
       assert capture_log(fn ->
                perform_job(EmailHandler, args)
              end) =~
-               "Discarding outgoing email from other@example.com to recipient_at_example.com_alias@email.shroud.test because the alias belongs to someone else"
+               "Discarding outgoing email from other@example.com to recipient_at_example.com_alias@email.shroud.test because user is not on a paid plan"
 
       assert_no_email_sent()
     end
@@ -698,6 +698,29 @@ defmodule Shroud.Email.EmailHandlerTest do
       perform_job(EmailHandler, %{from: nil, to: "test@test.com", data: raw_email})
 
       assert_enqueued(worker: Shroud.S3.S3UploadJob)
+    end
+
+    test "discards outgoing email from free users", %{email_alias: email_alias} do
+      free_user = user_fixture(%{status: :free, email: "freeuser@example.com"})
+      free_alias = alias_fixture(%{user_id: free_user.id, address: "freealias@email.shroud.test"})
+
+      data =
+        text_email(
+          free_user.email,
+          ["sender_at_example.com_freealias@email.shroud.test"],
+          "Text only",
+          "Plain text content!"
+        )
+
+      assert capture_log(fn ->
+               perform_job(EmailHandler, %{
+                 from: free_user.email,
+                 to: "sender_at_example.com_freealias@email.shroud.test",
+                 data: data
+               })
+             end) =~ "not on a paid plan"
+
+      assert_no_email_sent()
     end
 
     test "sends a notice on outgoing spam emails", %{user: user} do

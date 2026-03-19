@@ -3,7 +3,6 @@ defmodule ShroudWeb.EmailAliasLive.Index do
 
   use ShroudWeb, :live_view
 
-  alias Shroud.Accounts
   alias Shroud.Aliases
   alias Shroud.Aliases.EmailAlias
   alias Shroud.Domain
@@ -26,6 +25,8 @@ defmodule ShroudWeb.EmailAliasLive.Index do
       |> assign(:filter_query, "")
       |> assign(:custom_alias_domain, nil)
       |> assign(:custom_alias_error, "")
+      |> assign(:alias_count, length(Aliases.list_aliases(socket.assigns.current_user)))
+      |> assign_at_free_limit()
       |> assign(:page_title, "Aliases")
       |> assign(:page_title_url, nil)
       |> assign(:subpage_title, nil)
@@ -144,6 +145,12 @@ defmodule ShroudWeb.EmailAliasLive.Index do
       :aliases,
       Aliases.list_aliases(socket.assigns[:current_user], socket.assigns[:filter_query])
     )
+  end
+
+  defp assign_at_free_limit(socket) do
+    user = socket.assigns.current_user
+    at_limit = user.status == :free and socket.assigns.alias_count >= Aliases.free_alias_limit()
+    assign(socket, :at_free_limit, at_limit)
   end
 
   defp update_custom_domains(socket) do

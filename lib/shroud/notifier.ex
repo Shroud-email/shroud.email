@@ -5,9 +5,9 @@ defmodule Shroud.Notifier do
 
   alias Shroud.NotifierJob
 
-  def notify_user_started_trial(email) do
+  def notify_user_signed_up_free(email) do
     payload = %{
-      content: "🧑 **#{email}** just signed up for a free trial!"
+      content: "**#{email}** just signed up (free tier)!"
     }
 
     enqueue_webhook(payload)

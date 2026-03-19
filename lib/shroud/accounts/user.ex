@@ -21,7 +21,7 @@ defmodule Shroud.Accounts.User do
     field :stripe_customer_id, :string
     field :trial_expires_at, :naive_datetime
     field :plan_expires_at, :naive_datetime
-    field :status, Ecto.Enum, values: [:lead, :trial, :active, :inactive, :lifetime]
+    field :status, Ecto.Enum, values: [:lead, :trial, :active, :inactive, :lifetime, :free]
     field :theme, Ecto.Enum, values: [:system, :light, :dark], default: :system
 
     has_many :aliases, EmailAlias

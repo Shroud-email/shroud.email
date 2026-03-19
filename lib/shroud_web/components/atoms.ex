@@ -26,16 +26,16 @@ defmodule ShroudWeb.Components.Atoms do
     class =
       case assigns.intent do
         :primary ->
-          "text-white bg-indigo-600 hover:bg-indigo-700"
+          "text-white bg-indigo-600 enabled:hover:bg-indigo-700"
 
         :secondary ->
-          "text-indigo-700 bg-indigo-100 hover:bg-indigo-200 dark:text-indigo-300 dark:bg-indigo-900/50 dark:hover:bg-indigo-900/70"
+          "text-indigo-700 bg-indigo-100 enabled:hover:bg-indigo-200 dark:text-indigo-300 dark:bg-indigo-900/50 dark:enabled:hover:bg-indigo-900/70"
 
         :danger ->
-          "text-red-700 bg-red-100 hover:bg-red-200 dark:text-red-300 dark:bg-red-900/50 dark:hover:bg-red-900/70"
+          "text-red-700 bg-red-100 enabled:hover:bg-red-200 dark:text-red-300 dark:bg-red-900/50 dark:enabled:hover:bg-red-900/70"
 
         :white ->
-          "border-gray-300 text-gray-700 bg-white hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600"
+          "border-gray-300 text-gray-700 bg-white enabled:hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:bg-gray-700 dark:enabled:hover:bg-gray-600"
       end
 
     assigns = assign(assigns, :class, class)
@@ -47,7 +47,7 @@ defmodule ShroudWeb.Components.Atoms do
       type={@type}
       disabled={@disabled}
       class={@class <>
-        " inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 justify-center disabled:opacity-80 disabled:cursor-wait dark:focus:ring-offset-gray-900"}
+        " inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 justify-center disabled:opacity-50 disabled:cursor-not-allowed dark:focus:ring-offset-gray-900"}
       {@rest}
     >
       <span :if={@icon} class="-ml-1 mr-2 h-5 w-5">

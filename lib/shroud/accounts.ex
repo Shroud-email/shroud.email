@@ -99,8 +99,8 @@ defmodule Shroud.Accounts do
            |> User.registration_changeset(attrs)
            |> Repo.insert(returning: true) do
         {:ok, user} ->
-          Notifier.notify_user_started_trial(user.email)
-          Logger.notice("User #{user.email} started a trial")
+          Notifier.notify_user_signed_up_free(user.email)
+          Logger.notice("User #{user.email} signed up (free tier)")
           {:ok, user}
 
         other ->
@@ -328,13 +328,11 @@ defmodule Shroud.Accounts do
   end
 
   defp confirm_user_multi(user) do
-    now = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
-    thirty_days_from_now = NaiveDateTime.add(now, 60 * 60 * 24 * 30)
     # Don't overwrite lifetime status
-    status = if user.status == :lifetime, do: :lifetime, else: :trial
+    status = if user.status == :lifetime, do: :lifetime, else: :free
 
     attrs = %{
-      trial_expires_at: thirty_days_from_now,
+      trial_expires_at: nil,
       status: status
     }
 
@@ -420,22 +418,15 @@ defmodule Shroud.Accounts do
   end
 
   def active?(%User{} = user) do
-    user.status == :active || user.status == :lifetime ||
+    user.status in [:active, :lifetime, :free] ||
       (user.status == :trial && not Util.past?(user.trial_expires_at))
+  end
+
+  def paid?(%User{} = user) do
+    user.status in [:active, :lifetime]
   end
 
   def admin?(%User{} = user) do
     user.is_admin
-  end
-
-  def list_users_with_trial_expiry_between(from_datetime, to_datetime) do
-    query =
-      from u in User,
-        where:
-          u.trial_expires_at >= ^from_datetime and
-            u.trial_expires_at <= ^to_datetime and
-            u.status == :trial
-
-    Repo.all(query)
   end
 end

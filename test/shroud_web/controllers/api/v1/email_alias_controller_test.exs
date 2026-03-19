@@ -169,6 +169,26 @@ defmodule ShroudWeb.Api.V1.EmailAliasControllerTest do
                "error" => "must have an @ sign and no spaces or underscores"
              }
     end
+
+    test "returns 403 when free user exceeds alias limit", %{conn: conn} do
+      free_user = user_fixture(%{status: :free})
+
+      free_user =
+        free_user
+        |> Accounts.User.confirm_changeset()
+        |> Repo.update!(returning: true)
+
+      # Create 5 aliases to hit the limit
+      Enum.each(1..5, fn idx ->
+        alias_fixture(%{user_id: free_user.id, address: "alias#{idx}@email.shroud.test"})
+      end)
+
+      conn = authorized_post(conn, free_user, ~p"/api/v1/aliases")
+
+      assert json_response(conn, 403) == %{
+               "error" => "Free plan alias limit reached. Upgrade to create more aliases."
+             }
+    end
   end
 
   describe "delete/2" do

@@ -10,6 +10,19 @@
       </div>
     </div>
   </div>
+<% @current_user.status == :free -> %>
+  <div class="shadow dark:shadow-gray-900/50 sm:rounded-md sm:overflow-hidden mb-6">
+    <div class="bg-white dark:bg-gray-800 py-6 px-4 space-y-6 sm:p-6">
+      <div>
+        <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100">Free Plan</h3>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          You're on the free plan. You can create up to 5 aliases with tracker blocking.
+          Upgrade to unlock unlimited aliases, custom domains, and outgoing email.
+        </p>
+      </div>
+    </div>
+  </div>
+  <.signup {assigns} />
 <% is_nil(@current_user.stripe_customer_id) -> %>
   <.signup {assigns} />
 <% true -> %>
