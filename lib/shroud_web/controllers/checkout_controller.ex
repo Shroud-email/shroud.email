@@ -16,8 +16,8 @@ defmodule ShroudWeb.CheckoutController do
     # then Phoenix will escape the brackets, which means that Stripe won't
     # substitute it properly.
     billing_period = Map.fetch!(@billing_periods, billing_period)
-    success_url = ~p"/checkout/success"
-    cancel_url = ~p"/settings/billing"
+    success_url = url(conn, ~p"/checkout/success")
+    cancel_url = url(conn, ~p"/settings/billing")
 
     session =
       Session.create_checkout!(
@@ -135,16 +135,16 @@ defmodule ShroudWeb.CheckoutController do
 
           other ->
             # Remaining options are incomplete_expired, canceled, unpaid. These all cancel
-            # the subscription.
+            # the subscription. Move to free tier instead of inactive.
             # https://stripe.com/docs/api/subscriptions/object#subscription_object-status
             attrs = %{
               trial_expires_at: nil,
               plan_expires_at: nil,
-              status: :inactive
+              status: :free
             }
 
             Accounts.update_stripe_details!(user, attrs)
-            Logger.notice("Set #{user.email} to inactive due to Stripe event '#{other}'")
+            Logger.notice("Set #{user.email} to free tier due to Stripe event '#{other}'")
         end
     end
   end

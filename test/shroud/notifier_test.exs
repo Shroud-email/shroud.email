@@ -3,12 +3,12 @@ defmodule Shroud.NotifierTest do
   use Oban.Testing, repo: Shroud.Repo
   alias Shroud.{Notifier, NotifierJob}
 
-  test "notify_user_started_trial/1" do
-    Notifier.notify_user_started_trial("user@example.com")
+  test "notify_user_signed_up_free/1" do
+    Notifier.notify_user_signed_up_free("user@example.com")
 
     assert_enqueued(
       worker: NotifierJob,
-      args: %{payload: %{"content" => "🧑 **user@example.com** just signed up for a free trial!"}}
+      args: %{payload: %{"content" => "**user@example.com** just signed up (free tier)!"}}
     )
   end
 

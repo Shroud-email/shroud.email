@@ -20,10 +20,11 @@
 
   <div class="max-w-lg mx-auto rounded-lg shadow dark:shadow-gray-900/50 overflow-hidden lg:max-w-none lg:flex">
     <div class="flex-1 bg-white dark:bg-gray-800 px-6 py-8 lg:px-12 lg:pb-12">
-      <h3 x-text="billingPeriod === 'monthly' ? 'Monthly plan' : 'Yearly plan'" class="text-2xl font-extrabold text-gray-900 dark:text-gray-100 sm:text-3xl">
+      <h3 class="text-2xl font-extrabold text-gray-900 dark:text-gray-100 sm:text-3xl">
+        Upgrade to Pro
       </h3>
       <p class="mt-6 text-base text-gray-500 dark:text-gray-400">
-        Hide your email address and block trackers with unlimited aliases.
+        Unlock unlimited aliases, custom domains, and the ability to send emails from your aliases.
       </p>
       <div class="mt-8">
         <div class="flex items-center">
@@ -59,32 +60,30 @@
 
           <li class="flex items-start lg:col-span-1">
             <div class="flex-shrink-0">
-              <!-- Heroicon name: solid/check-circle -->
               <svg class="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                 <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
               </svg>
             </div>
             <p class="ml-3 text-sm text-gray-700 dark:text-gray-300">
-              Block spammy senders at will
+              Custom domains
             </p>
           </li>
 
           <li class="flex items-start lg:col-span-1">
             <div class="flex-shrink-0">
-              <!-- Heroicon name: solid/check-circle -->
               <svg class="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                 <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
               </svg>
             </div>
             <p class="ml-3 text-sm text-gray-700 dark:text-gray-300">
-              Premium customer support
+              Send emails from aliases
             </p>
           </li>
         </ul>
       </div>
     </div>
     <div class="py-8 px-6 text-center bg-gray-50 dark:bg-gray-700 lg:flex-shrink-0 lg:flex lg:flex-col lg:justify-center lg:p-12">
-      <p x-text="'Paid ' + billingPeriod" class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100">
+      <p x-text="'Billed ' + billingPeriod" class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100">
       </p>
       <div class="mt-4 flex items-center justify-center text-5xl font-extrabold text-gray-900 dark:text-gray-100">
         <span x-text="billingPeriod === 'monthly' ? '£2' : '£20'">
@@ -96,10 +95,10 @@
       <div class="mt-6">
         <div class="rounded-md shadow">
           <template x-if="billingPeriod === 'monthly'">
-            <.link href={~p"/checkout?period=monthly"} class="flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-white bg-gray-800 hover:bg-gray-900">Sign up</.link>
+            <.link href={~p"/checkout?period=monthly"} class="flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-white bg-gray-800 hover:bg-gray-900">Upgrade</.link>
           </template>
           <template x-if="billingPeriod === 'yearly'">
-            <.link href={~p"/checkout/?period=yearly"} class="flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-white bg-gray-800 hover:bg-gray-900">Sign up</.link>
+            <.link href={~p"/checkout/?period=yearly"} class="flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-white bg-gray-800 hover:bg-gray-900">Upgrade</.link>
           </template>
         </div>
       </div>

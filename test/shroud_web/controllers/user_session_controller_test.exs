@@ -14,7 +14,7 @@ defmodule ShroudWeb.UserSessionControllerTest do
       conn = get(conn, ~p"/users/log_in")
       response = html_response(conn, 200)
       assert response =~ "Sign in"
-      assert response =~ "start your 30-day free trial"
+      assert response =~ "sign up for free"
       assert response =~ "Forgot your password?</a>"
     end
 

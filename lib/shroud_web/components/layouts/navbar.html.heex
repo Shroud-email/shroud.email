@@ -35,14 +35,10 @@
           <div class="ml-4 flex items-center md:ml-6">
             <!-- Profile dropdown -->
             <%= if @current_user do %>
-              <%= if @current_user.status == :trial do %>
+              <%= if @current_user.status == :free do %>
                 <div class="text-gray-400 mr-2">
-                  <%= if Shroud.Util.past?(@current_user.trial_expires_at) do %>
-                    You trial has expired.
-                  <% else %>
-                    Your trial expires <%= Timex.from_now(@current_user.trial_expires_at) %>.
-                  <% end %>
-                  <.link href={~p"/settings/billing"} class="underline hover:text-gray-500">Sign up now.</.link>
+                  Free plan.
+                  <.link href={~p"/settings/billing"} class="underline hover:text-gray-500">Upgrade</.link>
                 </div>
               <% end %>
               <div class="ml-3 relative" x-data="AlpineComponents.menu({ open: false })" x-init="init()" @keydown.escape.stop="open = false; focusButton()" @click.away="onClickAway($event)">
@@ -136,14 +132,10 @@
           <div class="ml-3">
             <div class="text-base font-medium leading-none text-white"><%= @current_user.email %></div>
             <%= if @current_user do %>
-              <%= if @current_user.status == :trial do %>
+              <%= if @current_user.status == :free do %>
                 <div class="text-gray-400 mr-2">
-                  <%= if Shroud.Util.past?(@current_user.trial_expires_at) do %>
-                    You trial has expired.
-                  <% else %>
-                    Your trial expires <%= Timex.from_now(@current_user.trial_expires_at) %>.
-                  <% end %>
-                  <.link href={~p"/settings/billing"} class="underline hover:text-gray-500">Sign up now.</.link>
+                  Free plan.
+                  <.link href={~p"/settings/billing"} class="underline hover:text-gray-500">Upgrade</.link>
                 </div>
               <% end %>
             <% end %>

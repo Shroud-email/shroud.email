@@ -21,6 +21,11 @@ defmodule Shroud.Email.OutgoingEmailHandler do
         mimemail_email = :mimemail.decode(data)
         SpamHandler.handle_outgoing_spam_email(mimemail_email)
 
+      is_nil(sender_user) or not Accounts.paid?(sender_user) ->
+        Logger.notice(
+          "Discarding outgoing email from #{sender} to #{recipient} because user is not on a paid plan"
+        )
+
       sender_owns_alias?(sender_user, recipient) ->
         maybe_log(
           sender_user,

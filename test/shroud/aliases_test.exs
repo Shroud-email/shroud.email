@@ -258,6 +258,42 @@ defmodule Shroud.AliasesTest do
       {:error, :trial_limit_reached} =
         Aliases.create_email_alias(%{user_id: user_id, address: "foo@email.com"})
     end
+
+    test "lets a free user create an alias when under the limit" do
+      %{id: user_id} = user_fixture(%{status: :free})
+
+      {:ok, _email_alias} =
+        Aliases.create_email_alias(%{user_id: user_id, address: "foo@email.com"})
+    end
+
+    test "does not let a free user create more than 5 aliases" do
+      %{id: user_id} = user_fixture(%{status: :free})
+
+      Enum.each(1..5, fn idx ->
+        {:ok, _email_alias} =
+          Aliases.create_email_alias(%{user_id: user_id, address: "#{idx}@email.com"})
+      end)
+
+      {:error, :free_limit_reached} =
+        Aliases.create_email_alias(%{user_id: user_id, address: "foo@email.com"})
+    end
+
+    test "does not count deleted aliases toward the free limit" do
+      %{id: user_id} = user_fixture(%{status: :free})
+
+      Enum.each(1..5, fn idx ->
+        {:ok, _email_alias} =
+          Aliases.create_email_alias(%{user_id: user_id, address: "#{idx}@email.com"})
+      end)
+
+      # Delete one alias
+      alias_to_delete = Aliases.get_email_alias_by_address!("1@email.com")
+      Aliases.delete_email_alias(alias_to_delete.id)
+
+      # Should be able to create another since only 4 active aliases remain
+      {:ok, _email_alias} =
+        Aliases.create_email_alias(%{user_id: user_id, address: "new@email.com"})
+    end
   end
 
   describe "delete_email_alias/1" do

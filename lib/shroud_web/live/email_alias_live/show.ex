@@ -2,7 +2,7 @@ defmodule ShroudWeb.EmailAliasLive.Show do
   import Canada, only: [can?: 2]
   use ShroudWeb, :live_view
   use Phoenix.Component, global_prefixes: ~w(x-)
-  alias Shroud.Aliases
+  alias Shroud.{Accounts, Aliases}
   alias Shroud.Email.ReplyAddress
 
   import ShroudWeb.Components.CopyToClipboardButton
@@ -17,6 +17,7 @@ defmodule ShroudWeb.EmailAliasLive.Show do
       |> assign(:address, address)
       |> assign(:blocked_sender_error, "")
       |> assign(:reverse_alias_recipient, "")
+      |> assign(:paid, Accounts.paid?(socket.assigns.current_user))
       |> update_email_alias()
 
     {:noreply, socket}
@@ -137,60 +138,77 @@ defmodule ShroudWeb.EmailAliasLive.Show do
                 </dd>
               </div>
             </.form>
-            <div class="bg-white dark:bg-gray-800 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">
-                <div>Send emails</div>
-                <div class="mt-1 font-normal">
-                  Create a reverse alias to send emails from this address.
-                </div>
-              </dt>
-              <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100 sm:mt-0 sm:col-span-2">
-                <form phx-submit="update_recipient">
-                  <fieldset class="bg-white dark:bg-gray-800">
-                    <div class="mt-1 rounded-md shadow-sm -space-y-px">
-                      <div class="mt-1 flex rounded-t-md shadow-sm">
-                        <div class="relative flex items-stretch flex-grow focus-within:z-10">
-                          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <.icon name={:at_symbol} solid class="h-5 w-5 text-gray-400" />
+            <%= if @paid do %>
+              <div class="bg-white dark:bg-gray-800 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">
+                  <div>Send emails</div>
+                  <div class="mt-1 font-normal">
+                    Create a reverse alias to send emails from this address.
+                  </div>
+                </dt>
+                <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100 sm:mt-0 sm:col-span-2">
+                  <form phx-submit="update_recipient">
+                    <fieldset class="bg-white dark:bg-gray-800">
+                      <div class="mt-1 rounded-md shadow-sm -space-y-px">
+                        <div class="mt-1 flex rounded-t-md shadow-sm">
+                          <div class="relative flex items-stretch flex-grow focus-within:z-10">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                              <.icon name={:at_symbol} solid class="h-5 w-5 text-gray-400" />
+                            </div>
+                            <input
+                              type="email"
+                              name="recipient"
+                              id="recipient"
+                              class="focus:ring-indigo-500 focus:border-indigo-500 block w-full rounded-none rounded-tl-md pl-10 sm:text-sm border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
+                              placeholder="Who do you want to email?"
+                            />
                           </div>
-                          <input
-                            type="email"
-                            name="recipient"
-                            id="recipient"
-                            class="focus:ring-indigo-500 focus:border-indigo-500 block w-full rounded-none rounded-tl-md pl-10 sm:text-sm border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
-                            placeholder="Who do you want to email?"
-                          />
+                          <button
+                            type="submit"
+                            class="-ml-px relative inline-flex items-center space-x-2 px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-tr-md text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                          >
+                            Generate
+                          </button>
                         </div>
-                        <button
-                          type="submit"
-                          class="-ml-px relative inline-flex items-center space-x-2 px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-tr-md text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-                        >
-                          Generate
-                        </button>
+                        <div class="rounded-b-md sm:text-sm bg-gray-50 dark:bg-gray-700 border p-2 border-gray-300 dark:border-gray-600 dark:text-gray-100 flex items-center">
+                          <%= if @reverse_alias_recipient == "" do %>
+                            <span class="pl-2">-</span>
+                          <% else %>
+                            {ReplyAddress.to_reply_address(@reverse_alias_recipient, @address)}
+                            <.copy_to_clipboard_button
+                              class="ml-2 mt-2 sm:mt-0"
+                              text={ReplyAddress.to_reply_address(@reverse_alias_recipient, @address)}
+                            />
+                          <% end %>
+                        </div>
                       </div>
-                      <div class="rounded-b-md sm:text-sm bg-gray-50 dark:bg-gray-700 border p-2 border-gray-300 dark:border-gray-600 dark:text-gray-100 flex items-center">
-                        <%= if @reverse_alias_recipient == "" do %>
-                          <span class="pl-2">-</span>
-                        <% else %>
-                          {ReplyAddress.to_reply_address(@reverse_alias_recipient, @address)}
-                          <.copy_to_clipboard_button
-                            class="ml-2 mt-2 sm:mt-0"
-                            text={ReplyAddress.to_reply_address(@reverse_alias_recipient, @address)}
-                          />
-                        <% end %>
-                      </div>
-                    </div>
-                  </fieldset>
-                  <p
-                    :if={@reverse_alias_recipient != ""}
-                    class="mt-3 text-sm text-gray-900 dark:text-gray-100"
+                    </fieldset>
+                    <p
+                      :if={@reverse_alias_recipient != ""}
+                      class="mt-3 text-sm text-gray-900 dark:text-gray-100"
+                    >
+                      Send an email to the above reverse alias. The recipient you entered will receive your message,
+                      but won't be able to see your real email address.
+                    </p>
+                  </form>
+                </dd>
+              </div>
+            <% else %>
+              <div class="bg-white dark:bg-gray-800 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">
+                  <div>Send emails</div>
+                </dt>
+                <dd class="mt-1 text-sm text-gray-500 dark:text-gray-400 sm:mt-0 sm:col-span-2">
+                  Sending emails from aliases requires a paid plan.
+                  <.link
+                    href={~p"/settings/billing"}
+                    class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 underline"
                   >
-                    Send an email to the above reverse alias. The recipient you entered will receive your message,
-                    but won't be able to see your real email address.
-                  </p>
-                </form>
-              </dd>
-            </div>
+                    Upgrade
+                  </.link>
+                </dd>
+              </div>
+            <% end %>
             <div class="bg-white dark:bg-gray-800 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
               <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">
                 <div>Blocked senders</div>

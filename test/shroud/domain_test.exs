@@ -82,6 +82,20 @@ defmodule Shroud.DomainTest do
       assert {:error, %Ecto.Changeset{}} =
                Domain.create_custom_domain(user, %{domain: "not-domain"})
     end
+
+    test "does not allow free users to create custom domains" do
+      user = user_fixture(%{status: :free})
+
+      assert {:error, :paid_feature} =
+               Domain.create_custom_domain(user, %{domain: "example.com"})
+    end
+
+    test "allows active users to create custom domains" do
+      user = user_fixture(%{status: :active})
+
+      assert {:ok, %CustomDomain{}} =
+               Domain.create_custom_domain(user, %{domain: "example.com"})
+    end
   end
 
   describe "toggle_catchall!/1" do

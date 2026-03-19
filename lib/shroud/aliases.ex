@@ -33,24 +33,38 @@ defmodule Shroud.Aliases do
     Repo.all(query)
   end
 
+  @free_alias_limit 5
+
   @spec create_email_alias(map()) ::
-          {:ok, EmailAlias.t()} | {:error, :inactive_user | :trial_limit_reached}
+          {:ok, EmailAlias.t()}
+          | {:error, :inactive_user | :trial_limit_reached | :free_limit_reached}
   def create_email_alias(attrs) do
     user = Repo.get(User, attrs.user_id)
 
+    active_alias_count =
+      Repo.aggregate(
+        from(ea in EmailAlias,
+          where: ea.user_id == ^attrs.user_id and is_nil(ea.deleted_at)
+        ),
+        :count
+      )
+
     cond do
-      user.status == :trial and
-          Repo.aggregate(from(ea in EmailAlias, where: ea.user_id == ^attrs.user_id), :count) >=
-            10 ->
+      not Accounts.active?(user) ->
+        {:error, :inactive_user}
+
+      user.status == :free and active_alias_count >= @free_alias_limit ->
+        {:error, :free_limit_reached}
+
+      user.status == :trial and active_alias_count >= 10 ->
         {:error, :trial_limit_reached}
 
-      Accounts.active?(user) ->
-        insert_email_alias(attrs)
-
       true ->
-        {:error, :inactive_user}
+        insert_email_alias(attrs)
     end
   end
+
+  def free_alias_limit, do: @free_alias_limit
 
   def get_email_alias!(id) do
     Repo.get!(EmailAlias, id)
