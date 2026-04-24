@@ -63,6 +63,7 @@ if System.get_env("SENTRY_DSN") do
   config :sentry,
     dsn: System.get_env("SENTRY_DSN"),
     environment_name: Mix.env(),
+    client: Sentry.HackneyClient,
     integrations: [
       oban: [
         capture_errors: true,

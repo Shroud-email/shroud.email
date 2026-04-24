@@ -54,10 +54,10 @@ defmodule Shroud.MixProject do
       {:excoveralls, "~> 0.14.3", only: :test},
       {:lazy_html, ">= 0.0.0", only: :test},
       {:mox, "~> 1.0", only: :test},
-      {:sobelow, "~> 0.11.1", only: [:dev, :test], runtime: false},
+      {:sobelow, "~> 0.14", only: [:dev, :test], runtime: false},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:swoosh, "~> 1.25"},
-      {:telemetry_metrics, "~> 0.6"},
+      {:telemetry_metrics, "~> 1.1"},
       {:telemetry_poller, "~> 1.3"},
       {:gettext, "~> 0.18"},
       {:jason, "~> 1.2"},
@@ -68,9 +68,9 @@ defmodule Shroud.MixProject do
       {:hackney, "~> 1.18"},
       {:ranch, "~> 1.8.0", override: true},
       {:canada, "~> 2.0"},
-      {:mjml, "~> 1.1"},
+      {:mjml, "~> 5.3"},
       {:floki, "~> 0.38"},
-      {:sentry, "~> 10.8"},
+      {:sentry, "~> 12.0"},
       {:timex, "~> 3.7"},
       {:httpoison, "~> 1.8"},
       {:quantum, "~> 3.4"},
@@ -90,7 +90,8 @@ defmodule Shroud.MixProject do
       {:ex_image_info, "~> 0.2.4"},
       {:ecto_psql_extras, "~> 0.8.8"},
       {:heroicons, "~> 0.5.7"},
-      {:mailex, "~> 0.1.2"}
+      {:mailex, "~> 0.1.2"},
+      {:finch, "~> 0.6"}
     ]
   end
 
