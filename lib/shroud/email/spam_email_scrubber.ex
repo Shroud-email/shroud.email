@@ -8,6 +8,7 @@ defmodule Shroud.Email.SpamEmailScrubber do
 
   require HtmlSanitizeEx.Scrubber.Meta
   alias HtmlSanitizeEx.Scrubber.Meta
+  alias HtmlSanitizeEx.Scrubber.CSS
 
   @valid_schemes ["http", "https", "mailto"]
 
@@ -58,22 +59,24 @@ defmodule Shroud.Email.SpamEmailScrubber do
   Meta.allow_tag_with_these_attributes("u", [])
   Meta.allow_tag_with_these_attributes("ul", [])
 
+  # Custom handling for "style" tag
   def scrub({"style", attributes, [text]}) do
-    {"style", scrub_attributes("style", attributes), [scrub_css(text)]}
+    {"style", style_scrub_attributes(attributes), [scrub_css(text)]}
   end
 
-  defp scrub_attributes("style", attributes) do
-    Enum.map(attributes, fn attr -> scrub_attribute("style", attr) end)
-    |> Enum.reject(&is_nil(&1))
+  defp style_scrub_attributes(attributes) do
+    Enum.map(attributes, &style_scrub_attribute/1)
+    |> Enum.reject(&is_nil/1)
   end
 
-  def scrub_attribute("style", {"media", value}), do: {"media", value}
-  def scrub_attribute("style", {"type", value}), do: {"type", value}
-  def scrub_attribute("style", {"scoped", value}), do: {"scoped", value}
+  defp style_scrub_attribute({"media", value}), do: {"media", value}
+  defp style_scrub_attribute({"type", value}), do: {"type", value}
+  defp style_scrub_attribute({"scoped", value}), do: {"scoped", value}
+  defp style_scrub_attribute(_), do: nil
 
   defp scrub_css(text) do
-    HtmlSanitizeEx.Scrubber.CSS.scrub(text)
+    CSS.scrub(text)
   end
 
-  Meta.strip_everything_not_covered()
+  @before_compile HtmlSanitizeEx.ScrubberCompiler
 end
