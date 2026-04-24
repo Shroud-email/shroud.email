@@ -29,15 +29,15 @@ jobs:
           --health-retries 5
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: Set up Elixir
-        uses: erlef/setup-beam@v1.18.2
+        uses: erlef/setup-beam@v1.24.0
         with:
           elixir-version: "1.16.3"
           otp-version: "26"
           version-type: "strict"
       - name: Restore dependencies cache
-        uses: actions/cache@v3
+        uses: actions/cache@v5
         with:
           path: |
             deps
@@ -60,6 +60,7 @@ jobs:
         run: mix ecto.setup
       - name: Run tests
         run: mix coveralls.json
-      - uses: codecov/codecov-action@v3
+      - uses: codecov/codecov-action@v6
         with:
           files: ./cover/excoveralls.json
+          token: ${{ secrets.CODECOV_TOKEN }}
