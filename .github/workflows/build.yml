@@ -30,9 +30,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Configure Blacksmith's BuildKit + layer cache
-      - name: Setup Blacksmith
-        uses: useblacksmith/setup-docker-builder@v1
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Log in to GHCR
         uses: docker/login-action@v2
@@ -69,13 +68,15 @@ jobs:
 
       - name: Build & push (single-arch)
         id: build
-        uses: useblacksmith/build-push-action@v2
+        uses: docker/build-push-action@v6
         with:
           context: .
           push: true
           platforms: ${{ matrix.docker_platform }}
           tags: ${{ steps.meta_arch.outputs.tags }}
           labels: ${{ steps.meta_base.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.platform }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
 
       # Save the digest produced by this job and the base tag list once
       - name: Persist digest
