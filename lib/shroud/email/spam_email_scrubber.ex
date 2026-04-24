@@ -7,8 +7,8 @@ defmodule Shroud.Email.SpamEmailScrubber do
   """
 
   require HtmlSanitizeEx.Scrubber.Meta
-  alias HtmlSanitizeEx.Scrubber.Meta
   alias HtmlSanitizeEx.Scrubber.CSS
+  alias HtmlSanitizeEx.Scrubber.Meta
 
   @valid_schemes ["http", "https", "mailto"]
 
