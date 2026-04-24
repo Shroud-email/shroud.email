@@ -17,7 +17,8 @@ defmodule ShroudWeb.Api.V1.TokenController do
   defp get_user(email, password, totp) do
     if user = Accounts.get_user_by_email_and_password(email, password) do
       if user.totp_enabled do
-        totp = if is_nil(totp), do: "", else: Integer.to_string(totp)
+        totp =
+          if is_nil(totp), do: "", else: totp |> Integer.to_string() |> String.pad_leading(6, "0")
 
         if Accounts.TOTP.valid_code?(user, user.totp_secret, totp) do
           user

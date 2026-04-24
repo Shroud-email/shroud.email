@@ -41,6 +41,7 @@ COPY lib lib
 RUN --mount=type=cache,target=/root/.npm npm --prefix assets ci
 # compile and build the release
 RUN mix compile
+RUN mix assets.setup
 RUN mix assets.deploy
 
 # changes to config/runtime.exs don't require recompiling the code

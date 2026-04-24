@@ -50,6 +50,7 @@ defmodule Shroud.MixProject do
       {:phoenix_live_view, "~> 1.1.0"},
       {:phoenix_live_dashboard, "~> 0.8.7"},
       {:esbuild, "~> 0.8", runtime: Mix.env() == :dev},
+      {:tailwind, "~> 0.4", runtime: Mix.env() == :dev},
       {:excoveralls, "~> 0.14.3", only: :test},
       {:lazy_html, ">= 0.0.0", only: :test},
       {:mox, "~> 1.0", only: :test},
@@ -106,8 +107,9 @@ defmodule Shroud.MixProject do
       "ecto.seed": ["run priv/repo/seeds.exs"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
+      "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
       "assets.deploy": [
-        "cmd --cd assets npm run deploy",
+        "tailwind default --minify",
         "esbuild default --minify",
         "phx.digest"
       ]
