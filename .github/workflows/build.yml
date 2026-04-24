@@ -10,6 +10,7 @@ on:
 
 permissions:
   packages: write
+  security-events: write
 
 jobs:
   build:
@@ -155,3 +156,45 @@ jobs:
               "${IMAGE_REF}@${AMD_DIGEST}" \
               "${IMAGE_REF}@${ARM_DIGEST}"
           done
+
+  scan:
+    name: Trivy image scan
+    needs: build
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    permissions:
+      contents: read
+      packages: read
+      security-events: write
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_NAME: ${{ github.repository }}
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # ratchet:docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Download amd64 digest
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # ratchet:actions/download-artifact@v8
+        with:
+          name: digest-amd64
+      - name: Resolve image ref
+        id: ref
+        run: |
+          set -euo pipefail
+          DIGEST="$(cat digest-amd64.txt)"
+          IMAGE_REF="${REGISTRY}/${IMAGE_NAME}"
+          IMAGE_REF="${IMAGE_REF,,}@${DIGEST}"
+          echo "image=${IMAGE_REF}" >> "$GITHUB_OUTPUT"
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # ratchet:aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ steps.ref.outputs.image }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@ce64ddcb0d8d890d2df4a9d1c04ff297367dea2a # ratchet:github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
