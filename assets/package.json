@@ -1,17 +1,4 @@
 {
-  "scripts": {
-    "deploy": "NODE_ENV=production postcss css/app.css -o ../priv/static/assets/app.css"
-  },
-  "devDependencies": {
-    "@tailwindcss/forms": "^0.4.1",
-    "@tailwindcss/postcss": "^4.2.4",
-    "@tailwindcss/typography": "^0.5.19",
-    "commitizen": "^4.3.1",
-    "cssnano": "^5.1.15",
-    "postcss": "^8.5.10",
-    "postcss-cli": "^9.1.0",
-    "tailwindcss": "^4.2.4"
-  },
   "dependencies": {
     "@ryangjchandler/alpine-tooltip": "^2.0.1",
     "alpinejs": "^3.15.11"
