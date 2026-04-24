@@ -16,7 +16,7 @@
   <% end %>
 
   <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-    <div class="bg-white dark:bg-gray-800 py-8 px-4 shadow dark:shadow-gray-900/50 sm:rounded-lg sm:px-10">
+    <div class="bg-white dark:bg-gray-800 py-8 px-4 shadow-sm dark:shadow-gray-900/50 sm:rounded-lg sm:px-10">
       <.form :let={f} for={@changeset} action={~p"/users/register"} as={:user} class="space-y-6">
         <%= if @lifetime do %>
           <p class="text-sm text-gray-600 dark:text-gray-400 text-center">Signing up for a lifetime account.</p>
@@ -25,7 +25,7 @@
         <div>
           <%= label f, :email, class: "block text-sm font-medium text-gray-700 dark:text-gray-300" %>
           <div class="mt-1">
-            <%= email_input f, :email, required: true, autocomplete: "email",  class: "appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400" %>
+            <%= email_input f, :email, required: true, autocomplete: "email",  class: "appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-xs placeholder-gray-400 focus:outline-hidden focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400" %>
             <%= error_tag f, :email %>
           </div>
         </div>
@@ -33,7 +33,7 @@
         <div>
           <%= label f, :password, class: "block text-sm font-medium text-gray-700 dark:text-gray-300" %>
           <div class="mt-1">
-            <%= password_input f, :password, required: true, class: "appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400" %>
+            <%= password_input f, :password, required: true, class: "appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-xs placeholder-gray-400 focus:outline-hidden focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400" %>
             <%= error_tag f, :password %>
           </div>
         </div>

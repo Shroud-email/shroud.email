@@ -5,11 +5,11 @@
   <%= form_for @conn, ~p"/settings/billing/lifetime", [class: "mt-8"], fn f -> %>
 
     <%= label f, :lifetime_code, "Code", class: "block text-sm font-medium text-gray-700 dark:text-gray-300" %>
-    <%= text_input f, :lifetime_code, required: true, class: "mt-1 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400" %>
+    <%= text_input f, :lifetime_code, required: true, class: "mt-1 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400" %>
     <p class="my-2 text-sm text-gray-500 dark:text-gray-400">
       Please enter the lifetime subscription code you purchased.
     </p>
 
-    <%= submit "Sign up", class: "group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" %>
+    <%= submit "Sign up", class: "group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" %>
   <% end %>
 </div>

@@ -42,7 +42,7 @@ defmodule ShroudWeb.CustomDomainLive.Index do
           <.link
             :for={domain <- @domains}
             navigate={~p"/domains/#{domain.domain}"}
-            class="rounded bg-white dark:bg-gray-800 shadow dark:shadow-gray-900/50 hover:shadow-lg transition-shadow p-3 overflow-hidden focus:ring focus:ring-indigo-600"
+            class="rounded bg-white dark:bg-gray-800 shadow-sm dark:shadow-gray-900/50 hover:shadow-lg transition-shadow-sm p-3 overflow-hidden focus:ring focus:ring-indigo-600"
           >
             <h3 class="font-bold flex items-center text-gray-900 dark:text-gray-100">
               {domain.domain}

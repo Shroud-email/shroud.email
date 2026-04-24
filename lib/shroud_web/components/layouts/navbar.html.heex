@@ -3,7 +3,7 @@
     <div class="border-b border-gray-700">
       <div class="flex items-center justify-between h-16 px-4 sm:px-0">
         <div class="flex items-center">
-          <div class="flex-shrink-0 text-gray-200 flex items-center">
+          <div class="shrink-0 text-gray-200 flex items-center">
             <img class="inline w-6 h-6 mr-3 text-indigo-400" src={~p"/images/logo.svg"} alt="Shroud.email logo" />
             <span class="whitespace-nowrap font-semibold text-lg">Shroud.email</span>
           </div>
@@ -45,7 +45,7 @@
                 <div>
                   <button
                     type="button"
-                    class="max-w-xs bg-gray-800 rounded-full flex items-center text-sm text-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white"
+                    class="max-w-xs bg-gray-800 rounded-full flex items-center text-sm text-gray-300 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white"
                     id="user-menu-button"
                     aria-haspopup="true"
                     x-ref="button"
@@ -74,7 +74,7 @@
           <button
             @click="open = !open"
             type="button"
-            class="bg-gray-800 inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white"
+            class="bg-gray-800 inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white"
             aria-controls="mobile-menu"
             x-bind:aria-expanded="open.toString()"
           >
@@ -123,7 +123,7 @@
     <div class="pt-4 pb-3 border-t border-gray-700">
       <%= if @current_user do %>
         <div class="flex items-center px-5">
-          <div class="flex-shrink-0 text-gray-400">
+          <div class="shrink-0 text-gray-400">
             <!-- HeroIcons user-cirle -->
             <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
