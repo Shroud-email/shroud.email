@@ -8,6 +8,11 @@ defmodule Shroud.Accounts.LoopsJobTest do
   setup :verify_on_exit!
 
   describe "perform/1" do
+    setup do
+      Application.put_env(:shroud, :loops_api_key, "secret")
+      :ok
+    end
+
     test "sends a request to the Loops API" do
       user = user_fixture()
       event_name = "user_signed_up"
