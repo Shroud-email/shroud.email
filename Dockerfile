@@ -8,7 +8,8 @@ RUN --mount=type=cache,target=/var/lib/apt,sharing=locked \
     --mount=type=cache,target=/var/cache/apt,sharing=locked \
     apt-get update && \
     apt-get upgrade -y && \
-    apt-get install -y build-essential git curl npm cargo
+    apt-get install -y build-essential git curl nodejs npm cargo && \
+    npm install -g pnpm@10.33.0
 
 # prepare build dir
 WORKDIR /app
@@ -38,7 +39,7 @@ RUN mix deps.compile
 COPY priv priv
 COPY assets assets
 COPY lib lib
-RUN --mount=type=cache,target=/root/.npm npm --prefix assets ci
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm --dir assets install --frozen-lockfile
 # compile and build the release
 RUN mix compile
 RUN mix assets.deploy

@@ -1,5 +1,6 @@
 {
   "name": "shroud.email",
+  "packageManager": "pnpm@10.33.0",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "prepare": "husky"
