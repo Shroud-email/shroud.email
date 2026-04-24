@@ -43,7 +43,7 @@ defmodule ShroudWeb.Components.DnsVerification do
       <div class="mt-4 flex flex-col">
         <div class="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
           <div class="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
-            <div class="overflow-hidden shadow dark:shadow-gray-900/50 ring-1 ring-black ring-opacity-5 dark:ring-gray-700 md:rounded-lg">
+            <div class="overflow-hidden shadow-sm dark:shadow-gray-900/50 ring-1 ring-black/5 dark:ring-gray-700 md:rounded-lg">
               <table class="min-w-full">
                 <thead class="bg-white dark:bg-gray-800">
                   <tr>

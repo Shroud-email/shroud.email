@@ -47,7 +47,7 @@ defmodule ShroudWeb.Components.Atoms do
       type={@type}
       disabled={@disabled}
       class={@class <>
-        " inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 justify-center disabled:opacity-50 disabled:cursor-not-allowed dark:focus:ring-offset-gray-900"}
+        " inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-xs focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 justify-center disabled:opacity-50 disabled:cursor-not-allowed dark:focus:ring-offset-gray-900"}
       {@rest}
     >
       <span :if={@icon} class="-ml-1 mr-2 h-5 w-5">
@@ -92,7 +92,7 @@ defmodule ShroudWeb.Components.Atoms do
           name={@name}
           id={@name}
           placeholder={@placeholder}
-          class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
+          class="shadow-xs focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
         />
       </div>
     </div>
@@ -104,10 +104,10 @@ defmodule ShroudWeb.Components.Atoms do
 
   def toggle(assigns) do
     button_class =
-      "relative inline-flex flex-shrink-0 h-6 w-11 border-2 border-transparent rounded-full cursor-pointer transition-colors ease-in-out duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-900"
+      "relative inline-flex shrink-0 h-6 w-11 border-2 border-transparent rounded-full cursor-pointer transition-colors ease-in-out duration-200 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-900"
 
     toggle_class =
-      "pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition ease-in-out duration-200"
+      "pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-sm transform ring-0 transition ease-in-out duration-200"
 
     [button_class, toggle_class] =
       if assigns.on do
@@ -164,7 +164,7 @@ defmodule ShroudWeb.Components.Atoms do
 
     ~H"""
     <div class={"rounded-md p-4 flex text-sm border mb-6 " <> @alert_class}>
-      <div class="flex-shrink-0">
+      <div class="shrink-0">
         <.icon name={@icon} solid class={"text-base h-5 w-5 " <> @icon_class} />
       </div>
       <div class="ml-3">
@@ -212,12 +212,12 @@ defmodule ShroudWeb.Components.Atoms do
       :if={Phoenix.Flash.get(@flash, @kind)}
       phx-hook="Notification"
       id={"flash-#{@kind}"}
-      class="fade-in-translate max-w-sm w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg pointer-events-auto ring-1 ring-black ring-opacity-5 dark:ring-gray-700 overflow-hidden hover:shadow-xl transition-all duration-100"
+      class="fade-in-translate max-w-sm w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg pointer-events-auto ring-1 ring-black/5 dark:ring-gray-700 overflow-hidden hover:shadow-xl transition-all duration-100"
       phx-click={close("#flash", @kind)}
     >
       <div class="p-4">
         <div class="flex items-start">
-          <div class="flex-shrink-0">
+          <div class="shrink-0">
             <.icon name={@icon} class={"h-6 w-6 " <> @icon_class} />
           </div>
           <div class="ml-3 w-0 flex-1 pt-0.5">

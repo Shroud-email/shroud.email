@@ -26,12 +26,12 @@ defmodule ShroudWeb.Components.ButtonWithDropdown do
     assigns = assign(assigns, :class, class)
 
     ~H"""
-    <div class="inline-flex rounded-md shadow-sm">
+    <div class="inline-flex rounded-md shadow-xs">
       <button
         phx-click={@click}
         type="button"
         class={@class <>
-          " relative inline-flex items-center rounded-l-md border px-4 py-2 text-sm font-medium focus:z-10 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"}
+          " relative inline-flex items-center rounded-l-md border px-4 py-2 text-sm font-medium focus:z-10 focus:border-indigo-500 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"}
       >
         <span :if={@icon} class="-ml-1 mr-2 h-5 w-5">
           <.icon solid name={@icon} />
@@ -41,7 +41,7 @@ defmodule ShroudWeb.Components.ButtonWithDropdown do
       <.dropdown_menu
         class="-ml-px block"
         button_class={@class <>
-          " relative inline-flex items-center rounded-r-md border px-2 py-2 text-sm font-medium focus:z-10 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"}
+          " relative inline-flex items-center rounded-r-md border px-2 py-2 text-sm font-medium focus:z-10 focus:border-indigo-500 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"}
         disabled={@disabled}
       >
         <:button_content>

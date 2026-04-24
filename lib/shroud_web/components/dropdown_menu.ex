@@ -42,7 +42,7 @@ defmodule ShroudWeb.Components.DropdownMenu do
         x-transition:leave="transition ease-in duration-75"
         x-transition:leave-start="transform opacity-100 scale-100"
         x-transition:leave-end="transform opacity-0 scale-95"
-        class="origin-top-right absolute right-0 z-10 flex flex-col mt-2 w-48 rounded-md shadow-lg py-1 bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 dark:ring-gray-700 focus:outline-none"
+        class="origin-top-right absolute right-0 z-10 flex flex-col mt-2 w-48 rounded-md shadow-lg py-1 bg-white dark:bg-gray-800 ring-1 ring-black/5 dark:ring-gray-700 focus:outline-hidden"
         x-ref="menu-items"
         x-bind:aria-activedescendant="activeDescendant"
         role="menu"

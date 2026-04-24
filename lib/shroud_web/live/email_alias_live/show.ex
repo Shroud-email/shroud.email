@@ -27,7 +27,7 @@ defmodule ShroudWeb.EmailAliasLive.Show do
   def render(assigns) do
     ~H"""
     <div>
-      <div class="bg-white dark:bg-gray-800 shadow dark:shadow-gray-900/50 overflow-hidden sm:rounded-lg">
+      <div class="bg-white dark:bg-gray-800 shadow-sm dark:shadow-gray-900/50 overflow-hidden sm:rounded-lg">
         <div class="px-4 py-5 sm:px-6">
           <div class="flex flex-col sm:flex-row items-center w-full">
             <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100">
@@ -80,24 +80,24 @@ defmodule ShroudWeb.EmailAliasLive.Show do
                     "x-show": "editingTitle",
                     placeholder: "Alias title",
                     class:
-                      "flex-grow shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400 rounded-md"
+                      "grow shadow-xs focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400 rounded-md"
                   )}
-                  <span x-show="!editingTitle" class="flex-grow">
+                  <span x-show="!editingTitle" class="grow">
                     {@alias.title || "No title yet"}
                   </span>
-                  <span class="ml-4 flex-shrink-0">
+                  <span class="ml-4 shrink-0">
                     <button
                       @click="editingTitle = true"
                       x-show="!editingTitle"
                       type="button"
-                      class="bg-white dark:bg-gray-800 rounded-md font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                      class="bg-white dark:bg-gray-800 rounded-md font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-400 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                     >
                       Update
                     </button>
                     <button
                       type="submit"
                       x-show="editingTitle"
-                      class="bg-white dark:bg-gray-800 rounded-md font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                      class="bg-white dark:bg-gray-800 rounded-md font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-400 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                     >
                       Save
                     </button>
@@ -113,24 +113,24 @@ defmodule ShroudWeb.EmailAliasLive.Show do
                     "x-show": "editingNotes",
                     placeholder: "Notes about this alias",
                     class:
-                      "shadow-sm block w-full focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400 rounded-md"
+                      "shadow-xs block w-full focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400 rounded-md"
                   )}
-                  <span x-show="!editingNotes" class="flex-grow">
+                  <span x-show="!editingNotes" class="grow">
                     {@alias.notes || "No notes"}
                   </span>
-                  <span class="ml-4 flex-shrink-0">
+                  <span class="ml-4 shrink-0">
                     <button
                       @click="editingNotes = true"
                       x-show="!editingNotes"
                       type="button"
-                      class="bg-white dark:bg-transparent rounded-md font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                      class="bg-white dark:bg-transparent rounded-md font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-400 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                     >
                       Update
                     </button>
                     <button
                       type="submit"
                       x-show="editingNotes"
-                      class="bg-white dark:bg-transparent rounded-md font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                      class="bg-white dark:bg-transparent rounded-md font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-400 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                     >
                       Save
                     </button>
@@ -149,9 +149,9 @@ defmodule ShroudWeb.EmailAliasLive.Show do
                 <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100 sm:mt-0 sm:col-span-2">
                   <form phx-submit="update_recipient">
                     <fieldset class="bg-white dark:bg-gray-800">
-                      <div class="mt-1 rounded-md shadow-sm -space-y-px">
-                        <div class="mt-1 flex rounded-t-md shadow-sm">
-                          <div class="relative flex items-stretch flex-grow focus-within:z-10">
+                      <div class="mt-1 rounded-md shadow-xs -space-y-px">
+                        <div class="mt-1 flex rounded-t-md shadow-xs">
+                          <div class="relative flex items-stretch grow focus-within:z-10">
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                               <.icon name={:at_symbol} solid class="h-5 w-5 text-gray-400" />
                             </div>
@@ -165,7 +165,7 @@ defmodule ShroudWeb.EmailAliasLive.Show do
                           </div>
                           <button
                             type="submit"
-                            class="-ml-px relative inline-flex items-center space-x-2 px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-tr-md text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                            class="-ml-px relative inline-flex items-center space-x-2 px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-tr-md text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 focus:outline-hidden focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
                           >
                             Generate
                           </button>
@@ -227,12 +227,12 @@ defmodule ShroudWeb.EmailAliasLive.Show do
                     class="pl-3 pr-4 py-3 flex items-center justify-between text-sm"
                   >
                     <div class="w-0 flex-1 flex items-center">
-                      <.icon name={:envelope} solid class="flex-shrink-0 h-5 w-5 text-gray-400" />
+                      <.icon name={:envelope} solid class="shrink-0 h-5 w-5 text-gray-400" />
                       <span class="ml-2 flex-1 w-0 truncate">
                         {blocked_sender}
                       </span>
                     </div>
-                    <div class="ml-4 flex-shrink-0">
+                    <div class="ml-4 shrink-0">
                       <button
                         phx-click="unblock_sender"
                         phx-value-sender={blocked_sender}
@@ -248,8 +248,8 @@ defmodule ShroudWeb.EmailAliasLive.Show do
                 <form phx-submit="block_sender">
                   <div>
                     <label for="sender" class="sr-only">Block an address</label>
-                    <div class="mt-1 flex rounded-md shadow-sm">
-                      <div class="relative flex items-stretch flex-grow focus-within:z-10">
+                    <div class="mt-1 flex rounded-md shadow-xs">
+                      <div class="relative flex items-stretch grow focus-within:z-10">
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                           <.icon name={:no_symbol} solid class="h-5 w-5 text-gray-400" />
                         </div>
@@ -263,7 +263,7 @@ defmodule ShroudWeb.EmailAliasLive.Show do
                       </div>
                       <button
                         type="submit"
-                        class="-ml-px relative inline-flex items-center space-x-2 px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-r-md text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                        class="-ml-px relative inline-flex items-center space-x-2 px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-r-md text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 focus:outline-hidden focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
                       >
                         Block
                       </button>
@@ -279,7 +279,7 @@ defmodule ShroudWeb.EmailAliasLive.Show do
         </div>
       </div>
       <dl class="grid grid-cols-1 gap-5 xl:grid-cols-4 mt-6">
-        <div class="px-4 py-5 bg-white dark:bg-gray-800 shadow dark:shadow-gray-900/50 rounded-lg overflow-hidden sm:p-6">
+        <div class="px-4 py-5 bg-white dark:bg-gray-800 shadow-sm dark:shadow-gray-900/50 rounded-lg overflow-hidden sm:p-6">
           <dt class="text-sm font-medium text-green-700 dark:text-green-300 truncate">
             Emails forwarded
           </dt>
@@ -291,7 +291,7 @@ defmodule ShroudWeb.EmailAliasLive.Show do
           </div>
         </div>
 
-        <div class="px-4 py-5 bg-white dark:bg-gray-800 shadow dark:shadow-gray-900/50 rounded-lg overflow-hidden sm:p-6">
+        <div class="px-4 py-5 bg-white dark:bg-gray-800 shadow-sm dark:shadow-gray-900/50 rounded-lg overflow-hidden sm:p-6">
           <dt class="text-sm font-medium text-green-700 dark:text-green-300 truncate">
             Replies sent
           </dt>
@@ -303,7 +303,7 @@ defmodule ShroudWeb.EmailAliasLive.Show do
           </div>
         </div>
 
-        <div class="px-4 py-5 bg-white dark:bg-gray-800 shadow dark:shadow-gray-900/50 rounded-lg overflow-hidden sm:p-6">
+        <div class="px-4 py-5 bg-white dark:bg-gray-800 shadow-sm dark:shadow-gray-900/50 rounded-lg overflow-hidden sm:p-6">
           <dt class="text-sm font-medium text-red-800 dark:text-red-300 truncate">
             Emails blocked
           </dt>
@@ -315,7 +315,7 @@ defmodule ShroudWeb.EmailAliasLive.Show do
           </div>
         </div>
 
-        <div class="px-4 py-5 bg-white dark:bg-gray-800 shadow dark:shadow-gray-900/50 rounded-lg overflow-hidden sm:p-6">
+        <div class="px-4 py-5 bg-white dark:bg-gray-800 shadow-sm dark:shadow-gray-900/50 rounded-lg overflow-hidden sm:p-6">
           <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
             Created
           </dt>

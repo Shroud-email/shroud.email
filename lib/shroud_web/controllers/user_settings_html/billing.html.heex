@@ -1,6 +1,6 @@
 <%= cond do %>
 <% @current_user.status == :lifetime -> %>
-  <div class="shadow dark:shadow-gray-900/50 sm:rounded-md sm:overflow-hidden">
+  <div class="shadow-sm dark:shadow-gray-900/50 sm:rounded-md sm:overflow-hidden">
     <div class="bg-white dark:bg-gray-800 py-6 px-4 space-y-6 sm:p-6">
       <div>
         <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100">Billing</h3>
@@ -11,7 +11,7 @@
     </div>
   </div>
 <% @current_user.status == :free -> %>
-  <div class="shadow dark:shadow-gray-900/50 sm:rounded-md sm:overflow-hidden mb-6">
+  <div class="shadow-sm dark:shadow-gray-900/50 sm:rounded-md sm:overflow-hidden mb-6">
     <div class="bg-white dark:bg-gray-800 py-6 px-4 space-y-6 sm:p-6">
       <div>
         <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100">Free Plan</h3>
@@ -26,7 +26,7 @@
 <% is_nil(@current_user.stripe_customer_id) -> %>
   <.signup {assigns} />
 <% true -> %>
-  <div class="shadow dark:shadow-gray-900/50 sm:rounded-md sm:overflow-hidden">
+  <div class="shadow-sm dark:shadow-gray-900/50 sm:rounded-md sm:overflow-hidden">
     <div class="bg-white dark:bg-gray-800 py-6 px-4 space-y-6 sm:p-6">
       <div>
         <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100">Billing</h3>
