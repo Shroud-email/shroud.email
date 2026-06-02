@@ -68,7 +68,7 @@ defmodule Shroud.MixProject do
       {:hackney, "~> 1.18"},
       {:ranch, "~> 1.8.0", override: true},
       {:canada, "~> 2.0"},
-      {:mjml, "~> 1.1"},
+      {:mjml, "~> 6.0"},
       {:floki, "~> 0.38"},
       {:sentry, "~> 10.8"},
       {:timex, "~> 3.7"},
