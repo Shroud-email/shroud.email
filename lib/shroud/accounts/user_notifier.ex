@@ -164,6 +164,39 @@ defmodule Shroud.Accounts.UserNotifier do
     deliver(user.email, "We blocked a spam email", html_body, text_body)
   end
 
+  def deliver_catchall_alias_creation_failed(user_id, address) do
+    user = Accounts.get_user!(user_id)
+    {_local, domain} = Util.extract_email_parts(address)
+    domain_url = url(~p"/domains/#{domain}")
+
+    html_body =
+      EmailTemplate.CatchallAliasCreationFailed.render(
+        user_email: user.email,
+        address: address,
+        domain_url: domain_url,
+        current_year: DateTime.utc_now().year
+      )
+
+    text_body = """
+    ==============================
+
+    Hi #{user.email},
+
+    Someone sent an email to #{address} on your catch-all domain, but we couldn't
+    create an alias for it because the address is invalid. Email addresses can't
+    contain spaces or underscores.
+
+    The email was not forwarded to you. If you'd like to receive emails at this
+    address, please use a valid address (without underscores or spaces).
+
+    You can manage your domain here: #{domain_url}
+
+    ==============================
+    """
+
+    deliver(user.email, "We couldn't create a catch-all alias", html_body, text_body)
+  end
+
   def deliver_domain_verified(custom_domain_id) do
     custom_domain = Repo.get(CustomDomain, custom_domain_id) |> Repo.preload(:user)
     user = custom_domain.user
