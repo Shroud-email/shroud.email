@@ -153,10 +153,6 @@
         {Credo.Check.Warning.UnusedStringOperation, []},
         {Credo.Check.Warning.UnusedTupleOperation, []},
         {Credo.Check.Warning.UnsafeExec, []},
-        # real_email_tests.exs is intentionally named `_tests.exs` (plural) so it
-        # is excluded from the default `*_test.exs` runner; keep this new check
-        # (added in credo 1.7.17) informational rather than failing CI.
-        {Credo.Check.Warning.WrongTestFilename, [exit_status: 0]},
 
         #
         # Checks scheduled for next check update (opt-in for now, just replace `false` with `[]`)
