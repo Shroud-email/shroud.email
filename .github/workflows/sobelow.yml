@@ -36,7 +36,11 @@ jobs:
       - name: Install dependencies
         run: mix deps.get
       - name: Run Sobelow
-        run: mix sobelow --format sarif --out results.sarif
+        # --private skips Sobelow's online "newer version?" check. That check
+        # makes an :httpc call which crashes on OTP 28 (calls the removed
+        # :http_util.timestamp/0), and it only fires intermittently (gated by a
+        # 12h timestamp file in ~/.sobelow), so without this it fails flakily.
+        run: mix sobelow --private --format sarif --out results.sarif
       - name: Upload report
         uses: github/codeql-action/upload-sarif@ce64ddcb0d8d890d2df4a9d1c04ff297367dea2a # ratchet:github/codeql-action/upload-sarif@v3
         with:
