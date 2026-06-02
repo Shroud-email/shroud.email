@@ -58,3 +58,6 @@ config :phoenix, :plug_init_mode, :runtime
 
 config :shroud,
   notifier_webhook_url: "webhook.com/webhook"
+
+# Used by the Stripe webhook controller to verify signatures in tests.
+config :shroud, :billing, stripe_webhook_secret: "whsec_test_secret_123"
