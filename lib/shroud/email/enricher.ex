@@ -17,9 +17,9 @@ defmodule Shroud.Email.Enricher do
   defp process_text(%ParsedEmail{swoosh_email: %{text_body: nil}} = email),
     do: email
 
-  defp process_text(%ParsedEmail{to: to_alias, swoosh_email: swoosh_email} = email) do
-    [{}]
-
+  defp process_text(
+         %ParsedEmail{to: to_alias, swoosh_email: %Swoosh.Email{} = swoosh_email} = email
+       ) do
     text_body = """
     #{swoosh_email.text_body}
 
@@ -33,7 +33,10 @@ defmodule Shroud.Email.Enricher do
   defp process_html(%ParsedEmail{swoosh_email: %{html_body: nil}} = email),
     do: email
 
-  defp process_html(%ParsedEmail{swoosh_email: swoosh_email, parsed_html: parsed_html} = email) do
+  defp process_html(
+         %ParsedEmail{swoosh_email: %Swoosh.Email{} = swoosh_email, parsed_html: parsed_html} =
+           email
+       ) do
     html_body =
       if is_nil(parsed_html) do
         html_fallback(swoosh_email.html_body, email)
