@@ -2,7 +2,7 @@ defmodule Shroud.Domain.DnsChecker do
   use Oban.Worker,
     queue: :dns_checker,
     unique: [
-      states: [:available, :scheduled, :executing, :retryable],
+      states: :incomplete,
       fields: [:worker, :args]
     ]
 

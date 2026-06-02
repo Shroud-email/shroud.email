@@ -1,7 +1,7 @@
 # syntax = docker/dockerfile:1
 ARG MIX_ENV="prod"
 
-FROM hexpm/elixir:1.16.3-erlang-26.0.2-debian-bookworm-20250317-slim AS build
+FROM hexpm/elixir:1.19.5-erlang-28.5.0.1-debian-bookworm-20260518-slim AS build
 
 # install build dependencies
 RUN --mount=type=cache,target=/var/lib/apt,sharing=locked \
@@ -53,7 +53,7 @@ RUN mix release
 
 # start a new build stage so that the final image will only contain
 # the compiled release and other runtime necessities
-FROM hexpm/elixir:1.16.3-erlang-26.0.2-debian-bookworm-20250317-slim AS app
+FROM hexpm/elixir:1.19.5-erlang-28.5.0.1-debian-bookworm-20260518-slim AS app
 RUN --mount=type=cache,target=/var/lib/apt,sharing=locked \
     --mount=type=cache,target=/var/cache/apt,sharing=locked \
     apt-get update && \

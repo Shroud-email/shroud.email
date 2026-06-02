@@ -1,0 +1,14 @@
+# CVE-2026-43969 — cowlib: Cookie request-header injection via unvalidated
+# encoder in cow_cookie:cookie/1 (severity: LOW).
+#
+# Suppressed because:
+#   * No fixed release exists. Every published cowlib (2.9.0–2.16.1) is affected;
+#     the only fix is an unreleased upstream commit, so there is no version to
+#     bump to. cowlib here is a transitive dep of cowboy.
+#   * Not reachable. cow_cookie:cookie/1 builds a *client-side* Cookie request
+#     header (gun-style HTTP clients). This app has no gun dependency, uses
+#     cowboy only as a server, and never calls cow_cookie; outbound HTTP uses
+#     httpoison/hackney.
+#
+# REMOVE this entry once a patched cowlib is released on Hex and we bump to it.
+CVE-2026-43969
