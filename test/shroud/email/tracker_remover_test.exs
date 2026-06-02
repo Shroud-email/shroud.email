@@ -147,6 +147,40 @@ defmodule Shroud.Email.TrackerRemoverTest do
       assert email.removed_trackers == ["SpyOnU"]
     end
 
+    test "deduplicates repeated trackers" do
+      html_body = """
+      <html>
+        <body>
+          <h1>An email</h1>
+          <img src="https://spyonu.com/track?q=123" />
+          <img src="https://spyonu.com/track?q=456" />
+          <img src="https://unknowntracker.com" width="1" height="1" />
+          <img src="https://unknowntracker.com" width="1" height="1" />
+          <p>Content</p>
+        </body>
+      </html>
+      """
+
+      expected_result = """
+      <html>
+        <body>
+          <h1>An email</h1>
+          <p>Content</p>
+        </body>
+      </html>
+      """
+
+      email =
+        html_email("sender@example.com", ["recipient@example.com"], "Subject", html_body)
+        |> :mimemail.decode()
+        |> ParsedEmail.parse("sender@example.com", "recipient@example.com")
+        |> TrackerRemover.process()
+
+      assert remove_whitespace(email.swoosh_email.html_body) == remove_whitespace(expected_result)
+      assert Enum.empty?(Floki.find(email.parsed_html, "img"))
+      assert email.removed_trackers == ["SpyOnU", "unknowntracker.com"]
+    end
+
     test "proxies non-tracker images" do
       html_body = """
       <html>

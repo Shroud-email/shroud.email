@@ -30,6 +30,14 @@ defmodule Shroud.Email.TrackerRemover do
         other, acc -> {other, acc}
       end)
 
+    # Trackers are accumulated by prepending, so reverse to restore the order in
+    # which they appeared in the email, then deduplicate so the same tracker
+    # isn't reported multiple times.
+    removed_trackers =
+      removed_trackers
+      |> Enum.reverse()
+      |> Enum.uniq()
+
     swoosh_email = struct(email.swoosh_email, html_body: Floki.raw_html(processed_html))
 
     struct(email,
