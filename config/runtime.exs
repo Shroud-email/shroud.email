@@ -6,10 +6,14 @@ end
 
 config :stripity_stripe, api_key: System.get_env("STRIPE_SECRET")
 
-config :shroud, :billing,
-  stripe_yearly_price: System.get_env("STRIPE_YEARLY_PRICE"),
-  stripe_monthly_price: System.get_env("STRIPE_MONTHLY_PRICE"),
-  stripe_webhook_secret: System.get_env("STRIPE_WEBHOOK_SECRET")
+# In the test env, billing config (incl. a fixed webhook secret) comes from
+# config/test.exs instead of these env vars.
+if config_env() != :test do
+  config :shroud, :billing,
+    stripe_yearly_price: System.get_env("STRIPE_YEARLY_PRICE"),
+    stripe_monthly_price: System.get_env("STRIPE_MONTHLY_PRICE"),
+    stripe_webhook_secret: System.get_env("STRIPE_WEBHOOK_SECRET")
+end
 
 # ex_aws configured with AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
 # environment variables in addition to this one
