@@ -1,9 +1,9 @@
 defmodule Shroud.Billing.Session do
-  alias Stripe.Session
+  alias Stripe.Checkout.Session
   alias Stripe.BillingPortal.Session, as: BillingSession
 
   @spec create_checkout!(String.t(), String.t(), String.t(), :yearly | :monthly) ::
-          Stripe.Session.t()
+          Stripe.Checkout.Session.t()
   def create_checkout!(email, success_url, cancel_url, billing_period) do
     price =
       if billing_period == :yearly,
