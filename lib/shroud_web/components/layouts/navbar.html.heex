@@ -131,13 +131,11 @@
           </div>
           <div class="ml-3">
             <div class="text-base font-medium leading-none text-white"><%= @current_user.email %></div>
-            <%= if @current_user do %>
-              <%= if @current_user.status == :free do %>
-                <div class="text-gray-400 mr-2">
-                  Free plan.
-                  <.link href={~p"/settings/billing"} class="underline hover:text-gray-500">Upgrade</.link>
-                </div>
-              <% end %>
+            <%= if @current_user.status == :free do %>
+              <div class="text-gray-400 mr-2">
+                Free plan.
+                <.link href={~p"/settings/billing"} class="underline hover:text-gray-500">Upgrade</.link>
+              </div>
             <% end %>
           </div>
         </div>

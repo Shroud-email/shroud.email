@@ -91,8 +91,6 @@ defmodule Shroud.Email.OutgoingEmailHandler do
     |> Map.put(:reply_to, nil)
   end
 
-  defp sender_owns_alias?(nil, _reply_address), do: false
-
   defp sender_owns_alias?(user, reply_address) do
     {_recipient_address, email_alias} = ReplyAddress.from_reply_address(reply_address)
     email_alias = Aliases.get_email_alias_by_address(email_alias)

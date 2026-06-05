@@ -1,7 +1,6 @@
 defmodule Shroud.Email.EmailHandler do
   use Oban.Worker, queue: :outgoing_email, max_attempts: 100
 
-  require Logger
   alias Shroud.Accounts
 
   alias Shroud.Email.{

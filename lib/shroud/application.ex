@@ -32,7 +32,7 @@ defmodule Shroud.Application do
         ])
       end
 
-    Logger.add_backend(Sentry.LoggerBackend)
+    :logger.add_handler(:sentry_handler, Sentry.LoggerHandler, %{})
 
     :telemetry.attach(
       "oban-errors",
