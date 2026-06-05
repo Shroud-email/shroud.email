@@ -114,13 +114,22 @@ defmodule Shroud.Email.IncomingEmailHandler do
 
         forward_incoming_email(recipient_user, sender, recipient, data)
 
-      {:error, %Ecto.Changeset{}} ->
-        maybe_log(
-          recipient_user,
-          "Could not create catch-all alias #{recipient} (from #{sender}) as the address is invalid. Notifying #{recipient_user.email}."
-        )
+      {:error, %Ecto.Changeset{} = changeset} ->
+        if uniqueness_constraint_error?(changeset, :address) do
+          maybe_log(
+            recipient_user,
+            "Alias #{recipient} already exists (likely created by concurrent catch-all). Forwarding email from #{sender} to #{recipient_user.email}"
+          )
 
-        notify_catchall_alias_creation_failed(recipient_user, recipient)
+          forward_incoming_email(recipient_user, sender, recipient, data)
+        else
+          maybe_log(
+            recipient_user,
+            "Could not create catch-all alias #{recipient} (from #{sender}) as the address is invalid. Notifying #{recipient_user.email}."
+          )
+
+          notify_catchall_alias_creation_failed(recipient_user, recipient)
+        end
 
       {:error, reason} ->
         maybe_log(
@@ -240,5 +249,13 @@ defmodule Shroud.Email.IncomingEmailHandler do
             email |> Map.put(:reply_to, {reply_to_reply_address, reply_to_reply_address})
           end
         end).()
+  end
+
+  @spec uniqueness_constraint_error?(Ecto.Changeset.t(), atom()) :: boolean()
+  defp uniqueness_constraint_error?(changeset, field) do
+    Enum.any?(changeset.errors, fn
+      {^field, {_message, [constraint: :unique, constraint_name: _name]}} -> true
+      _ -> false
+    end)
   end
 end
