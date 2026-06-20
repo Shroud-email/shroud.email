@@ -6,14 +6,14 @@ defmodule Shroud.Email.ParsedEmail do
   import Swoosh.Email
   require Logger
 
-  defstruct [
-    :from,
-    :to,
-    :swoosh_email,
-    :parsed_html,
-    removed_trackers: [],
-    blocked_domains: []
-  ]
+  defstruct [:from, :to, :swoosh_email, :parsed_html, removed_trackers: []]
+
+  @typedoc """
+  A tracker removed from an email. `domain` is the real host extracted from the
+  pixel URL (used for persistence/analytics); `name` is the friendly name of a
+  known tracker, or `nil` for an unknown pixel (used for the user-facing report).
+  """
+  @type removed_tracker :: %{name: String.t() | nil, domain: String.t() | nil}
 
   @type header_type :: {String.t(), String.t()}
   @type t :: %__MODULE__{
@@ -21,8 +21,7 @@ defmodule Shroud.Email.ParsedEmail do
           to: String.t(),
           swoosh_email: Swoosh.Email.t(),
           parsed_html: Floki.html_tree(),
-          removed_trackers: [String.t()],
-          blocked_domains: [String.t()]
+          removed_trackers: [removed_tracker()]
         }
 
   @allowed_headers [

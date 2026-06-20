@@ -24,61 +24,59 @@ defmodule Shroud.Email.TrackerRemover do
   def process(%ParsedEmail{parsed_html: parsed_html} = email) do
     trackers = Email.list_trackers()
 
-    # Each removed image accumulates a `{report_label, domain}` tuple. The label
-    # is what we show the user in the email report (a friendly tracker name for
-    # known trackers, or the host for unknown pixels); the domain is always the
-    # real host extracted from the image URL, which is what we persist.
-    {processed_html, removed} =
+    # Each removed image accumulates a `%{name, domain}` entry: `name` is the
+    # friendly tracker name (nil for unknown pixels) shown in the user's report,
+    # and `domain` is the real host extracted from the image URL, which is what
+    # we persist for analytics.
+    {processed_html, removed_trackers} =
       Floki.traverse_and_update(parsed_html, [], fn
         {"img", attrs, children}, acc -> process_image(trackers, attrs, children, acc)
         other, acc -> {other, acc}
       end)
 
     # Entries are accumulated by prepending, so reverse to restore the order in
-    # which they appeared in the email.
-    removed = Enum.reverse(removed)
-
-    # Deduplicate so the same tracker isn't reported multiple times.
+    # which they appeared in the email, then deduplicate so an identical tracker
+    # isn't recorded multiple times.
     removed_trackers =
-      removed
-      |> Enum.map(fn {label, _domain} -> label end)
+      removed_trackers
+      |> Enum.reverse()
       |> Enum.uniq()
 
-    # Deduplicate per email so each domain is counted at most once per message.
-    blocked_domains =
-      removed
-      |> Enum.map(fn {_label, domain} -> domain end)
-      |> Enum.reject(&is_nil/1)
-      |> Enum.uniq()
-
-    Email.record_blocked_domains(blocked_domains)
+    record_blocked_domains(removed_trackers)
 
     swoosh_email = struct(email.swoosh_email, html_body: Floki.raw_html(processed_html))
 
     struct(email,
       parsed_html: processed_html,
       removed_trackers: removed_trackers,
-      blocked_domains: blocked_domains,
       swoosh_email: swoosh_email
     )
+  end
+
+  # Persist a per-day count for each distinct domain in this email.
+  defp record_blocked_domains(removed_trackers) do
+    removed_trackers
+    |> Enum.map(& &1.domain)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
+    |> Email.record_blocked_domains()
   end
 
   defp process_image(trackers, attrs, children, acc) do
     source = src_value(attrs)
 
-    # Look for known trackers (matched by pattern). We report the friendly name
-    # but persist the real host from the image URL.
+    # Look for known trackers (matched by pattern), then fall back to detecting
+    # tracking pixels from unknown sources by their size.
     entry =
       case known_tracker_name(trackers, attrs) do
         nil ->
-          # Look for tracking pixels from unknown sources, identified by size.
           case find_unknown_tracker(attrs) do
             nil -> nil
-            host -> {host, host}
+            host -> %{name: nil, domain: host}
           end
 
         name ->
-          {name, host_of(source)}
+          %{name: name, domain: host_of(source)}
       end
 
     if is_nil(entry) do

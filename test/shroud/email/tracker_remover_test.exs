@@ -44,7 +44,7 @@ defmodule Shroud.Email.TrackerRemoverTest do
 
       assert remove_whitespace(email.swoosh_email.html_body) == remove_whitespace(expected_result)
       assert Enum.empty?(Floki.find(email.parsed_html, "img"))
-      assert email.removed_trackers == ["SpyOnU"]
+      assert email.removed_trackers == [%{name: "SpyOnU", domain: "spyonu.com"}]
     end
 
     test "removes 1x1 (and 2x2) images" do
@@ -79,8 +79,8 @@ defmodule Shroud.Email.TrackerRemoverTest do
       assert remove_whitespace(email.swoosh_email.html_body) == remove_whitespace(expected_result)
       assert length(Floki.find(email.parsed_html, "img")) == 1
       assert length(email.removed_trackers) == 2
-      assert Enum.member?(email.removed_trackers, "unknowntracker.com")
-      assert Enum.member?(email.removed_trackers, "tracker2.com")
+      assert Enum.member?(email.removed_trackers, %{name: nil, domain: "unknowntracker.com"})
+      assert Enum.member?(email.removed_trackers, %{name: nil, domain: "tracker2.com"})
     end
 
     test "removes 1x1 images with 'px' in height" do
@@ -114,7 +114,7 @@ defmodule Shroud.Email.TrackerRemoverTest do
       assert remove_whitespace(email.swoosh_email.html_body) == remove_whitespace(expected_result)
       assert length(Floki.find(email.parsed_html, "img")) == 1
       assert length(email.removed_trackers) == 1
-      assert hd(email.removed_trackers) == "unknowntracker.com"
+      assert hd(email.removed_trackers) == %{name: nil, domain: "unknowntracker.com"}
     end
 
     test "doesn't double-count 1x1 images from known trackers" do
@@ -145,7 +145,7 @@ defmodule Shroud.Email.TrackerRemoverTest do
 
       assert remove_whitespace(email.swoosh_email.html_body) == remove_whitespace(expected_result)
       assert Floki.find(email.parsed_html, "img") |> Enum.empty?()
-      assert email.removed_trackers == ["SpyOnU"]
+      assert email.removed_trackers == [%{name: "SpyOnU", domain: "spyonu.com"}]
     end
 
     test "deduplicates repeated trackers" do
@@ -179,7 +179,11 @@ defmodule Shroud.Email.TrackerRemoverTest do
 
       assert remove_whitespace(email.swoosh_email.html_body) == remove_whitespace(expected_result)
       assert Enum.empty?(Floki.find(email.parsed_html, "img"))
-      assert email.removed_trackers == ["SpyOnU", "unknowntracker.com"]
+
+      assert email.removed_trackers == [
+               %{name: "SpyOnU", domain: "spyonu.com"},
+               %{name: nil, domain: "unknowntracker.com"}
+             ]
     end
 
     test "proxies non-tracker images" do
@@ -279,7 +283,7 @@ defmodule Shroud.Email.TrackerRemoverTest do
   end
 
   describe "blocked domain tracking" do
-    test "records the actual pixel host for known trackers (not the tracker name)" do
+    test "carries both the friendly name and the real domain for known trackers" do
       html_body = """
       <html><body>
         <img src="https://spyonu.com/track?q=123" />
@@ -288,10 +292,9 @@ defmodule Shroud.Email.TrackerRemoverTest do
 
       email = process_html(html_body)
 
-      # The report still shows the friendly tracker name...
-      assert email.removed_trackers == ["SpyOnU"]
-      # ...but we persist the real domain.
-      assert email.blocked_domains == ["spyonu.com"]
+      # A single entry holds the friendly name (for the report) and the real
+      # host (for persistence).
+      assert email.removed_trackers == [%{name: "SpyOnU", domain: "spyonu.com"}]
     end
 
     test "records hosts for unknown tracking pixels" do
@@ -304,7 +307,7 @@ defmodule Shroud.Email.TrackerRemoverTest do
 
       email = process_html(html_body)
 
-      assert Enum.sort(email.blocked_domains) == ["tracker2.com", "unknowntracker.com"]
+      assert Enum.sort(domains(email)) == ["tracker2.com", "unknowntracker.com"]
     end
 
     test "deduplicates domains within a single email" do
@@ -319,7 +322,7 @@ defmodule Shroud.Email.TrackerRemoverTest do
 
       email = process_html(html_body)
 
-      assert Enum.sort(email.blocked_domains) == ["spyonu.com", "unknowntracker.com"]
+      assert Enum.sort(domains(email)) == ["spyonu.com", "unknowntracker.com"]
     end
 
     test "is empty when no trackers are found" do
@@ -331,7 +334,7 @@ defmodule Shroud.Email.TrackerRemoverTest do
 
       email = process_html(html_body)
 
-      assert email.blocked_domains == []
+      assert email.removed_trackers == []
     end
 
     test "persists a per-day count of 1 for each blocked domain in the email" do
@@ -375,6 +378,13 @@ defmodule Shroud.Email.TrackerRemoverTest do
     |> :mimemail.decode()
     |> ParsedEmail.parse("sender@example.com", "recipient@example.com")
     |> TrackerRemover.process()
+  end
+
+  defp domains(email) do
+    email.removed_trackers
+    |> Enum.map(& &1.domain)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
   end
 
   defp remove_whitespace(text), do: String.replace(text, ~r/\s/, "")
