@@ -34,9 +34,6 @@ defmodule Shroud.DataCase do
 
     Shroud.MockDateTime |> stub_with(Shroud.DateTime)
 
-    # Enable mailex parsing globally in tests to ensure comprehensive coverage
-    FunWithFlags.enable(:mailex_parsing)
-
     :ok
   end
 

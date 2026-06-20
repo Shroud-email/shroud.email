@@ -1028,30 +1028,8 @@ defmodule Shroud.Email.EmailHandlerTest do
     end
   end
 
-  describe "mailex parsing feature flag" do
-    test "uses mimemail by default", %{user: _user, email_alias: email_alias} do
-      args = %{
-        from: "sender@example.com",
-        to: email_alias.address,
-        data:
-          text_email(
-            "sender@example.com",
-            [email_alias.address],
-            "Hello via mimemail",
-            "Plain text content"
-          )
-      }
-
-      perform_job(EmailHandler, args)
-
-      assert_email_sent(fn email ->
-        assert email.subject == "Hello via mimemail"
-      end)
-    end
-
-    test "uses mailex when flag is enabled for user", %{user: user, email_alias: email_alias} do
-      FunWithFlags.enable(:mailex_parsing, for_actor: user)
-
+  describe "mailex parsing" do
+    test "parses plain text emails", %{user: _user, email_alias: email_alias} do
       args = %{
         from: "sender@example.com",
         to: email_alias.address,
@@ -1072,12 +1050,10 @@ defmodule Shroud.Email.EmailHandlerTest do
       end)
     end
 
-    test "uses mailex for multipart emails when flag is enabled", %{
-      user: user,
+    test "parses multipart emails", %{
+      user: _user,
       email_alias: email_alias
     } do
-      FunWithFlags.enable(:mailex_parsing, for_actor: user)
-
       args = %{
         from: "sender@example.com",
         to: email_alias.address,
