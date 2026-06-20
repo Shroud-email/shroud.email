@@ -11,8 +11,7 @@ defmodule Shroud.Email.IncomingEmailHandler do
     ParsedEmail,
     TrackerRemover,
     Enricher,
-    ReplyAddress,
-    IncomingEmailDecoder
+    ReplyAddress
   }
 
   import Shroud.Accounts.Logging, only: [maybe_log: 2, store_email: 3]
@@ -59,11 +58,7 @@ defmodule Shroud.Email.IncomingEmailHandler do
           "Storing spam email from #{sender} to #{recipient_user.email} (via #{recipient})"
         )
 
-        decoded_email =
-          case IncomingEmailDecoder.decode(data, recipient_user) do
-            {:mimemail, mimemail_tuple} -> mimemail_tuple
-            {:mailex, mailex_msg} -> mailex_msg
-          end
+        decoded_email = Mailex.parse!(data)
 
         SpamHandler.handle_incoming_spam_email(
           sender,
@@ -123,13 +118,7 @@ defmodule Shroud.Email.IncomingEmailHandler do
       store_email(sender, recipient, data)
     end
 
-    decoded = IncomingEmailDecoder.decode(data, user)
-
-    parsed_email =
-      case decoded do
-        {:mimemail, mimemail_tuple} -> ParsedEmail.parse(mimemail_tuple, sender, recipient)
-        {:mailex, mailex_msg} -> ParsedEmail.parse(mailex_msg, sender, recipient)
-      end
+    parsed_email = ParsedEmail.parse(Mailex.parse!(data), sender, recipient)
 
     case parsed_email
          |> TrackerRemover.process()
