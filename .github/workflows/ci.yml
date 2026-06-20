@@ -15,7 +15,7 @@ jobs:
       LOOPS_API_KEY: secret
     services:
       postgres:
-        image: index.docker.io/library/postgres@sha256:c4c7a1585974706b5f72b8ab595e47399b23b2e03d93bbf75c1b0904be1803dc # ratchet:postgres:13.2-alpine
+        image: index.docker.io/library/postgres@sha256:c4c7a1585974706b5f72b8ab595e47399b23b2e03d93bbf75c1b0904be1803dc # postgres:13.2-alpine
         ports:
           - 5432:5432
         env:
