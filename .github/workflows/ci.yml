@@ -15,7 +15,7 @@ jobs:
       LOOPS_API_KEY: secret
     services:
       postgres:
-        image: index.docker.io/library/postgres@sha256:c4c7a1585974706b5f72b8ab595e47399b23b2e03d93bbf75c1b0904be1803dc # ratchet:postgres:13.2-alpine
+        image: index.docker.io/library/postgres@sha256:c4c7a1585974706b5f72b8ab595e47399b23b2e03d93bbf75c1b0904be1803dc # postgres:13.2-alpine
         ports:
           - 5432:5432
         env:
@@ -29,14 +29,16 @@ jobs:
           --health-retries 5
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # ratchet:actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
       - name: Set up Elixir
-        uses: erlef/setup-beam@fc68ffb90438ef2936bbb3251622353b3dcb2f93 # ratchet:erlef/setup-beam@v1.24.0
+        uses: erlef/setup-beam@fc68ffb90438ef2936bbb3251622353b3dcb2f93 # v1.24.0
         with:
           elixir-version: "1.19.5"
           otp-version: "28"
       - name: Restore dependencies cache
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # ratchet:actions/cache@v5
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: |
             deps
@@ -59,7 +61,7 @@ jobs:
         run: mix ecto.setup
       - name: Run tests
         run: mix coveralls.json
-      - uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # ratchet:codecov/codecov-action@v6
+      - uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
         with:
           files: ./cover/excoveralls.json
           token: ${{ secrets.CODECOV_TOKEN }}
