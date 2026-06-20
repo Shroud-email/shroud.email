@@ -42,8 +42,6 @@ defmodule Shroud.Email.TrackerRemover do
       |> Enum.reverse()
       |> Enum.uniq()
 
-    record_blocked_domains(removed_trackers)
-
     swoosh_email = struct(email.swoosh_email, html_body: Floki.raw_html(processed_html))
 
     struct(email,
@@ -51,15 +49,6 @@ defmodule Shroud.Email.TrackerRemover do
       removed_trackers: removed_trackers,
       swoosh_email: swoosh_email
     )
-  end
-
-  # Persist a per-day count for each distinct domain in this email.
-  defp record_blocked_domains(removed_trackers) do
-    removed_trackers
-    |> Enum.map(& &1.domain)
-    |> Enum.reject(&is_nil/1)
-    |> Enum.uniq()
-    |> Email.record_blocked_domains()
   end
 
   defp process_image(trackers, attrs, children, acc) do

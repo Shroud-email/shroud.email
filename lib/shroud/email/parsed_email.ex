@@ -33,6 +33,18 @@ defmodule Shroud.Email.ParsedEmail do
     "delivered-to"
   ]
 
+  @doc """
+  The distinct tracking domains discovered in this email, ready to be persisted.
+  Excludes entries without a resolvable host.
+  """
+  @spec blocked_domains(t()) :: [String.t()]
+  def blocked_domains(%__MODULE__{removed_trackers: removed_trackers}) do
+    removed_trackers
+    |> Enum.map(& &1.domain)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
+  end
+
   @spec parse(:mimemail.mimetuple() | Mailex.Message.t(), String.t(), String.t()) :: t
   def parse(%Mailex.Message{} = mailex_msg, from, to) do
     swoosh_email = build_email_from_mailex(new(), mailex_msg)

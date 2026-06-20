@@ -1,3 +1,14 @@
+defmodule Shroud.Email.EmailHandlerTest.FailingMailerAdapter do
+  @moduledoc "Test-only Swoosh adapter that always fails delivery."
+  @behaviour Swoosh.Adapter
+
+  @impl true
+  def deliver(_email, _config), do: {:error, :simulated_smtp_failure}
+
+  @impl true
+  def validate_config(_config), do: :ok
+end
+
 defmodule Shroud.Email.EmailHandlerTest do
   use Shroud.DataCase, async: false
   use Oban.Testing, repo: Shroud.Repo
@@ -7,8 +18,10 @@ defmodule Shroud.Email.EmailHandlerTest do
 
   import Shroud.{AccountsFixtures, AliasesFixtures, DomainFixtures, EmailFixtures}
 
+  alias Shroud.Repo
   alias Shroud.Email
-  alias Shroud.Email.EmailHandler
+  alias Shroud.Email.{EmailHandler, TrackerDomain}
+  alias Shroud.Email.EmailHandlerTest.FailingMailerAdapter
   alias Shroud.{Aliases, Util, Accounts}
   use ShroudWeb, :verified_routes
 
@@ -1098,6 +1111,65 @@ defmodule Shroud.Email.EmailHandlerTest do
         assert email.text_body =~ "Text part"
         assert email.html_body =~ "HTML part"
       end)
+    end
+
+    test "records blocked tracking domains after a successful forward", %{
+      email_alias: email_alias
+    } do
+      args = tracking_pixel_email_args(email_alias)
+
+      perform_job(EmailHandler, args)
+
+      assert %TrackerDomain{count: 1} =
+               Repo.get_by(TrackerDomain, domain: "spy.example.com", date: Date.utc_today())
+    end
+
+    test "a failed delivery does not record domains, and a retry does not inflate the count", %{
+      email_alias: email_alias
+    } do
+      args = tracking_pixel_email_args(email_alias)
+
+      # Attempt 1: delivery fails before we ever forward the email. Nothing should
+      # be recorded, otherwise an Oban retry would inflate the counts.
+      capture_log(fn ->
+        with_failing_mailer(fn -> perform_job(EmailHandler, args) end)
+      end)
+
+      assert Repo.aggregate(TrackerDomain, :count) == 0
+
+      # Attempt 2 (the Oban retry): delivery succeeds. The domain is now counted
+      # exactly once -- not twice.
+      perform_job(EmailHandler, args)
+
+      assert %TrackerDomain{count: 1} =
+               Repo.get_by(TrackerDomain, domain: "spy.example.com", date: Date.utc_today())
+
+      assert Repo.aggregate(TrackerDomain, :count) == 1
+    end
+  end
+
+  defp tracking_pixel_email_args(email_alias) do
+    %{
+      from: "sender@example.com",
+      to: email_alias.address,
+      data:
+        html_email(
+          "sender@example.com",
+          [email_alias.address],
+          "Subject",
+          ~s(<html><body><p>hi</p><img src="https://spy.example.com" width="1" height="1" /></body></html>)
+        )
+    }
+  end
+
+  defp with_failing_mailer(fun) do
+    original = Application.get_env(:shroud, Shroud.Mailer)
+    Application.put_env(:shroud, Shroud.Mailer, adapter: FailingMailerAdapter)
+
+    try do
+      fun.()
+    after
+      Application.put_env(:shroud, Shroud.Mailer, original)
     end
   end
 end

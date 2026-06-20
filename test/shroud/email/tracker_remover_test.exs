@@ -337,7 +337,10 @@ defmodule Shroud.Email.TrackerRemoverTest do
       assert email.removed_trackers == []
     end
 
-    test "persists a per-day count of 1 for each blocked domain in the email" do
+    test "does not persist counts itself (recording is the caller's job, post-delivery)" do
+      # process/1 is a pure transform. Persistence happens only once the email is
+      # successfully forwarded, so that re-running the pipeline on an Oban retry
+      # can't inflate the counts.
       html_body = """
       <html><body>
         <img src="https://spyonu.com/track?q=123" />
@@ -347,29 +350,7 @@ defmodule Shroud.Email.TrackerRemoverTest do
 
       process_html(html_body)
 
-      today = Date.utc_today()
-
-      assert %TrackerDomain{count: 1} =
-               Repo.get_by(TrackerDomain, domain: "spyonu.com", date: today)
-
-      assert %TrackerDomain{count: 1} =
-               Repo.get_by(TrackerDomain, domain: "unknowntracker.com", date: today)
-    end
-
-    test "increments the count when the same domain appears in a later email" do
-      html_body = """
-      <html><body>
-        <img src="https://unknowntracker.com" width="1" height="1" />
-      </body></html>
-      """
-
-      process_html(html_body)
-      process_html(html_body)
-
-      today = Date.utc_today()
-
-      assert %TrackerDomain{count: 2} =
-               Repo.get_by(TrackerDomain, domain: "unknowntracker.com", date: today)
+      assert Repo.aggregate(TrackerDomain, :count) == 0
     end
   end
 

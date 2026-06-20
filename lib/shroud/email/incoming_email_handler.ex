@@ -2,9 +2,10 @@ defmodule Shroud.Email.IncomingEmailHandler do
   alias Shroud.Accounts
   alias Shroud.Accounts.User
   alias Shroud.Aliases
+  alias Shroud.Domain
+  alias Shroud.Email
   alias Shroud.Mailer
   alias Shroud.Util
-  alias Shroud.Domain
 
   alias Shroud.Email.{
     SpamHandler,
@@ -131,16 +132,25 @@ defmodule Shroud.Email.IncomingEmailHandler do
         {:mailex, mailex_msg} -> ParsedEmail.parse(mailex_msg, sender, recipient)
       end
 
-    case parsed_email
-         |> TrackerRemover.process()
-         |> Enricher.process()
-         # Now our pipeline is done, we just want our Swoosh email
-         |> Map.get(:swoosh_email)
-         |> fix_incoming_sender_and_recipient(user.email, sender, recipient)
-         |> Mailer.deliver() do
+    processed =
+      parsed_email
+      |> TrackerRemover.process()
+      |> Enricher.process()
+
+    deliver_result =
+      processed
+      # Now our pipeline is done, we just want our Swoosh email
+      |> Map.get(:swoosh_email)
+      |> fix_incoming_sender_and_recipient(user.email, sender, recipient)
+      |> Mailer.deliver()
+
+    case deliver_result do
       {:ok, _id} ->
         email_alias = Aliases.get_email_alias_by_address!(recipient)
         Aliases.increment_forwarded!(email_alias)
+        # Record blocked tracking domains only once the email has actually been
+        # forwarded, so that retrying a failed Oban job can't inflate the counts.
+        Email.record_blocked_domains(ParsedEmail.blocked_domains(processed))
 
       {:error, {_code, %{"error" => error}}} ->
         Logger.error("Failed to forward email from #{sender} to #{user.email}: #{error}")
