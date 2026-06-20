@@ -2,7 +2,7 @@ defmodule Shroud.EmailTest do
   use Shroud.DataCase, async: true
   alias Shroud.Repo
   alias Shroud.Email
-  alias Shroud.Email.Tracker
+  alias Shroud.Email.{Tracker, TrackerDomain}
   import Shroud.{AccountsFixtures, AliasesFixtures, EmailFixtures}
 
   setup do
@@ -22,6 +22,50 @@ defmodule Shroud.EmailTest do
       assert length(trackers) == 1
       assert hd(trackers).name == tracker.name
       assert hd(trackers).pattern == tracker.pattern
+    end
+  end
+
+  describe "record_blocked_domains/1" do
+    test "records a count of 1 per domain for today" do
+      Email.record_blocked_domains(["tracker.co", "spy.example.com"])
+
+      today = Date.utc_today()
+
+      assert %TrackerDomain{count: 1, date: ^today} =
+               Repo.get_by(TrackerDomain, domain: "tracker.co", date: today)
+
+      assert %TrackerDomain{count: 1, date: ^today} =
+               Repo.get_by(TrackerDomain, domain: "spy.example.com", date: today)
+    end
+
+    test "increments the count for a domain seen again on the same day" do
+      Email.record_blocked_domains(["tracker.co"])
+      Email.record_blocked_domains(["tracker.co"])
+      Email.record_blocked_domains(["tracker.co"])
+
+      today = Date.utc_today()
+
+      assert %TrackerDomain{count: 3} =
+               Repo.get_by(TrackerDomain, domain: "tracker.co", date: today)
+    end
+
+    test "keeps a separate count per (domain, date)" do
+      yesterday = Date.add(Date.utc_today(), -1)
+
+      Repo.insert!(%TrackerDomain{domain: "tracker.co", date: yesterday, count: 5})
+      Email.record_blocked_domains(["tracker.co"])
+
+      assert %TrackerDomain{count: 5} =
+               Repo.get_by(TrackerDomain, domain: "tracker.co", date: yesterday)
+
+      assert %TrackerDomain{count: 1} =
+               Repo.get_by(TrackerDomain, domain: "tracker.co", date: Date.utc_today())
+    end
+
+    test "does nothing for an empty list" do
+      Email.record_blocked_domains([])
+
+      assert Repo.aggregate(TrackerDomain, :count) == 0
     end
   end
 

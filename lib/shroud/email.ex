@@ -5,6 +5,7 @@ defmodule Shroud.Email do
   alias Shroud.Aliases.EmailAlias
   alias Shroud.Accounts.User
   alias Shroud.Email.Tracker
+  alias Shroud.Email.TrackerDomain
   alias Shroud.Email.SpamEmail
   alias Shroud.Util
 
@@ -20,6 +21,28 @@ defmodule Shroud.Email do
     %Tracker{}
     |> Tracker.changeset(attrs)
     |> Repo.insert()
+  end
+
+  @doc """
+  Records that each of the given tracking `domains` was blocked in an email
+  today, incrementing the per-day count for each one. Domains are expected to be
+  deduplicated already (one increment per domain per email).
+  """
+  @spec record_blocked_domains([String.t()]) :: :ok
+  def record_blocked_domains([]), do: :ok
+
+  def record_blocked_domains(domains) when is_list(domains) do
+    today = Date.utc_today()
+
+    Enum.each(domains, fn domain ->
+      Repo.insert!(
+        %TrackerDomain{domain: domain, date: today, count: 1},
+        on_conflict: [inc: [count: 1]],
+        conflict_target: [:domain, :date]
+      )
+    end)
+
+    :ok
   end
 
   @spec store_spam_email!(map(), User.t(), EmailAlias.t()) :: SpamEmail.t()

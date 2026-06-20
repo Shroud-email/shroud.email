@@ -24,53 +24,88 @@ defmodule Shroud.Email.TrackerRemover do
   def process(%ParsedEmail{parsed_html: parsed_html} = email) do
     trackers = Email.list_trackers()
 
-    {processed_html, removed_trackers} =
+    # Each removed image accumulates a `{report_label, domain}` tuple. The label
+    # is what we show the user in the email report (a friendly tracker name for
+    # known trackers, or the host for unknown pixels); the domain is always the
+    # real host extracted from the image URL, which is what we persist.
+    {processed_html, removed} =
       Floki.traverse_and_update(parsed_html, [], fn
         {"img", attrs, children}, acc -> process_image(trackers, attrs, children, acc)
         other, acc -> {other, acc}
       end)
 
-    # Trackers are accumulated by prepending, so reverse to restore the order in
-    # which they appeared in the email, then deduplicate so the same tracker
-    # isn't reported multiple times.
+    # Entries are accumulated by prepending, so reverse to restore the order in
+    # which they appeared in the email.
+    removed = Enum.reverse(removed)
+
+    # Deduplicate so the same tracker isn't reported multiple times.
     removed_trackers =
-      removed_trackers
-      |> Enum.reverse()
+      removed
+      |> Enum.map(fn {label, _domain} -> label end)
       |> Enum.uniq()
+
+    # Deduplicate per email so each domain is counted at most once per message.
+    blocked_domains =
+      removed
+      |> Enum.map(fn {_label, domain} -> domain end)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq()
+
+    Email.record_blocked_domains(blocked_domains)
 
     swoosh_email = struct(email.swoosh_email, html_body: Floki.raw_html(processed_html))
 
     struct(email,
       parsed_html: processed_html,
       removed_trackers: removed_trackers,
+      blocked_domains: blocked_domains,
       swoosh_email: swoosh_email
     )
   end
 
   defp process_image(trackers, attrs, children, acc) do
-    # Look for known trackers
-    removed_tracker =
-      attrs
-      |> Enum.map(&check_attribute(trackers, &1))
-      |> Enum.find(%{name: nil}, &(not is_nil(&1)))
-      |> Map.get(:name)
+    source = src_value(attrs)
 
-    # Look for tracking pixels from unknown sources
-    removed_tracker =
-      if is_nil(removed_tracker) do
-        find_unknown_tracker(attrs)
-      else
-        removed_tracker
+    # Look for known trackers (matched by pattern). We report the friendly name
+    # but persist the real host from the image URL.
+    entry =
+      case known_tracker_name(trackers, attrs) do
+        nil ->
+          # Look for tracking pixels from unknown sources, identified by size.
+          case find_unknown_tracker(attrs) do
+            nil -> nil
+            host -> {host, host}
+          end
+
+        name ->
+          {name, host_of(source)}
       end
 
-    if is_nil(removed_tracker) do
+    if is_nil(entry) do
       attrs = attrs |> Enum.map(&proxify_src/1)
       {{"img", attrs, children}, acc}
     else
       # Returning nil removes this img element from the HTML
-      {nil, [removed_tracker | acc]}
+      {nil, [entry | acc]}
     end
   end
+
+  defp known_tracker_name(trackers, attrs) do
+    attrs
+    |> Enum.map(&check_attribute(trackers, &1))
+    |> Enum.find(%{name: nil}, &(not is_nil(&1)))
+    |> Map.get(:name)
+  end
+
+  defp src_value(attrs) do
+    case Enum.find(attrs, &match?({"src", _src}, &1)) do
+      {"src", source} -> source
+      _ -> nil
+    end
+  end
+
+  defp host_of(nil), do: nil
+  defp host_of(source), do: source |> URI.parse() |> Map.get(:host)
 
   defp check_attribute(trackers, {"src", source}) do
     Enum.find(trackers, fn tracker -> Tracker.match?(tracker, source) end)

@@ -1,6 +1,7 @@
 defmodule Shroud.Email.TrackerRemoverTest do
   use Shroud.DataCase, async: true
-  alias Shroud.Email.{ParsedEmail, TrackerRemover}
+  alias Shroud.Repo
+  alias Shroud.Email.{ParsedEmail, TrackerDomain, TrackerRemover}
 
   import Shroud.{EmailFixtures, TrackerFixtures}
 
@@ -275,6 +276,105 @@ defmodule Shroud.Email.TrackerRemoverTest do
       assert remove_whitespace(email.swoosh_email.html_body) == remove_whitespace(html_body)
       assert Enum.empty?(email.removed_trackers)
     end
+  end
+
+  describe "blocked domain tracking" do
+    test "records the actual pixel host for known trackers (not the tracker name)" do
+      html_body = """
+      <html><body>
+        <img src="https://spyonu.com/track?q=123" />
+      </body></html>
+      """
+
+      email = process_html(html_body)
+
+      # The report still shows the friendly tracker name...
+      assert email.removed_trackers == ["SpyOnU"]
+      # ...but we persist the real domain.
+      assert email.blocked_domains == ["spyonu.com"]
+    end
+
+    test "records hosts for unknown tracking pixels" do
+      html_body = """
+      <html><body>
+        <img src="https://unknowntracker.com" width="1" height="1" />
+        <img src="https://tracker2.com" width="2" height="2" />
+      </body></html>
+      """
+
+      email = process_html(html_body)
+
+      assert Enum.sort(email.blocked_domains) == ["tracker2.com", "unknowntracker.com"]
+    end
+
+    test "deduplicates domains within a single email" do
+      html_body = """
+      <html><body>
+        <img src="https://spyonu.com/track?q=123" />
+        <img src="https://spyonu.com/track?q=456" />
+        <img src="https://unknowntracker.com" width="1" height="1" />
+        <img src="https://unknowntracker.com" width="1" height="1" />
+      </body></html>
+      """
+
+      email = process_html(html_body)
+
+      assert Enum.sort(email.blocked_domains) == ["spyonu.com", "unknowntracker.com"]
+    end
+
+    test "is empty when no trackers are found" do
+      html_body = """
+      <html><body>
+        <img src="https://gooddomain.com/abc.jpg" alt="an image" />
+      </body></html>
+      """
+
+      email = process_html(html_body)
+
+      assert email.blocked_domains == []
+    end
+
+    test "persists a per-day count of 1 for each blocked domain in the email" do
+      html_body = """
+      <html><body>
+        <img src="https://spyonu.com/track?q=123" />
+        <img src="https://unknowntracker.com" width="1" height="1" />
+      </body></html>
+      """
+
+      process_html(html_body)
+
+      today = Date.utc_today()
+
+      assert %TrackerDomain{count: 1} =
+               Repo.get_by(TrackerDomain, domain: "spyonu.com", date: today)
+
+      assert %TrackerDomain{count: 1} =
+               Repo.get_by(TrackerDomain, domain: "unknowntracker.com", date: today)
+    end
+
+    test "increments the count when the same domain appears in a later email" do
+      html_body = """
+      <html><body>
+        <img src="https://unknowntracker.com" width="1" height="1" />
+      </body></html>
+      """
+
+      process_html(html_body)
+      process_html(html_body)
+
+      today = Date.utc_today()
+
+      assert %TrackerDomain{count: 2} =
+               Repo.get_by(TrackerDomain, domain: "unknowntracker.com", date: today)
+    end
+  end
+
+  defp process_html(html_body) do
+    html_email("sender@example.com", ["recipient@example.com"], "Subject", html_body)
+    |> :mimemail.decode()
+    |> ParsedEmail.parse("sender@example.com", "recipient@example.com")
+    |> TrackerRemover.process()
   end
 
   defp remove_whitespace(text), do: String.replace(text, ~r/\s/, "")

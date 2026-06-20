@@ -6,7 +6,14 @@ defmodule Shroud.Email.ParsedEmail do
   import Swoosh.Email
   require Logger
 
-  defstruct [:from, :to, :swoosh_email, :parsed_html, removed_trackers: []]
+  defstruct [
+    :from,
+    :to,
+    :swoosh_email,
+    :parsed_html,
+    removed_trackers: [],
+    blocked_domains: []
+  ]
 
   @type header_type :: {String.t(), String.t()}
   @type t :: %__MODULE__{
@@ -14,7 +21,8 @@ defmodule Shroud.Email.ParsedEmail do
           to: String.t(),
           swoosh_email: Swoosh.Email.t(),
           parsed_html: Floki.html_tree(),
-          removed_trackers: [String.t()]
+          removed_trackers: [String.t()],
+          blocked_domains: [String.t()]
         }
 
   @allowed_headers [
