@@ -13,12 +13,9 @@ defmodule Shroud.Scheduler do
   end
 
   def verify_custom_domains() do
-    Repo.transaction(fn ->
-      CustomDomain
-      |> Repo.stream(max_rows: 100)
-      |> Stream.each(&schedule_dns_checker_job/1)
-      |> Stream.run()
-    end)
+    CustomDomain
+    |> Repo.all()
+    |> Enum.each(&schedule_dns_checker_job/1)
   end
 
   def delete_spam_emails() do
