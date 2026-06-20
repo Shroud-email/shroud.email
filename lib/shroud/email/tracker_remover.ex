@@ -24,15 +24,19 @@ defmodule Shroud.Email.TrackerRemover do
   def process(%ParsedEmail{parsed_html: parsed_html} = email) do
     trackers = Email.list_trackers()
 
+    # Each removed image accumulates a `%{name, domain}` entry: `name` is the
+    # friendly tracker name (nil for unknown pixels) shown in the user's report,
+    # and `domain` is the real host extracted from the image URL, which is what
+    # we persist for analytics.
     {processed_html, removed_trackers} =
       Floki.traverse_and_update(parsed_html, [], fn
         {"img", attrs, children}, acc -> process_image(trackers, attrs, children, acc)
         other, acc -> {other, acc}
       end)
 
-    # Trackers are accumulated by prepending, so reverse to restore the order in
-    # which they appeared in the email, then deduplicate so the same tracker
-    # isn't reported multiple times.
+    # Entries are accumulated by prepending, so reverse to restore the order in
+    # which they appeared in the email, then deduplicate so an identical tracker
+    # isn't recorded multiple times.
     removed_trackers =
       removed_trackers
       |> Enum.reverse()
@@ -48,29 +52,47 @@ defmodule Shroud.Email.TrackerRemover do
   end
 
   defp process_image(trackers, attrs, children, acc) do
-    # Look for known trackers
-    removed_tracker =
-      attrs
-      |> Enum.map(&check_attribute(trackers, &1))
-      |> Enum.find(%{name: nil}, &(not is_nil(&1)))
-      |> Map.get(:name)
+    source = src_value(attrs)
 
-    # Look for tracking pixels from unknown sources
-    removed_tracker =
-      if is_nil(removed_tracker) do
-        find_unknown_tracker(attrs)
-      else
-        removed_tracker
+    # Look for known trackers (matched by pattern), then fall back to detecting
+    # tracking pixels from unknown sources by their size.
+    entry =
+      case known_tracker_name(trackers, attrs) do
+        nil ->
+          case find_unknown_tracker(attrs) do
+            nil -> nil
+            host -> %{name: nil, domain: host}
+          end
+
+        name ->
+          %{name: name, domain: host_of(source)}
       end
 
-    if is_nil(removed_tracker) do
+    if is_nil(entry) do
       attrs = attrs |> Enum.map(&proxify_src/1)
       {{"img", attrs, children}, acc}
     else
       # Returning nil removes this img element from the HTML
-      {nil, [removed_tracker | acc]}
+      {nil, [entry | acc]}
     end
   end
+
+  defp known_tracker_name(trackers, attrs) do
+    attrs
+    |> Enum.map(&check_attribute(trackers, &1))
+    |> Enum.find(%{name: nil}, &(not is_nil(&1)))
+    |> Map.get(:name)
+  end
+
+  defp src_value(attrs) do
+    case Enum.find(attrs, &match?({"src", _src}, &1)) do
+      {"src", source} -> source
+      _ -> nil
+    end
+  end
+
+  defp host_of(nil), do: nil
+  defp host_of(source), do: source |> URI.parse() |> Map.get(:host)
 
   defp check_attribute(trackers, {"src", source}) do
     Enum.find(trackers, fn tracker -> Tracker.match?(tracker, source) end)

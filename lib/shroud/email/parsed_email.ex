@@ -8,13 +8,20 @@ defmodule Shroud.Email.ParsedEmail do
 
   defstruct [:from, :to, :swoosh_email, :parsed_html, removed_trackers: []]
 
+  @typedoc """
+  A tracker removed from an email. `domain` is the real host extracted from the
+  pixel URL (used for persistence/analytics); `name` is the friendly name of a
+  known tracker, or `nil` for an unknown pixel (used for the user-facing report).
+  """
+  @type removed_tracker :: %{name: String.t() | nil, domain: String.t() | nil}
+
   @type header_type :: {String.t(), String.t()}
   @type t :: %__MODULE__{
           from: String.t(),
           to: String.t(),
           swoosh_email: Swoosh.Email.t(),
           parsed_html: Floki.html_tree(),
-          removed_trackers: [String.t()]
+          removed_trackers: [removed_tracker()]
         }
 
   @allowed_headers [
@@ -25,6 +32,18 @@ defmodule Shroud.Email.ParsedEmail do
     "date",
     "delivered-to"
   ]
+
+  @doc """
+  The distinct tracking domains discovered in this email, ready to be persisted.
+  Excludes entries without a resolvable host.
+  """
+  @spec blocked_domains(t()) :: [String.t()]
+  def blocked_domains(%__MODULE__{removed_trackers: removed_trackers}) do
+    removed_trackers
+    |> Enum.map(& &1.domain)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
+  end
 
   @spec parse(:mimemail.mimetuple() | Mailex.Message.t(), String.t(), String.t()) :: t
   def parse(%Mailex.Message{} = mailex_msg, from, to) do

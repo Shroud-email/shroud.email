@@ -84,7 +84,12 @@ defmodule Shroud.Email.Enricher do
   defp shroud_footer(%ParsedEmail{to: to_alias} = email) do
     {_sender_name, sender_address} = email.swoosh_email.from
 
-    trackers = email.removed_trackers
+    # Show the friendly tracker name where we have one, falling back to the raw
+    # domain for unknown pixels. Deduplicate so each label appears once.
+    trackers =
+      email.removed_trackers
+      |> Enum.map(fn %{name: name, domain: domain} -> name || domain end)
+      |> Enum.uniq()
 
     report_data =
       %{
