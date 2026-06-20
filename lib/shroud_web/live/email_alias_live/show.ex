@@ -1,7 +1,6 @@
 defmodule ShroudWeb.EmailAliasLive.Show do
   import Canada, only: [can?: 2]
   use ShroudWeb, :live_view
-  use Phoenix.Component, global_prefixes: ~w(x-)
   alias Shroud.{Accounts, Aliases}
   alias Shroud.Email.ReplyAddress
 

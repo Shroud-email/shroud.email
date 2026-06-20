@@ -52,7 +52,8 @@ defmodule ShroudWeb do
     quote do
       @opts Keyword.merge(
               [
-                layout: {ShroudWeb.Layouts, :live}
+                layout: {ShroudWeb.Layouts, :live},
+                global_prefixes: ~w(x-)
               ],
               unquote(opts)
             )
