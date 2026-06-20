@@ -5,6 +5,7 @@ defmodule Shroud.Email.IncomingEmailHandler do
   alias Shroud.Domain
   alias Shroud.Email
   alias Shroud.Mailer
+  alias Shroud.Repo
   alias Shroud.Util
 
   alias Shroud.Email.{
@@ -147,10 +148,15 @@ defmodule Shroud.Email.IncomingEmailHandler do
     case deliver_result do
       {:ok, _id} ->
         email_alias = Aliases.get_email_alias_by_address!(recipient)
-        Aliases.increment_forwarded!(email_alias)
+
         # Record blocked tracking domains only once the email has actually been
         # forwarded, so that retrying a failed Oban job can't inflate the counts.
-        Email.record_blocked_domains(ParsedEmail.blocked_domains(processed))
+        # Both counters live in one transaction so they can't diverge from each
+        # other if one write fails.
+        Repo.transaction(fn ->
+          Aliases.increment_forwarded!(email_alias)
+          Email.record_blocked_domains(ParsedEmail.blocked_domains(processed))
+        end)
 
       {:error, {_code, %{"error" => error}}} ->
         Logger.error("Failed to forward email from #{sender} to #{user.email}: #{error}")

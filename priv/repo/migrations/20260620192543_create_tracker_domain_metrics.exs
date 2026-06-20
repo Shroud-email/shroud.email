@@ -3,7 +3,7 @@ defmodule Shroud.Repo.Migrations.CreateTrackerDomainMetrics do
 
   def change do
     create table(:tracker_domain_metrics) do
-      add :domain, :string, null: false
+      add :domain, :text, null: false
       add :date, :date, null: false
       add :count, :bigint, default: 0, null: false
 

@@ -1113,15 +1113,17 @@ defmodule Shroud.Email.EmailHandlerTest do
       end)
     end
 
-    test "records blocked tracking domains after a successful forward", %{
-      email_alias: email_alias
-    } do
+    test "records blocked tracking domains and the forwarded count together after a successful forward",
+         %{email_alias: email_alias} do
       args = tracking_pixel_email_args(email_alias)
 
       perform_job(EmailHandler, args)
 
+      # Both counters are written in one transaction on successful delivery.
       assert %TrackerDomain{count: 1} =
                Repo.get_by(TrackerDomain, domain: "spy.example.com", date: Date.utc_today())
+
+      assert Aliases.get_email_alias_by_address!(email_alias.address).forwarded == 1
     end
 
     test "a failed delivery does not record domains, and a retry does not inflate the count", %{
