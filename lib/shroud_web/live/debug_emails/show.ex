@@ -19,16 +19,16 @@ defmodule ShroudWeb.DebugEmailsLive.Show do
   @impl true
   def render(assigns) do
     ~H"""
-    <h2 class="text-lg font-bold">Error</h2>
-    <pre class="mt-4 bg-white p-4 rounded-md overflow-x-scroll">
+    <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100">Error</h2>
+    <pre class="mt-4 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-4 rounded-md overflow-x-scroll">
       <%= List.last(@job.errors)["error"] %>
     </pre>
 
-    <h2 class="text-lg font-bold mt-8">Email</h2>
-    <p>To: {@job.args["to"]}</p>
-    <p>From: {@job.args["from"]}</p>
+    <h2 class="text-lg font-bold mt-8 text-gray-900 dark:text-gray-100">Email</h2>
+    <p class="text-gray-700 dark:text-gray-300">To: {@job.args["to"]}</p>
+    <p class="text-gray-700 dark:text-gray-300">From: {@job.args["from"]}</p>
 
-    <pre class="mt-4 bg-white p-4 rounded-md overflow-x-scroll">
+    <pre class="mt-4 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-4 rounded-md overflow-x-scroll">
       <%= decode_email_data(@job.args["data"]) %>
     </pre>
     """
