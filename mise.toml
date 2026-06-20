@@ -2,3 +2,5 @@
 elixir = "1.19"
 erlang = "28"
 node = "24.8.0"
+pinact = "4.1.0"
+zizmor = "1.25.2"
