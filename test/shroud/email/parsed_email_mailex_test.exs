@@ -93,5 +93,36 @@ defmodule Shroud.Email.ParsedEmailMailexTest do
       assert result.swoosh_email.subject == "Test email"
       assert result.swoosh_email.reply_to == nil
     end
+
+    test "decodes a windows-1252 subject so it survives SMTP re-encoding" do
+      # Regression: a windows-1252 Subject used to leave raw, non-UTF-8 bytes in
+      # the forwarded email, crashing :mimemail.rfc2047_utf8_encode/7 (a
+      # FunctionClauseError) when gen_smtp re-encoded the headers for delivery.
+      raw =
+        "Subject: =?windows-1252?Q?=93Hi=94_=96_there?=\r\n" <>
+          "From: sender@example.com\r\n" <>
+          "To: alias@example.com\r\n" <>
+          "Content-Type: text/plain\r\n\r\nhi\r\n"
+
+      {:ok, mailex_msg} = Mailex.parse(raw)
+      result = ParsedEmail.parse(mailex_msg, "sender@example.com", "alias@example.com")
+
+      subject = result.swoosh_email.subject
+      # windows-1252: 0x93/0x94 = “ ” curly quotes, 0x96 = – en dash
+      assert String.valid?(subject)
+      assert subject == "“Hi” – there"
+
+      # The header must now be encodable by gen_smtp (the delivery path that
+      # previously raised); this is a no-op that simply must not crash.
+      encoded =
+        :mimemail.encode(
+          {"text", "plain",
+           [{"From", "sender@example.com"}, {"To", "alias@example.com"}, {"Subject", subject}],
+           %{}, "hi"}
+        )
+        |> :erlang.iolist_to_binary()
+
+      assert encoded =~ "Subject: =?UTF-8?"
+    end
   end
 end

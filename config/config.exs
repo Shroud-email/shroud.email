@@ -102,6 +102,38 @@ config :fun_with_flags, :persistence,
 
 config :fun_with_flags, :cache_bust_notifications, enabled: false
 
+# Charsets that mailex (via codepagex) should transcode to UTF-8 when decoding
+# incoming emails. codepagex only compiles the ISO-8859 family by default, and
+# setting :encodings replaces that default, so ISO-8859 is re-listed here
+# alongside the Windows codepages. After changing this list, run
+# `mix deps.compile codepagex --force`.
+config :codepagex, :encodings, [
+  "ISO8859/8859-1",
+  "ISO8859/8859-2",
+  "ISO8859/8859-3",
+  "ISO8859/8859-4",
+  "ISO8859/8859-5",
+  "ISO8859/8859-6",
+  "ISO8859/8859-7",
+  "ISO8859/8859-8",
+  "ISO8859/8859-9",
+  "ISO8859/8859-10",
+  "ISO8859/8859-11",
+  "ISO8859/8859-13",
+  "ISO8859/8859-14",
+  "ISO8859/8859-15",
+  "ISO8859/8859-16",
+  "VENDORS/MICSFT/WINDOWS/CP1250",
+  "VENDORS/MICSFT/WINDOWS/CP1251",
+  "VENDORS/MICSFT/WINDOWS/CP1252",
+  "VENDORS/MICSFT/WINDOWS/CP1253",
+  "VENDORS/MICSFT/WINDOWS/CP1254",
+  "VENDORS/MICSFT/WINDOWS/CP1255",
+  "VENDORS/MICSFT/WINDOWS/CP1256",
+  "VENDORS/MICSFT/WINDOWS/CP1257",
+  "VENDORS/MICSFT/WINDOWS/CP1258"
+]
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"
