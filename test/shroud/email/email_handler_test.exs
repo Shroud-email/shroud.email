@@ -368,6 +368,67 @@ defmodule Shroud.Email.EmailHandlerTest do
       end)
     end
 
+    test "handles a sender address with a quoted name but no angle brackets", %{
+      user: user,
+      email_alias: email_alias
+    } do
+      # Some emails have a malformed "From" header with a quoted display name
+      # but no angle brackets, e.g. `From: "Sales Team" promo@example.com`. This parses
+      # into an address of `"Sales Team"promo@example.com` (quotes retained). The address
+      # then feeds the outgoing reply address, and mimemail crashes while encoding the
+      # `From` header with {:error, {1, :smtp_rfc5322_scan, {:illegal, ~c"\"\""}}}.
+      data =
+        text_email(
+          ~s("Sales Team" promo@example.com),
+          [{"Recipient", email_alias.address}],
+          "Text only",
+          "Plain text content!"
+        )
+
+      args = %{from: "promo@example.com", to: email_alias.address, data: data}
+      perform_job(EmailHandler, args)
+
+      assert_email_sent(fn email ->
+        {_name, from_address} = email.from
+        # The outgoing address must not contain double quotes, otherwise encoding fails.
+        refute from_address =~ ~s(")
+
+        # Faithfully reproduce the production crash: encoding the forwarded email
+        # for SMTP delivery must not raise.
+        assert is_binary(Swoosh.Adapters.SMTP.Helpers.body(email, []))
+      end)
+    end
+
+    test "handles a recipient address with a quoted name but no angle brackets", %{
+      user: user,
+      email_alias: email_alias
+    } do
+      # A malformed "To" header with a quoted display name but no angle brackets, e.g.
+      # `To: "Subscriber" alias@email.shroud.test`, parses into an address (and display
+      # name) containing double quotes. Those quotes must be stripped so the forwarded
+      # email can be encoded for delivery.
+      malformed_recipient = ~s("Subscriber" #{email_alias.address})
+
+      data =
+        text_email(
+          {"Sender", "sender@example.com"},
+          [malformed_recipient],
+          "Text only",
+          "Plain text content!"
+        )
+
+      args = %{from: "sender@example.com", to: email_alias.address, data: data}
+      perform_job(EmailHandler, args)
+
+      assert_email_sent(fn email ->
+        {recipient_name, recipient_address} = hd(email.to)
+        assert recipient_address == user.email
+        refute recipient_name =~ ~s(")
+
+        assert is_binary(Swoosh.Adapters.SMTP.Helpers.body(email, []))
+      end)
+    end
+
     test "handles text/html email", %{user: user, email_alias: email_alias} do
       data = html_email("sender@example.com", [email_alias.address], "HTML only", @html_content)
       args = %{from: "sender@example.com", to: email_alias.address, data: data}

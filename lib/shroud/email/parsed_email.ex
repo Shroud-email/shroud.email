@@ -211,27 +211,32 @@ defmodule Shroud.Email.ParsedEmail do
   end
 
   # Sanitizes malformed email addresses by:
-  # 1. Removing spaces from the local part
+  # 1. Removing spaces and double quotes from the local part
   # 2. Stripping invalid bracket notation from domains (e.g., [domain] -> domain)
-  # This handles (likely spam) emails that have invalid addresses like "foo bar@example.com"
+  # This handles emails with invalid addresses like "foo bar@example.com"
   # or "user@[domain]" which would otherwise cause gen_smtp/mimemail to crash during encoding.
+  # Double quotes are particularly important to strip: a header like
+  # `To: "Subscriber" foo@example.com` (a quoted display name with no angle brackets) parses
+  # into an address of `"Subscriber"foo@example.com`. When that address is later placed inside
+  # `<...>` for an outgoing From/Reply-To header, mimemail crashes with
+  # {:error, {1, :smtp_rfc5322_scan, {:illegal, ~c"\"\""}}}.
   # It's not great that we're modifying the email address, but it's better than crashing.
   defp sanitize_email_address(address) do
     case String.split(address, "@", parts: 2) do
       [local_part, domain] ->
-        sanitized_local = String.replace(local_part, ~r/\s+/, "")
-        sanitized_domain = sanitize_domain(domain)
+        sanitized_local = String.replace(local_part, ~r/[\s"]+/, "")
+        sanitized_domain = domain |> sanitize_domain() |> String.replace(~r/["]+/, "")
         "#{sanitized_local}@#{sanitized_domain}"
 
       _ ->
-        # No @ sign found, just remove spaces
-        String.replace(address, ~r/\s+/, "")
+        # No @ sign found, just remove spaces and quotes
+        String.replace(address, ~r/[\s"]+/, "")
     end
   end
 
   # Sanitizes the domain part of an email address.
   # RFC 5321 allows IP address literals in brackets like [192.168.1.1] or [IPv6:...],
-  # but some spam emails use invalid bracket notation like [domain].
+  # but some emails use invalid bracket notation like [domain].
   # This strips brackets from invalid bracket notation while preserving valid IP literals.
   defp sanitize_domain(domain) do
     case Regex.run(~r/^\[(.+)\]$/, domain) do
