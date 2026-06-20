@@ -206,6 +206,27 @@ defmodule Shroud.Email.ParsedEmailTest do
       assert reply_to_address == "jane@invalid"
     end
 
+    test "strips quotes from addresses that have no @ sign" do
+      # A "From" header with a quoted value and no @ sign (e.g. `From: "No Email"`)
+      # parses into an address with no @. The quotes must still be stripped so the
+      # value can be encoded into an outgoing header without crashing mimemail.
+      email_raw =
+        text_email(
+          ~s("No Email"),
+          ["info@example.com"],
+          "Test email with quoted address and no @ sign",
+          "Test body"
+        )
+
+      mimemail_email = :mimemail.decode(email_raw)
+
+      %{swoosh_email: email} =
+        ParsedEmail.parse(mimemail_email, "sender@example.com", "alias@email.shroud.test")
+
+      {_from_name, from_address} = email.from
+      assert from_address == "NoEmail"
+    end
+
     test "preserves valid IP address bracket notation in domains" do
       # Valid IP address literals in brackets should be preserved
       email_raw =
