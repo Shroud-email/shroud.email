@@ -776,7 +776,9 @@ defmodule Shroud.Email.EmailHandlerTest do
 
     test "discards outgoing email from free users" do
       free_user = user_fixture(%{status: :free, email: "freeuser@example.com"})
-      _free_alias = alias_fixture(%{user_id: free_user.id, address: "freealias@email.shroud.test"})
+
+      _free_alias =
+        alias_fixture(%{user_id: free_user.id, address: "freealias@email.shroud.test"})
 
       data =
         text_email(
