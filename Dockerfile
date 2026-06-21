@@ -62,6 +62,12 @@ RUN --mount=type=cache,target=/var/lib/apt,sharing=locked \
 RUN update-ca-certificates
 
 ARG MIX_ENV
+
+# Release identifier (e.g. v1.2.0-4-gabcd123) reported to Sentry at runtime.
+# Passed in by the CI build; defaults to "unknown" for local builds.
+ARG SENTRY_RELEASE="unknown"
+ENV SENTRY_RELEASE="${SENTRY_RELEASE}"
+
 ENV USER="elixir"
 
 WORKDIR "/home/${USER}/app"

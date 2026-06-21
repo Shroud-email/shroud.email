@@ -143,4 +143,19 @@ if config_env() == :prod do
     app_domain: app_domain,
     email_domain: email_domain,
     env: :prod
+
+  # Sentry error reporting. SENTRY_RELEASE is baked into the image at build
+  # time (see Dockerfile).
+  if sentry_dsn = System.get_env("SENTRY_DSN") do
+    config :sentry,
+      dsn: sentry_dsn,
+      environment_name: config_env(),
+      release: System.get_env("SENTRY_RELEASE"),
+      integrations: [
+        oban: [
+          capture_errors: true,
+          cron: [enabled: true]
+        ]
+      ]
+  end
 end
