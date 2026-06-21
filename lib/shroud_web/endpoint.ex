@@ -22,6 +22,9 @@ defmodule ShroudWeb.Endpoint do
     from: :shroud,
     gzip: false,
     only: ShroudWeb.static_paths(),
+    # `only` matches the digested favicon by exact name only; `only_matching`
+    # lets `favicon-<hash>.ico` (referenced by ~p in prod) be served too.
+    only_matching: ~w(favicon),
     headers: %{"Access-Control-Allow-Origin" => "*"}
 
   # Code reloading can be explicitly enabled under the
