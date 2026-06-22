@@ -11,7 +11,18 @@ defmodule Shroud.MixProject do
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
       deps: deps(),
+      usage_rules: usage_rules(),
       test_coverage: [tool: ExCoveralls]
+    ]
+  end
+
+  # Dependency usage rules synced into AGENTS.md via `mix usage_rules.sync`.
+  # The config is the source of truth: packages listed here are inlined as
+  # marked sections, and removing one removes its section on the next sync.
+  defp usage_rules do
+    [
+      file: "AGENTS.md",
+      usage_rules: [:usage_rules, :phoenix]
     ]
   end
 
@@ -98,7 +109,8 @@ defmodule Shroud.MixProject do
       {:ex_image_info, "~> 1.0"},
       {:ecto_psql_extras, "~> 0.8.8"},
       {:heroicons, "~> 0.5.7"},
-      {:mailex, "~> 0.1.3"}
+      {:mailex, "~> 0.1.3"},
+      {:usage_rules, "~> 1.2", only: [:dev], runtime: false}
     ]
   end
 
