@@ -57,6 +57,14 @@ defmodule ShroudWeb.UserResetPasswordControllerTest do
       assert html_response(conn, 200) =~ "Reset password"
     end
 
+    test "form posts to the token URL", %{conn: conn, token: token} do
+      conn = get(conn, ~p"/users/reset_password/#{token}")
+      response = html_response(conn, 200)
+
+      assert response =~ ~s(action="/users/reset_password/#{token}")
+      refute response =~ "/users/reset_password/@token"
+    end
+
     test "does not render reset password with invalid token", %{conn: conn} do
       conn = get(conn, ~p"/users/reset_password/oops")
       assert redirected_to(conn) == "/"
