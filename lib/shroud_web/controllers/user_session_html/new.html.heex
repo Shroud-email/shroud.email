@@ -11,10 +11,10 @@
 
   <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
     <div class="bg-white dark:bg-gray-800 py-8 px-4 shadow-sm dark:shadow-gray-900/50 sm:rounded-lg sm:px-10">
-      <.form :let={f} for={@conn} action={~p"/users/log_in"} as={:user} class="space-y-6">
+      <.form :let={f} for={@conn} action={~p"/users/log_in"} as={:user} id="login-form" class="space-y-6">
         <%= if @error_message do %>
           <div class="alert alert-error">
-            <%= @error_message %>
+            {@error_message}
           </div>
         <% end %>
 

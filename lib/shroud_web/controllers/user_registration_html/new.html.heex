@@ -17,7 +17,7 @@
 
   <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
     <div class="bg-white dark:bg-gray-800 py-8 px-4 shadow-sm dark:shadow-gray-900/50 sm:rounded-lg sm:px-10">
-      <.form :let={f} for={@changeset} action={~p"/users/register"} as={:user} class="space-y-6">
+      <.form :let={f} for={@changeset} id="user-registration-form" action={~p"/users/register"} as={:user} class="space-y-6">
         <%= if @lifetime do %>
           <p class="text-sm text-gray-600 dark:text-gray-400 text-center">Signing up for a lifetime account.</p>
           <%= select f, :status, [:lifetime], selected: :lifetime, class: "hidden" %>
