@@ -5,8 +5,8 @@
   <h1 class="text-3xl font-extrabold text-center text-gray-900 dark:text-gray-100">Email report</h1>
 
   <p class="my-6 text-gray-800 dark:text-gray-200">
-    This email was sent from <span class="font-bold"><%= @sender %></span>
-    to <span class="font-bold"><%= @email_alias %></span>.
+    This email was sent from <span class="font-bold">{@sender}</span>
+    to <span class="font-bold">{@email_alias}</span>.
   </p>
 
   <%= if not Enum.empty?(@trackers) do %>
@@ -16,7 +16,7 @@
 
     <ul class="space-y-2 my-4">
       <%= for tracker <- @trackers do %>
-        <li class="block bg-slate-200 dark:bg-gray-700 rounded p-3 font-semibold text-gray-900 dark:text-gray-100"><%= tracker %></li>
+        <li class="block bg-slate-200 dark:bg-gray-700 rounded p-3 font-semibold text-gray-900 dark:text-gray-100">{tracker}</li>
       <% end %>
     </ul>
 

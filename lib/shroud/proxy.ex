@@ -39,8 +39,6 @@ defmodule Shroud.Proxy do
             List.keyfind(headers, "Content-Type", 0, {"Content-Type", nil})
 
           {:ok, {body, content_type}}
-
-          {:ok, {body, content_type}}
         else
           {:error, :not_an_image}
         end
