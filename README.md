@@ -13,6 +13,10 @@ This repo contains our source code. If you just want to set up your email aliase
 Shroud is built with Elixir and [Phoenix](https://www.phoenixframework.org/). Make sure you
 have Elixir and mix installed.
 
+Our agent guidelines live in [`AGENTS.md`](AGENTS.md). If you use Claude Code, install
+something like the [agents-md-loader](https://tangled.org/btao.org/claude-agents-md-loader)
+so that Claude Code reads `AGENTS.md` files (it does not pick them up natively).
+
 To start the server:
 
   * Install dependencies with `mix deps.get`
