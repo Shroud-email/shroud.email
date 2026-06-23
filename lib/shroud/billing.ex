@@ -15,7 +15,10 @@ defmodule Shroud.Billing do
   end
 
   @spec redeem_lifetime_code(String.t(), User) ::
-          :ok | {:error, :invalid_code} | {:error, :already_redeemed}
+          :ok
+          | {:error, :invalid_code}
+          | {:error, :already_redeemed}
+          | {:error, :redemption_failed}
   def redeem_lifetime_code(code, %User{} = user) do
     cond do
       not valid_code?(code) ->
@@ -25,20 +28,26 @@ defmodule Shroud.Billing do
         {:error, :already_redeemed}
 
       true ->
-        Multi.new()
-        |> Multi.insert(
-          :lifetime_code,
-          LifetimeCode.changeset(%LifetimeCode{}, %{code: code, redeemed_by_id: user.id})
-        )
-        |> Multi.update(
-          :user,
-          User.status_changeset(user, %{status: :lifetime, trial_expires_at: nil})
-        )
-        |> Repo.transaction()
+        result =
+          Multi.new()
+          |> Multi.insert(
+            :lifetime_code,
+            LifetimeCode.changeset(%LifetimeCode{}, %{code: code, redeemed_by_id: user.id})
+          )
+          |> Multi.update(
+            :user,
+            User.status_changeset(user, %{status: :lifetime, trial_expires_at: nil})
+          )
+          |> Repo.transaction()
 
-        Logger.notice("#{user.email} redeemed a lifetime code!")
+        case result do
+          {:ok, _changes} ->
+            Logger.notice("#{user.email} redeemed a lifetime code!")
+            :ok
 
-        :ok
+          {:error, _failed_operation, _failed_value, _changes_so_far} ->
+            {:error, :redemption_failed}
+        end
     end
   end
 
