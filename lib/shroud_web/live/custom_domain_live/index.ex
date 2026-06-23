@@ -52,7 +52,11 @@ defmodule ShroudWeb.CustomDomainLive.Index do
                 </div>
               <% else %>
                 <div x-init x-tooltip.raw="Waiting for DNS records" class="ml-2 mt-1">
-                  <icon name={:ellipsis_horizontal} solid class="text-gray-500 h-4 w-4 animate-pulse" />
+                  <.icon
+                    name={:ellipsis_horizontal}
+                    solid
+                    class="text-gray-500 h-4 w-4 animate-pulse"
+                  />
                 </div>
               <% end %>
             </h3>
