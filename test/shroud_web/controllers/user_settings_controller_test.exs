@@ -1,7 +1,7 @@
 defmodule ShroudWeb.UserSettingsControllerTest do
   use ShroudWeb.ConnCase, async: true
 
-  alias Shroud.Accounts
+  alias Shroud.{Accounts, Billing, Repo}
   import Shroud.AccountsFixtures
 
   setup :register_and_log_in_user
@@ -17,6 +17,25 @@ defmodule ShroudWeb.UserSettingsControllerTest do
       conn = build_conn()
       conn = get(conn, ~p"/settings/account")
       assert redirected_to(conn) == ~p"/users/log_in"
+    end
+  end
+
+  describe "POST /settings/billing/lifetime" do
+    test "redeems a lifetime code through the settings form", %{conn: conn, user: user} do
+      conn = get(conn, ~p"/settings/billing/lifetime")
+      assert html_response(conn, 200) =~ "Sign up for a lifetime account"
+
+      code = Billing.create_lifetime_code()
+      conn = post(conn, ~p"/settings/billing/lifetime", %{"lifetime_code" => code})
+
+      assert redirected_to(conn) == ~p"/settings/billing"
+
+      assert Flash.get(conn.assigns.flash, :info) ==
+               "You have successfully signed up for lifetime access!"
+
+      conn = get(recycle(conn), ~p"/settings/billing")
+      assert html_response(conn, 200) =~ "You're on a lifetime plan"
+      assert Repo.reload!(user).status == :lifetime
     end
   end
 
