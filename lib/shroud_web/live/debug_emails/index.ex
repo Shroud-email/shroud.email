@@ -49,34 +49,32 @@ defmodule ShroudWeb.DebugEmailsLive.Index do
                 </th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-gray-200 bg-white">
-              <%= for job <- @failed_jobs do %>
-                <tr>
-                  <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                    {job.args["from"]}
-                  </td>
-                  <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                    {job.args["to"]}
-                  </td>
-                  <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                    {job.attempt} / {job.max_attempts}
-                  </td>
-                  <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                    {Timex.format!(job.inserted_at, "{ISOdate} {h24}:{m}")}
-                  </td>
-                  <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                    {Timex.format!(job.scheduled_at, "{ISOdate} {h24}:{m}")}
-                  </td>
-                  <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                    <a
-                      href={~p"/debug_emails/#{job.id}"}
-                      class="text-indigo-600 hover:text-indigo-900"
-                    >
-                      Details
-                    </a>
-                  </td>
-                </tr>
-              <% end %>
+            <tbody id="failed-jobs" phx-update="stream" class="divide-y divide-gray-200 bg-white">
+              <tr :for={{id, job} <- @streams.failed_jobs} id={id}>
+                <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                  {job.args["from"]}
+                </td>
+                <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                  {job.args["to"]}
+                </td>
+                <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                  {job.attempt} / {job.max_attempts}
+                </td>
+                <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                  {Timex.format!(job.inserted_at, "{ISOdate} {h24}:{m}")}
+                </td>
+                <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                  {Timex.format!(job.scheduled_at, "{ISOdate} {h24}:{m}")}
+                </td>
+                <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                  <a
+                    href={~p"/debug_emails/#{job.id}"}
+                    class="text-indigo-600 hover:text-indigo-900"
+                  >
+                    Details
+                  </a>
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -95,9 +93,9 @@ defmodule ShroudWeb.DebugEmailsLive.Index do
 
       failed_jobs = Repo.all(query)
 
-      assign(socket, :failed_jobs, failed_jobs)
+      stream(socket, :failed_jobs, failed_jobs)
     else
-      assign(socket, :failed_jobs, [])
+      stream(socket, :failed_jobs, [])
     end
   end
 end

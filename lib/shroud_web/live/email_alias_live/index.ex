@@ -42,7 +42,6 @@ defmodule ShroudWeb.EmailAliasLive.Index do
           socket =
             socket
             |> put_flash(:success, "Created new alias #{email_alias.address}.")
-            |> assign(:aliases, [email_alias | socket.assigns.aliases])
 
           {:noreply,
            push_navigate(socket,
@@ -81,9 +80,9 @@ defmodule ShroudWeb.EmailAliasLive.Index do
     if user |> can?(create(EmailAlias)) do
       case Aliases.create_email_alias(%{user_id: user.id, address: address}) do
         {:ok, email_alias} ->
-          socket
-          |> put_flash(:success, "Created new alias #{email_alias.address}.")
-          |> assign(:aliases, [email_alias | socket.assigns.aliases])
+          socket =
+            socket
+            |> put_flash(:success, "Created new alias #{email_alias.address}.")
 
           {:noreply,
            push_navigate(socket,
@@ -140,11 +139,12 @@ defmodule ShroudWeb.EmailAliasLive.Index do
   end
 
   defp update_email_aliases(socket) do
-    assign(
-      socket,
-      :aliases,
+    aliases =
       Aliases.list_aliases(socket.assigns[:current_user], socket.assigns[:filter_query])
-    )
+
+    socket
+    |> stream(:aliases, aliases, reset: true)
+    |> assign(:filtered_alias_count, length(aliases))
   end
 
   defp assign_at_free_limit(socket) do
