@@ -132,6 +132,25 @@ defmodule Shroud.AliasesTest do
     end
   end
 
+  describe "update_email_alias/2" do
+    test "ignores user_id in attrs so an alias can't be reassigned to another user" do
+      %{id: owner_id} = user_fixture()
+      %{id: other_user_id} = user_fixture()
+      email_alias = alias_fixture(%{user_id: owner_id})
+
+      {:ok, updated} =
+        Aliases.update_email_alias(email_alias, %{
+          "title" => "new title",
+          "user_id" => other_user_id
+        })
+
+      assert updated.title == "new title"
+      # user_id must not be mass-assignable via the changeset.
+      assert updated.user_id == owner_id
+      assert Repo.reload!(updated).user_id == owner_id
+    end
+  end
+
   describe "block_sender/2" do
     test "blocks a sender" do
       %{id: user_id} = user_fixture()

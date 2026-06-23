@@ -291,7 +291,9 @@ defmodule Shroud.Aliases do
 
     attrs = Map.merge(attrs, %{domain_id: domain_id})
 
-    %EmailAlias{}
+    # user_id is intentionally set on the struct rather than cast from attrs so it
+    # can't be reassigned through EmailAlias.changeset/2 (used by update_email_alias).
+    %EmailAlias{user_id: attrs.user_id}
     |> EmailAlias.changeset(attrs)
     |> Repo.insert()
   end
