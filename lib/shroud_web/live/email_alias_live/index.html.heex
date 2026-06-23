@@ -31,7 +31,7 @@
   </.live_component>
 </form>
 
-<%= if Enum.empty?(@aliases) and @filter_query == "" do %>
+<%= if @filtered_alias_count == 0 and @filter_query == "" do %>
 
   <.empty_state
     title="No aliases yet"
@@ -49,8 +49,8 @@
 <% else %>
   <div class="mb-3 flex items-center justify-between">
     <div class="text-gray-600 dark:text-gray-400 text-sm hidden sm:block">
-      {length(@aliases)}
-      <%= if length(@aliases) == 1 do %>
+      {@filtered_alias_count}
+      <%= if @filtered_alias_count == 1 do %>
         alias
       <% else %>
         aliases
@@ -125,8 +125,8 @@
                 </th>
               </tr>
             </thead>
-            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-              <tr :for={email_alias <- @aliases}>
+            <tbody id="aliases" phx-update="stream" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+              <tr :for={{id, email_alias} <- @streams.aliases} id={id}>
                 <td class="px-6 py-4 whitespace-nowrap">
                   <div>
                     <dl class="text-sm lg:hidden">
