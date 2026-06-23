@@ -35,12 +35,21 @@ defmodule ShroudWeb.SpamEmailLive.Index do
   def handle_event("block_sender", %{"sender" => sender, "alias" => alias_address}, socket) do
     email_alias = Aliases.get_email_alias_by_address!(alias_address)
 
-    if can?(socket.assigns.current_user, update(email_alias)) do
-      with {:ok, _alias} <- Aliases.block_sender(email_alias, sender) do
-        # re-load spam emails to update associated email_alias' list of blocked senders
-        {:noreply, load_spam_emails(socket)}
+    socket =
+      if can?(socket.assigns.current_user, update(email_alias)) do
+        case Aliases.block_sender(email_alias, sender) do
+          {:ok, _alias} ->
+            # re-load spam emails to update associated email_alias' list of blocked senders
+            load_spam_emails(socket)
+
+          {:error, _changeset} ->
+            put_flash(socket, :error, "Something went wrong.")
+        end
+      else
+        put_flash(socket, :error, "You don't have permission to do that.")
       end
-    end
+
+    {:noreply, socket}
   end
 
   defp load_spam_emails(socket) do
