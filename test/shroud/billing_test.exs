@@ -54,5 +54,24 @@ defmodule Shroud.Billing.BillingTest do
                Billing.redeem_lifetime_code(code, user)
              end) =~ "#{user.email} redeemed a lifetime code!"
     end
+
+    test "returns an error (not :ok) when the transaction fails" do
+      code = Billing.create_lifetime_code()
+
+      # An unpersisted user has a nil id, so the lifetime_code changeset
+      # (redeemed_by_id is required) fails inside the transaction.
+      unsaved_user = %Shroud.Accounts.User{email: "ghost@example.com"}
+
+      log =
+        capture_log(fn ->
+          assert {:error, :redemption_failed} =
+                   Billing.redeem_lifetime_code(code, unsaved_user)
+        end)
+
+      # The success message must not be logged when redemption failed.
+      refute log =~ "redeemed a lifetime code!"
+      # And the code must not have been consumed.
+      assert is_nil(Repo.get_by(Billing.LifetimeCode, code: code))
+    end
   end
 end
