@@ -36,7 +36,6 @@ defmodule Shroud.Aliases.EmailAlias do
       :notes,
       :forwarded,
       :replied,
-      :user_id,
       :deleted_at,
       :blocked_addresses,
       :domain_id
