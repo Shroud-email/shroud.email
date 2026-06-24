@@ -1,6 +1,7 @@
 defmodule Shroud.Email.IncomingEmailHandler do
   alias Shroud.Accounts
   alias Shroud.Accounts.User
+  alias Shroud.Accounts.UserNotifierJob
   alias Shroud.Aliases
   alias Shroud.Domain
   alias Shroud.Email
@@ -97,19 +98,56 @@ defmodule Shroud.Email.IncomingEmailHandler do
        ) do
     recipient_user = custom_domain.user
 
-    {:ok, _email_alias} =
-      Aliases.create_email_alias(%{
-        user_id: recipient_user.id,
-        address: recipient,
-        notes: "Created by catch-all"
-      })
+    case Aliases.create_email_alias(%{
+           user_id: recipient_user.id,
+           address: recipient,
+           notes: "Created by catch-all"
+         }) do
+      {:ok, _email_alias} ->
+        maybe_log(
+          recipient_user,
+          "Created alias #{recipient} via catch-all. Forwarding incoming email from #{sender} to #{recipient_user.email}"
+        )
 
-    maybe_log(
-      recipient_user,
-      "Created alias #{recipient} via catch-all. Forwarding incoming email from #{sender} to #{recipient_user.email}"
-    )
+        forward_incoming_email(recipient_user, sender, recipient, data)
 
-    forward_incoming_email(recipient_user, sender, recipient, data)
+      {:error, %Ecto.Changeset{} = changeset} ->
+        if uniqueness_constraint_error?(changeset, :address) do
+          maybe_log(
+            recipient_user,
+            "Alias #{recipient} already exists (likely created by concurrent catch-all). Forwarding email from #{sender} to #{recipient_user.email}"
+          )
+
+          forward_incoming_email(recipient_user, sender, recipient, data)
+        else
+          maybe_log(
+            recipient_user,
+            "Could not create catch-all alias #{recipient} (from #{sender}) as the address is invalid. Notifying #{recipient_user.email}."
+          )
+
+          notify_catchall_alias_creation_failed(recipient_user, recipient)
+        end
+
+      {:error, reason} ->
+        maybe_log(
+          recipient_user,
+          "Could not create catch-all alias #{recipient} (from #{sender}): #{inspect(reason)}"
+        )
+
+        {:error, reason}
+    end
+  end
+
+  @spec notify_catchall_alias_creation_failed(User.t(), String.t()) :: :ok
+  defp notify_catchall_alias_creation_failed(%User{} = user, recipient) do
+    %{
+      email_function: :deliver_catchall_alias_creation_failed,
+      email_args: [user.id, recipient]
+    }
+    |> UserNotifierJob.new()
+    |> Oban.insert!()
+
+    :ok
   end
 
   @spec forward_incoming_email(User.t(), String.t(), String.t(), String.t()) ::
@@ -216,5 +254,13 @@ defmodule Shroud.Email.IncomingEmailHandler do
             email |> Map.put(:reply_to, {reply_to_reply_address, reply_to_reply_address})
           end
         end).()
+  end
+
+  @spec uniqueness_constraint_error?(Ecto.Changeset.t(), atom()) :: boolean()
+  defp uniqueness_constraint_error?(changeset, field) do
+    Enum.any?(changeset.errors, fn
+      {^field, {_message, [constraint: :unique, constraint_name: _name]}} -> true
+      _ -> false
+    end)
   end
 end

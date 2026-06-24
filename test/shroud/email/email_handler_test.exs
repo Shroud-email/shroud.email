@@ -955,6 +955,38 @@ defmodule Shroud.Email.EmailHandlerTest do
       assert metric.forwarded == 2
     end
 
+    test "notifies the user if a catch-all address is invalid", %{user: user} do
+      custom_domain = custom_domain_fixture(%{user_id: user.id, catchall_enabled: true})
+      invalid_address = "invalid_address@#{custom_domain.domain}"
+
+      data =
+        text_email(
+          "sender@example.com",
+          [invalid_address],
+          "Catch-all test",
+          "Plain text content!"
+        )
+
+      perform_job(EmailHandler, %{
+        from: "sender@example.com",
+        to: invalid_address,
+        data: data
+      })
+
+      # No alias is created and the email is not forwarded
+      assert is_nil(Aliases.get_email_alias_by_address(invalid_address))
+      assert_no_email_sent()
+
+      # But the user is notified that we couldn't create the alias
+      assert_enqueued(
+        worker: Shroud.Accounts.UserNotifierJob,
+        args: %{
+          email_function: :deliver_catchall_alias_creation_failed,
+          email_args: [user.id, invalid_address]
+        }
+      )
+    end
+
     test "does not create an alias if catch-all is disabled", %{user: user} do
       custom_domain = custom_domain_fixture(%{user_id: user.id, catchall_enabled: false})
 
