@@ -3,6 +3,7 @@ defmodule ShroudWeb.EmailAliasLiveTest do
 
   import Phoenix.LiveViewTest
   import Shroud.AliasesFixtures
+  import Shroud.DomainFixtures
 
   describe "Index" do
     setup :register_and_log_in_user
@@ -32,6 +33,27 @@ defmodule ShroudWeb.EmailAliasLiveTest do
 
       assert html =~ "Created new alias"
       assert html =~ "@email.shroud.test"
+    end
+
+    test "creates new custom alias", %{conn: conn, user: user} do
+      custom_domain = custom_domain_fixture(%{user_id: user.id})
+
+      {:ok, index_live, _html} =
+        conn
+        |> live(~p"/")
+
+      # open the custom alias modal, which sets the domain to create the alias under
+      index_live
+      |> render_hook("open_custom_alias_modal", %{"text" => "@#{custom_domain.domain}"})
+
+      {:ok, _view, html} =
+        index_live
+        |> form("form[phx-submit='create_custom_alias']", %{"alias_name" => "john.doe"})
+        |> render_submit()
+        |> follow_redirect(conn)
+
+      assert html =~ "Created new alias"
+      assert html =~ "john.doe@#{custom_domain.domain}"
     end
 
     # test "deletes email_alias in listing", %{conn: conn, email_alias: email_alias} do
