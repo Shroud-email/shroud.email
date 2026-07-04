@@ -56,10 +56,12 @@ defmodule Shroud.PermissionsTest do
       # Create the alias while active, then deactivate the user.
       user = user_fixture(%{status: :active})
       email_alias = alias_fixture(%{user_id: user.id})
+
       {:ok, _} =
         user
         |> Shroud.Accounts.User.status_changeset(%{status: :inactive})
         |> Shroud.Repo.update()
+
       user = Shroud.Repo.reload!(user)
 
       assert user |> can?(read(email_alias))
