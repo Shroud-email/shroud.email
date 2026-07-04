@@ -66,7 +66,7 @@ defmodule Shroud.Email.SpamAssassin do
       case File.write(tmp_path, raw) do
         :ok ->
           try do
-            # ponytail: no Elixir-level timeout on this System.cmd — Elixir 1.20's
+            # No Elixir-level timeout on this System.cmd — Elixir 1.20's
             # System.cmd has no :timeout option. The timeout lives in spamc's own
             # socket timeout to spamd (~10-195s). If spamd hangs, this call blocks
             # until spamc exits, which can starve the :outgoing_email Oban queue
@@ -119,7 +119,7 @@ defmodule Shroud.Email.SpamAssassin do
 
       headers
       |> String.split(~r/\r?\n/)
-      # ponytail: this scans one physical line per header. RFC 5322 folded
+      # This scans one physical line per header. RFC 5322 folded
       # headers (continuation lines starting with whitespace) would be
       # truncated. SpamAssassin emits X-Spam-Status on a single line in
       # practice; if that ever changes, unfold by joining lines that start
