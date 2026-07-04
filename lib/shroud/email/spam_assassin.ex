@@ -40,6 +40,89 @@ defmodule Shroud.Email.SpamAssassin do
     def scan(_raw), do: :disabled
   end
 
+  defmodule Client do
+    @moduledoc """
+    Real spamd client that shells out to the `spamc` CLI shipped with
+    SpamAssassin. Implements `Shroud.Email.SpamAssassin.Behaviour`.
+
+    Fail-safe: every exit path other than a clean parse returns
+    `{:error, reason}` so callers can fall back to "not spam".
+    """
+    @behaviour Shroud.Email.SpamAssassin.Behaviour
+
+    @default_spamc_path "spamc"
+
+    @impl true
+    def scan(raw) when is_binary(raw) do
+      config = Application.get_env(:shroud, :spamassassin, [])
+      spamc_path = Keyword.get(config, :spamc_path, @default_spamc_path)
+
+      # System.cmd in Elixir 1.20 does not support piping data to stdin
+      # via an :input option. Write the email to a temp file and use a
+      # shell redirect to feed it to spamc.
+      tmp_path =
+        Path.join(System.tmp_dir!(), "shroud-spamc-#{System.unique_integer([:positive])}.eml")
+
+      case File.write(tmp_path, raw) do
+        :ok ->
+          try do
+            case System.cmd("sh", ["-c", ~s("#{spamc_path}" < "#{tmp_path}")],
+                   stderr_to_stdout: true
+                 ) do
+              {output, 0} ->
+                case parse_x_spam_status(output) do
+                  {:ok, _} = result -> result
+                  :error -> {:error, :no_spam_header}
+                end
+
+              {_output, _exit_code} ->
+                # Non-zero exit: spamd unreachable, message rejected, etc.
+                {:error, :spamc_nonzero_exit}
+            end
+          rescue
+            # `System.cmd` raises `ErlangError` when the binary is not
+            # found. Treat that as a recoverable error, never a crash.
+            e in [ErlangError, File.Error] ->
+              {:error, {:spamc_unavailable, Exception.message(e)}}
+          after
+            File.rm(tmp_path)
+          end
+
+        {:error, reason} ->
+          {:error, {:tmp_write_failed, reason}}
+      end
+    end
+
+    @doc """
+    Pure parser: extracts the `X-Spam-Status` header value from a
+    SpamAssassin-annotated message. Case-insensitive on the header name.
+    Returns `{:ok, value}` or `:error`.
+    """
+    @spec parse_x_spam_status(String.t()) :: {:ok, String.t()} | :error
+    def parse_x_spam_status(output) when is_binary(output) do
+      # Only scan the headers block (everything before the first blank line).
+      [headers | _] = String.split(output, ~r/\r?\n\r?\n/, parts: 2)
+
+      headers
+      |> String.split(~r/\r?\n/)
+      |> Enum.find_value(fn line ->
+        case String.split(line, ":", parts: 2) do
+          [name, value] ->
+            if String.downcase(String.trim(name)) == "x-spam-status" do
+              String.trim(value)
+            end
+
+          _ ->
+            nil
+        end
+      end)
+      |> case do
+        nil -> :error
+        value when is_binary(value) -> {:ok, value}
+      end
+    end
+  end
+
   @spec scan(raw_email()) :: {:ok, x_spam_status()} | {:error, term()} | :disabled
   def scan(raw) do
     config = Application.get_env(:shroud, :spamassassin, [])
