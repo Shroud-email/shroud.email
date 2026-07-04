@@ -17,6 +17,11 @@ defmodule Shroud.Email.SpamEmailScrubber do
 
   Meta.strip_comments()
 
+  # Strip XML processing instructions (<?xml:namespace ...?>). The generated
+  # catch-all only matches binary tag names, so atom-tagged `{:pi, _, _}` nodes
+  # would otherwise raise FunctionClauseError on real-world spam HTML.
+  def scrub({:pi, _name, _content}), do: ""
+
   Meta.allow_tag_with_uri_attributes("a", ["href"], @valid_schemes)
   Meta.allow_tag_with_these_attributes("a", ["name", "title"])
 
