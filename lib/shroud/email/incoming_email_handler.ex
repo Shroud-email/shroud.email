@@ -9,6 +9,7 @@ defmodule Shroud.Email.IncomingEmailHandler do
   alias Shroud.Util
 
   alias Shroud.Email.{
+    SpamAssassin,
     SpamHandler,
     ParsedEmail,
     TrackerRemover,
@@ -23,6 +24,8 @@ defmodule Shroud.Email.IncomingEmailHandler do
           :ok | {:error, term()}
   # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   def handle_incoming_email(sender, recipient, data) do
+    data = maybe_inject_spamassassin_header(data)
+
     # Lookup real email based on the receiving alias (`recipient`)
     recipient_user = Accounts.get_user_by_alias(recipient)
     email_alias = Aliases.get_email_alias_by_address(recipient)
@@ -216,5 +219,66 @@ defmodule Shroud.Email.IncomingEmailHandler do
             email |> Map.put(:reply_to, {reply_to_reply_address, reply_to_reply_address})
           end
         end).()
+  end
+
+  # If SpamAssassin scanning is enabled and the inbound message does not
+  # already carry an X-Spam-Status header (Haraka may still inject one
+  # during the rollout window), run the scan and prepend the header to
+  # the raw data so the existing SpamHandler header-reading code sees it.
+  #
+  # Fail-safe: any error from the scanner is logged and the original
+  # data is returned unchanged. This matches today's "missing header"
+  # behaviour, where SpamHandler.spam?/1 returns false and the email
+  # is forwarded normally.
+  @spec maybe_inject_spamassassin_header(String.t()) :: String.t()
+  defp maybe_inject_spamassassin_header(data) do
+    if has_spamassassin_header?(data) do
+      # Haraka (or a previous scan) already added the header. Don't rescan.
+      data
+    else
+      case SpamAssassin.scan(data) do
+        {:ok, header_value} ->
+          inject_header(data, "X-Spam-Status", header_value)
+
+        :disabled ->
+          data
+
+        {:error, reason} ->
+          Logger.warning("SpamAssassin scan failed: #{inspect(reason)}; forwarding as non-spam")
+          data
+      end
+    end
+  end
+
+  @spec has_spamassassin_header?(String.t()) :: boolean()
+  defp has_spamassassin_header?(data) do
+    case String.split(data, ~r/\r?\n\r?\n/, parts: 2) do
+      [headers | _] ->
+        headers
+        |> String.split(~r/\r?\n/)
+        |> Enum.any?(fn line ->
+          case String.split(line, ":", parts: 2) do
+            [name, _] -> String.downcase(String.trim(name)) == "x-spam-status"
+            _ -> false
+          end
+        end)
+
+      _ ->
+        false
+    end
+  end
+
+  @spec inject_header(String.t(), String.t(), String.t()) :: String.t()
+  defp inject_header(data, name, value) do
+    case String.split(data, ~r/\r?\n\r?\n/, parts: 2) do
+      [headers, body] ->
+        headers <> "\r\n" <> name <> ": " <> value <> "\r\n\r\n" <> body
+
+      [headers] ->
+        headers <> "\r\n" <> name <> ": " <> value <> "\r\n\r\n"
+
+      [] ->
+        name <> ": " <> value <> "\r\n\r\n"
+    end
   end
 end

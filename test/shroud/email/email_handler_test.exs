@@ -1189,6 +1189,116 @@ defmodule Shroud.Email.EmailHandlerTest do
     end
   end
 
+  describe "SpamAssassin integration" do
+    setup do
+      # Enable SpamAssassin and point at the mock for these tests.
+      # The user and email_alias come from the module-level setup.
+      original = Application.get_env(:shroud, :spamassassin, [])
+      Application.put_env(:shroud, :spamassassin, enabled: true, module: Shroud.MockSpamAssassin)
+
+      # Verify Mox expectations on exit so unfulfilled expects (e.g. scan
+      # never called) are caught, not silently passing.
+      verify_on_exit!()
+
+      on_exit(fn -> Application.put_env(:shroud, :spamassassin, original) end)
+
+      :ok
+    end
+
+    test "scans a clean email and forwards it", %{user: user, email_alias: email_alias} do
+      Shroud.MockSpamAssassin
+      |> expect(:scan, fn _raw ->
+        {:ok, "No, score=-1.0 required=5.0 tests=NONE version=3.4.1"}
+      end)
+
+      data =
+        text_email(
+          "sender@example.com",
+          [email_alias.address],
+          "Hello",
+          "Plain text"
+        )
+
+      perform_job(EmailHandler, %{from: "sender@example.com", to: email_alias.address, data: data})
+
+      assert_email_sent(fn email ->
+        assert email.text_body =~ "Plain text"
+      end)
+
+      # Spam email was NOT stored
+      assert Email.list_spam_emails(user) == []
+    end
+
+    test "stores a scanned spam email in detention", %{user: user, email_alias: email_alias} do
+      Shroud.MockSpamAssassin
+      |> expect(:scan, fn _raw ->
+        {:ok, "Yes, score=8.2 required=5.0 tests=FOO,BAR version=3.4.1"}
+      end)
+
+      data =
+        text_email(
+          "spammer@example.com",
+          [email_alias.address],
+          "Viagra",
+          "Buy now"
+        )
+
+      perform_job(EmailHandler, %{
+        from: "spammer@example.com",
+        to: email_alias.address,
+        data: data
+      })
+
+      # No forwarded email
+      assert_no_email_sent()
+
+      # Spam email IS stored, with the SA header
+      spam_email = hd(Email.list_spam_emails(user))
+      assert spam_email.spamassassin_header =~ "Yes, score=8.2"
+    end
+
+    test "fails safe when scan returns an error (forwards as non-spam)", %{
+      user: user,
+      email_alias: email_alias
+    } do
+      Shroud.MockSpamAssassin
+      |> expect(:scan, fn _raw -> {:error, :spamc_nonzero_exit} end)
+
+      data =
+        text_email(
+          "sender@example.com",
+          [email_alias.address],
+          "Hello",
+          "Plain text"
+        )
+
+      # Must not raise, must not drop the mail, must forward it.
+      perform_job(EmailHandler, %{from: "sender@example.com", to: email_alias.address, data: data})
+
+      assert_email_sent(fn email -> assert email.text_body =~ "Plain text" end)
+      assert Email.list_spam_emails(user) == []
+    end
+
+    test "does not rescan when X-Spam-Status is already present (Haraka still active)", %{
+      email_alias: email_alias
+    } do
+      # When the header is already on the message, the scan MUST NOT be called.
+      Shroud.MockSpamAssassin
+      |> expect(:scan, 0, fn _raw -> {:ok, "should not be called"} end)
+
+      data =
+        text_email(
+          "sender@example.com",
+          [email_alias.address],
+          "Hello",
+          "Plain text",
+          "X-Spam-Status: No, score=-1.0 required=5.0 tests=NONE version=3.4.1"
+        )
+
+      perform_job(EmailHandler, %{from: "sender@example.com", to: email_alias.address, data: data})
+    end
+  end
+
   defp tracking_pixel_email_args(email_alias) do
     %{
       from: "sender@example.com",
