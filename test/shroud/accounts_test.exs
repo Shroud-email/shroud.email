@@ -461,7 +461,6 @@ defmodule Shroud.AccountsTest do
     test "sets user status to :free after confirmation", %{user: user, token: token} do
       assert {:ok, confirmed_user} = Accounts.confirm_user(token)
       assert confirmed_user.status == :free
-      assert is_nil(confirmed_user.trial_expires_at)
     end
   end
 
@@ -557,20 +556,6 @@ defmodule Shroud.AccountsTest do
   end
 
   describe "active?/1" do
-    setup do
-      now = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
-      yesterday = NaiveDateTime.add(now, -1 * 60 * 60 * 24)
-      tomorrow = NaiveDateTime.add(now, 60 * 60 * 24)
-
-      %{yesterday: yesterday, tomorrow: tomorrow}
-    end
-
-    test "returns true for active trial users", %{tomorrow: tomorrow} do
-      user = user_fixture(%{status: :trial, trial_expires_at: tomorrow})
-
-      assert Accounts.active?(user)
-    end
-
     test "returns true for active users" do
       user = user_fixture(%{status: :active})
 
@@ -581,12 +566,6 @@ defmodule Shroud.AccountsTest do
       user = user_fixture(%{status: :lifetime})
 
       assert Accounts.active?(user)
-    end
-
-    test "returns false for expired trial users", %{yesterday: yesterday} do
-      user = user_fixture(%{status: :trial, trial_expires_at: yesterday})
-
-      refute Accounts.active?(user)
     end
 
     test "returns true for free users" do
@@ -614,12 +593,6 @@ defmodule Shroud.AccountsTest do
 
     test "returns false for inactive users" do
       user = user_fixture(%{status: :inactive})
-      refute Accounts.paid?(user)
-    end
-
-    test "returns false for trial users" do
-      tomorrow = NaiveDateTime.utc_now() |> NaiveDateTime.add(1, :day)
-      user = user_fixture(%{status: :trial, trial_expires_at: tomorrow})
       refute Accounts.paid?(user)
     end
 

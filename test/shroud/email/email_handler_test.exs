@@ -538,15 +538,11 @@ defmodule Shroud.Email.EmailHandlerTest do
     end
 
     test "forwards to non-active account" do
-      yesterday =
-        NaiveDateTime.utc_now()
-        |> NaiveDateTime.add(-1, :day)
-
       user = user_fixture()
       email_alias = alias_fixture(%{user_id: user.id})
 
       user
-      |> Accounts.User.status_changeset(%{status: :trial, trial_expires_at: yesterday})
+      |> Accounts.User.status_changeset(%{status: :inactive})
       |> Repo.update()
 
       data =
@@ -567,7 +563,7 @@ defmodule Shroud.Email.EmailHandlerTest do
     end
 
     test "forwards bounces from outgoing emails" do
-      user = user_fixture(%{status: :trial})
+      user = user_fixture(%{status: :free})
       email_alias = alias_fixture(%{user_id: user.id, address: "bouncetest@email.shroud.test"})
 
       data = File.read!("test/support/data/bounce.email") |> Util.lf_to_crlf()
