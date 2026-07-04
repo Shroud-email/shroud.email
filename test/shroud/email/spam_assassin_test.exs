@@ -5,7 +5,7 @@ defmodule Shroud.Email.SpamAssassinTest do
   alias Shroud.Email.SpamAssassin
 
   # The mock is registered in test_helper.exs as Shroud.MockSpamAssassin
-  # and bound to the app env :spamassassin_module.
+  # and bound to the app env :spamassassin.
 
   setup do
     # Always verify expectations and stub the module by default so tests
@@ -28,6 +28,8 @@ defmodule Shroud.Email.SpamAssassinTest do
     end
 
     test "returns the X-Spam-Status value via the configured module" do
+      original = Application.get_env(:shroud, :spamassassin, [])
+
       # Use a stub implementation that returns a canned value
       Shroud.MockSpamAssassin
       |> expect(:scan, fn _raw ->
@@ -36,10 +38,12 @@ defmodule Shroud.Email.SpamAssassinTest do
 
       Application.put_env(:shroud, :spamassassin, enabled: true, module: Shroud.MockSpamAssassin)
 
-      assert SpamAssassin.scan("Subject: hi\r\n\r\nbody") ==
-               {:ok, "No, score=-1.0 required=5.0 tests=NONE version=3.4.1"}
-    after
-      Application.put_env(:shroud, :spamassassin, Application.get_env(:shroud, :spamassassin, []))
+      try do
+        assert SpamAssassin.scan("Subject: hi\r\n\r\nbody") ==
+                 {:ok, "No, score=-1.0 required=5.0 tests=NONE version=3.4.1"}
+      after
+        Application.put_env(:shroud, :spamassassin, original)
+      end
     end
   end
 end
