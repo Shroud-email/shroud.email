@@ -27,7 +27,7 @@ Phoenix web layer with LiveView for interactive pages:
 
 ### Email Processing Pipeline
 ```
-SMTP Input → ParsedEmail → SpamAssassin Scan → Tracker Removal → Spam Check → Forward
+SMTP Input → SpamAssassin Scan → ParsedEmail → Tracker Removal → Spam Check → Forward
 ```
 - SMTP server runs on port 1587 (dev) using gen_smtp
 - Tracker pixels and UTM params removed via Floki

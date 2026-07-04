@@ -1297,6 +1297,43 @@ defmodule Shroud.Email.EmailHandlerTest do
 
       perform_job(EmailHandler, %{from: "sender@example.com", to: email_alias.address, data: data})
     end
+
+    test "forwards normally when SpamAssassin is disabled (default config)", %{
+      user: user,
+      email_alias: email_alias
+    } do
+      original = Application.get_env(:shroud, :spamassassin, [])
+
+      try do
+        Application.put_env(:shroud, :spamassassin,
+          enabled: false,
+          module: Shroud.MockSpamAssassin
+        )
+
+        # No expect — scan/1 must not be called when disabled. Use stub to be explicit:
+        Shroud.MockSpamAssassin
+        |> expect(:scan, 0, fn _raw -> {:ok, "should not be called"} end)
+
+        data =
+          text_email(
+            "sender@example.com",
+            [email_alias.address],
+            "Hello",
+            "Plain text"
+          )
+
+        perform_job(EmailHandler, %{
+          from: "sender@example.com",
+          to: email_alias.address,
+          data: data
+        })
+
+        assert_email_sent(fn email -> assert email.text_body =~ "Plain text" end)
+        assert Email.list_spam_emails(user) == []
+      after
+        Application.put_env(:shroud, :spamassassin, original)
+      end
+    end
   end
 
   defp tracking_pixel_email_args(email_alias) do
