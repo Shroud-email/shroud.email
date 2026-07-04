@@ -116,7 +116,6 @@ defmodule ShroudWeb.CheckoutController do
             current_period_end = DateTime.from_unix!(subscription.current_period_end)
 
             attrs = %{
-              trial_expires_at: nil,
               plan_expires_at: current_period_end,
               status: :active
             }
@@ -138,7 +137,6 @@ defmodule ShroudWeb.CheckoutController do
             # the subscription. Move to free tier instead of inactive.
             # https://stripe.com/docs/api/subscriptions/object#subscription_object-status
             attrs = %{
-              trial_expires_at: nil,
               plan_expires_at: nil,
               status: :free
             }

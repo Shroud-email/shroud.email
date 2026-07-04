@@ -32,7 +32,7 @@ defmodule Shroud.Billing do
         )
         |> Multi.update(
           :user,
-          User.status_changeset(user, %{status: :lifetime, trial_expires_at: nil})
+          User.status_changeset(user, %{status: :lifetime})
         )
         |> Repo.transaction()
 
