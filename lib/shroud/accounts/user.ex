@@ -19,9 +19,8 @@ defmodule Shroud.Accounts.User do
     has_many :user_tokens, Shroud.Accounts.UserToken
 
     field :stripe_customer_id, :string
-    field :trial_expires_at, :naive_datetime
     field :plan_expires_at, :naive_datetime
-    field :status, Ecto.Enum, values: [:lead, :trial, :active, :inactive, :lifetime, :free]
+    field :status, Ecto.Enum, values: [:lead, :active, :inactive, :lifetime, :free]
     field :theme, Ecto.Enum, values: [:system, :light, :dark], default: :system
 
     has_many :aliases, EmailAlias
@@ -134,7 +133,7 @@ defmodule Shroud.Accounts.User do
     now = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
 
     user
-    |> cast(attrs, [:status, :trial_expires_at])
+    |> cast(attrs, [:status])
     |> change(confirmed_at: now)
   end
 
@@ -172,12 +171,12 @@ defmodule Shroud.Accounts.User do
 
   def stripe_changeset(user, attrs) do
     user
-    |> cast(attrs, [:status, :stripe_customer_id, :trial_expires_at, :plan_expires_at])
+    |> cast(attrs, [:status, :stripe_customer_id, :plan_expires_at])
   end
 
   def status_changeset(user, attrs) do
     user
-    |> cast(attrs, [:status, :trial_expires_at])
+    |> cast(attrs, [:status])
   end
 
   def inserted_at_changeset(user, attrs) do

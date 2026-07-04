@@ -5,7 +5,7 @@ defmodule Shroud.Billing.BillingTest do
   import ExUnit.CaptureLog
 
   setup do
-    user = user_fixture(%{status: :trial})
+    user = user_fixture(%{status: :free})
     %{user: user}
   end
 
@@ -44,7 +44,6 @@ defmodule Shroud.Billing.BillingTest do
       assert :ok == Billing.redeem_lifetime_code(code, user)
       user = Repo.reload!(user)
       assert user.status == :lifetime
-      assert is_nil(user.trial_expires_at)
     end
 
     test "logs a successful redemption", %{user: user} do

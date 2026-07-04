@@ -135,8 +135,8 @@ defmodule ShroudWeb.CheckoutControllerTest do
   end
 
   describe "customer.subscription.* -> active" do
-    test "activates the user, sets plan expiry, clears trial and notifies", %{conn: conn} do
-      user = paid_user("cus_active", %{status: :trial})
+    test "activates the user, sets plan expiry and notifies", %{conn: conn} do
+      user = paid_user("cus_active", %{status: :free})
 
       event =
         subscription_event("customer.subscription.updated", %{
@@ -151,13 +151,12 @@ defmodule ShroudWeb.CheckoutControllerTest do
       updated = reload(user)
       assert updated.status == :active
       assert updated.plan_expires_at == @period_end_naive
-      assert is_nil(updated.trial_expires_at)
 
       assert paid_signup_notification?()
     end
 
     test "also handles customer.subscription.created", %{conn: conn} do
-      user = paid_user("cus_created", %{status: :trial})
+      user = paid_user("cus_created", %{status: :free})
 
       event =
         subscription_event("customer.subscription.created", %{
@@ -211,7 +210,6 @@ defmodule ShroudWeb.CheckoutControllerTest do
         updated = reload(user)
         assert updated.status == :free
         assert is_nil(updated.plan_expires_at)
-        assert is_nil(updated.trial_expires_at)
       end
     end
 

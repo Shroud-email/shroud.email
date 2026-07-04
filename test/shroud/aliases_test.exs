@@ -230,35 +230,6 @@ defmodule Shroud.AliasesTest do
         Aliases.create_email_alias(%{user_id: user_id, address: "foo@email.com"})
     end
 
-    test "lets a trial user create an alias" do
-      tomorrow = NaiveDateTime.utc_now() |> NaiveDateTime.add(1, :day)
-      %{id: user_id} = user_fixture(%{status: :trial, trial_expires_at: tomorrow})
-
-      {:ok, _email_alias} =
-        Aliases.create_email_alias(%{user_id: user_id, address: "foo@email.com"})
-    end
-
-    test "does not let an expired trial user create an alias" do
-      yesterday = NaiveDateTime.utc_now() |> NaiveDateTime.add(-1, :day)
-      %{id: user_id} = user_fixture(%{status: :trial, trial_expires_at: yesterday})
-
-      {:error, :inactive_user} =
-        Aliases.create_email_alias(%{user_id: user_id, address: "foo@email.com"})
-    end
-
-    test "does not let a trial user create > 10 aliases" do
-      tomorrow = NaiveDateTime.utc_now() |> NaiveDateTime.add(1, :day)
-      %{id: user_id} = user_fixture(%{status: :trial, trial_expires_at: tomorrow})
-
-      Enum.each(1..10, fn idx ->
-        {:ok, _email_alias} =
-          Aliases.create_email_alias(%{user_id: user_id, address: "#{idx}@email.com"})
-      end)
-
-      {:error, :trial_limit_reached} =
-        Aliases.create_email_alias(%{user_id: user_id, address: "foo@email.com"})
-    end
-
     test "lets a free user create an alias when under the limit" do
       %{id: user_id} = user_fixture(%{status: :free})
 

@@ -6,7 +6,7 @@ defmodule Shroud.Accounts do
   import Ecto.Query, warn: false
   alias Shroud.Repo
 
-  alias Shroud.{Notifier, Util}
+  alias Shroud.Notifier
   alias Shroud.Accounts.{LoopsJob, User, UserToken, UserNotifier}
   alias Shroud.Aliases.EmailAlias
 
@@ -94,7 +94,7 @@ defmodule Shroud.Accounts do
 
   """
   def register_user(attrs) do
-    if not Application.fetch_env!(:shroud, :disable_signups) do
+    if Application.fetch_env!(:shroud, :disable_signups) not in [true, "true", "1", "yes"] do
       case %User{}
            |> User.registration_changeset(attrs)
            |> Repo.insert(returning: true) do
@@ -332,7 +332,6 @@ defmodule Shroud.Accounts do
     status = if user.status == :lifetime, do: :lifetime, else: :free
 
     attrs = %{
-      trial_expires_at: nil,
       status: status
     }
 
@@ -418,8 +417,7 @@ defmodule Shroud.Accounts do
   end
 
   def active?(%User{} = user) do
-    user.status in [:active, :lifetime, :free] ||
-      (user.status == :trial && not Util.past?(user.trial_expires_at))
+    user.status in [:active, :lifetime, :free]
   end
 
   def paid?(%User{} = user) do

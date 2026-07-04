@@ -9,6 +9,7 @@ defmodule Shroud.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       compilers: [:phoenix_live_view] ++ Mix.compilers(),
       start_permanent: Mix.env() == :prod,
+      listeners: [Phoenix.CodeReloader],
       aliases: aliases(),
       deps: deps(),
       usage_rules: usage_rules(),

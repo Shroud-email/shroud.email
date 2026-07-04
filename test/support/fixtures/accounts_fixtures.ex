@@ -19,16 +19,6 @@ defmodule Shroud.AccountsFixtures do
   end
 
   def user_fixture(attrs \\ %{}) do
-    tomorrow = NaiveDateTime.utc_now() |> NaiveDateTime.add(1, :day)
-
-    attrs =
-      Map.merge(
-        %{
-          trial_expires_at: tomorrow
-        },
-        attrs
-      )
-
     {:ok, user} =
       attrs
       |> valid_user_attributes()
