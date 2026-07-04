@@ -139,7 +139,7 @@ if config_env() == :prod do
   config :shroud,
     notifier_webhook_url: System.get_env("NOTIFIER_WEBHOOK_URL"),
     admin_user_email: System.get_env("ADMIN_EMAIL"),
-    disable_signups: System.get_env("DISABLE_SIGNUPS"),
+    disable_signups: System.get_env("DISABLE_SIGNUPS") in ~w(true 1 yes),
     app_domain: app_domain,
     email_domain: email_domain,
     env: :prod

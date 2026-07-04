@@ -94,7 +94,7 @@ defmodule Shroud.Accounts do
 
   """
   def register_user(attrs) do
-    if not Application.fetch_env!(:shroud, :disable_signups) do
+    if Application.fetch_env!(:shroud, :disable_signups) not in [true, "true", "1", "yes"] do
       case %User{}
            |> User.registration_changeset(attrs)
            |> Repo.insert(returning: true) do
