@@ -276,9 +276,6 @@ defmodule Shroud.Email.IncomingEmailHandler do
 
       [headers] ->
         headers <> "\r\n" <> name <> ": " <> value <> "\r\n\r\n"
-
-      [] ->
-        name <> ": " <> value <> "\r\n\r\n"
     end
   end
 end

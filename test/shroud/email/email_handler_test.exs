@@ -1296,6 +1296,8 @@ defmodule Shroud.Email.EmailHandlerTest do
         )
 
       perform_job(EmailHandler, %{from: "sender@example.com", to: email_alias.address, data: data})
+
+      assert_email_sent(fn email -> assert email.text_body =~ "Plain text" end)
     end
 
     test "forwards normally when SpamAssassin is disabled (default config)", %{

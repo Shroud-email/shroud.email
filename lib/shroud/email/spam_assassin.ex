@@ -66,18 +66,25 @@ defmodule Shroud.Email.SpamAssassin do
       case File.write(tmp_path, raw) do
         :ok ->
           try do
-            case System.cmd("sh", ["-c", ~s("#{spamc_path}" < "#{tmp_path}")],
-                   stderr_to_stdout: true
-                 ) do
+            # ponytail: no Elixir-level timeout on this System.cmd — Elixir 1.20's
+            # System.cmd has no :timeout option. The timeout lives in spamc's own
+            # socket timeout to spamd (~10-195s). If spamd hangs, this call blocks
+            # until spamc exits, which can starve the :outgoing_email Oban queue
+            # (concurrency 5). Upgrade path: switch to a Port with :timeout, or wrap
+            # in Task.async_stream with a timeout, when the flag flips to true in prod.
+            cmd = ~s(#{shell_quote(spamc_path)} < #{shell_quote(tmp_path)})
+
+            case System.cmd("sh", ["-c", cmd], stderr_to_stdout: true) do
               {output, 0} ->
                 case parse_x_spam_status(output) do
                   {:ok, _} = result -> result
                   :error -> {:error, :no_spam_header}
                 end
 
-              {_output, _exit_code} ->
+              {output, _exit_code} ->
                 # Non-zero exit: spamd unreachable, message rejected, etc.
-                {:error, :spamc_nonzero_exit}
+                # Include a snippet of the output for prod debugging.
+                {:error, {:spamc_nonzero_exit, String.slice(output, 0, 200)}}
             end
           rescue
             # `System.cmd` raises `ErlangError` when the binary is not
@@ -93,6 +100,13 @@ defmodule Shroud.Email.SpamAssassin do
       end
     end
 
+    # POSIX shell-escape: wrap in single quotes, escape embedded single quotes.
+    # Makes the interpolated paths in the `sh -c` command injection-proof even
+    # if a future config source is less trusted than operator env vars.
+    defp shell_quote(s) when is_binary(s) do
+      "'" <> String.replace(s, "'", "'\\''") <> "'"
+    end
+
     @doc """
     Pure parser: extracts the `X-Spam-Status` header value from a
     SpamAssassin-annotated message. Case-insensitive on the header name.
@@ -105,6 +119,11 @@ defmodule Shroud.Email.SpamAssassin do
 
       headers
       |> String.split(~r/\r?\n/)
+      # ponytail: this scans one physical line per header. RFC 5322 folded
+      # headers (continuation lines starting with whitespace) would be
+      # truncated. SpamAssassin emits X-Spam-Status on a single line in
+      # practice; if that ever changes, unfold by joining lines that start
+      # with whitespace before matching.
       |> Enum.find_value(fn line ->
         case String.split(line, ":", parts: 2) do
           [name, value] ->
