@@ -127,6 +127,16 @@ if config_env() == :prod do
       verify: :verify_none
     ]
 
+  # SpamAssassin — when enabled, shroud scans inbound mail itself via the
+  # spamc CLI instead of relying on Haraka to inject X-Spam-Status.
+  spamassassin_enabled = System.get_env("SPAMASSASSIN_ENABLED") == "true"
+  spamc_path = System.get_env("SPAMC_PATH") || "spamc"
+
+  config :shroud, :spamassassin,
+    enabled: spamassassin_enabled,
+    module: Shroud.Email.SpamAssassin.Client,
+    spamc_path: spamc_path
+
   config :swoosh, :api_client, Swoosh.ApiClient.Hackney
 
   email_domain =

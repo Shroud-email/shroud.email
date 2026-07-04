@@ -34,6 +34,11 @@ config :shroud, :mailer,
     port: 2526
   ]
 
+config :shroud, :spamassassin,
+  enabled: false,
+  module: Shroud.MockSpamAssassin,
+  spamc_path: "spamc"
+
 config :shroud,
   app_domain: "app.shroud.test",
   email_domain: "email.shroud.test"

@@ -40,6 +40,11 @@ config :shroud, :mailer,
     ]
   ]
 
+config :shroud, :spamassassin,
+  enabled: false,
+  module: Shroud.Email.SpamAssassin.Stub,
+  spamc_path: "spamc"
+
 config :shroud,
   http_client: HTTPoison,
   tracker_list_uri: "https://trackers.shroud.email/list.txt",
