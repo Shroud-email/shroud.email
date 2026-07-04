@@ -42,3 +42,6 @@ node_modules/
 # Ignore generated js hook files for components
 assets/js/_hooks/
 assets/css/_components.css
+
+# Local git worktrees
+.worktrees/

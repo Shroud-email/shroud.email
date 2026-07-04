@@ -121,6 +121,16 @@ defmodule Shroud.AccountsTest do
 
       assert_enqueued(worker: Shroud.NotifierJob)
     end
+
+    test "does not crash when disable_signups is unset (nil)" do
+      prev = Application.get_env(:shroud, :disable_signups)
+      Application.put_env(:shroud, :disable_signups, nil)
+      on_exit(fn -> Application.put_env(:shroud, :disable_signups, prev) end)
+
+      email = unique_user_email()
+      assert {:ok, user} = Accounts.register_user(valid_user_attributes(email: email))
+      assert user.email == email
+    end
   end
 
   describe "change_user_registration/2" do
