@@ -65,6 +65,16 @@ window.addEventListener("phx:page-loading-stop", () => {
   topbar.hide();
 });
 
+// Initialize Chatwoot live chat widget
+window.addEventListener("load", () => {
+  if (window.chatwootSDK) {
+    window.chatwootSDK.run({
+      websiteToken: "7j9ZdJCJR5ZGaYkCMN2EvAhp",
+      baseUrl: "https://support.shroud.email",
+    });
+  }
+});
+
 // connect if there are any LiveViews on the page
 liveSocket.connect();
 
