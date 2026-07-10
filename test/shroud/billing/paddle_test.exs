@@ -20,7 +20,7 @@ defmodule Shroud.Billing.PaddleTest do
 
     test "returns {:error, :invalid_signature} for a bad signature" do
       payload = ~s({"event_id":"evt_1"})
-      header = "ts=#{System.system_time(:second)};h1=deadbeef"
+      header = "ts=#{System.system_time(:second)};h1=#{String.duplicate("0", 64)}"
 
       assert {:error, :invalid_signature} = Paddle.verify_webhook(payload, header)
     end
@@ -81,6 +81,9 @@ defmodule Shroud.Billing.PaddleHTTPTest do
         assert decoded["collection_mode"] == "automatic"
         assert Plug.Conn.get_req_header(conn, "authorization") == ["Bearer test_key"]
 
+        refute Map.has_key?(decoded, "customer"),
+               "customer field must not be sent server-side (email captured by Paddle Checkout)"
+
         Resp.json(conn, 201, %{
           "data" => %{"checkout" => %{"url" => "https://paddle.com/checkout/abc"}}
         })
@@ -96,6 +99,9 @@ defmodule Shroud.Billing.PaddleHTTPTest do
       bypass: bypass
     } do
       Bypass.expect_once(bypass, "POST", "/customers/ctm_123/portal-sessions", fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        assert body in ["{}", ""], "portal session should send an empty body"
+
         Resp.json(conn, 201, %{
           "data" => %{"urls" => %{"general" => %{"overview" => "https://portal.paddle.com/..."}}}
         })
