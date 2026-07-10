@@ -76,8 +76,11 @@ window.addEventListener("load", () => {
 });
 
 // Identify the authenticated user to Chatwoot once the widget is ready.
-// On pages with no authenticated user (e.g. after logout), reset the
-// Chatwoot session so a previous user's identity doesn't linger.
+// On logout the page reloads with no current_user, but Chatwoot keeps
+// the previous user's session in its own storage — so we reset it.
+// To avoid resetting on every anonymous page load (and hammering the
+// Chatwoot server), we only reset when we identified a user earlier in
+// this browser session, tracked via sessionStorage.
 var chatwootSynced = false;
 function syncChatwootUser() {
   if (chatwootSynced || !window.$chatwoot) return;
@@ -85,11 +88,13 @@ function syncChatwootUser() {
   var email = document.body.dataset.currentUserEmail;
   var identifierHash = document.body.dataset.chatwootIdentifierHash;
   if (email) {
+    sessionStorage.setItem("chatwoot_identified", "1");
     window.$chatwoot.setUser(email, {
       email: email,
       identifier_hash: identifierHash,
     });
-  } else {
+  } else if (sessionStorage.getItem("chatwoot_identified") === "1") {
+    sessionStorage.removeItem("chatwoot_identified");
     window.$chatwoot.reset();
   }
 }
