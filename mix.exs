@@ -87,6 +87,7 @@ defmodule Shroud.MixProject do
       # the legacy Sentry.HackneyClient is deprecated. Sentry manages its own
       # Finch pool, so no extra supervision is needed.
       {:finch, "~> 0.22"},
+      {:bypass, "~> 2.1", only: :test},
       {:timex, "~> 3.7"},
       {:httpoison, "~> 2.3"},
       {:req, "~> 0.6"},
