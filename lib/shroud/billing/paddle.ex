@@ -3,40 +3,16 @@ defmodule Shroud.Billing.Paddle do
   Thin client for the Paddle Billing REST API (v2).
 
   Auth: `Authorization: Bearer <api_key>`. Base URL configurable (sandbox/prod).
-  No official Elixir SDK exists; the surface is three endpoints.
+  No official Elixir SDK exists; the surface is two endpoints.
+
+  Checkout itself is handled client-side by Paddle.js (see `assets/js/app.js`),
+  so there's no server-side checkout creation here. This module covers:
+  customer portal session creation and webhook signature verification.
 
   Docs: https://developer.paddle.com
   """
 
   @behaviour Shroud.Billing.Paddle.Client
-
-  @doc """
-  Creates a checkout transaction for the yearly plan. Returns the hosted
-  Paddle Checkout URL to redirect to.
-
-  Paddle auto-creates the subscription when checkout completes.
-  The email is captured by Paddle Checkout on the hosted page, not passed
-  server-side — the `POST /transactions` body has no `customer` field.
-  """
-  @impl true
-  @spec create_checkout(String.t()) :: {:ok, %{checkout_url: String.t()}} | {:error, term()}
-  def create_checkout(_email) do
-    body = %{
-      items: [%{quantity: 1, price_id: config()[:paddle_yearly_price_id]}],
-      collection_mode: "automatic"
-    }
-
-    case client() |> Req.post(url: "/transactions", json: body) do
-      {:ok, %Req.Response{status: 201, body: resp}} ->
-        {:ok, %{checkout_url: resp["data"]["checkout"]["url"]}}
-
-      {:ok, %Req.Response{status: status, body: resp}} ->
-        {:error, {:paddle_api, status, paddle_error_code(resp)}}
-
-      {:error, reason} ->
-        {:error, {:request_failed, reason}}
-    end
-  end
 
   @doc """
   Generates a fresh customer-portal session for a Paddle customer.

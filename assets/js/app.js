@@ -28,6 +28,7 @@ import { Modal, Notification } from "./hooks";
 import { initTheme, setTheme } from "./theme";
 import Alpine from "alpinejs";
 import Tooltip from "@ryangjchandler/alpine-tooltip";
+import { initializePaddle } from "@paddle/paddle-js";
 
 Alpine.plugin(Tooltip);
 window.Alpine = Alpine;
@@ -36,6 +37,24 @@ Alpine.start();
 // Initialize theme (dark mode support)
 initTheme();
 window.setTheme = setTheme;
+
+// Initialize Paddle.js for checkout. Token + environment are injected via
+// meta tags by the root layout (server-side config, not hardcoded).
+const paddleToken = document
+  .querySelector("meta[name='paddle-client-token']")
+  ?.getAttribute("content");
+const paddleEnv = document
+  .querySelector("meta[name='paddle-environment']")
+  ?.getAttribute("content");
+
+if (paddleToken) {
+  initializePaddle({
+    token: paddleToken,
+    environment: paddleEnv === "sandbox" ? "sandbox" : undefined,
+  }).then((paddle) => {
+    window.Paddle = paddle;
+  });
+}
 
 let csrfToken = document
   .querySelector("meta[name='csrf-token']")

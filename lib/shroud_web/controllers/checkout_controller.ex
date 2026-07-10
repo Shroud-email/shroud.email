@@ -6,22 +6,6 @@ defmodule ShroudWeb.CheckoutController do
   alias Shroud.Billing.Paddle
   alias ShroudWeb.Plugs.CachingBodyReader
 
-  def index(conn, _params) do
-    case Paddle.create_checkout(conn.assigns.current_user.email) do
-      {:ok, %{checkout_url: url}} ->
-        conn
-        |> put_status(:see_other)
-        |> redirect(external: url)
-
-      {:error, reason} ->
-        Logger.error("Failed to create Paddle checkout: #{inspect(reason)}")
-
-        conn
-        |> put_flash(:error, "We couldn't start checkout right now. Please try again.")
-        |> redirect(to: ~p"/settings/billing")
-    end
-  end
-
   def success(conn, _params) do
     render(conn, "success.html")
   end

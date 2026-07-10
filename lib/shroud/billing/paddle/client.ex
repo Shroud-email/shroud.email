@@ -4,9 +4,6 @@ defmodule Shroud.Billing.Paddle.Client do
   See `Shroud.Billing.Paddle` for the production implementation.
   """
 
-  @callback create_checkout(email :: String.t()) ::
-              {:ok, %{checkout_url: String.t()}} | {:error, term()}
-
   @callback create_portal_session(customer_id :: String.t()) ::
               {:ok, %{url: String.t()}} | {:error, term()}
 

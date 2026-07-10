@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "@cap.js/widget": "0.1.56",
+    "@paddle/paddle-js": "^1.6.4",
     "@ryangjchandler/alpine-tooltip": "^2.0.1",
     "alpinejs": "^3.15.11"
   }

@@ -71,42 +71,6 @@ defmodule Shroud.Billing.PaddleHTTPTest do
     {:ok, bypass: bypass}
   end
 
-  describe "create_checkout/1" do
-    test "posts to /transactions and returns the checkout url", %{bypass: bypass} do
-      Bypass.expect_once(bypass, "POST", "/transactions", fn conn ->
-        {:ok, body, conn} = Plug.Conn.read_body(conn)
-
-        decoded = Jason.decode!(body)
-        assert decoded["items"] == [%{"quantity" => 1, "price_id" => "pri_test_yearly"}]
-        assert decoded["collection_mode"] == "automatic"
-        assert Plug.Conn.get_req_header(conn, "authorization") == ["Bearer test_key"]
-
-        refute Map.has_key?(decoded, "customer"),
-               "customer field must not be sent server-side (email captured by Paddle Checkout)"
-
-        Resp.json(conn, 201, %{
-          "data" => %{"checkout" => %{"url" => "https://paddle.com/checkout/abc"}}
-        })
-      end)
-
-      assert {:ok, %{checkout_url: "https://paddle.com/checkout/abc"}} =
-               Shroud.Billing.Paddle.create_checkout("user@example.com")
-    end
-
-    test "returns {:error, {:paddle_api, status, code}} for a non-201 response", %{
-      bypass: bypass
-    } do
-      Bypass.expect(bypass, "POST", "/transactions", fn conn ->
-        Resp.json(conn, 401, %{
-          "error" => %{"type" => "request_error", "code" => "authentication_missing"}
-        })
-      end)
-
-      assert {:error, {:paddle_api, 401, "authentication_missing"}} =
-               Shroud.Billing.Paddle.create_checkout("user@example.com")
-    end
-  end
-
   describe "create_portal_session/1" do
     test "posts to /customers/{id}/portal-sessions and returns the overview url", %{
       bypass: bypass

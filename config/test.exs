@@ -65,7 +65,9 @@ config :shroud, :billing,
   paddle_webhook_secret: "pdl_ntfset_test_secret_123",
   paddle_api_key: "test_key",
   paddle_yearly_price_id: "pri_test_yearly",
-  paddle_base_url: "http://localhost:0"
+  paddle_base_url: "http://localhost:0",
+  paddle_client_token: "test_client_token",
+  paddle_environment: "sandbox"
 
 # Route Cap verification requests through the Req.Test stub (named
 # Shroud.Captcha) so captcha_test.exs can assert on responses without any

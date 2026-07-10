@@ -5,6 +5,8 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <meta name="theme" content={if assigns[:current_user], do: to_string(@current_user.theme), else: "system"} />
+    <meta name="paddle-client-token" content={Application.fetch_env!(:shroud, :billing)[:paddle_client_token]} />
+    <meta name="paddle-environment" content={Application.fetch_env!(:shroud, :billing)[:paddle_environment]} />
     <script>
       (function() {
         var meta = document.querySelector('meta[name="theme"]');

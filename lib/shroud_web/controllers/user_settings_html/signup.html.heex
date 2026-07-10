@@ -75,9 +75,36 @@
       </div>
       <div class="mt-6">
         <div class="rounded-md shadow-sm">
-          <.link href={~p"/checkout"} class="flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-white bg-gray-800 hover:bg-gray-900">Upgrade</.link>
+          <button
+            type="button"
+            id="upgrade-button"
+            class="flex items-center justify-center w-full px-5 py-3 border border-transparent text-base font-medium rounded-md text-white bg-gray-800 hover:bg-gray-900 dark:bg-indigo-600 dark:hover:bg-indigo-700"
+            phx-hook=".PaddleCheckout"
+            data-price-id={@paddle_price_id}
+            data-customer-email={@current_user.email}
+          >Upgrade</button>
         </div>
       </div>
     </div>
   </div>
 </div>
+<script :type={Phoenix.LiveView.ColocatedHook} name=".PaddleCheckout">
+  export default {
+    mounted() {
+      this.el.addEventListener("click", () => {
+        const priceId = this.el.dataset.priceId;
+        const email = this.el.dataset.customerEmail;
+
+        if (window.Paddle) {
+          window.Paddle.Checkout.open({
+            items: [{ priceId, quantity: 1 }],
+            customer: { email },
+            settings: { displayMode: "overlay", theme: "light", locale: "en" }
+          });
+        } else {
+          console.error("Paddle.js not initialized");
+        }
+      });
+    }
+  }
+</script>
