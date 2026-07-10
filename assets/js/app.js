@@ -75,17 +75,28 @@ window.addEventListener("load", () => {
   }
 });
 
-// Identify the authenticated user to Chatwoot once the widget is ready
-window.addEventListener("chatwoot:ready", () => {
+// Identify the authenticated user to Chatwoot once the widget is ready.
+// On pages with no authenticated user (e.g. after logout), reset the
+// Chatwoot session so a previous user's identity doesn't linger.
+var chatwootSynced = false;
+function syncChatwootUser() {
+  if (chatwootSynced || !window.$chatwoot) return;
+  chatwootSynced = true;
   var email = document.body.dataset.currentUserEmail;
   var identifierHash = document.body.dataset.chatwootIdentifierHash;
-  if (email && window.$chatwoot) {
+  if (email) {
     window.$chatwoot.setUser(email, {
       email: email,
       identifier_hash: identifierHash,
     });
+  } else {
+    window.$chatwoot.reset();
   }
-});
+}
+
+window.addEventListener("chatwoot:ready", syncChatwootUser);
+// If the SDK finished loading before this script ran, sync immediately.
+if (window.$chatwoot) syncChatwootUser();
 
 // connect if there are any LiveViews on the page
 liveSocket.connect();
