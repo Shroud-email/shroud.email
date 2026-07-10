@@ -38,8 +38,12 @@ defmodule ShroudWeb.UserApiAuth do
       [header_value] ->
         case Regex.named_captures(~r/Bearer (?<token>[^\s]+)/i, header_value) do
           %{"token" => token} ->
-            {:ok, token} = Base.decode64(token)
-            {token, conn}
+            # A malformed (non-base64) token is treated like a missing token
+            # rather than raising a MatchError (which would surface as a 500).
+            case Base.decode64(token) do
+              {:ok, decoded_token} -> {decoded_token, conn}
+              :error -> {nil, conn}
+            end
 
           _ ->
             {nil, conn}
