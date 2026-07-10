@@ -41,9 +41,22 @@
     data-current-user-email={if assigns[:current_user], do: @current_user.email}
     data-chatwoot-identifier-hash={chatwoot_identifier_hash(@current_user)}
   >
-    <div class="min-h-full">
+    <div class="min-h-full flex flex-col">
       <.navbar {assigns} />
-      <%= @inner_content %>
+      <div class="flex-1">
+        <%= @inner_content %>
+      </div>
+      <%= if !assigns[:current_user] do %>
+        <footer class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-auto">
+          <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col sm:flex-row justify-center sm:justify-end gap-4 sm:gap-6 text-sm text-gray-500 dark:text-gray-400">
+              <.link href="https://shroud.email/privacy/" target="_blank" rel="noopener">Privacy</.link>
+              <.link href="https://shroud.email/terms/" target="_blank" rel="noopener">Terms</.link>
+              <.link href="https://shroud.email/pricing/" target="_blank" rel="noopener">Refund policy</.link>
+            </div>
+          </div>
+        </footer>
+      <% end %>
     </div>
   </body>
 </html>
