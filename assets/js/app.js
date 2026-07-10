@@ -65,43 +65,49 @@ window.addEventListener("phx:page-loading-stop", () => {
   topbar.hide();
 });
 
-// Initialize Chatwoot live chat widget
-window.addEventListener("load", () => {
-  if (window.chatwootSDK) {
-    window.chatwootSDK.run({
-      websiteToken: "7j9ZdJCJR5ZGaYkCMN2EvAhp",
-      baseUrl: "https://support.shroud.email",
-    });
-  }
-});
+// Initialize Chatwoot live chat widget. Only runs when the widget is
+// enabled (CHATWOOT_BASE_URL configured); self-hosted deployments omit
+// the SDK script and data attribute entirely.
+var chatwootBaseUrl = document.body.dataset.chatwootBaseUrl;
 
-// Identify the authenticated user to Chatwoot once the widget is ready.
-// On logout the page reloads with no current_user, but Chatwoot keeps
-// the previous user's session in its own storage — so we reset it.
-// To avoid resetting on every anonymous page load (and hammering the
-// Chatwoot server), we only reset when we identified a user earlier in
-// this browser session, tracked via localStorage (aligned with
-// Chatwoot's own session persistence, which survives tab close).
-var chatwootSynced = false;
-function syncChatwootUser() {
-  if (chatwootSynced || !window.$chatwoot) return;
-  chatwootSynced = true;
-  var email = document.body.dataset.currentUserEmail;
-  var identifierHash = document.body.dataset.chatwootIdentifierHash;
-  if (email) {
-    localStorage.setItem("chatwoot_identified", "1");
-    var attrs = { email: email, name: email };
-    if (identifierHash) attrs.identifier_hash = identifierHash;
-    window.$chatwoot.setUser(email, attrs);
-  } else if (localStorage.getItem("chatwoot_identified") === "1") {
-    localStorage.removeItem("chatwoot_identified");
-    window.$chatwoot.reset();
+if (chatwootBaseUrl) {
+  window.addEventListener("load", () => {
+    if (window.chatwootSDK) {
+      window.chatwootSDK.run({
+        websiteToken: "7j9ZdJCJR5ZGaYkCMN2EvAhp",
+        baseUrl: chatwootBaseUrl,
+      });
+    }
+  });
+
+  // Identify the authenticated user to Chatwoot once the widget is ready.
+  // On logout the page reloads with no current_user, but Chatwoot keeps
+  // the previous user's session in its own storage — so we reset it.
+  // To avoid resetting on every anonymous page load (and hammering the
+  // Chatwoot server), we only reset when we identified a user earlier in
+  // this browser session, tracked via localStorage (aligned with
+  // Chatwoot's own session persistence, which survives tab close).
+  var chatwootSynced = false;
+  function syncChatwootUser() {
+    if (chatwootSynced || !window.$chatwoot) return;
+    chatwootSynced = true;
+    var email = document.body.dataset.currentUserEmail;
+    var identifierHash = document.body.dataset.chatwootIdentifierHash;
+    if (email) {
+      localStorage.setItem("chatwoot_identified", "1");
+      var attrs = { email: email, name: email };
+      if (identifierHash) attrs.identifier_hash = identifierHash;
+      window.$chatwoot.setUser(email, attrs);
+    } else if (localStorage.getItem("chatwoot_identified") === "1") {
+      localStorage.removeItem("chatwoot_identified");
+      window.$chatwoot.reset();
+    }
   }
+
+  window.addEventListener("chatwoot:ready", syncChatwootUser);
+  // If the SDK finished loading before this script ran, sync immediately.
+  if (window.$chatwoot) syncChatwootUser();
 }
-
-window.addEventListener("chatwoot:ready", syncChatwootUser);
-// If the SDK finished loading before this script ran, sync immediately.
-if (window.$chatwoot) syncChatwootUser();
 
 // connect if there are any LiveViews on the page
 liveSocket.connect();

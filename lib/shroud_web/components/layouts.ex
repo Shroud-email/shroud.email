@@ -10,6 +10,15 @@ defmodule ShroudWeb.Layouts do
   end
 
   @doc """
+  The base URL of the configured Chatwoot server, or nil when the widget
+  is disabled (e.g. self-hosted deployments that don't set
+  CHATWOOT_BASE_URL). All widget markup/JS is gated on this being set.
+  """
+  def chatwoot_base_url do
+    Application.get_env(:shroud, :chatwoot_base_url)
+  end
+
+  @doc """
   Generates the HMAC-SHA256 identifier hash Chatwoot uses to validate the
   identity of an authenticated user. Returns nil when no user is signed in
   or no HMAC token is configured, in which case the widget falls back to

@@ -4,10 +4,14 @@ if Config.config_env() == :dev do
   DotenvParser.load_file(".env")
 end
 
-# Optional: Chatwoot web widget HMAC token for identity validation.
-# When unset, the widget identifies users without server-side verification.
+# Optional: Chatwoot support widget. Set CHATWOOT_BASE_URL to the URL of
+# your Chatwoot server to enable the widget. When unset (e.g. for
+# self-hosted deployments), the widget is not loaded at all.
+# CHATWOOT_HMAC_TOKEN is an optional secret for identity validation.
 # Loaded here (not in dev.exs) so .env is available in dev.
-config :shroud, chatwoot_hmac_token: System.get_env("CHATWOOT_HMAC_TOKEN")
+config :shroud,
+  chatwoot_base_url: System.get_env("CHATWOOT_BASE_URL"),
+  chatwoot_hmac_token: System.get_env("CHATWOOT_HMAC_TOKEN")
 
 config :stripity_stripe, api_key: System.get_env("STRIPE_SECRET")
 
