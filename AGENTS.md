@@ -113,6 +113,8 @@ docker-compose up        # start development environment
 
 Commits follow Conventional Commits (`fix:`, `feat:`, `chore:`, `ci:`) and are linted by Commitlint. Each pull request should describe the change, link the relevant issue, and call out database migrations, feature flags, or config toggles.
 
+- **Never fill in the PR body.** Leave it empty — the user will write it. Only set the title when creating a PR.
+
 ## Security & Configuration
 
 - Never commit secrets—start by copying `example.env` to `.env` and update values locally
