@@ -51,10 +51,41 @@ if (paddleToken) {
   initializePaddle({
     token: paddleToken,
     environment: paddleEnv === "sandbox" ? "sandbox" : undefined,
+    eventCallback: (data) => {
+      // On checkout completion, redirect to the billing page so the user sees
+      // their updated plan. We delay briefly because the webhook that updates
+      // the user's status arrives a moment after the client-side event.
+      if (data.name === "checkout.completed") {
+        setTimeout(() => {
+          window.location.href = "/settings/billing";
+        }, 5000);
+      }
+    },
   }).then((paddle) => {
     window.Paddle = paddle;
   });
 }
+
+// Open Paddle overlay checkout when the Upgrade button is clicked.
+// The button is on the dead (controller-rendered) billing page, so we use a
+// plain DOM listener rather than a LiveView hook.
+document.addEventListener("click", (event) => {
+ const button = event.target.closest("#upgrade-button");
+ if (!button) return;
+
+ const priceId = button.dataset.paddlePriceId;
+ const email = button.dataset.customerEmail;
+
+ if (window.Paddle) {
+   window.Paddle.Checkout.open({
+     items: [{ priceId, quantity: 1 }],
+     customer: { email },
+     settings: { displayMode: "overlay", theme: "light", locale: "en" },
+   });
+ } else {
+   console.error("Paddle.js not initialized");
+ }
+});
 
 let csrfToken = document
   .querySelector("meta[name='csrf-token']")
