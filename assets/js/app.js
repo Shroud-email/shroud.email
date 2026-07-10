@@ -91,6 +91,7 @@ function syncChatwootUser() {
     sessionStorage.setItem("chatwoot_identified", "1");
     window.$chatwoot.setUser(email, {
       email: email,
+      name: email,
       identifier_hash: identifierHash,
     });
   } else if (sessionStorage.getItem("chatwoot_identified") === "1") {
