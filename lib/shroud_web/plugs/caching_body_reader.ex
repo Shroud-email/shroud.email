@@ -1,7 +1,7 @@
 defmodule ShroudWeb.Plugs.CachingBodyReader do
   @moduledoc """
   Reads the raw request body and caches it. This is needed when verifying the signature
-  for webhooks from 3rd party services like Stripe.
+  for webhooks from 3rd party services like Paddle.
 
   This module is intended to be used as the `:body_reader` option of `Plug.Parsers`.
   Note that caching is only enabled for specific paths. See `enabled_for?/1`.
