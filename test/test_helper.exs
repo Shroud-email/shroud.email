@@ -12,3 +12,6 @@ Application.put_env(:shroud, :datetime_module, Shroud.MockDateTime)
 
 Mox.defmock(Shroud.MockDnsClient, for: Shroud.DnsClientBehaviour)
 Application.put_env(:shroud, :dns_client, Shroud.MockDnsClient)
+
+Mox.defmock(Shroud.MockSpamAssassin, for: Shroud.Email.SpamAssassin.Behaviour)
+Application.put_env(:shroud, :spamassassin, enabled: false, module: Shroud.MockSpamAssassin)

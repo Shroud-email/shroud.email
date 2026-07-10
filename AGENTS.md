@@ -27,11 +27,13 @@ Phoenix web layer with LiveView for interactive pages:
 
 ### Email Processing Pipeline
 ```
-SMTP Input → ParsedEmail → Tracker Removal → Spam Check → Forward
+SMTP Input → SpamAssassin Scan → ParsedEmail → Tracker Removal → Spam Check → Forward
 ```
-- SMTP server runs on port 2525 (dev) using gen_smtp
+- SMTP server runs on port 1587 (dev) using gen_smtp
 - Tracker pixels and UTM params removed via Floki
-- Spam detection using SpamAssassin headers
+- SpamAssassin scanning now runs in-process (`Shroud.Email.SpamAssassin`), gated by the
+  `SPAMASSASSIN_ENABLED` env var. When disabled, shroud falls back to reading the
+  `X-Spam-Status` header injected by Haraka. See `docs/superpowers/plans/2026-07-04-spamassassin-into-shroud.md`.
 - Outgoing email sent via Swoosh
 
 ### Background Jobs (Oban)
