@@ -4,6 +4,11 @@ if Config.config_env() == :dev do
   DotenvParser.load_file(".env")
 end
 
+# Optional: Chatwoot web widget HMAC token for identity validation.
+# When unset, the widget identifies users without server-side verification.
+# Loaded here (not in dev.exs) so .env is available in dev.
+config :shroud, chatwoot_hmac_token: System.get_env("CHATWOOT_HMAC_TOKEN")
+
 config :stripity_stripe, api_key: System.get_env("STRIPE_SECRET")
 
 # In the test env, billing config (incl. a fixed webhook secret) comes from
@@ -142,7 +147,6 @@ if config_env() == :prod do
     disable_signups: System.get_env("DISABLE_SIGNUPS") in ~w(true 1 yes),
     app_domain: app_domain,
     email_domain: email_domain,
-    chatwoot_hmac_token: System.get_env("CHATWOOT_HMAC_TOKEN"),
     env: :prod
 
   # Sentry error reporting. SENTRY_RELEASE is baked into the image at build

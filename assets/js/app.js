@@ -80,7 +80,8 @@ window.addEventListener("load", () => {
 // the previous user's session in its own storage — so we reset it.
 // To avoid resetting on every anonymous page load (and hammering the
 // Chatwoot server), we only reset when we identified a user earlier in
-// this browser session, tracked via sessionStorage.
+// this browser session, tracked via localStorage (aligned with
+// Chatwoot's own session persistence, which survives tab close).
 var chatwootSynced = false;
 function syncChatwootUser() {
   if (chatwootSynced || !window.$chatwoot) return;
@@ -88,14 +89,12 @@ function syncChatwootUser() {
   var email = document.body.dataset.currentUserEmail;
   var identifierHash = document.body.dataset.chatwootIdentifierHash;
   if (email) {
-    sessionStorage.setItem("chatwoot_identified", "1");
-    window.$chatwoot.setUser(email, {
-      email: email,
-      name: email,
-      identifier_hash: identifierHash,
-    });
-  } else if (sessionStorage.getItem("chatwoot_identified") === "1") {
-    sessionStorage.removeItem("chatwoot_identified");
+    localStorage.setItem("chatwoot_identified", "1");
+    var attrs = { email: email, name: email };
+    if (identifierHash) attrs.identifier_hash = identifierHash;
+    window.$chatwoot.setUser(email, attrs);
+  } else if (localStorage.getItem("chatwoot_identified") === "1") {
+    localStorage.removeItem("chatwoot_identified");
     window.$chatwoot.reset();
   }
 }
