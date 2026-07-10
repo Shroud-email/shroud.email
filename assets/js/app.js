@@ -71,8 +71,15 @@ window.addEventListener("load", () => {
     window.chatwootSDK.run({
       websiteToken: "7j9ZdJCJR5ZGaYkCMN2EvAhp",
       baseUrl: "https://support.shroud.email",
-      darkMode: "auto",
     });
+  }
+});
+
+// Identify the authenticated user to Chatwoot once the widget is ready
+window.addEventListener("chatwoot:ready", () => {
+  var email = document.body.dataset.currentUserEmail;
+  if (email && window.$chatwoot) {
+    window.$chatwoot.setUser(email, { email: email });
   }
 });
 

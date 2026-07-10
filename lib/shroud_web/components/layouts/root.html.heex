@@ -33,7 +33,10 @@
     <script src="https://uptime.betterstack.com/widgets/announcement.js" data-id="251784" async="async" type="text/javascript"></script>
     <script src="https://support.shroud.email/packs/js/sdk.js" async></script>
   </head>
-  <body class="h-full bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+  <body
+    class="h-full bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+    data-current-user-email={if assigns[:current_user], do: @current_user.email}
+  >
     <div class="min-h-full">
       <.navbar {assigns} />
       <%= @inner_content %>
