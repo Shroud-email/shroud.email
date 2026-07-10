@@ -3,33 +3,15 @@ defmodule ShroudWeb.CheckoutController do
   require Logger
 
   alias Shroud.{Accounts, Notifier}
-  alias Shroud.Billing.Session
+  alias Shroud.Billing.Paddle
   alias ShroudWeb.Plugs.CachingBodyReader
 
-  @billing_periods %{
-    "monthly" => :monthly,
-    "yearly" => :yearly
-  }
-
-  def index(conn, %{"period" => billing_period}) do
-    # Don't use route helpers for the {CHECKOUT_SESSION_ID} template, because
-    # then Phoenix will escape the brackets, which means that Stripe won't
-    # substitute it properly.
-    billing_period = Map.fetch!(@billing_periods, billing_period)
-    success_url = url(conn, ~p"/checkout/success")
-    cancel_url = url(conn, ~p"/settings/billing")
-
-    session =
-      Session.create_checkout!(
-        conn.assigns.current_user.email,
-        success_url,
-        cancel_url,
-        billing_period
-      )
+  def index(conn, _params) do
+    %{checkout_url: url} = Paddle.create_checkout(conn.assigns.current_user.email)
 
     conn
     |> put_status(:see_other)
-    |> redirect(external: session.url)
+    |> redirect(external: url)
   end
 
   def success(conn, _params) do
@@ -37,117 +19,130 @@ defmodule ShroudWeb.CheckoutController do
   end
 
   def billing_portal(conn, _params) do
-    customer_id = conn.assigns.current_user.stripe_customer_id
+    customer_id = conn.assigns.current_user.paddle_customer_id
 
     if is_nil(customer_id) do
       redirect(conn, to: ~p"/settings/billing")
     else
-      return_url = ~p"/settings/billing"
-      billing_session = Session.create_billing!(customer_id, return_url)
+      %{url: url} = Paddle.create_portal_session(customer_id)
 
       conn
       |> put_status(:see_other)
-      |> redirect(external: billing_session.url)
+      |> redirect(external: url)
     end
   end
 
   def webhook(conn, _params) do
     raw_body = CachingBodyReader.get_raw_body(conn)
-    signature = conn |> Plug.Conn.get_req_header("stripe-signature") |> List.first("")
+    signature = conn |> Plug.Conn.get_req_header("paddle-signature") |> List.first("")
 
-    case Stripe.Webhook.construct_event(raw_body, signature, webhook_secret()) do
-      {:ok, %Stripe.Event{} = event} ->
-        handle_webhook(event)
-        # Render empty 200 response
+    case Paddle.verify_webhook(raw_body, signature) do
+      {:ok, event} ->
+        handle_event(event)
         send_resp(conn, 200, "")
 
-      {:error, _reason} ->
+      {:error, reason} ->
+        Logger.warning("Rejected Paddle webhook: #{inspect(reason)}")
         send_resp(conn, :bad_request, "")
     end
   end
 
-  defp handle_webhook(%Stripe.Event{} = event) do
-    case event.type do
-      "checkout.session.completed" ->
-        handle_checkout_session_completed(event.data.object)
+  defp handle_event(event) do
+    case event["event_type"] do
+      "customer.created" ->
+        link_customer(event["data"])
 
-      "customer.subscription.created" ->
-        update_subscription_status(event.data.object)
+      "subscription.created" ->
+        provision_subscription(event["data"], event)
 
-      "customer.subscription.updated" ->
-        update_subscription_status(event.data.object)
+      "subscription.updated" ->
+        provision_subscription(event["data"], event)
 
-      "customer.subscription.deleted" ->
-        update_subscription_status(event.data.object)
+      # canceled and past_due flow through provision_subscription;
+      # the status mapping table handles them (canceled→:free, past_due→:active).
+      "subscription.canceled" ->
+        provision_subscription(event["data"], event)
+
+      "subscription.past_due" ->
+        provision_subscription(event["data"], event)
 
       other ->
-        Logger.warning("Received unhandled Stripe event: #{other}")
+        Logger.warning("Received unhandled Paddle event: #{other}")
     end
   end
 
-  defp handle_checkout_session_completed(session) do
-    # TODO: send receipt email
-    case Accounts.get_user_by_email(session.customer_email) do
+  defp link_customer(%{"id" => customer_id, "email" => email}) do
+    case Accounts.get_user_by_email(email) do
       nil ->
-        Logger.error(
-          "Received checkout.session.completed webhook for unknown user: #{session.customer_email}"
-        )
+        Logger.error("Paddle customer.created for unknown user: #{email}")
 
       user ->
-        attrs = %{
-          stripe_customer_id: session.customer
-        }
-
-        Accounts.update_stripe_details!(user, attrs)
-    end
-  end
-
-  defp update_subscription_status(subscription) do
-    case Accounts.get_user_by_stripe_id(subscription.customer) do
-      nil ->
-        Logger.error(
-          "Received customer.subscription.updated webhook with subscription status #{subscription.status} for unknown customer: #{subscription.customer}"
-        )
-
-      user ->
-        case subscription.status do
-          "active" ->
-            # Subscription became active (user signed up)
-            current_period_end = DateTime.from_unix!(subscription.current_period_end)
-
-            attrs = %{
-              plan_expires_at: current_period_end,
-              status: :active
-            }
-
-            Accounts.update_stripe_details!(user, attrs)
-            Notifier.notify_user_signed_up(user.email)
-            Logger.notice("User #{user.email} signed up! Plan expires at #{current_period_end}")
-
-          "past_due" ->
-            # past_due doesn't deactivate the user's plan immediately to give them a grace period
-            Logger.notice("Payment for user #{user.email} is 'past_due'")
-
-          "incomplete" ->
-            # incomplete doesn't deactivate the user's plan immediately to give them a grace period
-            Logger.notice("Payment for user #{user.email} is 'incomplete'")
-
-          other ->
-            # Remaining options are incomplete_expired, canceled, unpaid. These all cancel
-            # the subscription. Move to free tier instead of inactive.
-            # https://stripe.com/docs/api/subscriptions/object#subscription_object-status
-            attrs = %{
-              plan_expires_at: nil,
-              status: :free
-            }
-
-            Accounts.update_stripe_details!(user, attrs)
-            Logger.notice("Set #{user.email} to free tier due to Stripe event '#{other}'")
+        # Don't overwrite a customer_id already set for this user.
+        if is_nil(user.paddle_customer_id) do
+          Accounts.update_paddle_details!(user, %{paddle_customer_id: customer_id})
         end
     end
   end
 
-  defp webhook_secret do
-    Application.fetch_env!(:shroud, :billing)[:stripe_webhook_secret]
+  defp provision_subscription(sub, event) do
+    customer_id = sub["customer_id"]
+
+    case Accounts.get_user_by_paddle_customer_id(customer_id) do
+      nil ->
+        Logger.error("Paddle subscription event for unknown customer: #{customer_id}")
+
+      user ->
+        event_at = parse_iso8601(event["occurred_at"])
+
+        if stale?(event_at, user.last_paddle_event_at) do
+          Logger.info(
+            "Skipping stale Paddle event #{event["event_id"]} " <>
+              "(#{event["occurred_at"]} <= #{user.last_paddle_event_at})"
+          )
+        else
+          period_end = parse_period_end(sub)
+          status = paddle_status_to_our_status(sub["status"])
+          prior_status = user.status
+
+          Accounts.update_paddle_details!(user, %{
+            paddle_subscription_id: sub["id"],
+            plan_expires_at: period_end,
+            status: status,
+            last_paddle_event_at: event_at
+          })
+
+          # Idempotent side-effect: only notify on the active transition.
+          if status == :active and prior_status != :active do
+            Notifier.notify_user_signed_up(user.email)
+            Logger.notice("User #{user.email} signed up! Plan expires at #{period_end}")
+          end
+        end
+    end
   end
+
+  # Paddle subscription.status → our status enum.
+  # active/trialing/past_due → keep/grant :active (past_due gives grace; Paddle Retain retries).
+  # paused/canceled → :free.
+  defp paddle_status_to_our_status(status) when status in ["active", "trialing", "past_due"],
+    do: :active
+
+  defp paddle_status_to_our_status(_status), do: :free
+
+  defp parse_period_end(%{"current_billing_period" => %{"ends_at" => ends_at}}) do
+    parse_iso8601(ends_at)
+  end
+
+  defp parse_period_end(_sub), do: nil
+
+  # Paddle timestamps are RFC 3339 (ISO 8601) strings.
+  defp parse_iso8601(nil), do: nil
+
+  defp parse_iso8601(iso) do
+    {:ok, dt, _offset} = DateTime.from_iso8601(iso)
+    DateTime.to_naive(dt)
+  end
+
+  # An event is stale if we've already applied a newer-or-equal event for this subscription.
+  defp stale?(incoming, last) when not is_nil(last), do: incoming <= last
+  defp stale?(_incoming, nil), do: false
 end

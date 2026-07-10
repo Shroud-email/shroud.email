@@ -37,7 +37,7 @@ defmodule ShroudWeb.Router do
   scope "/api", ShroudWeb do
     pipe_through(:api)
 
-    post("/webhooks/stripe", CheckoutController, :webhook)
+    post("/webhooks/paddle", CheckoutController, :webhook)
   end
 
   scope "/api/v1", ShroudWeb.Api.V1 do
