@@ -4,6 +4,14 @@ if Config.config_env() == :dev do
   DotenvParser.load_file(".env")
 end
 
+# Optional: Chatwoot support widget. Set CHATWOOT_BASE_URL to the URL of
+# your Chatwoot server to enable the widget. When unset (e.g. for
+# self-hosted deployments), the widget is not loaded at all.
+# CHATWOOT_HMAC_TOKEN is an optional secret for identity validation.
+config :shroud,
+  chatwoot_base_url: System.get_env("CHATWOOT_BASE_URL"),
+  chatwoot_hmac_token: System.get_env("CHATWOOT_HMAC_TOKEN")
+
 config :stripity_stripe, api_key: System.get_env("STRIPE_SECRET")
 
 # In the test env, billing config (incl. a fixed webhook secret) comes from

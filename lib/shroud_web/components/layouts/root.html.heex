@@ -30,9 +30,15 @@
         src="https://shroud.email/p/pjs/script.exclusions.js"
       ></script>
     <% end %>
-    <script src="https://betteruptime.com/widgets/announcement.js" data-id="144055" async="async" type="text/javascript"></script>
+    <script src="https://uptime.betterstack.com/widgets/announcement.js" data-id="251784" async="async" type="text/javascript"></script>
+    <script :if={chatwoot_base_url()} src={chatwoot_base_url() <> "/packs/js/sdk.js"} async></script>
   </head>
-  <body class="h-full bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+  <body
+    class="h-full bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+    data-chatwoot-base-url={chatwoot_base_url()}
+    data-current-user-email={if assigns[:current_user], do: @current_user.email}
+    data-chatwoot-identifier-hash={chatwoot_identifier_hash(@current_user)}
+  >
     <div class="min-h-full">
       <.navbar {assigns} />
       <%= @inner_content %>
