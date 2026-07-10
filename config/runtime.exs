@@ -8,7 +8,6 @@ end
 # your Chatwoot server to enable the widget. When unset (e.g. for
 # self-hosted deployments), the widget is not loaded at all.
 # CHATWOOT_HMAC_TOKEN is an optional secret for identity validation.
-# Loaded here (not in dev.exs) so .env is available in dev.
 config :shroud,
   chatwoot_base_url: System.get_env("CHATWOOT_BASE_URL"),
   chatwoot_hmac_token: System.get_env("CHATWOOT_HMAC_TOKEN")
