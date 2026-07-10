@@ -1,0 +1,75 @@
+services:
+  db:
+    image: postgres:13.2-alpine
+    environment:
+      POSTGRES_DB: shroud_e2e
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d shroud_e2e"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+
+  mailpit:
+    image: axllent/mailpit:v1.27
+    environment:
+      MP_MAX_MESSAGES: 100
+
+  image-fixture:
+    image: nginx:1.29-alpine
+    volumes:
+      - ./test/support/data/motherofalldemos.jpg:/usr/share/nginx/html/tracker.jpg:ro
+
+  app:
+    build:
+      context: .
+    environment:
+      APP_DOMAIN: shroud.test
+      EMAIL_DOMAIN: aliases.test
+      DATABASE_URL: ecto://postgres:postgres@db/shroud_e2e
+      DB_ENCRYPTION_KEY: YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE=
+      SECRET_KEY_BASE: e2e-secret-key-base-e2e-secret-key-base-e2e-secret-key-base-e2e-secret-key-base
+      SMTP_RELAY: mailpit
+      SMTP_PORT: 1025
+      SMTP_TLS: never
+      SMTP_AUTH: never
+      SMTP_USERNAME: e2e
+      SMTP_PASSWORD: e2e
+      PORT: 4000
+      POOL_SIZE: 5
+    depends_on:
+      db:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    ports:
+      - "${E2E_HTTP_PORT:-4400}:4000"
+      - "${E2E_SMTP_PORT:-4587}:1587"
+    networks:
+      default:
+        aliases:
+          - shroud.test
+
+  playwright:
+    image: mcr.microsoft.com/playwright:v1.61.1-noble
+    working_dir: /work/e2e
+    environment:
+      BASE_URL: http://shroud.test:4000
+      SMTP_HOST: shroud.test
+      SMTP_PORT: 1587
+      MAILPIT_URL: http://mailpit:8025
+      IMAGE_FIXTURE_URL: http://image-fixture/tracker.jpg
+      CI: "true"
+    volumes:
+      - .:/work
+      - playwright-node-modules:/work/e2e/node_modules
+    depends_on:
+      app:
+        condition: service_started
+      image-fixture:
+        condition: service_started
+    command: ["sh", "-c", "npm ci && npx playwright test"]
+
+volumes:
+  playwright-node-modules:

@@ -120,15 +120,33 @@ if config_env() == :prod do
 
   smtp_relay = System.get_env("SMTP_RELAY") || "localhost"
 
+  smtp_port = String.to_integer(System.get_env("SMTP_PORT") || "25")
+
+  smtp_tls =
+    case System.get_env("SMTP_TLS", "always") do
+      "always" -> :always
+      "if_available" -> :if_available
+      "never" -> :never
+      value -> raise "invalid SMTP_TLS value: #{inspect(value)}"
+    end
+
+  smtp_auth =
+    case System.get_env("SMTP_AUTH", "always") do
+      "always" -> :always
+      "if_available" -> :if_available
+      "never" -> :never
+      value -> raise "invalid SMTP_AUTH value: #{inspect(value)}"
+    end
+
   config :shroud, Shroud.Mailer,
     adapter: Swoosh.Adapters.SMTP,
     relay: smtp_relay,
     username: smtp_username,
     password: smtp_password,
     ssl: false,
-    tls: :always,
-    auth: :always,
-    port: 25,
+    tls: smtp_tls,
+    auth: smtp_auth,
+    port: smtp_port,
     retries: 5,
     no_mx_lookups: true,
     tls_options: [
