@@ -25,13 +25,20 @@ config :shroud,
 # In the test env, billing config (incl. a fixed webhook secret) comes from
 # config/test.exs instead of these env vars.
 if config_env() != :test do
+  paddle_environment = System.get_env("PADDLE_ENVIRONMENT") || "live"
+
+  paddle_base_url =
+    if paddle_environment == "sandbox",
+      do: "https://sandbox-api.paddle.com",
+      else: "https://api.paddle.com"
+
   config :shroud, :billing,
-    paddle_api_key: System.fetch_env!("PADDLE_API_KEY"),
-    paddle_webhook_secret: System.fetch_env!("PADDLE_WEBHOOK_SECRET"),
-    paddle_yearly_price_id: System.fetch_env!("PADDLE_YEARLY_PRICE_ID"),
-    paddle_base_url: System.get_env("PADDLE_BASE_URL") || "https://api.paddle.com",
-    paddle_client_token: System.fetch_env!("PADDLE_CLIENT_TOKEN"),
-    paddle_environment: System.get_env("PADDLE_ENVIRONMENT") || "live"
+    paddle_api_key: System.get_env("PADDLE_API_KEY"),
+    paddle_webhook_secret: System.get_env("PADDLE_WEBHOOK_SECRET"),
+    paddle_yearly_price_id: System.get_env("PADDLE_YEARLY_PRICE_ID"),
+    paddle_base_url: paddle_base_url,
+    paddle_client_token: System.get_env("PADDLE_CLIENT_TOKEN"),
+    paddle_environment: paddle_environment
 end
 
 # ex_aws configured with AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY

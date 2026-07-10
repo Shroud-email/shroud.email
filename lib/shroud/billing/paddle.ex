@@ -5,7 +5,7 @@ defmodule Shroud.Billing.Paddle do
   Auth: `Authorization: Bearer <api_key>`. Base URL configurable (sandbox/prod).
   No official Elixir SDK exists; the surface is two endpoints.
 
-  Checkout itself is handled client-side by Paddle.js (see `assets/js/app.js`),
+  Checkout itself is handled client-side by Paddle.js,
   so there's no server-side checkout creation here. This module covers:
   customer portal session creation and webhook signature verification.
 

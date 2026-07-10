@@ -46,7 +46,7 @@ defmodule ShroudWeb.UserSettingsController do
   def billing(conn, _params) do
     render(conn, "billing.html",
       page_title: "Billing settings",
-      paddle_price_id: Application.fetch_env!(:shroud, :billing)[:paddle_yearly_price_id]
+      paddle_price_id: Application.get_env(:shroud, :billing, [])[:paddle_yearly_price_id]
     )
   end
 

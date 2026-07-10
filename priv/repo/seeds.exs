@@ -19,14 +19,14 @@ alias Shroud.Email
 user =
   %User{}
   |> User.registration_changeset(%{
-    email: "test2@test.com",
+    email: "test@test.com",
     password: "123456789012",
-    status: :free
+    status: :active
   })
   |> Repo.insert!(returning: true)
 
 user
-|> User.confirm_changeset(%{status: :free})
+|> User.confirm_changeset(%{status: :active})
 |> Repo.update!()
 
 now = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)

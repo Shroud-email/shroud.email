@@ -131,7 +131,6 @@ defmodule ShroudWeb.Router do
       live("/detention", SpamEmailLive.Index, :index)
     end
 
-    get("/checkout/success", CheckoutController, :success)
     get("/checkout/billing", CheckoutController, :billing_portal)
   end
 

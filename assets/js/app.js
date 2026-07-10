@@ -67,8 +67,6 @@ if (paddleToken) {
 }
 
 // Open Paddle overlay checkout when the Upgrade button is clicked.
-// The button is on the dead (controller-rendered) billing page, so we use a
-// plain DOM listener rather than a LiveView hook.
 document.addEventListener("click", (event) => {
  const button = event.target.closest("#upgrade-button");
  if (!button) return;

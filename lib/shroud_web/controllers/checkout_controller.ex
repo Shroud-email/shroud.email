@@ -6,10 +6,6 @@ defmodule ShroudWeb.CheckoutController do
   alias Shroud.Billing.Paddle
   alias ShroudWeb.Plugs.CachingBodyReader
 
-  def success(conn, _params) do
-    render(conn, "success.html")
-  end
-
   def billing_portal(conn, _params) do
     customer_id = conn.assigns.current_user.paddle_customer_id
 
@@ -24,6 +20,10 @@ defmodule ShroudWeb.CheckoutController do
 
         {:error, reason} ->
           Logger.error("Failed to create Paddle portal session: #{inspect(reason)}")
+
+          Sentry.capture_message("Failed to create Paddle portal session",
+            extra: %{reason: inspect(reason)}
+          )
 
           conn
           |> put_flash(:error, "We couldn't open billing management right now. Please try again.")
@@ -75,6 +75,7 @@ defmodule ShroudWeb.CheckoutController do
     case Accounts.get_user_by_email(email) do
       nil ->
         Logger.error("Paddle customer.created for unknown user: #{email}")
+        Sentry.capture_message("Paddle customer.created for unknown user", extra: %{email: email})
 
       user ->
         # Don't overwrite a customer_id already set for this user.
@@ -90,6 +91,10 @@ defmodule ShroudWeb.CheckoutController do
     case Accounts.get_user_by_paddle_customer_id(customer_id) do
       nil ->
         Logger.error("Paddle subscription event for unknown customer: #{customer_id}")
+
+        Sentry.capture_message("Paddle subscription event for unknown customer",
+          extra: %{customer_id: customer_id}
+        )
 
       user ->
         event_at = parse_iso8601(event["occurred_at"])

@@ -49,3 +49,11 @@ assets/css/_components.css
 
 # Local git worktrees
 .worktrees/
+
+# Agent tooling (never commit)
+.superpowers/
+.pi/
+.pi-subagents/
+.agents/
+.claude/
+skills-lock.json
