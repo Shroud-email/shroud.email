@@ -71,6 +71,7 @@ window.addEventListener("load", () => {
     window.chatwootSDK.run({
       websiteToken: "7j9ZdJCJR5ZGaYkCMN2EvAhp",
       baseUrl: "https://support.shroud.email",
+      darkMode: "auto",
     });
   }
 });
