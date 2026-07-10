@@ -7,11 +7,19 @@ defmodule ShroudWeb.CheckoutController do
   alias ShroudWeb.Plugs.CachingBodyReader
 
   def index(conn, _params) do
-    %{checkout_url: url} = Paddle.create_checkout(conn.assigns.current_user.email)
+    case Paddle.create_checkout(conn.assigns.current_user.email) do
+      {:ok, %{checkout_url: url}} ->
+        conn
+        |> put_status(:see_other)
+        |> redirect(external: url)
 
-    conn
-    |> put_status(:see_other)
-    |> redirect(external: url)
+      {:error, reason} ->
+        Logger.error("Failed to create Paddle checkout: #{inspect(reason)}")
+
+        conn
+        |> put_flash(:error, "We couldn't start checkout right now. Please try again.")
+        |> redirect(to: ~p"/settings/billing")
+    end
   end
 
   def success(conn, _params) do
@@ -24,11 +32,19 @@ defmodule ShroudWeb.CheckoutController do
     if is_nil(customer_id) do
       redirect(conn, to: ~p"/settings/billing")
     else
-      %{url: url} = Paddle.create_portal_session(customer_id)
+      case Paddle.create_portal_session(customer_id) do
+        {:ok, %{url: url}} ->
+          conn
+          |> put_status(:see_other)
+          |> redirect(external: url)
 
-      conn
-      |> put_status(:see_other)
-      |> redirect(external: url)
+        {:error, reason} ->
+          Logger.error("Failed to create Paddle portal session: #{inspect(reason)}")
+
+          conn
+          |> put_flash(:error, "We couldn't open billing management right now. Please try again.")
+          |> redirect(to: ~p"/settings/billing")
+      end
     end
   end
 

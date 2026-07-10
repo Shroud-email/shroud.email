@@ -76,7 +76,7 @@ defmodule ShroudWeb.CheckoutControllerTest do
   end
 
   describe "subscription.canceled" do
-    test "revokes access to free tier", %{conn: conn} do
+    test "revokes access to free tier and records the event timestamp", %{conn: conn} do
       user = user_fixture(%{status: :active, paddle_customer_id: "ctm_xyz"})
       # Canceled subs have current_billing_period: null per Paddle docs
       event = subscription_event("canceled", "ctm_xyz", "sub_xyz", nil_billing: true)
@@ -86,27 +86,103 @@ defmodule ShroudWeb.CheckoutControllerTest do
       user = Repo.get!(User, user.id)
       assert user.status == :free
       assert is_nil(user.plan_expires_at)
+      # The ordering guard depends on this being persisted.
+      assert user.last_paddle_event_at == @period_end_naive
     end
   end
 
   describe "idempotency" do
-    test "sending the same active event twice notifies only once", %{conn: conn} do
+    test "a newer duplicate active event skips the side-effect via prior_status", %{conn: conn} do
       user = user_fixture(%{status: :free})
       post_event(conn, customer_created_event(user.email, "ctm_dup"))
-      event = subscription_event("active", "ctm_dup", "sub_dup")
 
-      post_event(conn, event)
-      post_event(conn, event)
+      # First event grants active and notifies.
+      first =
+        subscription_event("active", "ctm_dup", "sub_dup", occurred_at: "2030-01-01T00:00:00Z")
 
-      # notify_user_signed_up fires only on the active transition; the second
-      # event sees user.status already :active and skips the side effect.
+      post_event(conn, first)
+      assert paid_signup_notification?()
+
+      # Second event: strictly newer occurred_at (so it passes stale?/2), still
+      # active. The prior_status != :active guard must prevent a second notification.
+      second =
+        subscription_event("active", "ctm_dup", "sub_dup", occurred_at: "2030-01-02T00:00:00Z")
+
+      post_event(conn, second)
+
       count =
         Enum.count(
           all_enqueued(worker: Shroud.NotifierJob),
           &(&1.args["payload"]["content"] =~ "paid plan")
         )
 
-      assert count <= 1
+      assert count == 1
+    end
+  end
+
+  describe "subscription.updated" do
+    test "re-provisions on an updated event with a newer occurred_at", %{conn: conn} do
+      user = user_fixture(%{status: :active, paddle_customer_id: "ctm_upd"})
+
+      # A renewal: subscription.updated, active, a later period end.
+      event =
+        subscription_event("active", "ctm_upd", "sub_upd",
+          event_type: "subscription.updated",
+          occurred_at: "2031-06-01T00:00:00Z",
+          period_end: "2032-06-01T00:00:00Z"
+        )
+
+      conn = post_event(conn, event)
+      assert response(conn, 200) == ""
+
+      user = Repo.get!(User, user.id)
+      assert user.status == :active
+      assert user.plan_expires_at == ~N[2032-06-01 00:00:00]
+    end
+  end
+
+  describe "subscription.past_due" do
+    test "keeps the user active during the grace period", %{conn: conn} do
+      user = user_fixture(%{status: :active, paddle_customer_id: "ctm_due"})
+
+      event = subscription_event("past_due", "ctm_due", "sub_due")
+      conn = post_event(conn, event)
+      assert response(conn, 200) == ""
+
+      user = Repo.get!(User, user.id)
+      # past_due retains :active so Paddle Retain can retry payment.
+      assert user.status == :active
+    end
+  end
+
+  describe "unknown customer / event" do
+    test "subscription event for an unknown customer logs and returns 200", %{conn: conn} do
+      event = subscription_event("active", "ctm_nope", "sub_nope")
+      conn = post_event(conn, event)
+      assert response(conn, 200) == ""
+    end
+
+    test "an unhandled event type returns 200", %{conn: conn} do
+      event = %{
+        "event_id" => "evt_#{System.unique_integer([:positive])}",
+        "event_type" => "product.updated",
+        "occurred_at" => @occurred_at,
+        "data" => %{"id" => "pro_123"}
+      }
+
+      conn = post_event(conn, event)
+      assert response(conn, 200) == ""
+    end
+  end
+
+  describe "billing_portal/2" do
+    test "redirects to /settings/billing when the user has no paddle_customer_id", %{conn: conn} do
+      user = user_fixture(%{status: :free})
+      user |> Shroud.Accounts.User.confirm_changeset() |> Repo.update!()
+      conn = log_in_user(conn, user)
+
+      conn = get(conn, ~p"/checkout/billing")
+      assert redirected_to(conn) == "/settings/billing"
     end
   end
 
@@ -145,17 +221,19 @@ defmodule ShroudWeb.CheckoutControllerTest do
   defp subscription_event(status, customer_id, sub_id, opts) when is_list(opts) do
     occurred_at = Keyword.get(opts, :occurred_at, @occurred_at)
     nil_billing = Keyword.get(opts, :nil_billing, false)
+    event_type = Keyword.get(opts, :event_type, "subscription.created")
+    period_end = Keyword.get(opts, :period_end, @period_end_iso)
 
     billing_period =
       if nil_billing do
         nil
       else
-        %{"ends_at" => @period_end_iso}
+        %{"ends_at" => period_end}
       end
 
     %{
       "event_id" => "evt_#{System.unique_integer([:positive])}",
-      "event_type" => "subscription.created",
+      "event_type" => event_type,
       "occurred_at" => occurred_at,
       "data" => %{
         "id" => sub_id,

@@ -89,7 +89,20 @@ defmodule Shroud.Billing.PaddleHTTPTest do
         })
       end)
 
-      assert %{checkout_url: "https://paddle.com/checkout/abc"} =
+      assert {:ok, %{checkout_url: "https://paddle.com/checkout/abc"}} =
+               Shroud.Billing.Paddle.create_checkout("user@example.com")
+    end
+
+    test "returns {:error, {:paddle_api, status, code}} for a non-201 response", %{
+      bypass: bypass
+    } do
+      Bypass.expect(bypass, "POST", "/transactions", fn conn ->
+        Resp.json(conn, 401, %{
+          "error" => %{"type" => "request_error", "code" => "authentication_missing"}
+        })
+      end)
+
+      assert {:error, {:paddle_api, 401, "authentication_missing"}} =
                Shroud.Billing.Paddle.create_checkout("user@example.com")
     end
   end
@@ -107,7 +120,18 @@ defmodule Shroud.Billing.PaddleHTTPTest do
         })
       end)
 
-      assert %{url: "https://portal.paddle.com/..."} =
+      assert {:ok, %{url: "https://portal.paddle.com/..."}} =
+               Shroud.Billing.Paddle.create_portal_session("ctm_123")
+    end
+
+    test "returns {:error, {:paddle_api, status, code}} for a non-201 response", %{
+      bypass: bypass
+    } do
+      Bypass.expect(bypass, "POST", "/customers/ctm_123/portal-sessions", fn conn ->
+        Resp.json(conn, 404, %{"error" => %{"code" => "not_found"}})
+      end)
+
+      assert {:error, {:paddle_api, 404, "not_found"}} =
                Shroud.Billing.Paddle.create_portal_session("ctm_123")
     end
   end

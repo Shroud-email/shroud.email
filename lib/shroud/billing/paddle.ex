@@ -19,18 +19,23 @@ defmodule Shroud.Billing.Paddle do
   server-side — the `POST /transactions` body has no `customer` field.
   """
   @impl true
-  @spec create_checkout(String.t()) :: %{checkout_url: String.t()}
+  @spec create_checkout(String.t()) :: {:ok, %{checkout_url: String.t()}} | {:error, term()}
   def create_checkout(_email) do
     body = %{
       items: [%{quantity: 1, price_id: config()[:paddle_yearly_price_id]}],
       collection_mode: "automatic"
     }
 
-    {:ok, %Req.Response{status: 201, body: resp}} =
-      client()
-      |> Req.post(url: "/transactions", json: body)
+    case client() |> Req.post(url: "/transactions", json: body) do
+      {:ok, %Req.Response{status: 201, body: resp}} ->
+        {:ok, %{checkout_url: resp["data"]["checkout"]["url"]}}
 
-    %{checkout_url: resp["data"]["checkout"]["url"]}
+      {:ok, %Req.Response{status: status, body: resp}} ->
+        {:error, {:paddle_api, status, paddle_error_code(resp)}}
+
+      {:error, reason} ->
+        {:error, {:request_failed, reason}}
+    end
   end
 
   @doc """
@@ -40,20 +45,25 @@ defmodule Shroud.Billing.Paddle do
   the user clicks "manage billing". Returns the authenticated portal URL.
   """
   @impl true
-  @spec create_portal_session(String.t()) :: %{url: String.t()}
+  @spec create_portal_session(String.t()) :: {:ok, %{url: String.t()}} | {:error, term()}
   def create_portal_session(customer_id) do
-    {:ok, %Req.Response{status: 201, body: resp}} =
-      client()
-      |> Req.post(url: "/customers/#{customer_id}/portal-sessions", json: %{})
+    case client() |> Req.post(url: "/customers/#{customer_id}/portal-sessions", json: %{}) do
+      {:ok, %Req.Response{status: 201, body: resp}} ->
+        {:ok, %{url: resp["data"]["urls"]["general"]["overview"]}}
 
-    %{url: resp["data"]["urls"]["general"]["overview"]}
+      {:ok, %Req.Response{status: status, body: resp}} ->
+        {:error, {:paddle_api, status, paddle_error_code(resp)}}
+
+      {:error, reason} ->
+        {:error, {:request_failed, reason}}
+    end
   end
 
   @doc """
   Verifies a Paddle webhook signature against the configured destination secret.
 
   Header format: `ts=<unix_ts>;h1=<hex_hmac>`. Signed payload:
-  `"#ts:raw_body"` (timestamp + colon + raw body), HMAC-SHA256 keyed with the
+  `"ts:raw_body"` (timestamp + colon + raw body), HMAC-SHA256 keyed with the
   secret, hex digest, constant-time compare. 5-second timestamp tolerance for
   replay protection.
   """
@@ -118,6 +128,14 @@ defmodule Shroud.Billing.Paddle do
       headers: [{"content-type", "application/json"}]
     )
   end
+
+  # Paddle error responses are shaped as %{"error" => %{"code" => ..., ...}}.
+  # See https://developer.paddle.com/errors. Returns nil for non-conforming bodies.
+  defp paddle_error_code(resp) when is_map(resp) do
+    get_in(resp, ["error", "code"])
+  end
+
+  defp paddle_error_code(_resp), do: nil
 
   defp config do
     Application.fetch_env!(:shroud, :billing)
