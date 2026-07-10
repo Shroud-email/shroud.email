@@ -22,15 +22,14 @@ config :shroud,
   cap_site_key: System.get_env("CAP_SITE_KEY"),
   cap_secret_key: System.get_env("CAP_SECRET_KEY")
 
-config :stripity_stripe, api_key: System.get_env("STRIPE_SECRET")
-
 # In the test env, billing config (incl. a fixed webhook secret) comes from
 # config/test.exs instead of these env vars.
 if config_env() != :test do
   config :shroud, :billing,
-    stripe_yearly_price: System.get_env("STRIPE_YEARLY_PRICE"),
-    stripe_monthly_price: System.get_env("STRIPE_MONTHLY_PRICE"),
-    stripe_webhook_secret: System.get_env("STRIPE_WEBHOOK_SECRET")
+    paddle_api_key: System.fetch_env!("PADDLE_API_KEY"),
+    paddle_webhook_secret: System.fetch_env!("PADDLE_WEBHOOK_SECRET"),
+    paddle_yearly_price_id: System.fetch_env!("PADDLE_YEARLY_PRICE_ID"),
+    paddle_base_url: System.get_env("PADDLE_BASE_URL") || "https://api.paddle.com"
 end
 
 # ex_aws configured with AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY

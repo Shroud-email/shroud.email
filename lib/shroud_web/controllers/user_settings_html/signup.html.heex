@@ -1,23 +1,4 @@
-<div x-data="{ billingPeriod: 'yearly' }">
-  <div class="relative self-center bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5 flex justify-center mb-6">
-    <button
-      @click="billingPeriod = 'monthly'"
-      type="button"
-      x-bind:class="billingPeriod === 'monthly' ? 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100 shadow-xs' : 'border-transparent text-gray-700 dark:text-gray-300'"
-      class="relative w-1/2 border rounded-md shadow-xs py-2 text-sm font-medium whitespace-nowrap focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:z-10 sm:w-auto sm:px-8"
-    >
-      Monthly billing
-    </button>
-    <button
-      @click="billingPeriod = 'yearly'"
-      type="button"
-      x-bind:class="billingPeriod === 'yearly' ? 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100 shadow-xs' : 'border-transparent text-gray-700 dark:text-gray-300'"
-      class="ml-0.5 relative w-1/2 border rounded-md py-2 text-sm font-medium whitespace-nowrap focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:z-10 sm:w-auto sm:px-8"
-    >
-      Yearly billing
-    </button>
-  </div>
-
+<div>
   <div class="max-w-lg mx-auto rounded-lg shadow-sm dark:shadow-gray-900/50 overflow-hidden lg:max-w-none lg:flex">
     <div class="flex-1 bg-white dark:bg-gray-800 px-6 py-8 lg:px-12 lg:pb-12">
       <h3 class="text-2xl font-extrabold text-gray-900 dark:text-gray-100 sm:text-3xl">
@@ -83,23 +64,18 @@
       </div>
     </div>
     <div class="py-8 px-6 text-center bg-gray-50 dark:bg-gray-700 lg:shrink-0 lg:flex lg:flex-col lg:justify-center lg:p-12">
-      <p x-text="'Billed ' + billingPeriod" class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100">
+      <p class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100">
+        Billed yearly
       </p>
       <div class="mt-4 flex items-center justify-center text-5xl font-extrabold text-gray-900 dark:text-gray-100">
-        <span x-text="billingPeriod === 'monthly' ? '£2' : '£20'">
-        </span>
+        <span>£25</span>
         <span class="ml-3 text-xl font-medium text-gray-500 dark:text-gray-400">
           GBP
         </span>
       </div>
       <div class="mt-6">
         <div class="rounded-md shadow-sm">
-          <template x-if="billingPeriod === 'monthly'">
-            <.link href={~p"/checkout?period=monthly"} class="flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-white bg-gray-800 hover:bg-gray-900">Upgrade</.link>
-          </template>
-          <template x-if="billingPeriod === 'yearly'">
-            <.link href={~p"/checkout/?period=yearly"} class="flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-white bg-gray-800 hover:bg-gray-900">Upgrade</.link>
-          </template>
+          <.link href={~p"/checkout"} class="flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-white bg-gray-800 hover:bg-gray-900">Upgrade</.link>
         </div>
       </div>
     </div>
