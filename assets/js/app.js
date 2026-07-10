@@ -78,8 +78,12 @@ window.addEventListener("load", () => {
 // Identify the authenticated user to Chatwoot once the widget is ready
 window.addEventListener("chatwoot:ready", () => {
   var email = document.body.dataset.currentUserEmail;
+  var identifierHash = document.body.dataset.chatwootIdentifierHash;
   if (email && window.$chatwoot) {
-    window.$chatwoot.setUser(email, { email: email });
+    window.$chatwoot.setUser(email, {
+      email: email,
+      identifier_hash: identifierHash,
+    });
   }
 });
 

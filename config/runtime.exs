@@ -142,6 +142,7 @@ if config_env() == :prod do
     disable_signups: System.get_env("DISABLE_SIGNUPS") in ~w(true 1 yes),
     app_domain: app_domain,
     email_domain: email_domain,
+    chatwoot_hmac_token: System.get_env("CHATWOOT_HMAC_TOKEN"),
     env: :prod
 
   # Sentry error reporting. SENTRY_RELEASE is baked into the image at build

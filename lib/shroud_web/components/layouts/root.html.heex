@@ -36,6 +36,7 @@
   <body
     class="h-full bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100"
     data-current-user-email={if assigns[:current_user], do: @current_user.email}
+    data-chatwoot-identifier-hash={chatwoot_identifier_hash(@current_user)}
   >
     <div class="min-h-full">
       <.navbar {assigns} />

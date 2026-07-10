@@ -22,6 +22,7 @@ config :shroud, Shroud.Vault,
 config :shroud,
   app_domain: "app.example.com",
   email_domain: "example.com",
+  chatwoot_hmac_token: System.get_env("CHATWOOT_HMAC_TOKEN"),
   env: :dev
 
 # For development, we disable any cache and enable
