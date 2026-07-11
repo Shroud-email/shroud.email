@@ -14,5 +14,8 @@ cleanup() {
 
 trap cleanup EXIT INT TERM
 
-"${compose[@]}" build app
+if [[ "${E2E_SKIP_BUILD:-0}" != "1" ]]; then
+  "${compose[@]}" build app
+fi
+
 "${compose[@]}" up --abort-on-container-exit --exit-code-from playwright playwright
