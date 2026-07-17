@@ -1,5 +1,9 @@
-const net = require("node:net")
-const { test, expect } = require("@playwright/test")
+import * as net from "node:net"
+import {
+  expect,
+  test,
+  type APIRequestContext
+} from "@playwright/test"
 
 const smtpHost = process.env.SMTP_HOST || "localhost"
 const smtpPort = Number(process.env.SMTP_PORT || 4587)
@@ -7,7 +11,22 @@ const mailpitUrl = process.env.MAILPIT_URL || "http://localhost:8025"
 const imageFixtureUrl =
   process.env.IMAGE_FIXTURE_URL || "http://localhost:4800/tracker.jpg"
 
-async function waitForApp(request) {
+type Email = {
+  from: string
+  to: string
+  subject: string
+}
+
+type MailpitMessageSummary = {
+  ID: string
+  Subject: string
+}
+
+type MailpitMessages = {
+  messages: MailpitMessageSummary[]
+}
+
+async function waitForApp(request: APIRequestContext) {
   await expect
     .poll(async () => {
       try {
@@ -19,8 +38,8 @@ async function waitForApp(request) {
     .toBe(200)
 }
 
-function sendEmail({ from, to, subject }) {
-  return new Promise((resolve, reject) => {
+function sendEmail({ from, to, subject }: Email) {
+  return new Promise<void>((resolve, reject) => {
     const socket = net.createConnection({ host: smtpHost, port: smtpPort })
     let buffer = ""
     const commands = [
@@ -58,14 +77,16 @@ function sendEmail({ from, to, subject }) {
   })
 }
 
-async function mailpitMessages(request) {
+async function mailpitMessages(
+  request: APIRequestContext
+): Promise<MailpitMessages> {
   const response = await request.get(`${mailpitUrl}/api/v1/messages`)
   expect(response.ok()).toBeTruthy()
   return response.json()
 }
 
-async function waitForMail(request, subject) {
-  let match
+async function waitForMail(request: APIRequestContext, subject: string) {
+  let match: MailpitMessageSummary | undefined
 
   await expect
     .poll(async () => {
@@ -74,6 +95,8 @@ async function waitForMail(request, subject) {
       return Boolean(match)
     }, { timeout: 30_000, message: `message not found in Mailpit: ${subject}` })
     .toBeTruthy()
+
+  if (!match) throw new Error(`message not found in Mailpit: ${subject}`)
 
   const response = await request.get(`${mailpitUrl}/api/v1/message/${match.ID}`)
   expect(response.ok()).toBeTruthy()
@@ -94,9 +117,11 @@ test("signup, login, alias lifecycle, and incoming forwarding", async ({ page, r
   await expect(page).toHaveURL(/\/users\/confirm$/)
 
   const confirmation = await waitForMail(request, "Confirmation instructions")
-  const confirmationPath = JSON.stringify(confirmation).match(/\/users\/confirm\/[A-Za-z0-9_-]+/)
-  expect(confirmationPath).not.toBeNull()
-  await page.goto(confirmationPath[0])
+  const confirmationPath = JSON.stringify(confirmation).match(/\/users\/confirm\/[A-Za-z0-9_-]+/)?.[0]
+  expect(confirmationPath).toBeDefined()
+  if (!confirmationPath) throw new Error("confirmation path not found in email")
+
+  await page.goto(confirmationPath)
   await page.getByRole("button", { name: "Confirm my account" }).click()
   await expect(page).toHaveURL(/\/$/)
 
@@ -111,7 +136,7 @@ test("signup, login, alias lifecycle, and incoming forwarding", async ({ page, r
 
   await page.getByRole("button", { name: "New alias" }).click()
   await expect(page).toHaveURL(/\/alias\//)
-  const alias = decodeURIComponent(new URL(page.url()).pathname.split("/").pop())
+  const alias = decodeURIComponent(new URL(page.url()).pathname.split("/").pop() || "")
   expect(alias).toMatch(/@aliases\.test$/)
 
   const subject = `E2E forwarding ${unique}`
