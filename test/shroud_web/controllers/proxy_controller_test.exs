@@ -63,6 +63,20 @@ defmodule ShroudWeb.ProxyControllerTest do
 
       assert response_content_type(conn, :png)
     end
+
+    test "returns an error response when the upstream TLS handshake fails", %{conn: conn} do
+      url = "https://example.com/foo.png"
+      reason = {:tls_alert, {:handshake_failure, ~c"TLS client received a fatal alert"}}
+
+      Shroud.MockHTTPoison
+      |> expect(:get, fn ^url ->
+        {:error, %HTTPoison.Error{reason: reason}}
+      end)
+
+      conn = get(conn, ~p"/proxy", %{"url" => url})
+
+      assert response(conn, 500) == "Error: network_error"
+    end
   end
 
   defp image_body do

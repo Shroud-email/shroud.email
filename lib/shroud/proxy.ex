@@ -2,7 +2,11 @@ defmodule Shroud.Proxy do
   require Logger
 
   @type proxy_error ::
-          :invalid_uri | :non_200_status_code | :too_many_redirects | :not_an_image | any
+          :invalid_uri
+          | :network_error
+          | :non_200_status_code
+          | :too_many_redirects
+          | :not_an_image
 
   @spec get(String.t()) :: {:ok, {any, String.t()}} | {:error, proxy_error}
   def get(url) do
@@ -47,9 +51,9 @@ defmodule Shroud.Proxy do
         Logger.notice("Attempt to proxy \"#{url}\" failed; returned status code #{status_code}")
         {:error, :non_200_status_code}
 
-      {:error, %HTTPoison.Error{reason: reason}} ->
-        Logger.warning("Could not fetch #{url}: #{reason}")
-        {:error, reason}
+      {:error, %HTTPoison.Error{} = error} ->
+        Logger.warning("Could not fetch #{url}: #{Exception.message(error)}")
+        {:error, :network_error}
     end
   end
 
