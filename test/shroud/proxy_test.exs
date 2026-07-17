@@ -1,6 +1,7 @@
 defmodule Shroud.ProxyTest do
   use Shroud.DataCase, async: true
   use Oban.Testing, repo: Shroud.Repo
+  import ExUnit.CaptureLog
   import Mox
   alias Shroud.Proxy
 
@@ -127,6 +128,23 @@ defmodule Shroud.ProxyTest do
       end)
 
       assert {:ok, {image_body(), nil}} == Proxy.get(url)
+    end
+
+    test "normalizes network errors with non-string reasons" do
+      url = "https://example.com/foo.png"
+      reason = {:tls_alert, {:handshake_failure, ~c"TLS client received a fatal alert"}}
+
+      Shroud.MockHTTPoison
+      |> expect(:get, fn ^url ->
+        {:error, %HTTPoison.Error{reason: reason}}
+      end)
+
+      log =
+        capture_log(fn ->
+          assert {:error, :network_error} == Proxy.get(url)
+        end)
+
+      assert log =~ inspect(reason)
     end
   end
 
