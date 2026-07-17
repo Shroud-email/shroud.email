@@ -124,16 +124,18 @@ defmodule ShroudWeb.CustomDomainLive.Show do
   end
 
   def handle_event("delete", _value, %{assigns: %{current_user: user, domain: domain}} = socket) do
-    if user |> can?(destroy(domain)) do
-      Domain.delete_custom_domain!(domain)
+    socket =
+      if user |> can?(destroy(domain)) do
+        Domain.delete_custom_domain!(domain)
 
-      socket =
         socket
         |> put_flash(:success, "Deleted #{domain.domain}.")
         |> redirect(to: ~p"/domains")
+      else
+        socket |> put_flash(:error, "You don't have permission to do that.")
+      end
 
-      {:noreply, socket}
-    end
+    {:noreply, socket}
   end
 
   def handle_info(:dns_check_complete, socket) do
