@@ -1,0 +1,13 @@
+{
+  "name": "shroud-image-e2e",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.61.1",
+    "@types/node": "^26.1.1",
+    "typescript": "^7.0.2"
+  }
+}

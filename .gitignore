@@ -43,5 +43,9 @@ node_modules/
 assets/js/_hooks/
 assets/css/_components.css
 
+# Playwright E2E artifacts
+/e2e/playwright-report/
+/e2e/test-results/
+
 # Local git worktrees
 .worktrees/
