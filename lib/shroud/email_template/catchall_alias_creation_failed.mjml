@@ -35,7 +35,7 @@
             address, please use a valid address (without underscores or spaces).
           </p>
 
-          <mj-button align="center" href="{{ domain_url }}" font-size="16px" background-color="#4f46e5" border-radius="7px">Manage domain</mj-button>
+          <p>{{ attachment_status }}</p>
         </mj-text>
       </mj-column>
     </mj-section>

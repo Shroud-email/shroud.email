@@ -1,7 +1,7 @@
 defmodule Shroud.Email.IncomingEmailHandler do
   alias Shroud.Accounts
   alias Shroud.Accounts.User
-  alias Shroud.Accounts.UserNotifierJob
+  alias Shroud.Accounts.UserNotifier
   alias Shroud.Aliases
   alias Shroud.Domain
   alias Shroud.Email
@@ -125,7 +125,7 @@ defmodule Shroud.Email.IncomingEmailHandler do
             "Could not create catch-all alias #{recipient} (from #{sender}) as the address is invalid. Notifying #{recipient_user.email}."
           )
 
-          notify_catchall_alias_creation_failed(recipient_user, recipient)
+          notify_catchall_alias_creation_failed(recipient_user, recipient, data)
         end
 
       {:error, reason} ->
@@ -138,16 +138,21 @@ defmodule Shroud.Email.IncomingEmailHandler do
     end
   end
 
-  @spec notify_catchall_alias_creation_failed(User.t(), String.t()) :: :ok
-  defp notify_catchall_alias_creation_failed(%User{} = user, recipient) do
-    %{
-      email_function: :deliver_catchall_alias_creation_failed,
-      email_args: [user.id, recipient]
-    }
-    |> UserNotifierJob.new()
-    |> Oban.insert!()
+  @spec notify_catchall_alias_creation_failed(User.t(), String.t(), String.t()) :: :ok
+  defp notify_catchall_alias_creation_failed(%User{} = user, recipient, data) do
+    original_message = if SpamHandler.spam?(data), do: nil, else: data
 
-    :ok
+    case UserNotifier.deliver_catchall_alias_creation_failed(
+           user.id,
+           recipient,
+           original_message
+         ) do
+      {:ok, _email} ->
+        :ok
+
+      {:error, reason} ->
+        raise Swoosh.DeliveryError, reason: reason
+    end
   end
 
   @spec forward_incoming_email(User.t(), String.t(), String.t(), String.t()) ::

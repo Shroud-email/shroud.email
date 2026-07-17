@@ -951,7 +951,8 @@ defmodule Shroud.Email.EmailHandlerTest do
       assert metric.forwarded == 2
     end
 
-    test "notifies the user if a catch-all address is invalid", %{user: user} do
+    @tag :catchall_invalid
+    test "attaches a non-spam message when a catch-all address is invalid", %{user: user} do
       custom_domain = custom_domain_fixture(%{user_id: user.id, catchall_enabled: true})
       invalid_address = "invalid_address@#{custom_domain.domain}"
 
@@ -960,7 +961,8 @@ defmodule Shroud.Email.EmailHandlerTest do
           "sender@example.com",
           [invalid_address],
           "Catch-all test",
-          "Plain text content!"
+          "Plain text content!",
+          "X-Spam-Status: No"
         )
 
       perform_job(EmailHandler, %{
@@ -969,18 +971,64 @@ defmodule Shroud.Email.EmailHandlerTest do
         data: data
       })
 
-      # No alias is created and the email is not forwarded
       assert is_nil(Aliases.get_email_alias_by_address(invalid_address))
-      assert_no_email_sent()
+      refute_email_sent(subject: "Catch-all test")
 
-      # But the user is notified that we couldn't create the alias
-      assert_enqueued(
-        worker: Shroud.Accounts.UserNotifierJob,
-        args: %{
-          email_function: :deliver_catchall_alias_creation_failed,
-          email_args: [user.id, invalid_address]
-        }
-      )
+      assert_email_sent(fn email ->
+        assert email.to == [{"", user.email}]
+        assert email.subject == "We couldn't create a catch-all alias"
+        assert email.text_body =~ "The original message is attached for review."
+        refute email.text_body =~ "/domains/"
+        refute email.html_body =~ "/domains/"
+
+        assert [
+                 %Swoosh.Attachment{
+                   filename: "original-message.eml",
+                   content_type: "message/rfc822",
+                   type: :attachment
+                 } = attachment
+               ] = email.attachments
+
+        assert Swoosh.Attachment.get_content(attachment) == data
+        true
+      end)
+    end
+
+    @tag :catchall_invalid
+    test "does not attach a spam message when a catch-all address is invalid", %{user: user} do
+      custom_domain = custom_domain_fixture(%{user_id: user.id, catchall_enabled: true})
+      invalid_address = "spam_address@#{custom_domain.domain}"
+
+      data =
+        text_email(
+          "spammer@example.com",
+          [invalid_address],
+          "Catch-all spam test",
+          "Spam content",
+          "X-Spam-Status: Yes, score=5.1 required=5.0"
+        )
+
+      perform_job(EmailHandler, %{
+        from: "spammer@example.com",
+        to: invalid_address,
+        data: data
+      })
+
+      assert is_nil(Aliases.get_email_alias_by_address(invalid_address))
+      refute_email_sent(subject: "Catch-all spam test")
+
+      assert_email_sent(fn email ->
+        assert email.to == [{"", user.email}]
+        assert email.subject == "We couldn't create a catch-all alias"
+        assert email.attachments == []
+
+        assert email.text_body =~
+                 "The original message was marked as spam, so it was not attached."
+
+        refute email.text_body =~ "/domains/"
+        refute email.html_body =~ "/domains/"
+        true
+      end)
     end
 
     test "does not create an alias if catch-all is disabled", %{user: user} do
