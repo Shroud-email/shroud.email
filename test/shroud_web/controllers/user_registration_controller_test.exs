@@ -1,5 +1,7 @@
 defmodule ShroudWeb.UserRegistrationControllerTest do
-  use ShroudWeb.ConnCase, async: true
+  # Mutates global Application env (cap_*) via enable_cap/disable_cap in the
+  # "Cap enabled" describe block below; must run serially to stay isolation-safe.
+  use ShroudWeb.ConnCase, async: false
 
   import Shroud.AccountsFixtures
 
@@ -64,6 +66,55 @@ defmodule ShroudWeb.UserRegistrationControllerTest do
       # Now do a logged in request and assert on the menu
       conn = get(conn, "/users/confirm")
       assert conn.assigns.current_user.status == :lifetime
+    end
+  end
+
+  describe "POST /users/register with Cap enabled" do
+    defp enable_cap do
+      Application.put_env(:shroud, :cap_instance_url, "https://cap.example.com")
+      Application.put_env(:shroud, :cap_site_key, "a1b2c3d4e5")
+      Application.put_env(:shroud, :cap_secret_key, "sk-testsecret")
+    end
+
+    defp disable_cap do
+      Application.put_env(:shroud, :cap_instance_url, nil)
+      Application.put_env(:shroud, :cap_site_key, nil)
+      Application.put_env(:shroud, :cap_secret_key, nil)
+    end
+
+    test "rejects a forged POST with no cap-token", %{conn: conn} do
+      enable_cap()
+
+      conn =
+        post(conn, ~p"/users/register", %{
+          "user" => valid_user_attributes(email: unique_user_email())
+        })
+
+      assert redirected_to(conn) == "/users/register"
+      assert Flash.get(conn.assigns.flash, :error) =~ "verification"
+    after
+      disable_cap()
+    end
+
+    test "creates account when cap-token verifies", %{conn: conn} do
+      enable_cap()
+
+      Req.Test.stub(Shroud.Captcha, fn conn ->
+        Req.Test.json(conn, %{"success" => true})
+      end)
+
+      email = unique_user_email()
+
+      conn =
+        post(conn, ~p"/users/register", %{
+          "user" => valid_user_attributes(email: email),
+          "cap-token" => "valid-token"
+        })
+
+      assert get_session(conn, :user_token)
+      assert redirected_to(conn) == "/users/confirm"
+    after
+      disable_cap()
     end
   end
 end
