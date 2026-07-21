@@ -61,3 +61,8 @@ config :shroud,
 
 # Used by the Stripe webhook controller to verify signatures in tests.
 config :shroud, :billing, stripe_webhook_secret: "whsec_test_secret_123"
+
+# Route Cap verification requests through the Req.Test stub (named
+# Shroud.Captcha) so captcha_test.exs can assert on responses without any
+# real network calls.
+config :shroud, :cap_req_options, plug: {Req.Test, Shroud.Captcha}
