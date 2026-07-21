@@ -12,6 +12,16 @@ config :shroud,
   chatwoot_base_url: System.get_env("CHATWOOT_BASE_URL"),
   chatwoot_hmac_token: System.get_env("CHATWOOT_HMAC_TOKEN")
 
+# Optional: Cap CAPTCHA. Set all three of CAP_INSTANCE_URL, CAP_SITE_KEY,
+# and CAP_SECRET_KEY to enable. When any is unset, Cap is fully disabled
+# (no widget rendered, no verification performed). The instance URL is
+# the Cap Standalone base, e.g. http://cap:3000 (in compose) or
+# https://cap.yourdomain.com.
+config :shroud,
+  cap_instance_url: System.get_env("CAP_INSTANCE_URL"),
+  cap_site_key: System.get_env("CAP_SITE_KEY"),
+  cap_secret_key: System.get_env("CAP_SECRET_KEY")
+
 config :stripity_stripe, api_key: System.get_env("STRIPE_SECRET")
 
 # In the test env, billing config (incl. a fixed webhook secret) comes from
