@@ -4,6 +4,8 @@ defmodule ShroudWeb.UserSessionController do
   alias Shroud.Accounts
   alias ShroudWeb.UserAuth
 
+  plug ShroudWeb.Plugs.VerifyCaptcha when action in [:create]
+
   def new(conn, _params) do
     render(conn, "new.html", error_message: nil, page_title: "Log in")
   end

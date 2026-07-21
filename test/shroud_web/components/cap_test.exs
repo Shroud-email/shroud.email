@@ -1,5 +1,7 @@
 defmodule ShroudWeb.Components.CapTest do
-  use ExUnit.Case, async: true
+  # Mutates global Application env (cap_*) that other tests read via
+  # Captcha.enabled?/0, so it must run serially to stay isolation-safe.
+  use ExUnit.Case, async: false
 
   import Phoenix.LiveViewTest
   alias ShroudWeb.Components.Cap
@@ -8,17 +10,9 @@ defmodule ShroudWeb.Components.CapTest do
   @endpoint_url "https://cap.example.com/abc-site-key/"
 
   setup do
-    prev = Application.get_all_env(:shroud)
-
     on_exit(fn ->
-      # restore by deleting keys we set, then re-applying originals
       [:cap_instance_url, :cap_site_key, :cap_secret_key]
       |> Enum.each(&Application.delete_env(:shroud, &1))
-
-      for {k, v} <- prev, is_map(v) do
-        for {kk, vv} <- v,
-            do: Application.put_env(:shroud, k, Map.put(prev[k] || %{}, kk, vv), persistent: true)
-      end
     end)
 
     :ok
@@ -30,9 +24,9 @@ defmodule ShroudWeb.Components.CapTest do
       |> Enum.each(&Application.delete_env(:shroud, &1))
 
   defp enable_cap do
-    Application.put_env(:shroud, :cap_instance_url, "https://cap.example.com", persistent: true)
-    Application.put_env(:shroud, :cap_site_key, "abc-site-key", persistent: true)
-    Application.put_env(:shroud, :cap_secret_key, "secret", persistent: true)
+    Application.put_env(:shroud, :cap_instance_url, "https://cap.example.com")
+    Application.put_env(:shroud, :cap_site_key, "abc-site-key")
+    Application.put_env(:shroud, :cap_secret_key, "secret")
   end
 
   test "renders nothing when Cap is disabled" do
