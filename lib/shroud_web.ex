@@ -41,6 +41,7 @@ defmodule ShroudWeb do
 
       import ShroudWeb.ErrorHelpers
       import ShroudWeb.Components.Atoms
+      import ShroudWeb.Components.Cap
 
       use Gettext, backend: ShroudWeb.Gettext
 
