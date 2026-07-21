@@ -89,6 +89,7 @@ defmodule Shroud.MixProject do
       {:finch, "~> 0.22"},
       {:timex, "~> 3.7"},
       {:httpoison, "~> 2.3"},
+      {:req, "~> 0.6"},
       {:quantum, "~> 3.4"},
       {:nimble_totp, "~> 1.0"},
       {:eqrcode, "~> 0.2.0"},
