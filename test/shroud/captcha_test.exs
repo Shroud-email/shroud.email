@@ -1,5 +1,7 @@
 defmodule Shroud.CaptchaTest do
-  use ExUnit.Case, async: true
+  # Mutates global Application env (cap_*) that other tests read via
+  # Captcha.enabled?/0, so it must run serially to stay isolation-safe.
+  use ExUnit.Case, async: false
 
   import Req.Test
 

@@ -4,6 +4,7 @@ defmodule ShroudWeb.UserResetPasswordController do
   alias Shroud.Accounts
 
   plug :get_user_by_reset_password_token when action in [:edit, :update]
+  plug ShroudWeb.Plugs.VerifyCaptcha when action in [:create]
 
   def new(conn, _params) do
     render(conn, "new.html")

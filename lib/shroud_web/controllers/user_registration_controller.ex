@@ -5,6 +5,8 @@ defmodule ShroudWeb.UserRegistrationController do
   alias Shroud.Accounts.User
   alias ShroudWeb.UserAuth
 
+  plug ShroudWeb.Plugs.VerifyCaptcha when action in [:create]
+
   def new(conn, params) do
     lifetime = params["lifetime"] == "true"
     changeset = Accounts.change_user_registration(%User{})
