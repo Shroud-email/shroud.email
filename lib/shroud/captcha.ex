@@ -14,7 +14,7 @@ defmodule Shroud.Captcha do
   """
   @spec enabled? :: boolean
   def enabled? do
-    instance_url() != nil and site_key() != nil and secret_key() != nil
+    present?(instance_url()) and present?(site_key()) and present?(secret_key())
   end
 
   @doc """
@@ -45,6 +45,19 @@ defmodule Shroud.Captcha do
   def verify(""), do: {:error, :missing_token}
 
   def verify(token) when is_binary(token) do
+    if enabled?() do
+      verify_token(token)
+    else
+      {:error, :verification_failed}
+    end
+  end
+
+  # Fail-closed catch-all: a non-binary token (e.g. a list or map) returns
+  # verification_failed rather than crashing on String.trim_trailing(nil, "/")
+  # in siteverify_url/0.
+  def verify(_), do: {:error, :verification_failed}
+
+  defp verify_token(token) do
     body = %{"secret" => secret_key(), "response" => token}
 
     case req_post(siteverify_url(), body) do
@@ -67,7 +80,12 @@ defmodule Shroud.Captcha do
       [
         url: url,
         method: :post,
-        json: body
+        json: body,
+        # Bounded so a slow/unreachable Cap instance cannot stall form
+        # submissions. 3s to establish the connection, 5s to read the
+        # response. Both map to Finch via Req (see deps/req/lib/req/steps.ex).
+        connect_options: [timeout: 3_000],
+        receive_timeout: 5_000
       ]
       |> Keyword.merge(Application.get_env(:shroud, :cap_req_options, []))
 
@@ -81,4 +99,13 @@ defmodule Shroud.Captcha do
   defp instance_url, do: Application.get_env(:shroud, :cap_instance_url)
   defp site_key, do: Application.get_env(:shroud, :cap_site_key)
   defp secret_key, do: Application.get_env(:shroud, :cap_secret_key)
+
+  # True only for a binary that is non-empty after trimming. Treats nil,
+  # empty strings, and whitespace-only strings (the values example.env
+  # produces for unset vars) all as "not configured".
+  defp present?(value) when is_binary(value) do
+    String.trim(value) != ""
+  end
+
+  defp present?(_), do: false
 end
