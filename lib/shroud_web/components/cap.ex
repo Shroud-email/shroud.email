@@ -19,10 +19,17 @@ defmodule ShroudWeb.Components.Cap do
   def cap_widget(assigns) do
     if Captcha.enabled?() do
       ~H"""
-      <div class={["cap-widget-wrapper", @class]}>
+      <div
+        class={["cap-widget-wrapper w-full mb-2", @class]}
+        style={"--cap-widget-width: 100%"}
+      >
         <script src={widget_script_url()}>
         </script>
-        <cap-widget data-cap-api-endpoint={Captcha.widget_endpoint()}></cap-widget>
+        <cap-widget
+          data-cap-api-endpoint={Captcha.widget_endpoint()}
+          class="block w-full"
+        >
+        </cap-widget>
       </div>
       """
     else
