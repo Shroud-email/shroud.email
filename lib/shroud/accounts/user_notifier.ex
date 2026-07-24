@@ -1,11 +1,27 @@
 defmodule Shroud.Accounts.UserNotifier do
   import Swoosh.Email
 
+  require Logger
+
   alias Shroud.{Accounts, EmailTemplate, Mailer, Util, Repo}
   alias Shroud.Domain.CustomDomain
   use ShroudWeb, :verified_routes
 
   # Delivers the email using the application mailer.
+  #
+  # Swoosh.Adapters.SMTP builds the MIME message via :mimemail.encode, whose
+  # `encode_header_value/2` does a hard `{ok, _} =
+  # smtp_util:parse_rfc5322_addresses/1` match — it *raises* a MatchError
+  # (rather than returning {:error, _}) on RFC 5322-invalid addresses (e.g.
+  # consecutive dots). We catch any exception here, report it to Sentry, and
+  # return {:error, _} so callers degrade gracefully instead of 500-ing.
+  #
+  # Sentry capture is explicit because the app's Sentry.LoggerHandler is
+  # configured with the default `capture_log_messages: false`, so a plain
+  # Logger.error would NOT be reported — only an unhandled crash would (via
+  # Sentry.PlugCapture). Several notifier call sites deliberately ignore the
+  # return value (to avoid user-enumeration leaks), so without this capture a
+  # swallowed raise would vanish from Sentry entirely.
   defp deliver(recipient, subject, html_body, text_body) do
     email =
       new()
@@ -16,15 +32,37 @@ defmodule Shroud.Accounts.UserNotifier do
       |> html_body(html_body)
       |> text_body(text_body)
 
-    with {:ok, _metadata} <- Mailer.deliver(email) do
-      {:ok, email}
+    case Mailer.deliver(email) do
+      {:ok, _metadata} -> {:ok, email}
+      {:error, reason} -> {:error, reason}
     end
+  rescue
+    exception ->
+      stacktrace = __STACKTRACE__
+
+      Logger.error("""
+      Failed to deliver email to #{inspect(recipient)}: #{Exception.format(:error, exception, stacktrace)}
+      """)
+
+      Sentry.capture_exception(exception,
+        stacktrace: stacktrace,
+        extra: %{recipient: recipient, subject: subject}
+      )
+
+      {:error, {:delivery_failed, exception}}
   end
 
   @doc """
   Deliver instructions to confirm account.
+
+  Takes a `user_id` (rather than a `%User{}`) so it can be enqueued as an
+  `UserNotifierJob` and run asynchronously — the user is fetched fresh inside
+  the job. This keeps confirmation delivery off the request path so transient
+  SMTP failures are retried by Oban instead of blocking or failing signup.
   """
-  def deliver_confirmation_instructions(user, url) do
+  def deliver_confirmation_instructions(user_id, url) do
+    user = Accounts.get_user!(user_id)
+
     html_body =
       EmailTemplate.ConfirmationInstructions.render(
         user_email: user.email,

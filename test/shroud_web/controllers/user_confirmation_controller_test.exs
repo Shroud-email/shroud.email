@@ -67,10 +67,7 @@ defmodule ShroudWeb.UserConfirmationControllerTest do
 
   describe "POST /users/confirm/:token" do
     test "confirms the given token once", %{conn: conn, user: user} do
-      token =
-        extract_user_token(fn url ->
-          Accounts.deliver_user_confirmation_instructions(user, url)
-        end)
+      token = generate_confirmation_token(user)
 
       conn = post(conn, ~p"/users/confirm/#{token}")
       assert redirected_to(conn) == "/"

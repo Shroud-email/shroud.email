@@ -84,7 +84,7 @@ defmodule Shroud.AccountsTest do
       {:error, changeset} = Accounts.register_user(%{email: "not valid", password: "not valid"})
 
       assert %{
-               email: ["must have the @ sign and no spaces"],
+               email: ["is invalid"],
                password: ["should be at least 12 character(s)"]
              } = errors_on(changeset)
     end
@@ -177,7 +177,7 @@ defmodule Shroud.AccountsTest do
       {:error, changeset} =
         Accounts.apply_user_email(user, valid_user_password(), %{email: "not valid"})
 
-      assert %{email: ["must have the @ sign and no spaces"]} = errors_on(changeset)
+      assert %{email: ["is invalid"]} = errors_on(changeset)
     end
 
     test "validates maximum value for email for security", %{user: user} do
@@ -406,29 +406,24 @@ defmodule Shroud.AccountsTest do
       %{user: user_fixture()}
     end
 
-    test "sends token through notification", %{user: user} do
-      token =
-        extract_user_token(fn url ->
-          Accounts.deliver_user_confirmation_instructions(user, url)
-        end)
+    test "enqueues the confirmation email job and persists a token", %{user: user} do
+      url_fun = &"https://example.com/confirm/#{&1}"
 
-      {:ok, token} = Base.url_decode64(token, padding: false)
-      assert user_token = Repo.get_by(UserToken, token: :crypto.hash(:sha256, token))
-      assert user_token.user_id == user.id
-      assert user_token.sent_to == user.email
-      assert user_token.context == "confirm"
+      assert {:ok, %Oban.Job{} = job} =
+               Accounts.deliver_user_confirmation_instructions(user, url_fun)
+
+      assert job.args[:email_function] == "deliver_confirmation_instructions"
+      assert hd(job.args[:email_args]) == user.id
+
+      # A confirmation token is persisted regardless of email delivery.
+      assert %UserToken{context: "confirm"} = Repo.get_by(UserToken, user_id: user.id)
     end
   end
 
   describe "confirm_user/1" do
     setup do
       user = user_fixture()
-
-      token =
-        extract_user_token(fn url ->
-          Accounts.deliver_user_confirmation_instructions(user, url)
-        end)
-
+      token = generate_confirmation_token(user)
       %{user: user, token: token}
     end
 

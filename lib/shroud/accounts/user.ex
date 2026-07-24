@@ -61,10 +61,25 @@ defmodule Shroud.Accounts.User do
   defp validate_email(changeset) do
     changeset
     |> validate_required([:email])
-    |> validate_format(:email, ~r/^[^\s]+@[^\s]+$/, message: "must have the @ sign and no spaces")
+    |> validate_change(:email, &validate_email_format/2)
     |> validate_length(:email, max: 160)
     |> unsafe_validate_unique(:email, Shroud.Repo)
     |> unique_constraint(:email)
+  end
+
+  # Validates the email against gen_smtp's RFC 5322 parser — the *same* parser
+  # that Swoosh.Adapters.SMTP invokes (via :mimemail.encode) when building
+  # outgoing mail. Delegating to it means validation can never drift from what
+  # the mailer will accept: any address the parser rejects would later raise a
+  # MatchError in `mimemail.encode_header_value/2` (which hard-matches on
+  # `{ok, _} = parse_rfc5322_addresses/1`), 500-ing the request after the user
+  # row was already saved. We require a single bare address (no display name,
+  # no comma-separated list), matching what a signup form should accept.
+  defp validate_email_format(:email, email) do
+    case :smtp_util.parse_rfc5322_addresses(email) do
+      {:ok, [{:undefined, _address}]} -> []
+      _ -> [email: "is invalid"]
+    end
   end
 
   defp validate_password(changeset, opts) do

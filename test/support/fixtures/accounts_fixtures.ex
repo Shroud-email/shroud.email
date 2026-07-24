@@ -37,4 +37,18 @@ defmodule Shroud.AccountsFixtures do
     [_, token | _] = String.split(captured_email.text_body, "[TOKEN]")
     token
   end
+
+  @doc """
+  Builds and persists a confirmation token for `user`, returning the encoded
+  (URL-safe) token string that `confirm_user/1` accepts.
+
+  Mirrors the token-creation half of `Accounts.deliver_user_confirmation_instructions/2`
+  without enqueuing the email job — useful for tests that need a valid token to
+  feed to `confirm_user/1` without exercising delivery.
+  """
+  def generate_confirmation_token(%User{} = user) do
+    {encoded_token, user_token} = Shroud.Accounts.UserToken.build_email_token(user, "confirm")
+    Repo.insert!(user_token)
+    encoded_token
+  end
 end
