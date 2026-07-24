@@ -4,6 +4,7 @@ defmodule ShroudWeb.UserRegistrationControllerTest do
   use ShroudWeb.ConnCase, async: false
 
   import Shroud.AccountsFixtures
+  import ShroudWeb.CaptchaHelpers
 
   describe "GET /users/register" do
     test "renders registration page", %{conn: conn} do

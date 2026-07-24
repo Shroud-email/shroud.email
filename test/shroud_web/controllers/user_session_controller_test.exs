@@ -6,6 +6,7 @@ defmodule ShroudWeb.UserSessionControllerTest do
   alias Shroud.Accounts.User
   alias Shroud.Repo
   import Shroud.AccountsFixtures
+  import ShroudWeb.CaptchaHelpers
 
   setup do
     %{user: user_fixture()}
