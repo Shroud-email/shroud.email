@@ -7,8 +7,7 @@ defmodule ShroudWeb.Components.Cap do
 
   The widget JS is bundled into the main `app.js` esbuild bundle (a
   side-effect import in `assets/js/app.js` self-registers the
-  `<cap-widget>` custom element) rather than loaded from a CDN, per the
-  "never use external CDNs" rule. Its version is pinned in
+  `<cap-widget>` custom element); its version is pinned in
   `assets/package.json`. The `<cap-widget>` element injects its own hidden
   `cap-token` input into the surrounding form.
   """
