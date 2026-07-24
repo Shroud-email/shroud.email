@@ -46,6 +46,30 @@ defmodule Shroud.CaptchaTest do
     after
       disable_cap()
     end
+
+    test "false when env vars are empty strings (as example.env sets)" do
+      Application.put_env(:shroud, :cap_instance_url, "")
+      Application.put_env(:shroud, :cap_site_key, "")
+      Application.put_env(:shroud, :cap_secret_key, "")
+      refute Captcha.enabled?()
+
+      # Two set, one empty -> still disabled.
+      Application.put_env(:shroud, :cap_instance_url, "https://cap.example.com")
+      Application.put_env(:shroud, :cap_site_key, "a1b2c3d4e5")
+      Application.put_env(:shroud, :cap_secret_key, "")
+      refute Captcha.enabled?()
+    after
+      disable_cap()
+    end
+
+    test "false when env vars are whitespace-only strings" do
+      Application.put_env(:shroud, :cap_instance_url, "   ")
+      Application.put_env(:shroud, :cap_site_key, " \t ")
+      Application.put_env(:shroud, :cap_secret_key, "\n")
+      refute Captcha.enabled?()
+    after
+      disable_cap()
+    end
   end
 
   describe "widget_endpoint/0" do
@@ -107,6 +131,21 @@ defmodule Shroud.CaptchaTest do
       end)
 
       assert Captcha.verify("some-token") == {:error, :network_error}
+    after
+      disable_cap()
+    end
+
+    test "returns {:error, :verification_failed} (not a crash) when Cap is disabled" do
+      disable_cap()
+      assert Captcha.verify("some-token") == {:error, :verification_failed}
+    after
+      disable_cap()
+    end
+
+    test "returns {:error, :verification_failed} when given a non-binary token with Cap enabled" do
+      enable_cap()
+      assert Captcha.verify(["not", "a", "binary"]) == {:error, :verification_failed}
+      assert Captcha.verify(%{"response" => "map"}) == {:error, :verification_failed}
     after
       disable_cap()
     end
