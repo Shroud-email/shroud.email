@@ -6,7 +6,6 @@ defmodule ShroudWeb.Components.CapTest do
   import Phoenix.LiveViewTest
   alias ShroudWeb.Components.Cap
 
-  @pinned "https://cdn.jsdelivr.net/npm/@cap.js/widget@0.1.56"
   @endpoint_url "https://cap.example.com/abc-site-key/"
 
   setup do
@@ -36,14 +35,18 @@ defmodule ShroudWeb.Components.CapTest do
     assert html == ""
   end
 
-  test "renders the pinned widget script and the endpoint when enabled" do
+  test "renders the widget element and the endpoint when enabled" do
     enable_cap()
     html = render_component(&Cap.cap_widget/1, %{class: "mt-4"})
 
-    assert html =~ ~s(src="#{@pinned}")
     assert html =~ ~s(data-cap-api-endpoint="#{@endpoint_url}")
     assert html =~ ~s(<cap-widget)
     assert html =~ "cap-widget-wrapper"
     assert html =~ "mt-4"
+
+    # The widget JS is bundled via app.js, not loaded from a CDN, so the
+    # rendered markup must never reference the CDN or emit a <script> tag.
+    refute html =~ "cdn.jsdelivr.net"
+    refute html =~ "<script"
   end
 end
