@@ -1,9 +1,12 @@
 defmodule ShroudWeb.UserSessionControllerTest do
-  use ShroudWeb.ConnCase, async: true
+  # Mutates global Application env (cap_*) via enable_cap/disable_cap in the
+  # "Cap enabled" describe block below; must run serially to stay isolation-safe.
+  use ShroudWeb.ConnCase, async: false
 
   alias Shroud.Accounts.User
   alias Shroud.Repo
   import Shroud.AccountsFixtures
+  import ShroudWeb.CaptchaHelpers
 
   setup do
     %{user: user_fixture()}
@@ -97,6 +100,40 @@ defmodule ShroudWeb.UserSessionControllerTest do
       assert redirected_to(conn) == "/users/log_in"
       refute get_session(conn, :user_token)
       assert Flash.get(conn.assigns.flash, :info) =~ "Logged out successfully"
+    end
+  end
+
+  describe "POST /users/log_in with Cap enabled" do
+    test "rejects a forged POST with no cap-token", %{conn: conn, user: user} do
+      enable_cap()
+
+      conn =
+        post(conn, ~p"/users/log_in", %{
+          "user" => %{"email" => user.email, "password" => valid_user_password()}
+        })
+
+      assert redirected_to(conn) == "/users/log_in"
+      assert Flash.get(conn.assigns.flash, :error) =~ "verification"
+    after
+      disable_cap()
+    end
+
+    test "logs in when cap-token verifies", %{conn: conn, user: user} do
+      enable_cap()
+
+      Req.Test.stub(Shroud.Captcha, fn conn ->
+        Req.Test.json(conn, %{"success" => true})
+      end)
+
+      conn =
+        post(conn, ~p"/users/log_in", %{
+          "user" => %{"email" => user.email, "password" => valid_user_password()},
+          "cap-token" => "valid-token"
+        })
+
+      assert get_session(conn, :user_token)
+    after
+      disable_cap()
     end
   end
 end

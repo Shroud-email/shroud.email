@@ -8,3 +8,23 @@ services:
     ports:
       - "5432:5432"
 
+  cap:
+    image: tiago2/cap:3
+    restart: unless-stopped
+    depends_on:
+      - valkey
+    ports:
+      - "3000:3000"
+    environment:
+      - ADMIN_KEY=${CAP_ADMIN_KEY}
+      - REDIS_URL=redis://valkey:6379
+
+  valkey:
+    image: valkey/valkey:9-alpine
+    restart: unless-stopped
+    command: valkey-server --save 60 1 --loglevel warning --maxmemory 256mb --maxmemory-policy noeviction
+    volumes:
+      - valkey_data:/data
+
+volumes:
+  valkey_data:
