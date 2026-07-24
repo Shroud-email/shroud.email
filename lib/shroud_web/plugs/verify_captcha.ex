@@ -29,17 +29,24 @@ defmodule ShroudWeb.Plugs.VerifyCaptcha do
     end
   end
 
-  defp verify_token(conn, token) do
+  defp verify_token(conn, token) when is_binary(token) do
     case Captcha.verify(token) do
-      :ok ->
-        conn
-
-      {:error, _reason} ->
-        conn
-        |> put_flash(:error, "CAPTCHA verification failed. Please try again.")
-        |> redirect(to: form_route(conn))
-        |> halt()
+      :ok -> conn
+      {:error, _reason} -> reject(conn)
     end
+  end
+
+  # The widget injects `cap-token` as a hidden string input, so a binary is
+  # the only valid shape. Anything else (e.g. a list from `?cap-token[]=x` or
+  # a map) is a malformed request — reject it here rather than trusting the
+  # boundary module's clauses to handle every non-binary value.
+  defp verify_token(conn, _non_binary_token), do: reject(conn)
+
+  defp reject(conn) do
+    conn
+    |> put_flash(:error, "CAPTCHA verification failed. Please try again.")
+    |> redirect(to: form_route(conn))
+    |> halt()
   end
 
   # Redirect back to the form that was being submitted. We key off the
