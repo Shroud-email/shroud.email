@@ -25,6 +25,7 @@ defmodule ShroudWeb.ConnCase do
       import Plug.Conn
       import Phoenix.ConnTest
       import ShroudWeb.ConnCase
+      import ShroudWeb.CaptchaHelpers
       alias Phoenix.Flash
 
       use ShroudWeb, :verified_routes
