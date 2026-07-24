@@ -95,5 +95,20 @@ defmodule ShroudWeb.Plugs.VerifyCaptchaTest do
     after
       disable_cap()
     end
+
+    test "rejects (fail-closed) when cap-token is a list instead of crashing" do
+      enable_cap()
+      # A malformed request like `?cap-token[]=x` parses `cap-token` into a
+      # list. The plug must reject it rather than crash with FunctionClauseError.
+      conn = build_conn(:post, "/users/register", %{"cap-token" => ["x"]}) |> for_plug()
+
+      returned = VerifyCaptcha.call(conn, [])
+
+      assert returned.halted
+      assert Flash.get(returned.assigns.flash, :error) =~ "verification"
+      assert redirected_to(returned) == "/users/register"
+    after
+      disable_cap()
+    end
   end
 end
