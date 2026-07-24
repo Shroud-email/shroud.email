@@ -3,6 +3,21 @@ defmodule Shroud.Accounts.User do
   import Ecto.Changeset
   alias Shroud.Aliases.EmailAlias
 
+  # Email validation regex.
+  #
+  # The local and domain parts are each dot-separated "atoms" that must not
+  # start or end with a dot and must not contain consecutive dots. A quoted
+  # local part ("...") is also permitted.
+  #
+  # This mirrors the rules enforced by gen_smtp's RFC 5322 address parser
+  # (`:mimemail.encode`), which Swoosh.Adapters.SMTP invokes when building
+  # outgoing mail. That parser *raises* a MatchError (it does not return
+  # `{:error, _}`) on addresses with consecutive/leading/trailing dots, so
+  # any such address that reaches the SMTP adapter crashes the request.
+  # Rejecting them here keeps malformed addresses out of the database.
+  # See SHROUDEMAIL-5Q.
+  @email_regex ~r/\A(?:"[^"\\]*(?:\\.[^"\\]*)*"|[^\s"@<>()\[\]\\,;:.]+(?:\.[^\s"@<>()\[\]\\,;:.]+)*)@[^\s"@<>()\[\]\\,;:.]+(?:\.[^\s"@<>()\[\]\\,;:.]+)*\z/
+
   schema "users" do
     field :email, :string
     field :password, :string, virtual: true, redact: true
@@ -61,7 +76,7 @@ defmodule Shroud.Accounts.User do
   defp validate_email(changeset) do
     changeset
     |> validate_required([:email])
-    |> validate_format(:email, ~r/^[^\s]+@[^\s]+$/, message: "must have the @ sign and no spaces")
+    |> validate_format(:email, @email_regex, message: "is invalid")
     |> validate_length(:email, max: 160)
     |> unsafe_validate_unique(:email, Shroud.Repo)
     |> unique_constraint(:email)

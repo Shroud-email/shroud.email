@@ -1,11 +1,21 @@
 defmodule Shroud.Accounts.UserNotifier do
   import Swoosh.Email
 
+  require Logger
+
   alias Shroud.{Accounts, EmailTemplate, Mailer, Util, Repo}
   alias Shroud.Domain.CustomDomain
   use ShroudWeb, :verified_routes
 
   # Delivers the email using the application mailer.
+  #
+  # Swoosh.Adapters.SMTP builds the MIME message via :mimemail.encode, which
+  # *raises* a MatchError (rather than returning {:error, _}) on RFC 5322-invalid
+  # addresses (e.g. consecutive dots). We catch any exception here and return
+  # {:error, _} so callers degrade gracefully instead of 500-ing. This is a
+  # safety net behind the User.validate_email regex that rejects such addresses
+  # up front; it exists for legacy rows and any other address shape gen_smtp
+  # refuses. See SHROUDEMAIL-5Q.
   defp deliver(recipient, subject, html_body, text_body) do
     email =
       new()
@@ -16,9 +26,17 @@ defmodule Shroud.Accounts.UserNotifier do
       |> html_body(html_body)
       |> text_body(text_body)
 
-    with {:ok, _metadata} <- Mailer.deliver(email) do
-      {:ok, email}
+    case Mailer.deliver(email) do
+      {:ok, _metadata} -> {:ok, email}
+      {:error, reason} -> {:error, reason}
     end
+  rescue
+    exception ->
+      Logger.error("""
+      Failed to deliver email to #{inspect(recipient)}: #{Exception.format(:error, exception, __STACKTRACE__)}
+      """)
+
+      {:error, {:delivery_failed, exception}}
   end
 
   @doc """

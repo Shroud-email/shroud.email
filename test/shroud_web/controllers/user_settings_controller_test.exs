@@ -101,7 +101,7 @@ defmodule ShroudWeb.UserSettingsControllerTest do
         })
 
       response = html_response(conn, 200)
-      assert response =~ "must have the @ sign and no spaces"
+      assert response =~ "is invalid"
       assert response =~ "is not valid"
     end
   end
