@@ -103,18 +103,6 @@ defmodule ShroudWeb.UserSessionControllerTest do
   end
 
   describe "POST /users/log_in with Cap enabled" do
-    defp enable_cap do
-      Application.put_env(:shroud, :cap_instance_url, "https://cap.example.com")
-      Application.put_env(:shroud, :cap_site_key, "a1b2c3d4e5")
-      Application.put_env(:shroud, :cap_secret_key, "sk-testsecret")
-    end
-
-    defp disable_cap do
-      Application.put_env(:shroud, :cap_instance_url, nil)
-      Application.put_env(:shroud, :cap_site_key, nil)
-      Application.put_env(:shroud, :cap_secret_key, nil)
-    end
-
     test "rejects a forged POST with no cap-token", %{conn: conn, user: user} do
       enable_cap()
 
