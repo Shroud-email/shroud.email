@@ -22,9 +22,6 @@ import { Socket } from "phoenix";
 import { LiveSocket } from "phoenix_live_view";
 import topbar from "../vendor/topbar";
 import "../vendor/components";
-// Cap CAPTCHA widget — self-registers the <cap-widget> custom element as a
-// side effect. Bundled (not CDN-loaded) per the "never use external CDNs"
-// rule; version is pinned in assets/package.json.
 import "@cap.js/widget";
 import { Modal, Notification } from "./hooks";
 
