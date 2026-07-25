@@ -67,14 +67,8 @@ defmodule Shroud.Accounts.User do
     |> unique_constraint(:email)
   end
 
-  # Validates the email against gen_smtp's RFC 5322 parser — the *same* parser
-  # that Swoosh.Adapters.SMTP invokes (via :mimemail.encode) when building
-  # outgoing mail. Delegating to it means validation can never drift from what
-  # the mailer will accept: any address the parser rejects would later raise a
-  # MatchError in `mimemail.encode_header_value/2` (which hard-matches on
-  # `{ok, _} = parse_rfc5322_addresses/1`), 500-ing the request after the user
-  # row was already saved. We require a single bare address (no display name,
-  # no comma-separated list), matching what a signup form should accept.
+  # Validates the email against gen_smtp's RFC 5322 parser — the same parser
+  # we use for outgoing mail.
   defp validate_email_format(:email, email) do
     case :smtp_util.parse_rfc5322_addresses(email) do
       {:ok, [{:undefined, _address}]} -> []

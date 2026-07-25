@@ -273,10 +273,6 @@ defmodule Shroud.Accounts do
   @doc """
   Delivers the confirmation email instructions to the given user.
 
-  The confirmation token is persisted synchronously, but the email itself is
-  sent asynchronously via an `UserNotifierJob` so transient SMTP failures are
-  retried by Oban instead of blocking or failing signup.
-
   ## Examples
 
       iex> deliver_user_confirmation_instructions(user, &url(~p"/users/confirm/\#{&1}"))
