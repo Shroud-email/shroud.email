@@ -7,7 +7,7 @@ defmodule Shroud.Accounts do
   alias Shroud.Repo
 
   alias Shroud.Notifier
-  alias Shroud.Accounts.{LoopsJob, User, UserToken, UserNotifier}
+  alias Shroud.Accounts.{LoopsJob, User, UserNotifier, UserNotifierJob, UserToken}
   alias Shroud.Aliases.EmailAlias
 
   require Logger
@@ -276,7 +276,7 @@ defmodule Shroud.Accounts do
   ## Examples
 
       iex> deliver_user_confirmation_instructions(user, &url(~p"/users/confirm/\#{&1}"))
-      {:ok, %{to: ..., body: ...}}
+      {:ok, %Oban.Job{}}
 
       iex> deliver_user_confirmation_instructions(confirmed_user, &url(~p"/users/confirm/\#{&1}"))
       {:error, :already_confirmed}
@@ -289,7 +289,16 @@ defmodule Shroud.Accounts do
     else
       {encoded_token, user_token} = UserToken.build_email_token(user, "confirm")
       Repo.insert!(user_token)
-      UserNotifier.deliver_confirmation_instructions(user, confirmation_url_fun.(encoded_token))
+
+      job =
+        %{
+          email_function: "deliver_confirmation_instructions",
+          email_args: [user.id, confirmation_url_fun.(encoded_token)]
+        }
+        |> UserNotifierJob.new()
+        |> Oban.insert!()
+
+      {:ok, job}
     end
   end
 

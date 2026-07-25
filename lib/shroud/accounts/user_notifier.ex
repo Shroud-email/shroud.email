@@ -1,6 +1,8 @@
 defmodule Shroud.Accounts.UserNotifier do
   import Swoosh.Email
 
+  require Logger
+
   alias Shroud.{Accounts, EmailTemplate, Mailer, Util, Repo}
   alias Shroud.Domain.CustomDomain
   use ShroudWeb, :verified_routes
@@ -16,15 +18,32 @@ defmodule Shroud.Accounts.UserNotifier do
       |> html_body(html_body)
       |> text_body(text_body)
 
-    with {:ok, _metadata} <- Mailer.deliver(email) do
-      {:ok, email}
+    case Mailer.deliver(email) do
+      {:ok, _metadata} -> {:ok, email}
+      {:error, reason} -> {:error, reason}
     end
+  rescue
+    exception ->
+      stacktrace = __STACKTRACE__
+
+      Logger.error("""
+      Failed to deliver email to #{inspect(recipient)}: #{Exception.format(:error, exception, stacktrace)}
+      """)
+
+      Sentry.capture_exception(exception,
+        stacktrace: stacktrace,
+        extra: %{recipient: recipient, subject: subject}
+      )
+
+      {:error, {:delivery_failed, exception}}
   end
 
   @doc """
   Deliver instructions to confirm account.
   """
-  def deliver_confirmation_instructions(user, url) do
+  def deliver_confirmation_instructions(user_id, url) do
+    user = Accounts.get_user!(user_id)
+
     html_body =
       EmailTemplate.ConfirmationInstructions.render(
         user_email: user.email,

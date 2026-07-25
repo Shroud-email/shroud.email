@@ -33,5 +33,17 @@ defmodule Shroud.Accounts.UserNotifierJobTest do
 
       assert_email_sent(to: user.email, subject: "#{domain.domain} is no longer verified")
     end
+
+    test "sends confirmation_instructions (dispatched by string name, as enqueued)" do
+      user = user_fixture()
+
+      assert {:ok, _email} =
+               perform_job(UserNotifierJob, %{
+                 "email_function" => "deliver_confirmation_instructions",
+                 "email_args" => [user.id, "https://example.com/confirm/token"]
+               })
+
+      assert_email_sent(to: user.email, subject: "Confirmation instructions")
+    end
   end
 end
