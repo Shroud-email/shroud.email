@@ -25,17 +25,54 @@ config :shroud,
 # In the test env, billing config (incl. a fixed webhook secret) comes from
 # config/test.exs instead of these env vars.
 if config_env() != :test do
-  paddle_environment = System.get_env("PADDLE_ENVIRONMENT") || "live"
+  paddle_environment =
+    case System.get_env("PADDLE_ENVIRONMENT") || "live" do
+      environment when environment in ["sandbox", "live"] ->
+        environment
+
+      invalid_environment ->
+        raise """
+        PADDLE_ENVIRONMENT must be either "sandbox" or "live", got:
+        #{inspect(invalid_environment)}
+        """
+    end
 
   paddle_base_url =
     if paddle_environment == "sandbox",
       do: "https://sandbox-api.paddle.com",
       else: "https://api.paddle.com"
 
+  paddle_configuration_present? =
+    Enum.any?(
+      [
+        "PADDLE_API_KEY",
+        "PADDLE_WEBHOOK_SECRET",
+        "PADDLE_YEARLY_PRICE_ID",
+        "PADDLE_CLIENT_TOKEN"
+      ],
+      fn variable -> System.get_env(variable) not in [nil, ""] end
+    )
+
+  fetch_required_paddle_env = fn variable ->
+    case System.get_env(variable) do
+      value when is_binary(value) and value != "" -> value
+      _missing -> raise "environment variable #{variable} is required when Paddle is configured"
+    end
+  end
+
+  paddle_api_key =
+    if paddle_configuration_present?, do: fetch_required_paddle_env.("PADDLE_API_KEY")
+
+  paddle_webhook_secret =
+    if paddle_configuration_present?, do: fetch_required_paddle_env.("PADDLE_WEBHOOK_SECRET")
+
+  paddle_yearly_price_id =
+    if paddle_configuration_present?, do: fetch_required_paddle_env.("PADDLE_YEARLY_PRICE_ID")
+
   config :shroud, :billing,
-    paddle_api_key: System.get_env("PADDLE_API_KEY"),
-    paddle_webhook_secret: System.get_env("PADDLE_WEBHOOK_SECRET"),
-    paddle_yearly_price_id: System.get_env("PADDLE_YEARLY_PRICE_ID"),
+    paddle_api_key: paddle_api_key,
+    paddle_webhook_secret: paddle_webhook_secret,
+    paddle_yearly_price_id: paddle_yearly_price_id,
     paddle_base_url: paddle_base_url,
     paddle_client_token: System.get_env("PADDLE_CLIENT_TOKEN"),
     paddle_environment: paddle_environment

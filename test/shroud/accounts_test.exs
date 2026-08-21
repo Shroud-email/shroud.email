@@ -596,4 +596,146 @@ defmodule Shroud.AccountsTest do
       refute Accounts.paid?(user)
     end
   end
+
+  describe "apply_paddle_subscription_event/1" do
+    test "atomically binds an authenticated checkout and applies its subscription" do
+      user = user_fixture(%{status: :free})
+
+      assert {:ok, :applied} =
+               Accounts.apply_paddle_subscription_event(%{
+                 customer_id: "ctm_atomic",
+                 identity_user_id: user.id,
+                 subscription_id: "sub_atomic",
+                 price_id: "pri_test_yearly",
+                 status: :active,
+                 plan_expires_at: ~N[2030-01-01 00:00:00],
+                 event_at: ~N[2029-01-01 00:00:00]
+               })
+
+      updated_user = Repo.reload!(user)
+      assert updated_user.paddle_customer_id == "ctm_atomic"
+      assert updated_user.paddle_subscription_id == "sub_atomic"
+      assert updated_user.paddle_price_id == "pri_test_yearly"
+      assert updated_user.status == :active
+    end
+
+    test "does not let an older event overwrite newer subscription state" do
+      user =
+        user_fixture(%{
+          status: :active,
+          paddle_customer_id: "ctm_ordered",
+          last_paddle_event_at: ~N[2030-01-02 00:00:00]
+        })
+
+      assert {:ok, :stale} =
+               Accounts.apply_paddle_subscription_event(%{
+                 customer_id: "ctm_ordered",
+                 identity_user_id: user.id,
+                 subscription_id: "sub_ordered",
+                 price_id: "pri_test_yearly",
+                 status: :free,
+                 plan_expires_at: nil,
+                 event_at: ~N[2030-01-01 00:00:00]
+               })
+
+      updated_user = Repo.reload!(user)
+      assert updated_user.status == :active
+      assert updated_user.last_paddle_event_at == ~N[2030-01-02 00:00:00.000000]
+    end
+
+    test "preserves fractional precision when ordering same-second events" do
+      user = user_fixture(%{status: :free, paddle_customer_id: "ctm_precise"})
+
+      assert {:ok, :applied} =
+               Accounts.apply_paddle_subscription_event(%{
+                 customer_id: "ctm_precise",
+                 identity_user_id: user.id,
+                 subscription_id: "sub_precise",
+                 price_id: "pri_test_yearly",
+                 status: :active,
+                 plan_expires_at: nil,
+                 event_at: ~N[2030-01-01 00:00:00.900000]
+               })
+
+      assert {:ok, :stale} =
+               Accounts.apply_paddle_subscription_event(%{
+                 customer_id: "ctm_precise",
+                 identity_user_id: user.id,
+                 subscription_id: "sub_precise",
+                 price_id: "pri_test_yearly",
+                 status: :free,
+                 plan_expires_at: nil,
+                 event_at: ~N[2030-01-01 00:00:00.100000]
+               })
+
+      updated_user = Repo.reload!(user)
+      assert updated_user.status == :active
+      assert updated_user.last_paddle_event_at == ~N[2030-01-01 00:00:00.900000]
+    end
+
+    test "ignores an event for a different subscription while the current one is active" do
+      user =
+        user_fixture(%{
+          status: :active,
+          paddle_customer_id: "ctm_current",
+          paddle_subscription_id: "sub_current",
+          paddle_price_id: "pri_test_yearly"
+        })
+
+      assert {:ok, :unrelated_subscription} =
+               Accounts.apply_paddle_subscription_event(%{
+                 customer_id: "ctm_current",
+                 identity_user_id: user.id,
+                 subscription_id: "sub_other",
+                 price_id: "pri_test_yearly",
+                 status: :free,
+                 plan_expires_at: nil,
+                 event_at: ~N[2030-01-01 00:00:00]
+               })
+
+      updated_user = Repo.reload!(user)
+      assert updated_user.status == :active
+      assert updated_user.paddle_subscription_id == "sub_current"
+    end
+
+    test "an old subscription event preserves a pending replacement checkout" do
+      user =
+        user_fixture(%{
+          status: :free,
+          paddle_customer_id: "ctm_replacing",
+          paddle_subscription_id: "sub_canceled",
+          paddle_price_id: "pri_test_yearly",
+          paddle_checkout_transaction_id: "txn_replacement",
+          paddle_checkout_price_id: "pri_test_yearly"
+        })
+
+      assert {:ok, :applied} =
+               Accounts.apply_paddle_subscription_event(%{
+                 customer_id: "ctm_replacing",
+                 identity_user_id: user.id,
+                 subscription_id: "sub_canceled",
+                 price_id: "pri_test_yearly",
+                 status: :free,
+                 plan_expires_at: nil,
+                 event_at: ~N[2030-01-01 00:00:00]
+               })
+
+      updated_user = Repo.reload!(user)
+      assert updated_user.paddle_checkout_transaction_id == "txn_replacement"
+      assert updated_user.paddle_checkout_price_id == "pri_test_yearly"
+    end
+
+    test "returns an error when neither customer nor signed identity resolves a user" do
+      assert {:error, :unknown_customer} =
+               Accounts.apply_paddle_subscription_event(%{
+                 customer_id: "ctm_unknown",
+                 identity_user_id: nil,
+                 subscription_id: "sub_unknown",
+                 price_id: "pri_test_yearly",
+                 status: :active,
+                 plan_expires_at: nil,
+                 event_at: ~N[2030-01-01 00:00:00]
+               })
+    end
+  end
 end

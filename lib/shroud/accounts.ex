@@ -4,11 +4,11 @@ defmodule Shroud.Accounts do
   """
 
   import Ecto.Query, warn: false
-  alias Shroud.Repo
 
-  alias Shroud.Notifier
   alias Shroud.Accounts.{LoopsJob, User, UserNotifier, UserNotifierJob, UserToken}
   alias Shroud.Aliases.EmailAlias
+  alias Shroud.Notifier
+  alias Shroud.Repo
 
   require Logger
 
@@ -79,6 +79,7 @@ defmodule Shroud.Accounts do
 
   """
   def get_user!(id), do: Repo.get!(User, id)
+  def get_user(id), do: Repo.get(User, id)
 
   ## User registration
 
@@ -425,6 +426,255 @@ defmodule Shroud.Accounts do
     |> User.paddle_changeset(attrs)
     |> Repo.update!()
   end
+
+  @doc """
+  Reuses or creates one pending Paddle checkout transaction per user and price.
+
+  The row lock intentionally spans transaction creation so concurrent browser
+  requests cannot create multiple recurring checkouts before a webhook arrives.
+  """
+  def get_or_create_paddle_checkout_transaction(
+        user_id,
+        price_id,
+        create_transaction,
+        get_transaction
+      )
+      when is_integer(user_id) and is_binary(price_id) and is_function(create_transaction, 1) and
+             is_function(get_transaction, 1) do
+    Repo.transaction(fn ->
+      user = Repo.one(from user in User, where: user.id == ^user_id, lock: "FOR UPDATE")
+
+      get_or_create_locked_paddle_checkout(
+        user,
+        price_id,
+        create_transaction,
+        get_transaction
+      )
+    end)
+    |> case do
+      {:ok, transaction} -> {:ok, transaction}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp get_or_create_locked_paddle_checkout(
+         nil,
+         _price_id,
+         _create_transaction,
+         _get_transaction
+       ),
+       do: Repo.rollback(:unknown_user)
+
+  defp get_or_create_locked_paddle_checkout(
+         %User{} = user,
+         price_id,
+         create_transaction,
+         get_transaction
+       ) do
+    cond do
+      paid?(user) ->
+        Repo.rollback(:subscription_exists)
+
+      pending_paddle_checkout?(user) ->
+        reconcile_pending_paddle_checkout(user, price_id, create_transaction, get_transaction)
+
+      true ->
+        create_and_store_paddle_checkout(user, price_id, create_transaction)
+    end
+  end
+
+  defp pending_paddle_checkout?(user), do: is_binary(user.paddle_checkout_transaction_id)
+
+  defp reconcile_pending_paddle_checkout(user, price_id, create_transaction, get_transaction) do
+    case get_transaction.(user.paddle_checkout_transaction_id) do
+      {:ok, %{status: status}} when status in ["draft", "ready"] ->
+        %{id: user.paddle_checkout_transaction_id}
+
+      {:ok, %{status: "canceled"}} ->
+        create_and_store_paddle_checkout(user, price_id, create_transaction)
+
+      {:ok, %{status: _status}} ->
+        Repo.rollback(:checkout_already_processed)
+
+      {:error, reason} ->
+        Repo.rollback(reason)
+
+      _invalid_response ->
+        Repo.rollback(:invalid_checkout_transaction)
+    end
+  end
+
+  defp create_and_store_paddle_checkout(user, price_id, create_transaction) do
+    case create_transaction.(user) do
+      {:ok, %{id: transaction_id} = transaction} when is_binary(transaction_id) ->
+        user
+        |> User.paddle_changeset(%{
+          paddle_checkout_transaction_id: transaction_id,
+          paddle_checkout_price_id: price_id
+        })
+        |> Repo.update!()
+
+        transaction
+
+      {:error, reason} ->
+        Repo.rollback(reason)
+
+      _invalid_response ->
+        Repo.rollback(:invalid_checkout_transaction)
+    end
+  end
+
+  @doc """
+  Applies a Paddle subscription event while holding a row lock.
+
+  The customer lookup, checkout-identity fallback, ordering check, update, and
+  paid-signup notification share one transaction so concurrent deliveries
+  cannot regress subscription state or enqueue duplicate transition notices.
+  """
+  def apply_paddle_subscription_event(%{
+        customer_id: customer_id,
+        identity_user_id: identity_user_id,
+        subscription_id: subscription_id,
+        price_id: price_id,
+        status: status,
+        plan_expires_at: plan_expires_at,
+        event_at: event_at
+      }) do
+    Repo.transaction(fn ->
+      user = lock_paddle_user(customer_id, identity_user_id)
+
+      attrs = %{
+        paddle_customer_id: customer_id,
+        paddle_subscription_id: subscription_id,
+        paddle_price_id: price_id,
+        plan_expires_at: plan_expires_at,
+        status: status,
+        last_paddle_event_at: event_at
+      }
+
+      case paddle_subscription_relationship(user, subscription_id, price_id, status) do
+        :current -> apply_locked_paddle_event(user, attrs)
+        :new -> apply_locked_paddle_event(user, clear_pending_paddle_checkout(attrs))
+        :unrelated -> :unrelated_subscription
+        :price_conflict -> Repo.rollback(:subscription_price_conflict)
+      end
+    end)
+    |> case do
+      {:ok, result} -> {:ok, result}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp apply_locked_paddle_event(user, %{last_paddle_event_at: event_at} = attrs) do
+    if stale_paddle_event?(event_at, user.last_paddle_event_at) do
+      :stale
+    else
+      update_paddle_subscription(user, attrs)
+    end
+  end
+
+  defp update_paddle_subscription(user, %{status: status} = attrs) do
+    case user |> User.paddle_changeset(attrs) |> Repo.update() do
+      {:ok, updated_user} ->
+        maybe_notify_paid_signup(updated_user, user.status, status)
+        :applied
+
+      {:error, changeset} ->
+        Repo.rollback({:invalid_paddle_update, changeset.errors})
+    end
+  end
+
+  defp maybe_notify_paid_signup(user, prior_status, :active) when prior_status != :active do
+    Notifier.notify_user_signed_up(user.email)
+  end
+
+  defp maybe_notify_paid_signup(_user, _prior_status, _status), do: :ok
+
+  defp lock_paddle_user(customer_id, identity_user_id) do
+    customer_user =
+      Repo.one(
+        from user in User,
+          where: user.paddle_customer_id == ^customer_id,
+          lock: "FOR UPDATE"
+      )
+
+    case {customer_user, identity_user_id} do
+      {%User{id: user_id} = user, user_id} ->
+        user
+
+      {%User{}, _identity_user_id} ->
+        Repo.rollback(:checkout_identity_conflict)
+
+      {nil, user_id} when is_integer(user_id) ->
+        user =
+          Repo.one(
+            from user in User,
+              where: user.id == ^user_id,
+              lock: "FOR UPDATE"
+          )
+
+        ensure_customer_can_be_bound(user, customer_id)
+
+      {nil, _identity_user_id} ->
+        Repo.rollback(:unknown_customer)
+    end
+  end
+
+  defp ensure_customer_can_be_bound(nil, _customer_id), do: Repo.rollback(:unknown_customer)
+
+  defp ensure_customer_can_be_bound(%User{paddle_customer_id: nil} = user, _customer_id),
+    do: user
+
+  defp ensure_customer_can_be_bound(%User{paddle_customer_id: customer_id} = user, customer_id),
+    do: user
+
+  defp ensure_customer_can_be_bound(%User{}, _customer_id),
+    do: Repo.rollback(:customer_conflict)
+
+  defp paddle_subscription_relationship(
+         %User{paddle_subscription_id: nil},
+         _subscription_id,
+         _price_id,
+         _status
+       ),
+       do: :new
+
+  defp paddle_subscription_relationship(
+         %User{paddle_subscription_id: subscription_id, paddle_price_id: price_id},
+         subscription_id,
+         price_id,
+         _status
+       ),
+       do: :current
+
+  defp paddle_subscription_relationship(
+         %User{paddle_subscription_id: subscription_id},
+         subscription_id,
+         _price_id,
+         _status
+       ),
+       do: :price_conflict
+
+  defp paddle_subscription_relationship(
+         %User{status: :free},
+         _subscription_id,
+         _price_id,
+         :active
+       ),
+       do: :new
+
+  defp paddle_subscription_relationship(_user, _subscription_id, _price_id, _status),
+    do: :unrelated
+
+  defp clear_pending_paddle_checkout(attrs) do
+    Map.merge(attrs, %{
+      paddle_checkout_transaction_id: nil,
+      paddle_checkout_price_id: nil
+    })
+  end
+
+  defp stale_paddle_event?(incoming, last) when not is_nil(last), do: incoming <= last
+  defp stale_paddle_event?(_incoming, nil), do: false
 
   def active?(%User{} = user) do
     user.status in [:active, :lifetime, :free]

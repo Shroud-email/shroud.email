@@ -20,7 +20,10 @@ defmodule Shroud.Accounts.User do
 
     field :paddle_customer_id, :string
     field :paddle_subscription_id, :string
-    field :last_paddle_event_at, :naive_datetime
+    field :paddle_price_id, :string
+    field :paddle_checkout_transaction_id, :string
+    field :paddle_checkout_price_id, :string
+    field :last_paddle_event_at, :naive_datetime_usec
     field :plan_expires_at, :naive_datetime
     field :status, Ecto.Enum, values: [:lead, :active, :inactive, :lifetime, :free]
     field :theme, Ecto.Enum, values: [:system, :light, :dark], default: :system
@@ -186,9 +189,13 @@ defmodule Shroud.Accounts.User do
       :status,
       :paddle_customer_id,
       :paddle_subscription_id,
+      :paddle_price_id,
+      :paddle_checkout_transaction_id,
+      :paddle_checkout_price_id,
       :plan_expires_at,
       :last_paddle_event_at
     ])
+    |> unique_constraint(:paddle_customer_id)
   end
 
   def status_changeset(user, attrs) do

@@ -44,9 +44,14 @@ defmodule ShroudWeb.UserSettingsController do
   end
 
   def billing(conn, _params) do
+    billing_config = Application.get_env(:shroud, :billing, [])
+    paddle_price_id = billing_config[:paddle_yearly_price_id]
+    paddle_client_token = billing_config[:paddle_client_token]
+
     render(conn, "billing.html",
       page_title: "Billing settings",
-      paddle_price_id: Application.get_env(:shroud, :billing, [])[:paddle_yearly_price_id]
+      paddle_checkout_available?:
+        configured?(paddle_price_id) and configured?(paddle_client_token)
     )
   end
 
@@ -207,4 +212,6 @@ defmodule ShroudWeb.UserSettingsController do
     |> assign(:otp_qr_code, nil)
     |> assign(:otp_backup_codes, nil)
   end
+
+  defp configured?(value), do: is_binary(value) and value != ""
 end

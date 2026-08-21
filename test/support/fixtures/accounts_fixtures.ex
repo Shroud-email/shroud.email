@@ -34,6 +34,9 @@ defmodule Shroud.AccountsFixtures do
       Map.take(attrs, [
         :paddle_customer_id,
         :paddle_subscription_id,
+        :paddle_price_id,
+        :paddle_checkout_transaction_id,
+        :paddle_checkout_price_id,
         :plan_expires_at,
         :last_paddle_event_at
       ])

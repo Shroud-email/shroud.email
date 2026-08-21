@@ -1,4 +1,7 @@
 {
+  "scripts": {
+    "test": "node --test js/*_test.mjs"
+  },
   "dependencies": {
     "@cap.js/widget": "0.1.56",
     "@paddle/paddle-js": "^1.6.4",

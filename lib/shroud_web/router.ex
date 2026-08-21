@@ -132,6 +132,7 @@ defmodule ShroudWeb.Router do
     end
 
     get("/checkout/billing", CheckoutController, :billing_portal)
+    post("/checkout/paddle", CheckoutController, :create)
   end
 
   scope "/", ShroudWeb do

@@ -29,6 +29,7 @@ import { initTheme, setTheme } from "./theme";
 import Alpine from "alpinejs";
 import Tooltip from "@ryangjchandler/alpine-tooltip";
 import { initializePaddle } from "@paddle/paddle-js";
+import { setupPaddleCheckout } from "./paddle_checkout.mjs";
 
 Alpine.plugin(Tooltip);
 window.Alpine = Alpine;
@@ -38,52 +39,7 @@ Alpine.start();
 initTheme();
 window.setTheme = setTheme;
 
-// Initialize Paddle.js for checkout. Token + environment are injected via
-// meta tags by the root layout (server-side config, not hardcoded).
-const paddleToken = document
-  .querySelector("meta[name='paddle-client-token']")
-  ?.getAttribute("content");
-const paddleEnv = document
-  .querySelector("meta[name='paddle-environment']")
-  ?.getAttribute("content");
-
-if (paddleToken) {
-  initializePaddle({
-    token: paddleToken,
-    environment: paddleEnv === "sandbox" ? "sandbox" : undefined,
-    eventCallback: (data) => {
-      // On checkout completion, redirect to the billing page so the user sees
-      // their updated plan. We delay briefly because the webhook that updates
-      // the user's status arrives a moment after the client-side event.
-      if (data.name === "checkout.completed") {
-        setTimeout(() => {
-          window.location.href = "/settings/billing";
-        }, 5000);
-      }
-    },
-  }).then((paddle) => {
-    window.Paddle = paddle;
-  });
-}
-
-// Open Paddle overlay checkout when the Upgrade button is clicked.
-document.addEventListener("click", (event) => {
- const button = event.target.closest("#upgrade-button");
- if (!button) return;
-
- const priceId = button.dataset.paddlePriceId;
- const email = button.dataset.customerEmail;
-
- if (window.Paddle) {
-   window.Paddle.Checkout.open({
-     items: [{ priceId, quantity: 1 }],
-     customer: { email },
-     settings: { displayMode: "overlay", theme: "light", locale: "en" },
-   });
- } else {
-   console.error("Paddle.js not initialized");
- }
-});
+setupPaddleCheckout({ document, window, initializePaddle });
 
 let csrfToken = document
   .querySelector("meta[name='csrf-token']")

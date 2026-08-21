@@ -2,9 +2,75 @@ defmodule ShroudWeb.CheckoutController do
   use ShroudWeb, :controller
   require Logger
 
-  alias Shroud.{Accounts, Notifier}
+  alias Shroud.Accounts
   alias Shroud.Billing.Paddle
+  alias ShroudWeb.PaddleCheckoutIdentity
   alias ShroudWeb.Plugs.CachingBodyReader
+
+  @subscription_event_types [
+    "subscription.created",
+    "subscription.updated",
+    "subscription.canceled",
+    "subscription.past_due"
+  ]
+
+  @subscription_statuses ["active", "trialing", "past_due", "paused", "canceled"]
+
+  def create(conn, _params) do
+    cond do
+      Accounts.paid?(conn.assigns.current_user) ->
+        conn
+        |> put_status(:conflict)
+        |> json(%{error: "subscription_exists"})
+
+      Paddle.checkout_configured?() ->
+        create_checkout_transaction(conn)
+
+      true ->
+        checkout_error(conn, :not_configured)
+    end
+  end
+
+  defp create_checkout_transaction(conn) do
+    checkout_identity = PaddleCheckoutIdentity.sign(conn.assigns.current_user.id)
+
+    with {:ok, price_id} <- Paddle.checkout_price_id(),
+         {:ok, %{id: transaction_id}} <-
+           Accounts.get_or_create_paddle_checkout_transaction(
+             conn.assigns.current_user.id,
+             price_id,
+             fn user ->
+               Paddle.create_checkout_transaction(checkout_identity, user.paddle_customer_id)
+             end,
+             fn transaction_id ->
+               Paddle.get_transaction(transaction_id)
+             end
+           ) do
+      conn
+      |> put_status(:created)
+      |> json(%{transaction_id: transaction_id})
+    else
+      {:error, :subscription_exists} ->
+        conn
+        |> put_status(:conflict)
+        |> json(%{error: "subscription_exists"})
+
+      {:error, reason} ->
+        checkout_error(conn, reason)
+    end
+  end
+
+  defp checkout_error(conn, reason) do
+    Logger.error("Failed to create Paddle checkout transaction: #{inspect(reason)}")
+
+    Sentry.capture_message("Failed to create Paddle checkout transaction",
+      extra: %{reason: inspect(reason)}
+    )
+
+    conn
+    |> put_status(:bad_gateway)
+    |> json(%{error: "checkout_unavailable"})
+  end
 
   def billing_portal(conn, _params) do
     customer_id = conn.assigns.current_user.paddle_customer_id
@@ -38,8 +104,19 @@ defmodule ShroudWeb.CheckoutController do
 
     case Paddle.verify_webhook(raw_body, signature) do
       {:ok, event} ->
-        handle_event(event)
-        send_resp(conn, 200, "")
+        case handle_event(event) do
+          :ok ->
+            send_resp(conn, 200, "")
+
+          {:error, reason} ->
+            Logger.error("Failed to process Paddle webhook: #{inspect(reason)}")
+
+            Sentry.capture_message("Failed to process Paddle webhook",
+              extra: %{reason: inspect(reason)}
+            )
+
+            send_resp(conn, :service_unavailable, "")
+        end
 
       {:error, reason} ->
         Logger.warning("Rejected Paddle webhook: #{inspect(reason)}")
@@ -47,82 +124,129 @@ defmodule ShroudWeb.CheckoutController do
     end
   end
 
-  defp handle_event(event) do
-    case event["event_type"] do
-      "customer.created" ->
-        link_customer(event["data"])
+  defp handle_event(%{"event_type" => "customer.created"}), do: :ok
 
-      "subscription.created" ->
-        provision_subscription(event["data"], event)
+  defp handle_event(%{"event_type" => event_type, "data" => subscription} = event)
+       when event_type in @subscription_event_types do
+    provision_subscription(subscription, event, event_type)
+  end
 
-      "subscription.updated" ->
-        provision_subscription(event["data"], event)
+  defp handle_event(%{"event_type" => event_type})
+       when event_type in @subscription_event_types,
+       do: {:error, :malformed_subscription}
 
-      # canceled and past_due flow through provision_subscription;
-      # the status mapping table handles them (canceled→:free, past_due→:active).
-      "subscription.canceled" ->
-        provision_subscription(event["data"], event)
+  defp handle_event(%{"event_type" => event_type}) when is_binary(event_type) do
+    Logger.warning("Received unhandled Paddle event: #{event_type}")
+    :ok
+  end
 
-      "subscription.past_due" ->
-        provision_subscription(event["data"], event)
+  defp handle_event(_malformed_event), do: {:error, :malformed_event}
 
-      other ->
-        Logger.warning("Received unhandled Paddle event: #{other}")
+  defp provision_subscription(subscription, event, _event_type) when is_map(subscription) do
+    with {:ok, customer_id} <- required_binary(subscription, "customer_id"),
+         {:ok, subscription_id} <- required_binary(subscription, "id"),
+         {:ok, status} <- required_subscription_status(subscription),
+         {:ok, event_at} <- parse_iso8601(event["occurred_at"]),
+         {:ok, period_end} <- parse_period_end(subscription),
+         {:ok, %{user_id: identity_user_id, price_id: price_id}} <-
+           checkout_identity_user_id(
+             subscription,
+             customer_id,
+             subscription_id
+           ),
+         {:ok, result} <-
+           Accounts.apply_paddle_subscription_event(%{
+             customer_id: customer_id,
+             identity_user_id: identity_user_id,
+             subscription_id: subscription_id,
+             price_id: price_id,
+             plan_expires_at: period_end,
+             status: paddle_status_to_our_status(status),
+             event_at: event_at
+           }) do
+      log_subscription_result(result, event, customer_id)
+      :ok
+    else
+      {:error, reason} -> {:error, reason}
     end
   end
 
-  defp link_customer(%{"id" => customer_id, "email" => email}) do
-    case Accounts.get_user_by_email(email) do
-      nil ->
-        Logger.error("Paddle customer.created for unknown user: #{email}")
-        Sentry.capture_message("Paddle customer.created for unknown user", extra: %{email: email})
+  defp provision_subscription(_subscription, _event, _event_type),
+    do: {:error, :malformed_subscription}
 
-      user ->
-        # Don't overwrite a customer_id already set for this user.
-        if is_nil(user.paddle_customer_id) do
-          Accounts.update_paddle_details!(user, %{paddle_customer_id: customer_id})
-        end
-    end
-  end
-
-  defp provision_subscription(sub, event) do
-    customer_id = sub["customer_id"]
-
+  defp checkout_identity_user_id(subscription, customer_id, subscription_id) do
     case Accounts.get_user_by_paddle_customer_id(customer_id) do
-      nil ->
-        Logger.error("Paddle subscription event for unknown customer: #{customer_id}")
-
-        Sentry.capture_message("Paddle subscription event for unknown customer",
-          extra: %{customer_id: customer_id}
-        )
-
-      user ->
-        event_at = parse_iso8601(event["occurred_at"])
-
-        if stale?(event_at, user.last_paddle_event_at) do
-          Logger.info(
-            "Skipping stale Paddle event #{event["event_id"]} " <>
-              "(#{event["occurred_at"]} <= #{user.last_paddle_event_at})"
-          )
+      %Shroud.Accounts.User{
+        paddle_subscription_id: ^subscription_id,
+        paddle_price_id: price_id,
+        id: user_id
+      }
+      when is_binary(price_id) ->
+        if subscription_has_price?(subscription, price_id) do
+          {:ok, %{user_id: user_id, price_id: price_id}}
         else
-          period_end = parse_period_end(sub)
-          status = paddle_status_to_our_status(sub["status"])
-          prior_status = user.status
-
-          Accounts.update_paddle_details!(user, %{
-            paddle_subscription_id: sub["id"],
-            plan_expires_at: period_end,
-            status: status,
-            last_paddle_event_at: event_at
-          })
-
-          # Idempotent side-effect: only notify on the active transition.
-          if status == :active and prior_status != :active do
-            Notifier.notify_user_signed_up(user.email)
-            Logger.notice("User #{user.email} signed up! Plan expires at #{period_end}")
-          end
+          {:error, :invalid_subscription_price}
         end
+
+      %Shroud.Accounts.User{id: user_id} ->
+        verify_checkout_identity(subscription, user_id)
+
+      nil ->
+        verify_checkout_identity(subscription)
     end
+  end
+
+  defp verify_checkout_identity(subscription, expected_user_id \\ nil) do
+    with token when is_binary(token) <-
+           get_in(subscription, ["custom_data", "shroud_checkout_identity"]),
+         {:ok, %{user_id: user_id, price_id: price_id}} <-
+           PaddleCheckoutIdentity.verify(token),
+         true <- is_nil(expected_user_id) or user_id == expected_user_id,
+         true <- subscription_has_price?(subscription, price_id),
+         {:ok, transaction_id} <- required_binary(subscription, "transaction_id"),
+         %Shroud.Accounts.User{} = user <- Accounts.get_user(user_id),
+         true <- user.paddle_checkout_transaction_id == transaction_id,
+         true <- user.paddle_checkout_price_id == price_id do
+      {:ok, %{user_id: user_id, price_id: price_id}}
+    else
+      _invalid_identity -> {:error, :invalid_checkout_identity}
+    end
+  end
+
+  defp subscription_has_price?(%{"items" => items}, price_id) when is_list(items) do
+    Enum.any?(items, &(get_in(&1, ["price", "id"]) == price_id))
+  end
+
+  defp subscription_has_price?(_subscription, _price_id), do: false
+
+  defp required_binary(map, key) do
+    case map[key] do
+      value when is_binary(value) and value != "" -> {:ok, value}
+      _missing -> {:error, {:malformed_subscription, key}}
+    end
+  end
+
+  defp required_subscription_status(subscription) do
+    with {:ok, status} <- required_binary(subscription, "status"),
+         true <- status in @subscription_statuses do
+      {:ok, status}
+    else
+      _unsupported_status -> {:error, :unsupported_subscription_status}
+    end
+  end
+
+  defp log_subscription_result(:applied, _event, customer_id) do
+    Logger.notice("Applied Paddle subscription event for customer #{customer_id}")
+  end
+
+  defp log_subscription_result(:stale, event, _customer_id) do
+    Logger.info("Skipping stale Paddle event #{event["event_id"]}")
+  end
+
+  defp log_subscription_result(:unrelated_subscription, event, customer_id) do
+    Logger.warning(
+      "Ignoring Paddle event #{event["event_id"]} for unrelated subscription on customer #{customer_id}"
+    )
   end
 
   # Paddle subscription.status → our status enum.
@@ -134,20 +258,22 @@ defmodule ShroudWeb.CheckoutController do
   defp paddle_status_to_our_status(_status), do: :free
 
   defp parse_period_end(%{"current_billing_period" => %{"ends_at" => ends_at}}) do
-    parse_iso8601(ends_at)
+    case parse_iso8601(ends_at) do
+      {:ok, datetime} -> {:ok, NaiveDateTime.truncate(datetime, :second)}
+      {:error, reason} -> {:error, reason}
+    end
   end
 
-  defp parse_period_end(_sub), do: nil
+  defp parse_period_end(%{"current_billing_period" => nil}), do: {:ok, nil}
+  defp parse_period_end(_subscription), do: {:error, :malformed_billing_period}
 
   # Paddle timestamps are RFC 3339 (ISO 8601) strings.
-  defp parse_iso8601(nil), do: nil
-
-  defp parse_iso8601(iso) do
-    {:ok, dt, _offset} = DateTime.from_iso8601(iso)
-    DateTime.to_naive(dt)
+  defp parse_iso8601(iso) when is_binary(iso) do
+    case DateTime.from_iso8601(iso) do
+      {:ok, datetime, _offset} -> {:ok, DateTime.to_naive(datetime)}
+      {:error, _reason} -> {:error, :malformed_timestamp}
+    end
   end
 
-  # An event is stale if we've already applied a newer-or-equal event for this subscription.
-  defp stale?(incoming, last) when not is_nil(last), do: incoming <= last
-  defp stale?(_incoming, nil), do: false
+  defp parse_iso8601(_iso), do: {:error, :malformed_timestamp}
 end
