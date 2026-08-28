@@ -39,4 +39,17 @@ defmodule ShroudWeb.UserSettingsBillingTest do
 
     refute document |> LazyHTML.query("#upgrade-button[data-customer-email]") |> Enum.any?()
   end
+
+  test "renders a Paddle price preview target instead of a hard-coded currency", %{conn: conn} do
+    html = conn |> get(~p"/settings/billing") |> html_response(200)
+    document = LazyHTML.from_fragment(html)
+
+    price = LazyHTML.query(document, "#upgrade-price[data-paddle-price-id='pri_test_yearly']")
+
+    assert Enum.any?(price)
+    assert LazyHTML.text(price) =~ "Loading price"
+
+    refute html =~ "$35"
+    refute html =~ "USD"
+  end
 end

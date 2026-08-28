@@ -10,6 +10,34 @@ function markUnavailable(button, message) {
   button.title = message;
 }
 
+function updateLocalizedPrice(price, paddle, logger) {
+  if (!price) return;
+
+  const priceId = price.dataset.paddlePriceId;
+
+  paddle
+    .PricePreview({ items: [{ priceId, quantity: 1 }] })
+    .then((preview) => {
+      const lineItem = preview.data.details.lineItems.find(
+        (item) => item.price.id === priceId,
+      );
+
+      if (!lineItem) {
+        throw new Error("Paddle price preview omitted configured price");
+      }
+
+      price.querySelector("#upgrade-price-amount").textContent =
+        lineItem.formattedTotals.total;
+      price.querySelector("#upgrade-price-currency").textContent =
+        preview.data.currencyCode;
+    })
+    .catch((error) => {
+      logger.error("Paddle price preview failed", error);
+      price.querySelector("#upgrade-price-currency").textContent =
+        "Price shown at checkout";
+    });
+}
+
 export function setupPaddleCheckout({
   document,
   window,
@@ -17,6 +45,7 @@ export function setupPaddleCheckout({
   logger = console,
 }) {
   const button = document.querySelector("#upgrade-button");
+  const price = document.querySelector("#upgrade-price[data-paddle-price-id]");
   const token = metaContent(document, "paddle-client-token");
 
   if (!button || button.dataset.paddleCheckout !== "true" || !token) {
@@ -44,6 +73,7 @@ export function setupPaddleCheckout({
 
       window.Paddle = paddle;
       if (!checkoutPending) button.disabled = false;
+      updateLocalizedPrice(price, paddle, logger);
       return paddle;
     })
     .catch((error) => {

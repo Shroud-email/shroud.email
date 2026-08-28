@@ -50,6 +50,7 @@ defmodule ShroudWeb.UserSettingsController do
 
     render(conn, "billing.html",
       page_title: "Billing settings",
+      paddle_price_id: paddle_price_id,
       paddle_checkout_available?:
         configured?(paddle_price_id) and configured?(paddle_client_token)
     )
