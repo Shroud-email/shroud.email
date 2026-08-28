@@ -7,6 +7,8 @@ defmodule Mix.Tasks.SyncLoops do
   alias Shroud.Accounts.{LoopsJob, User}
   alias Shroud.Repo
 
+  @batch_size 500
+
   @shortdoc "Enqueues Loops contact synchronization for all non-lead users"
 
   @moduledoc """
@@ -23,15 +25,31 @@ defmodule Mix.Tasks.SyncLoops do
     Mix.Task.run("app.start")
     ensure_contact_properties!()
 
-    users = Repo.all(from user in User, where: user.status != :lead)
+    count = enqueue_users_after(0, 0)
 
-    Enum.each(users, &enqueue_sync!/1)
-
-    Mix.shell().info("Enqueued #{length(users)} Loops sync job(s)")
+    Mix.shell().info("Enqueued #{count} Loops sync job(s)")
   end
 
-  defp enqueue_sync!(user) do
-    case Accounts.enqueue_loops_sync(user) do
+  defp enqueue_users_after(last_user_id, count) do
+    user_ids =
+      Repo.all(
+        from user in User,
+          where: user.status != :lead and user.id > ^last_user_id,
+          order_by: [asc: user.id],
+          limit: @batch_size,
+          select: user.id
+      )
+
+    Enum.each(user_ids, &enqueue_sync!/1)
+
+    case List.last(user_ids) do
+      nil -> count
+      last_user_id -> enqueue_users_after(last_user_id, count + length(user_ids))
+    end
+  end
+
+  defp enqueue_sync!(user_id) do
+    case Accounts.enqueue_loops_sync(user_id) do
       {:ok, _job} ->
         :ok
 

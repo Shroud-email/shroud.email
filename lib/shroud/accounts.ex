@@ -81,8 +81,10 @@ defmodule Shroud.Accounts do
   def get_user!(id), do: Repo.get!(User, id)
   def get_user(id), do: Repo.get(User, id)
 
-  def enqueue_loops_sync(%User{} = user) do
-    %{action: "sync_loops", user_id: user.id}
+  def enqueue_loops_sync(%User{id: user_id}), do: enqueue_loops_sync(user_id)
+
+  def enqueue_loops_sync(user_id) when is_integer(user_id) do
+    %{action: "sync_loops", user_id: user_id}
     |> LoopsJob.new()
     |> Oban.insert()
   end

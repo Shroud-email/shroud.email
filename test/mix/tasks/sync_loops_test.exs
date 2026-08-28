@@ -37,6 +37,36 @@ defmodule Mix.Tasks.SyncLoopsTest do
     refute_enqueued(worker: LoopsJob, args: %{action: "sync_loops", user_id: lead.id})
   end
 
+  test "loads only a bounded batch of user IDs" do
+    user_fixture(%{status: :active})
+    expect_properties([%{"key" => "status", "label" => "Status", "type" => "string"}])
+
+    handler_id = {__MODULE__, self(), make_ref()}
+    test_pid = self()
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:shroud, :repo, :query],
+        fn _event, _measurements, metadata, pid ->
+          if String.contains?(metadata.query, ~s(FROM "users" AS u0)) do
+            send(pid, {:users_query, metadata.query})
+          end
+        end,
+        test_pid
+      )
+
+    on_exit(fn -> :telemetry.detach(handler_id) end)
+    Mix.Task.reenable("sync_loops")
+
+    capture_io(fn -> SyncLoops.run([]) end)
+
+    assert_receive {:users_query, query}
+    assert query =~ ~r/^SELECT u0\."id" FROM/
+    refute query =~ ~s(u0."email")
+    assert query =~ "LIMIT"
+  end
+
   test "fails before enqueueing when Loops is not configured" do
     Application.delete_env(:shroud, :loops_api_key)
     user_fixture(%{status: :active})
