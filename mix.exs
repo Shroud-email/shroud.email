@@ -87,6 +87,7 @@ defmodule Shroud.MixProject do
       # the legacy Sentry.HackneyClient is deprecated. Sentry manages its own
       # Finch pool, so no extra supervision is needed.
       {:finch, "~> 0.22"},
+      {:bypass, "~> 2.1", only: :test},
       {:timex, "~> 3.7"},
       {:httpoison, "~> 2.3"},
       {:req, "~> 0.6"},
@@ -94,11 +95,6 @@ defmodule Shroud.MixProject do
       {:nimble_totp, "~> 1.0"},
       {:eqrcode, "~> 0.2.0"},
       {:cloak_ecto, "~> 1.2"},
-      # Pinned below 3.3: stripity_stripe 3.3+ requires hackney ~> 4.0, which
-      # conflicts with httpoison's hackney ~> 1.21. Reaching 3.3+ means dropping
-      # httpoison (or migrating it off hackney 1.x) — deferred with the hackney
-      # major upgrade.
-      {:stripity_stripe, "~> 3.0 and < 3.3.0"},
       {:mime, "~> 2.0"},
       {:scrivener_ecto, "~> 3.1"},
       {:fun_with_flags, "~> 1.13"},

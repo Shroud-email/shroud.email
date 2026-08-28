@@ -59,8 +59,15 @@ config :phoenix, :plug_init_mode, :runtime
 config :shroud,
   notifier_webhook_url: "webhook.com/webhook"
 
-# Used by the Stripe webhook controller to verify signatures in tests.
-config :shroud, :billing, stripe_webhook_secret: "whsec_test_secret_123"
+# Used by the billing webhook clients to verify signatures in tests.
+config :shroud, :billing,
+  stripe_webhook_secret: "whsec_test_secret_123",
+  paddle_webhook_secret: "pdl_ntfset_test_secret_123",
+  paddle_api_key: "test_key",
+  paddle_yearly_price_id: "pri_test_yearly",
+  paddle_base_url: "http://localhost:0",
+  paddle_client_token: "test_client_token",
+  paddle_environment: "sandbox"
 
 # Route Cap verification requests through the Req.Test stub (named
 # Shroud.Captcha) so captcha_test.exs can assert on responses without any

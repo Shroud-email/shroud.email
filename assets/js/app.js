@@ -28,6 +28,8 @@ import { Modal, Notification } from "./hooks";
 import { initTheme, setTheme } from "./theme";
 import Alpine from "alpinejs";
 import Tooltip from "@ryangjchandler/alpine-tooltip";
+import { initializePaddle } from "@paddle/paddle-js";
+import { setupPaddleCheckout } from "./paddle_checkout.mjs";
 
 Alpine.plugin(Tooltip);
 window.Alpine = Alpine;
@@ -36,6 +38,8 @@ Alpine.start();
 // Initialize theme (dark mode support)
 initTheme();
 window.setTheme = setTheme;
+
+setupPaddleCheckout({ document, window, initializePaddle });
 
 let csrfToken = document
   .querySelector("meta[name='csrf-token']")

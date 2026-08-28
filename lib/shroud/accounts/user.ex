@@ -18,7 +18,12 @@ defmodule Shroud.Accounts.User do
 
     has_many :user_tokens, Shroud.Accounts.UserToken
 
-    field :stripe_customer_id, :string
+    field :paddle_customer_id, :string
+    field :paddle_subscription_id, :string
+    field :paddle_price_id, :string
+    field :paddle_checkout_transaction_id, :string
+    field :paddle_checkout_price_id, :string
+    field :last_paddle_event_at, :naive_datetime_usec
     field :plan_expires_at, :naive_datetime
     field :status, Ecto.Enum, values: [:lead, :active, :inactive, :lifetime, :free]
     field :theme, Ecto.Enum, values: [:system, :light, :dark], default: :system
@@ -178,9 +183,19 @@ defmodule Shroud.Accounts.User do
     |> cast(attrs, [:totp_secret, :totp_backup_codes, :totp_enabled])
   end
 
-  def stripe_changeset(user, attrs) do
+  def paddle_changeset(user, attrs) do
     user
-    |> cast(attrs, [:status, :stripe_customer_id, :plan_expires_at])
+    |> cast(attrs, [
+      :status,
+      :paddle_customer_id,
+      :paddle_subscription_id,
+      :paddle_price_id,
+      :paddle_checkout_transaction_id,
+      :paddle_checkout_price_id,
+      :plan_expires_at,
+      :last_paddle_event_at
+    ])
+    |> unique_constraint(:paddle_customer_id)
   end
 
   def status_changeset(user, attrs) do

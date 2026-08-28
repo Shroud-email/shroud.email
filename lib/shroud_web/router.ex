@@ -37,7 +37,7 @@ defmodule ShroudWeb.Router do
   scope "/api", ShroudWeb do
     pipe_through(:api)
 
-    post("/webhooks/stripe", CheckoutController, :webhook)
+    post("/webhooks/paddle", CheckoutController, :webhook)
   end
 
   scope "/api/v1", ShroudWeb.Api.V1 do
@@ -131,9 +131,8 @@ defmodule ShroudWeb.Router do
       live("/detention", SpamEmailLive.Index, :index)
     end
 
-    get("/checkout", CheckoutController, :index)
-    get("/checkout/success", CheckoutController, :success)
     get("/checkout/billing", CheckoutController, :billing_portal)
+    post("/checkout/paddle", CheckoutController, :create)
   end
 
   scope "/", ShroudWeb do

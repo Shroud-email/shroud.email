@@ -29,7 +29,25 @@ defmodule Shroud.AccountsFixtures do
       |> User.status_changeset(attrs)
       |> Repo.update!(returning: true)
 
-    user
+    # Apply paddle-specific attrs that status_changeset doesn't cast
+    paddle_attrs =
+      Map.take(attrs, [
+        :paddle_customer_id,
+        :paddle_subscription_id,
+        :paddle_price_id,
+        :paddle_checkout_transaction_id,
+        :paddle_checkout_price_id,
+        :plan_expires_at,
+        :last_paddle_event_at
+      ])
+
+    if paddle_attrs == %{} do
+      user
+    else
+      user
+      |> User.paddle_changeset(paddle_attrs)
+      |> Repo.update!(returning: true)
+    end
   end
 
   def extract_user_token(fun) do

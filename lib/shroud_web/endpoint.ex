@@ -43,7 +43,7 @@ defmodule ShroudWeb.Endpoint do
   plug Plug.RequestId
   plug ShroudWeb.Plug.Telemetry, event_prefix: [:phoenix, :endpoint]
 
-  plug Plug.Parsers,
+  plug ShroudWeb.Plugs.RequestParsers,
     parsers: [:urlencoded, :multipart, :json],
     pass: ["*/*"],
     body_reader: {ShroudWeb.Plugs.CachingBodyReader, :read_body, []},
