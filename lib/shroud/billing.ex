@@ -1,9 +1,9 @@
 defmodule Shroud.Billing do
+  alias Ecto.Multi
   alias Shroud.Accounts
   alias Shroud.Accounts.User
   alias Shroud.Billing.LifetimeCode
   alias Shroud.Repo
-  alias Ecto.Multi
   require Logger
 
   @salt "lifetime_code"

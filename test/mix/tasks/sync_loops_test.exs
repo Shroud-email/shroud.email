@@ -6,6 +6,7 @@ defmodule Mix.Tasks.SyncLoopsTest do
   import Mox
   import Shroud.AccountsFixtures
 
+  alias Mix.Tasks.SyncLoops
   alias Shroud.Accounts.LoopsJob
 
   setup :verify_on_exit!
@@ -28,7 +29,7 @@ defmodule Mix.Tasks.SyncLoopsTest do
 
     Mix.Task.reenable("sync_loops")
 
-    assert capture_io(fn -> Mix.Tasks.SyncLoops.run([]) end) =~
+    assert capture_io(fn -> SyncLoops.run([]) end) =~
              "Enqueued 2 Loops sync job(s)"
 
     assert_enqueued(worker: LoopsJob, args: %{action: "sync_loops", user_id: free.id})
@@ -42,7 +43,7 @@ defmodule Mix.Tasks.SyncLoopsTest do
     Mix.Task.reenable("sync_loops")
 
     assert_raise Mix.Error, ~r/Loops API key is not configured/, fn ->
-      Mix.Tasks.SyncLoops.run([])
+      SyncLoops.run([])
     end
 
     refute_enqueued(worker: LoopsJob)
@@ -54,7 +55,7 @@ defmodule Mix.Tasks.SyncLoopsTest do
     Mix.Task.reenable("sync_loops")
 
     assert_raise Mix.Error, ~r/status must be a string, got: boolean/, fn ->
-      Mix.Tasks.SyncLoops.run([])
+      SyncLoops.run([])
     end
 
     refute_enqueued(worker: LoopsJob)
