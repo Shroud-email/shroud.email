@@ -10,6 +10,13 @@ function markUnavailable(button, message) {
   button.title = message;
 }
 
+function markPriceUnavailable(price) {
+  if (!price) return;
+
+  price.querySelector("#upgrade-price-currency").textContent =
+    "Price shown at checkout";
+}
+
 function updateLocalizedPrice(price, paddle, logger) {
   if (!price) return;
 
@@ -33,8 +40,7 @@ function updateLocalizedPrice(price, paddle, logger) {
     })
     .catch((error) => {
       logger.error("Paddle price preview failed", error);
-      price.querySelector("#upgrade-price-currency").textContent =
-        "Price shown at checkout";
+      markPriceUnavailable(price);
     });
 }
 
@@ -79,6 +85,7 @@ export function setupPaddleCheckout({
     .catch((error) => {
       logger.error("Paddle.js initialization failed", error);
       markUnavailable(button, "Checkout couldn't load. Please try again later.");
+      markPriceUnavailable(price);
       return null;
     });
 

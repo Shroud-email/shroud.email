@@ -221,3 +221,18 @@ test("failed initialization leaves visible unavailable state", async () => {
   assert.equal(button.textContent, "Payments unavailable");
   assert.match(button.title, /couldn't load/i);
 });
+
+test("failed initialization clears the transient price state", async () => {
+  const { document, priceCurrency } = fixture({ priceId: "pri_test_yearly" });
+
+  await setupPaddleCheckout({
+    document,
+    window: {},
+    initializePaddle: async () => {
+      throw new Error("network failed");
+    },
+    logger: { error() {} },
+  });
+
+  assert.equal(priceCurrency.textContent, "Price shown at checkout");
+});
