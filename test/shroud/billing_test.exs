@@ -1,5 +1,8 @@
 defmodule Shroud.Billing.BillingTest do
-  use Shroud.DataCase, async: true
+  use Shroud.DataCase, async: false
+  use Oban.Testing, repo: Shroud.Repo
+
+  alias Shroud.Accounts.LoopsJob
   alias Shroud.{Billing, Repo}
   import Shroud.AccountsFixtures
   import ExUnit.CaptureLog
@@ -44,6 +47,11 @@ defmodule Shroud.Billing.BillingTest do
       assert :ok == Billing.redeem_lifetime_code(code, user)
       user = Repo.reload!(user)
       assert user.status == :lifetime
+
+      assert_enqueued(
+        worker: LoopsJob,
+        args: %{action: "sync_loops", user_id: user.id}
+      )
     end
 
     test "logs a successful redemption", %{user: user} do

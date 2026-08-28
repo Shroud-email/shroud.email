@@ -5,7 +5,7 @@ defmodule Shroud.AccountsTest do
   alias Shroud.Accounts
 
   import Shroud.{AccountsFixtures, AliasesFixtures}
-  alias Shroud.Accounts.{User, UserToken}
+  alias Shroud.Accounts.{LoopsJob, User, UserToken}
 
   describe "get_user_by_email/1" do
     test "does not return the user if the email does not exist" do
@@ -453,6 +453,22 @@ defmodule Shroud.AccountsTest do
       assert_enqueued(worker: Accounts.LoopsJob, args: %{user_id: user.id})
     end
 
+    test "syncs the user to Loops without an active mailing list", %{user: user, token: token} do
+      active_list_id = Application.get_env(:shroud, :loops_active_users_list_id)
+      Application.delete_env(:shroud, :loops_active_users_list_id)
+
+      on_exit(fn ->
+        Application.put_env(:shroud, :loops_active_users_list_id, active_list_id)
+      end)
+
+      assert {:ok, _confirmed_user} = Accounts.confirm_user(token)
+
+      assert_enqueued(
+        worker: LoopsJob,
+        args: %{user_id: user.id, mailing_lists: %{}}
+      )
+    end
+
     test "sets user status to :free after confirmation", %{user: user, token: token} do
       assert {:ok, confirmed_user} = Accounts.confirm_user(token)
       assert confirmed_user.status == :free
@@ -617,6 +633,11 @@ defmodule Shroud.AccountsTest do
       assert updated_user.paddle_subscription_id == "sub_atomic"
       assert updated_user.paddle_price_id == "pri_test_yearly"
       assert updated_user.status == :active
+
+      assert_enqueued(
+        worker: LoopsJob,
+        args: %{action: "sync_loops", user_id: user.id}
+      )
     end
 
     test "does not let an older event overwrite newer subscription state" do
@@ -723,6 +744,7 @@ defmodule Shroud.AccountsTest do
       updated_user = Repo.reload!(user)
       assert updated_user.paddle_checkout_transaction_id == "txn_replacement"
       assert updated_user.paddle_checkout_price_id == "pri_test_yearly"
+      refute_enqueued(worker: LoopsJob)
     end
 
     test "returns an error when neither customer nor signed identity resolves a user" do

@@ -1,8 +1,9 @@
 defmodule Shroud.Billing do
-  alias Shroud.Repo
+  alias Ecto.Multi
+  alias Shroud.Accounts
   alias Shroud.Accounts.User
   alias Shroud.Billing.LifetimeCode
-  alias Ecto.Multi
+  alias Shroud.Repo
   require Logger
 
   @salt "lifetime_code"
@@ -38,6 +39,9 @@ defmodule Shroud.Billing do
             :user,
             User.status_changeset(user, %{status: :lifetime})
           )
+          |> Multi.run(:loops_job, fn _repo, %{user: updated_user} ->
+            Accounts.enqueue_loops_sync(updated_user)
+          end)
           |> Repo.transaction()
 
         case result do

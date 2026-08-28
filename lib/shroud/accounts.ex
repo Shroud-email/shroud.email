@@ -81,6 +81,14 @@ defmodule Shroud.Accounts do
   def get_user!(id), do: Repo.get!(User, id)
   def get_user(id), do: Repo.get(User, id)
 
+  def enqueue_loops_sync(%User{id: user_id}), do: enqueue_loops_sync(user_id)
+
+  def enqueue_loops_sync(user_id) when is_integer(user_id) do
+    %{action: "sync_loops", user_id: user_id}
+    |> LoopsJob.new()
+    |> Oban.insert()
+  end
+
   ## User registration
 
   @doc """
@@ -314,23 +322,24 @@ defmodule Shroud.Accounts do
     with {:ok, query} <- UserToken.verify_email_token_query(token, "confirm"),
          %User{} = user <- Repo.one(query),
          {:ok, %{user: user}} <- Repo.transaction(confirm_user_multi(user)) do
-      case Application.fetch_env(:shroud, :loops_active_users_list_id) do
-        {:ok, active_users_list_id} ->
-          %{
-            user_id: user.id,
-            event_name: "user_confirmed",
-            event_properties: %{},
-            mailing_lists: %{
-              active_users_list_id => true
-            }
-          }
-          |> LoopsJob.new()
-          |> Oban.insert!()
+      mailing_lists =
+        case Application.get_env(:shroud, :loops_active_users_list_id) do
+          list_id when is_binary(list_id) and byte_size(list_id) > 0 ->
+            %{list_id => true}
 
-        _ ->
-          Logger.debug("Loops active list not configured")
-          nil
-      end
+          _missing ->
+            Logger.debug("Loops active list not configured")
+            %{}
+        end
+
+      %{
+        user_id: user.id,
+        event_name: "user_confirmed",
+        event_properties: %{},
+        mailing_lists: mailing_lists
+      }
+      |> LoopsJob.new()
+      |> Oban.insert!()
 
       {:ok, user}
     else
@@ -576,11 +585,21 @@ defmodule Shroud.Accounts do
   defp update_paddle_subscription(user, %{status: status} = attrs) do
     case user |> User.paddle_changeset(attrs) |> Repo.update() do
       {:ok, updated_user} ->
+        maybe_enqueue_loops_sync(updated_user, user.status, status)
         maybe_notify_paid_signup(updated_user, user.status, status)
         :applied
 
       {:error, changeset} ->
         Repo.rollback({:invalid_paddle_update, changeset.errors})
+    end
+  end
+
+  defp maybe_enqueue_loops_sync(_user, status, status), do: :ok
+
+  defp maybe_enqueue_loops_sync(user, _prior_status, _status) do
+    case enqueue_loops_sync(user) do
+      {:ok, _job} -> :ok
+      {:error, changeset} -> Repo.rollback({:invalid_loops_job, changeset.errors})
     end
   end
 
