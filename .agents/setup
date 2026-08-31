@@ -1,0 +1,177 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+step() {
+  local name="$1"
+  shift
+  local started=$SECONDS
+
+  printf '\n==> %s\n' "$name"
+  "$@"
+  printf '<== %s (%ss)\n' "$name" "$((SECONDS - started))"
+}
+
+install_apt_packages() {
+  local missing=()
+  local package
+
+  for package in "$@"; do
+    if ! dpkg-query -W -f='${db:Status-Status}' "$package" 2>/dev/null | grep -Fqx installed; then
+      missing+=("$package")
+    fi
+  done
+
+  if ((${#missing[@]} == 0)); then
+    echo "System packages are already installed."
+    return
+  fi
+
+  sudo apt-get update
+  sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y "${missing[@]}"
+}
+
+install_docker() {
+  if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+    echo "Docker and Compose are already installed."
+  else
+    sudo install -m 0755 -d /etc/apt/keyrings
+
+    if [[ ! -f /etc/apt/sources.list.d/docker.list ]]; then
+      sudo curl -fsSL https://download.docker.com/linux/debian/gpg \
+        -o /etc/apt/keyrings/docker.asc
+      sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+      # shellcheck disable=SC1091
+      . /etc/os-release
+      echo \
+        "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian ${VERSION_CODENAME} stable" |
+        sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
+    fi
+
+    sudo apt-get update
+    sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y \
+      docker-ce \
+      docker-ce-cli \
+      containerd.io \
+      docker-buildx-plugin \
+      docker-compose-plugin
+  fi
+
+  sudo usermod -aG docker "$(id -un)"
+  sudo systemctl enable --now docker
+}
+
+install_mise() {
+  if command -v mise >/dev/null 2>&1; then
+    mise_bin="$(command -v mise)"
+  elif [[ -x "$HOME/.local/bin/mise" ]]; then
+    mise_bin="$HOME/.local/bin/mise"
+  else
+    curl -fsSL https://mise.run | sh
+    mise_bin="$HOME/.local/bin/mise"
+  fi
+
+  export PATH="$HOME/.local/bin:$PATH"
+  "$mise_bin" trust --yes mise.toml
+  "$mise_bin" install --yes
+}
+
+configure_login_shell() {
+  local repo_root="$PWD"
+  local profile="$HOME/.bash_profile"
+  local marker="# shroud.email mise toolchain"
+
+  touch "$profile"
+
+  if ! grep -Fqx "$marker" "$profile"; then
+    cat >>"$profile" <<EOF
+
+$marker
+if [[ "\${PWD}/" == "$repo_root/"* ]]; then
+  export PATH="\$HOME/.local/share/mise/shims:\$HOME/.local/bin:\$PATH"
+fi
+EOF
+  fi
+}
+
+prepare_environment() {
+  if [[ ! -f .env ]]; then
+    cp -- example.env .env
+  fi
+}
+
+install_javascript_dependencies() {
+  mise exec -- npm ci
+  mise exec -- npm --prefix assets ci
+  mise exec -- npm --prefix e2e ci
+}
+
+install_elixir_dependencies() {
+  mise exec -- mix local.hex --force --if-missing
+  mise exec -- mix local.rebar --force --if-missing
+  mise exec -- mix deps.get
+  mise exec -- env MIX_ENV=test mix deps.get
+  mise exec -- mix compile
+  mise exec -- env MIX_ENV=test mix compile
+  mise exec -- mix assets.setup
+}
+
+configure_postgresql() {
+  local config_dir
+  local config_file
+  local desired_config
+
+  sudo systemctl enable --now postgresql
+  config_dir="$(dirname "$(sudo -u postgres psql -Atqc 'SHOW config_file')")"
+  config_file="$config_dir/conf.d/amp-orb.conf"
+  desired_config="# Favor speed over durability for this disposable development database.
+fsync = off
+synchronous_commit = off
+full_page_writes = off"
+
+  sudo mkdir -p "$config_dir/conf.d"
+
+  if [[ "$(sudo cat "$config_file" 2>/dev/null || true)" != "$desired_config" ]]; then
+    printf '%s\n' "$desired_config" | sudo tee "$config_file" >/dev/null
+    sudo systemctl restart postgresql
+  fi
+
+  sudo -u postgres psql -v ON_ERROR_STOP=1 \
+    -c "ALTER ROLE postgres WITH PASSWORD 'postgres'" >/dev/null
+}
+
+prepare_databases() {
+  mise exec -- mix ecto.setup
+  mise exec -- env MIX_ENV=test mix ecto.setup
+}
+
+seed_development_database() {
+  # seeds.exs writes all sample data atomically, so this row is only committed after a complete seed.
+  if [[ "$(sudo -u postgres psql -d shroud_dev -Atqc "SELECT 1 FROM users WHERE email = 'test@test.com'")" == "1" ]]; then
+    echo "Development seed data is already present."
+    return
+  fi
+
+  mise exec -- mix ecto.seed
+}
+
+step "Install system packages" install_apt_packages \
+  build-essential \
+  ca-certificates \
+  curl \
+  git \
+  inotify-tools \
+  postgresql \
+  postgresql-client
+step "Install Docker" install_docker
+step "Install pinned toolchain" install_mise
+step "Configure login shell" configure_login_shell
+step "Prepare local environment" prepare_environment
+step "Install JavaScript dependencies" install_javascript_dependencies
+step "Install and compile Elixir dependencies" install_elixir_dependencies
+step "Configure PostgreSQL" configure_postgresql
+step "Create and migrate databases" prepare_databases
+step "Seed development database" seed_development_database
+
+echo
+echo "Orb setup complete."

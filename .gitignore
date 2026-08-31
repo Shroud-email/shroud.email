@@ -54,6 +54,11 @@ assets/css/_components.css
 .superpowers/
 .pi/
 .pi-subagents/
-.agents/
+.agents/*
+!.agents/setup
+!.agents/resume
 .claude/
 skills-lock.json
+
+# Orb-generated portal state
+.amp/portals/

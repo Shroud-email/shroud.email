@@ -1,0 +1,9 @@
+services:
+  web:
+    command: mise exec -- mix phx.server
+    port: 4000
+    health: /
+    portal:
+      title: Shroud.email
+      description: Sign in with test@test.com / 123456789012
+    agent: control
