@@ -146,6 +146,7 @@ prepare_databases() {
 }
 
 seed_development_database() {
+  # seeds.exs writes all sample data atomically, so this row is only committed after a complete seed.
   if [[ "$(sudo -u postgres psql -d shroud_dev -Atqc "SELECT 1 FROM users WHERE email = 'test@test.com'")" == "1" ]]; then
     echo "Development seed data is already present."
     return
