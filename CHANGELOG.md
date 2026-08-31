@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.0](https://github.com/Shroud-email/shroud.email/compare/v1.3.0...v1.4.0) (2026-08-31)
+
+
+### Features
+
+* migrate billing from Stripe to Paddle ([#163](https://github.com/Shroud-email/shroud.email/issues/163)) ([c442220](https://github.com/Shroud-email/shroud.email/commit/c4422202ec671f3868010f3e3c5a4d9fdc47e157))
+* sync user status to Loops ([#174](https://github.com/Shroud-email/shroud.email/issues/174)) ([fd85cdc](https://github.com/Shroud-email/shroud.email/commit/fd85cdcbad3ea8ca3dd4e9908b60430311a53530))
+
 ## [1.3.0](https://github.com/Shroud-email/shroud.email/compare/v1.2.0...v1.3.0) (2026-07-25)
 
 
