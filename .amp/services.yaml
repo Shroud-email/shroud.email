@@ -1,0 +1,9 @@
+services:
+  web:
+    command: mise exec -- mix phx.server
+    port: 4000
+    health: /
+    portal:
+      title: Shroud.email
+      description: Phoenix development server
+    agent: control
