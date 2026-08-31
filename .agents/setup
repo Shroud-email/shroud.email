@@ -145,6 +145,15 @@ prepare_databases() {
   mise exec -- env MIX_ENV=test mix ecto.setup
 }
 
+seed_development_database() {
+  if [[ "$(sudo -u postgres psql -d shroud_dev -Atqc "SELECT 1 FROM users WHERE email = 'test@test.com'")" == "1" ]]; then
+    echo "Development seed data is already present."
+    return
+  fi
+
+  mise exec -- mix ecto.seed
+}
+
 step "Install system packages" install_apt_packages \
   build-essential \
   ca-certificates \
@@ -161,6 +170,7 @@ step "Install JavaScript dependencies" install_javascript_dependencies
 step "Install and compile Elixir dependencies" install_elixir_dependencies
 step "Configure PostgreSQL" configure_postgresql
 step "Create and migrate databases" prepare_databases
+step "Seed development database" seed_development_database
 
 echo
 echo "Orb setup complete."
