@@ -23,6 +23,15 @@ defmodule ShroudWeb.EmailAliasLiveTest do
       assert html =~ email_alias.address
     end
 
+    test "renders a copy button for each email alias", %{conn: conn, email_alias: email_alias} do
+      {:ok, index_live, _html} = live(conn, ~p"/")
+
+      assert has_element?(
+               index_live,
+               "#copy-alias-#{email_alias.id}[data-clipboard-text='#{email_alias.address}']"
+             )
+    end
+
     test "creates new email_alias", %{conn: conn} do
       {:ok, index_live, _html} =
         conn
