@@ -7,21 +7,22 @@ defmodule ShroudWeb.Components.CopyToClipboardButton do
 
   def copy_to_clipboard_button(assigns) do
     ~H"""
-    <div x-data="{ tooltip: 'Copy to clipboard' }" class={@class}>
+    <div x-data="{ tooltip: 'Copy to clipboard', resetTimer: null }" class={@class}>
       <button
         id={@id}
-        x-tooltip="tooltip"
+        x-tooltip="{ content: tooltip, hideOnClick: false }"
         type="button"
         aria-label={"Copy #{@text} to clipboard"}
-        class="rounded p-1 focus:ring focus:ring-indigo-500"
+        class="flex items-center justify-center rounded p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:ring focus:ring-indigo-500"
         data-clipboard-text={@text}
         x-on:click="
-          navigator.clipboard.writeText($el.dataset.clipboardText);
+          clearTimeout(resetTimer);
+          await navigator.clipboard.writeText($el.dataset.clipboardText);
           tooltip = 'Copied!';
-          setTimeout(() => tooltip = 'Copy to clipboard', 1500);
+          resetTimer = setTimeout(() => tooltip = 'Copy to clipboard', 2000);
         "
       >
-        <.icon name={:clipboard_document} solid class="h-5 w-5" />
+        <.icon name={:clipboard_document} class="h-4 w-4" />
       </button>
     </div>
     """
