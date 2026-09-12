@@ -11,6 +11,7 @@ defmodule ShroudWeb.EmailAliasLive.Index do
 
   import ShroudWeb.Components.{
     ButtonWithDropdown,
+    CopyToClipboardButton,
     DropdownItem
   }
 

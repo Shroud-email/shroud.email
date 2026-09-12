@@ -32,7 +32,7 @@ defmodule ShroudWeb.EmailAliasLive.Show do
             <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100">
               {@address}
             </h3>
-            <.copy_to_clipboard_button class="ml-2 mt-2 sm:mt-0" text={@address} />
+            <.copy_to_clipboard_button class="ml-1 mt-2 sm:mt-0" text={@address} />
             <div class="hidden sm:block ml-auto">
               <button
                 phx-click="delete"
@@ -175,7 +175,7 @@ defmodule ShroudWeb.EmailAliasLive.Show do
                           <% else %>
                             {ReplyAddress.to_reply_address(@reverse_alias_recipient, @address)}
                             <.copy_to_clipboard_button
-                              class="ml-2 mt-2 sm:mt-0"
+                              class="ml-1 mt-2 sm:mt-0"
                               text={ReplyAddress.to_reply_address(@reverse_alias_recipient, @address)}
                             />
                           <% end %>
