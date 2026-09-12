@@ -1,17 +1,21 @@
-<nav class="bg-gray-800" x-data="{ open: false }">
+<nav
+  class="bg-gray-800"
+  x-data="{ open: false, path: window.location.pathname }"
+  @phx:navigate.window="path = window.location.pathname; open = false"
+>
   <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
     <div class="border-b border-gray-700">
       <div class="flex items-center justify-between h-16 px-4 sm:px-0">
         <div class="flex items-center">
-          <div class="shrink-0 text-gray-200 flex items-center">
+          <.link navigate={~p"/"} class="shrink-0 text-gray-200 flex items-center">
             <img class="inline w-6 h-6 mr-3 text-indigo-400" src={~p"/images/logo.svg"} alt="Shroud.email logo" />
             <span class="whitespace-nowrap font-semibold text-lg">Shroud.email</span>
-          </div>
+          </.link>
           <div class="hidden md:block">
             <div class="ml-10 flex items-baseline space-x-4">
               <%= if @current_user do %>
-                <.link href={~p"/"} class={active_class(@conn, ~p"/", "text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium", "bg-gray-900 text-white")}>Aliases</.link>
-                <.link href={~p"/detention"} class={active_class(@conn, ~p"/detention", "text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium", "bg-gray-900 text-white")}>
+                <.link navigate={~p"/"} class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium" {%{"x-bind:class" => "{ 'bg-gray-900 text-white': path === '/' }"}}>Aliases</.link>
+                <.link navigate={~p"/detention"} class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium" {%{"x-bind:class" => "{ 'bg-gray-900 text-white': path === '/detention' }"}}>
                   Spam
                   <%= if @spam_count > 0 do %>
                     <span class="ml-1 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-700 text-gray-200">
@@ -19,7 +23,7 @@
                     </span>
                   <% end %>
                 </.link>
-                <.link href={~p"/domains"} class={active_class(@conn, ~p"/domains", "text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium", "bg-gray-900 text-white")}>
+                <.link navigate={~p"/domains"} class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium" {%{"x-bind:class" => "{ 'bg-gray-900 text-white': path === '/domains' }"}}>
                   Domains
                 </.link>
                 <%= if @current_user.is_admin do %>
@@ -106,11 +110,11 @@
     <div class="px-2 py-3 space-y-1 sm:px-3">
       <%!-- Current: "bg-gray-900 text-white", Default: "text-gray-300 hover:bg-gray-700 hover:text-white" --%>
       <%= if @current_user do %>
-        <.link href={~p"/"} class={active_class(@conn, ~p"/", "text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium", "bg-gray-900 text-white")}>Aliases</.link>
-        <.link href={~p"/detention"} class={active_class(@conn, ~p"/detention", "text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium", "bg-gray-900 text-white")}>
+        <.link navigate={~p"/"} class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium" {%{"x-bind:class" => "{ 'bg-gray-900 text-white': path === '/' }"}}>Aliases</.link>
+        <.link navigate={~p"/detention"} class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium" {%{"x-bind:class" => "{ 'bg-gray-900 text-white': path === '/detention' }"}}>
           Spam
         </.link>
-        <.link href={~p"/domains"} class={active_class(@conn, ~p"/domains", "text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium", "bg-gray-900 text-white")}>
+        <.link navigate={~p"/domains"} class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium" {%{"x-bind:class" => "{ 'bg-gray-900 text-white': path === '/domains' }"}}>
           Domains
         </.link>
         <%= if @current_user.is_admin do %>
