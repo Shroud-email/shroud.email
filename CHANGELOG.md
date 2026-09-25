@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.4.0](https://github.com/Shroud-email/shroud.email/compare/v1.3.0...v1.4.0) (2026-09-25)
+
+
+### Features
+
+* add copy buttons to alias list ([#177](https://github.com/Shroud-email/shroud.email/issues/177)) ([3973c9f](https://github.com/Shroud-email/shroud.email/commit/3973c9fa9de71b7fe19930add0a9d78c3a6c38ae))
+* migrate billing from Stripe to Paddle ([#163](https://github.com/Shroud-email/shroud.email/issues/163)) ([c442220](https://github.com/Shroud-email/shroud.email/commit/c4422202ec671f3868010f3e3c5a4d9fdc47e157))
+* sync user status to Loops ([#174](https://github.com/Shroud-email/shroud.email/issues/174)) ([fd85cdc](https://github.com/Shroud-email/shroud.email/commit/fd85cdcbad3ea8ca3dd4e9908b60430311a53530))
+
+
+### Bug Fixes
+
+* speed up orb Erlang setup ([#180](https://github.com/Shroud-email/shroud.email/issues/180)) ([9635750](https://github.com/Shroud-email/shroud.email/commit/9635750405d9ffde29060d3f0cee804a850c14db))
+* use LiveView navigation in navbar ([#179](https://github.com/Shroud-email/shroud.email/issues/179)) ([ea10548](https://github.com/Shroud-email/shroud.email/commit/ea105482e6ad99af4fd8e9a3ff9fa27829d0e3e3))
+
 ## [1.3.0](https://github.com/Shroud-email/shroud.email/compare/v1.2.0...v1.3.0) (2026-07-25)
 
 
