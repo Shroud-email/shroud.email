@@ -8,28 +8,67 @@
       <div class="flex items-center justify-between h-16 px-4 sm:px-0">
         <div class="flex items-center">
           <.link navigate={~p"/"} class="shrink-0 text-gray-200 flex items-center">
-            <img class="inline w-6 h-6 mr-3 text-indigo-400" src={~p"/images/logo.svg"} alt="Shroud.email logo" />
+            <img
+              class="inline w-6 h-6 mr-3 text-indigo-400"
+              src={~p"/images/logo.svg"}
+              alt="Shroud.email logo"
+            />
             <span class="whitespace-nowrap font-semibold text-lg">Shroud.email</span>
           </.link>
           <div class="hidden md:block">
             <div class="ml-10 flex items-baseline space-x-4">
               <%= if @current_user do %>
-                <.link navigate={~p"/"} class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium" {%{"x-bind:class" => "{ 'bg-gray-900 text-white': path === '/' }"}}>Aliases</.link>
-                <.link navigate={~p"/detention"} class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium" {%{"x-bind:class" => "{ 'bg-gray-900 text-white': path === '/detention' }"}}>
+                <.link
+                  navigate={~p"/"}
+                  class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
+                  {%{"x-bind:class" => "{ 'bg-gray-900 text-white': path === '/' }"}}
+                >
+                  Aliases
+                </.link>
+                <.link
+                  navigate={~p"/detention"}
+                  class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
+                  {%{"x-bind:class" => "{ 'bg-gray-900 text-white': path === '/detention' }"}}
+                >
                   Spam
                   <%= if @spam_count > 0 do %>
                     <span class="ml-1 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-700 text-gray-200">
-                      <%= @spam_count %>
+                      {@spam_count}
                     </span>
                   <% end %>
                 </.link>
-                <.link navigate={~p"/domains"} class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium" {%{"x-bind:class" => "{ 'bg-gray-900 text-white': path === '/domains' }"}}>
+                <.link
+                  navigate={~p"/domains"}
+                  class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
+                  {%{"x-bind:class" => "{ 'bg-gray-900 text-white': path === '/domains' }"}}
+                >
                   Domains
                 </.link>
                 <%= if @current_user.is_admin do %>
-                  <.link href={~p"/admin"} class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">LiveDashboard</.link>
-                  <.link href={~p"/feature_flags"} class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Flags</.link>
-                  <.link href={~p"/debug_emails"} class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Debug</.link>
+                  <.link
+                    href={~p"/admin"}
+                    class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
+                  >
+                    LiveDashboard
+                  </.link>
+                  <.link
+                    navigate={~p"/admin/mailserver"}
+                    class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
+                  >
+                    Mail health
+                  </.link>
+                  <.link
+                    href={~p"/feature_flags"}
+                    class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
+                  >
+                    Flags
+                  </.link>
+                  <.link
+                    href={~p"/debug_emails"}
+                    class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
+                  >
+                    Debug
+                  </.link>
                 <% end %>
               <% end %>
             </div>
@@ -42,10 +81,18 @@
               <%= if @current_user.status == :free do %>
                 <div class="text-gray-400 mr-2">
                   Free plan.
-                  <.link href={~p"/settings/billing"} class="underline hover:text-gray-500">Upgrade</.link>
+                  <.link href={~p"/settings/billing"} class="underline hover:text-gray-500">
+                    Upgrade
+                  </.link>
                 </div>
               <% end %>
-              <div class="ml-3 relative" x-data="AlpineComponents.menu({ open: false })" x-init="init()" @keydown.escape.stop="open = false; focusButton()" @click.away="onClickAway($event)">
+              <div
+                class="ml-3 relative"
+                x-data="AlpineComponents.menu({ open: false })"
+                x-init="init()"
+                @keydown.escape.stop="open = false; focusButton()"
+                @click.away="onClickAway($event)"
+              >
                 <div>
                   <button
                     type="button"
@@ -60,8 +107,19 @@
                   >
                     <span class="sr-only">Open user menu</span>
                     <%!-- HeroIcons user-cirle --%>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="h-8 w-8"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
                     </svg>
                   </button>
                 </div>
@@ -88,16 +146,40 @@
 
               Menu open: "hidden", Menu closed: "block"
             --%>
-            <svg class="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+            <svg
+              class="block h-6 w-6"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M4 6h16M4 12h16M4 18h16"
+              />
             </svg>
             <%!--
               Heroicon name: outline/x
 
               Menu open: "block", Menu closed: "hidden"
             --%>
-            <svg class="hidden h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            <svg
+              class="hidden h-6 w-6"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -110,17 +192,52 @@
     <div class="px-2 py-3 space-y-1 sm:px-3">
       <%!-- Current: "bg-gray-900 text-white", Default: "text-gray-300 hover:bg-gray-700 hover:text-white" --%>
       <%= if @current_user do %>
-        <.link navigate={~p"/"} class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium" {%{"x-bind:class" => "{ 'bg-gray-900 text-white': path === '/' }"}}>Aliases</.link>
-        <.link navigate={~p"/detention"} class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium" {%{"x-bind:class" => "{ 'bg-gray-900 text-white': path === '/detention' }"}}>
+        <.link
+          navigate={~p"/"}
+          class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium"
+          {%{"x-bind:class" => "{ 'bg-gray-900 text-white': path === '/' }"}}
+        >
+          Aliases
+        </.link>
+        <.link
+          navigate={~p"/detention"}
+          class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium"
+          {%{"x-bind:class" => "{ 'bg-gray-900 text-white': path === '/detention' }"}}
+        >
           Spam
         </.link>
-        <.link navigate={~p"/domains"} class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium" {%{"x-bind:class" => "{ 'bg-gray-900 text-white': path === '/domains' }"}}>
+        <.link
+          navigate={~p"/domains"}
+          class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium"
+          {%{"x-bind:class" => "{ 'bg-gray-900 text-white': path === '/domains' }"}}
+        >
           Domains
         </.link>
         <%= if @current_user.is_admin do %>
-          <.link href={~p"/admin"} class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">LiveDashboard</.link>
-          <.link href={~p"/feature_flags"} class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Flags</.link>
-          <.link href={~p"/debug_emails"} class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Debug</.link>
+          <.link
+            href={~p"/admin"}
+            class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium"
+          >
+            LiveDashboard
+          </.link>
+          <.link
+            navigate={~p"/admin/mailserver"}
+            class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium"
+          >
+            Mail health
+          </.link>
+          <.link
+            href={~p"/feature_flags"}
+            class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium"
+          >
+            Flags
+          </.link>
+          <.link
+            href={~p"/debug_emails"}
+            class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium"
+          >
+            Debug
+          </.link>
         <% end %>
       <% end %>
     </div>
@@ -129,23 +246,42 @@
         <div class="flex items-center px-5">
           <div class="shrink-0 text-gray-400">
             <%!-- HeroIcons user-cirle --%>
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-10 w-10"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
           </div>
           <div class="ml-3">
-            <div class="text-base font-medium leading-none text-white"><%= @current_user.email %></div>
+            <div class="text-base font-medium leading-none text-white">{@current_user.email}</div>
             <%= if @current_user.status == :free do %>
               <div class="text-gray-400 mr-2">
                 Free plan.
-                <.link href={~p"/settings/billing"} class="underline hover:text-gray-500">Upgrade</.link>
+                <.link href={~p"/settings/billing"} class="underline hover:text-gray-500">
+                  Upgrade
+                </.link>
               </div>
             <% end %>
           </div>
         </div>
         <.user_menu_mobile {assigns} />
       <% else %>
-        <.link href={~p"/users/log_in"} class="block px-3 py-2 rounded-md text-base font-medium text-gray-400 hover:text-white hover:bg-gray-700" role="menuitem">Log in</.link>
+        <.link
+          href={~p"/users/log_in"}
+          class="block px-3 py-2 rounded-md text-base font-medium text-gray-400 hover:text-white hover:bg-gray-700"
+          role="menuitem"
+        >
+          Log in
+        </.link>
       <% end %>
     </div>
   </div>
