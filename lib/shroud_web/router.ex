@@ -54,8 +54,13 @@ defmodule ShroudWeb.Router do
     resources("/domains", DomainController, only: [:index])
   end
 
-  scope "/admin" do
+  scope "/admin", ShroudWeb do
     pipe_through([:browser, :require_admin_user])
+
+    live_session :mailserver_admin, on_mount: ShroudWeb.AdminUserLiveAuth do
+      live("/mailserver", MailserverHealthLive.Index, :index)
+    end
+
     live_dashboard("/", metrics: ShroudWeb.Telemetry)
   end
 
