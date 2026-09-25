@@ -71,6 +71,12 @@ install_mise() {
     mise_bin="$HOME/.local/bin/mise"
   fi
 
+  # erlang.precompiled_os was introduced in mise 2026.9.0; older versions ignore it.
+  if ! dpkg --compare-versions "$("$mise_bin" --version | cut -d ' ' -f 1)" ge 2026.9.0; then
+    curl -fsSL https://mise.run | sh
+    mise_bin="$HOME/.local/bin/mise"
+  fi
+
   export PATH="$HOME/.local/bin:$PATH"
   "$mise_bin" trust --yes mise.toml
   # Debian 12 can use Bob's Ubuntu 22.04 OTP build; avoid compiling Erlang from source.
