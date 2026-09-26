@@ -5,7 +5,15 @@ defmodule Shroud.Accounts do
 
   import Ecto.Query, warn: false
 
-  alias Shroud.Accounts.{LoopsJob, User, UserNotifier, UserNotifierJob, UserToken}
+  alias Shroud.Accounts.{
+    LoopsJob,
+    PasskeyCredential,
+    User,
+    UserNotifier,
+    UserNotifierJob,
+    UserToken
+  }
+
   alias Shroud.Aliases.EmailAlias
   alias Shroud.Notifier
   alias Shroud.Repo
@@ -80,6 +88,24 @@ defmodule Shroud.Accounts do
   """
   def get_user!(id), do: Repo.get!(User, id)
   def get_user(id), do: Repo.get(User, id)
+
+  def list_passkeys(%User{id: user_id}) do
+    Repo.all(from p in PasskeyCredential, where: p.user_id == ^user_id, order_by: [asc: p.id])
+  end
+
+  def get_passkey(credential_id) when is_binary(credential_id) do
+    Repo.get_by(PasskeyCredential, credential_id: credential_id)
+  end
+
+  def remove_passkey(%User{id: user_id}, credential_id) when is_binary(credential_id) do
+    case Repo.delete_all(
+           from p in PasskeyCredential,
+             where: p.user_id == ^user_id and p.credential_id == ^credential_id
+         ) do
+      {1, _} -> :ok
+      _ -> {:error, :not_found}
+    end
+  end
 
   def enqueue_loops_sync(%User{id: user_id}), do: enqueue_loops_sync(user_id)
 
