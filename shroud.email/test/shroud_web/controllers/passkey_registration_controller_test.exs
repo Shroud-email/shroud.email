@@ -27,9 +27,11 @@ defmodule ShroudWeb.PasskeyRegistrationControllerTest do
 
   test "canceled or malformed enrollment creates no credential", %{conn: conn, user: user} do
     conn = post(conn, ~p"/settings/passkeys/options", %{current_password: valid_user_password()})
+    token = json_response(conn, 200)["token"]
 
     assert json_response(
              post(recycle(conn), ~p"/settings/passkeys", %{
+               "token" => token,
                "attestationObject" => "broken",
                "clientDataJSON" => "broken"
              }),

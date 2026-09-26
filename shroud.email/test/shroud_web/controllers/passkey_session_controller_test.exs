@@ -1,14 +1,15 @@
 defmodule ShroudWeb.PasskeySessionControllerTest do
   use ShroudWeb.ConnCase
 
-  alias Shroud.Accounts.TOTP
   alias Shroud.Accounts.PasskeyCredential
+  alias Shroud.Accounts.TOTP
+  alias Shroud.Accounts.User
   alias Shroud.Repo
   import Shroud.AccountsFixtures
 
   setup do
     user = user_fixture()
-    user = user |> Shroud.Accounts.User.confirm_changeset() |> Repo.update!()
+    user = user |> User.confirm_changeset() |> Repo.update!()
     {public, private} = :crypto.generate_key(:ecdh, :secp256r1)
     <<4, x::binary-size(32), y::binary-size(32)>> = public
     id = :crypto.strong_rand_bytes(32)
@@ -106,6 +107,26 @@ defmodule ShroudWeb.PasskeySessionControllerTest do
     refute get_session(conn, :user_token)
   end
 
+  test "an overlapping options request does not invalidate the first assertion", context do
+    first = post(context.conn, ~p"/users/passkeys/options")
+    options = json_response(first, 200)
+    second = post(recycle(first), ~p"/users/passkeys/options")
+    assert json_response(second, 200)["token"] != options["token"]
+
+    conn = post(recycle(second), ~p"/users/passkeys", assertion(options, context))
+    assert redirected_to(conn) == "/"
+  end
+
+  test "a challenge from another browser session is rejected", context do
+    page = get(context.conn, ~p"/users/log_in")
+    assert is_binary(get_session(page, :_csrf_token))
+    first = post(recycle(page), ~p"/users/passkeys/options")
+    params = assertion(json_response(first, 200), context)
+    other = post(build_conn(), ~p"/users/passkeys", params)
+    assert json_response(other, 422)["error"]
+    refute get_session(other, :user_token)
+  end
+
   test "a malformed response cannot authenticate", context do
     options_conn = post(context.conn, ~p"/users/passkeys/options")
     conn = post(recycle(options_conn), ~p"/users/passkeys", %{"rawId" => "%%%"})
@@ -123,6 +144,46 @@ defmodule ShroudWeb.PasskeySessionControllerTest do
     assert json_response(post(source, ~p"/users/passkeys/options"), 429)["error"]
     other = %{context.conn | remote_ip: {192, 0, 2, 28}}
     assert json_response(post(other, ~p"/users/passkeys/options"), 200)
+  end
+
+  test "only configured proxy peers can supply the client address", context do
+    Application.put_env(:shroud, :passkey_trusted_proxies, ["192.0.2.41"])
+    on_exit(fn -> Application.delete_env(:shroud, :passkey_trusted_proxies) end)
+
+    proxy = %{context.conn | remote_ip: {192, 0, 2, 41}}
+    spoofed = %{context.conn | remote_ip: {192, 0, 2, 42}}
+    header = "198.51.100.1, 198.51.100.2"
+
+    for _ <- 1..30 do
+      assert json_response(
+               post(
+                 put_req_header(proxy, "x-forwarded-for", header),
+                 ~p"/users/passkeys/options"
+               ),
+               200
+             )
+    end
+
+    assert json_response(
+             post(put_req_header(proxy, "x-forwarded-for", header), ~p"/users/passkeys/options"),
+             429
+           )
+
+    assert json_response(
+             post(
+               put_req_header(proxy, "x-forwarded-for", "198.51.100.3"),
+               ~p"/users/passkeys/options"
+             ),
+             200
+           )
+
+    assert json_response(
+             post(
+               put_req_header(spoofed, "x-forwarded-for", header),
+               ~p"/users/passkeys/options"
+             ),
+             200
+           )
   end
 
   defp assertion(options, %{user: user, credential_id: id, private_key: private}, opts \\ []) do
@@ -147,6 +208,7 @@ defmodule ShroudWeb.PasskeySessionControllerTest do
     encode = &Base.url_encode64(&1, padding: false)
 
     %{
+      "token" => options["token"],
       "rawId" => encode.(id),
       "userHandle" => encode.(user.passkey_handle),
       "authenticatorData" => encode.(auth_data),

@@ -3,6 +3,7 @@ defmodule ShroudWeb.PasskeyRegistrationController do
 
   alias Shroud.Accounts
   alias Shroud.Accounts.{Passkeys, User}
+  alias ShroudWeb.PasskeyChallengeToken
 
   def options(conn, %{"passkey" => %{"current_password" => password}}) do
     options(conn, %{"current_password" => password})
@@ -14,9 +15,8 @@ defmodule ShroudWeb.PasskeyRegistrationController do
     if User.valid_password?(user, password) do
       {:ok, options} = Passkeys.begin_registration(user)
 
-      conn
-      |> put_session(:passkey_registration_token, options.token)
-      |> json(%{
+      json(conn, %{
+        token: PasskeyChallengeToken.sign(conn, options.token),
         publicKey: %{
           challenge: options.challenge,
           rp: %{id: options.rp_id, name: "Shroud.email"},
@@ -41,8 +41,11 @@ defmodule ShroudWeb.PasskeyRegistrationController do
   def options(conn, _), do: conn |> put_status(:forbidden) |> json(%{error: "Invalid request"})
 
   def create(conn, params) do
-    token = get_session(conn, :passkey_registration_token)
-    conn = delete_session(conn, :passkey_registration_token)
+    token =
+      case PasskeyChallengeToken.verify(conn, params["token"]) do
+        {:ok, token} -> token
+        _ -> nil
+      end
 
     result =
       with {:ok, attestation} <- decode(params["attestationObject"]),

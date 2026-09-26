@@ -2,15 +2,14 @@ defmodule ShroudWeb.PasskeySessionController do
   use ShroudWeb, :controller
 
   alias Shroud.Accounts.Passkeys
-  alias ShroudWeb.UserAuth
+  alias ShroudWeb.{PasskeyChallengeToken, UserAuth}
 
   def options(conn, _params) do
-    if Passkeys.allow_request?(conn.remote_ip, :options) do
+    if Passkeys.allow_request?(Passkeys.request_ip(conn), :options) do
       {:ok, options} = Passkeys.begin_authentication()
 
-      conn
-      |> put_session(:passkey_authentication_token, options.token)
-      |> json(%{
+      json(conn, %{
+        token: PasskeyChallengeToken.sign(conn, options.token),
         publicKey: %{
           challenge: options.challenge,
           rpId: options.rp_id,
@@ -24,11 +23,14 @@ defmodule ShroudWeb.PasskeySessionController do
   end
 
   def create(conn, params) do
-    token = get_session(conn, :passkey_authentication_token)
-    conn = delete_session(conn, :passkey_authentication_token)
+    token =
+      case PasskeyChallengeToken.verify(conn, params["token"]) do
+        {:ok, token} -> token
+        _ -> nil
+      end
 
     result =
-      with true <- Passkeys.allow_request?(conn.remote_ip, :verify),
+      with true <- Passkeys.allow_request?(Passkeys.request_ip(conn), :verify),
            {:ok, raw_id} <- decode(params["rawId"]),
            {:ok, handle} <- decode(params["userHandle"]),
            {:ok, auth_data} <- decode(params["authenticatorData"]),

@@ -56,6 +56,15 @@ test("unsupported browser does not call server or interfere with password form",
   assert.equal(env.elements["login-form"].handlers.submit, undefined);
 });
 
+test("unsupported browser keeps enrollment on settings with an explanation", async () => {
+  const env = environment({ login: false, supported: false });
+  await setupPasskeys({ ...env, fetch: () => { throw Error("must not fetch"); } });
+  let prevented = false;
+  await env.elements["add-passkey-form"].handlers.submit({ preventDefault() { prevented = true; } });
+  assert.equal(prevented, true);
+  assert.match(env.elements["passkey-status"].textContent, /does not support passkeys/);
+});
+
 test("manual picker aborts pending autofill and cancellation keeps password available", async () => {
   const calls = [];
   const env = environment({ credentials: { get: options => {
@@ -83,7 +92,7 @@ test("enrollment sends binary attestation after requesting discoverable user-ver
   const fetch = async (url, options) => {
     requests.push({ url, options });
     return url.endsWith("/options")
-      ? { ok: true, json: async () => ({ publicKey: { challenge: "AQID", user: { id: "BAUG", name: "user@example.com", displayName: "user@example.com" }, excludeCredentials: [], authenticatorSelection: { residentKey: "required", userVerification: "required" } } }) }
+      ? { ok: true, json: async () => ({ token: "signed-token", publicKey: { challenge: "AQID", user: { id: "BAUG", name: "user@example.com", displayName: "user@example.com" }, excludeCredentials: [], authenticatorSelection: { residentKey: "required", userVerification: "required" } } }) }
       : { ok: true };
   };
 
@@ -94,5 +103,6 @@ test("enrollment sends binary attestation after requesting discoverable user-ver
   assert.equal(receivedOptions.authenticatorSelection.userVerification, "required");
   assert.deepEqual([...receivedOptions.user.id], [4, 5, 6]);
   assert.equal(JSON.parse(requests[1].options.body).attestationObject, "Bw");
+  assert.equal(JSON.parse(requests[1].options.body).token, "signed-token");
   assert.equal(requests[0].options.headers["x-csrf-token"], "csrf");
 });

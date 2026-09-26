@@ -7,6 +7,32 @@ defmodule Shroud.Accounts.Passkeys do
 
   @challenge_timeout 300
 
+  def request_ip(conn) do
+    peer = conn.remote_ip
+    trusted = Application.get_env(:shroud, :passkey_trusted_proxies, [])
+
+    if to_string(:inet.ntoa(peer)) in trusted do
+      case Plug.Conn.get_req_header(conn, "x-forwarded-for") do
+        [header] ->
+          header
+          |> String.split(",")
+          |> List.last()
+          |> String.trim()
+          |> String.to_charlist()
+          |> :inet.parse_address()
+          |> case do
+            {:ok, ip} -> ip
+            _ -> peer
+          end
+
+        _ ->
+          peer
+      end
+    else
+      peer
+    end
+  end
+
   def allow_request?(remote_ip, kind) when kind in [:options, :verify] do
     minute = div(System.system_time(:second), 60)
     source = :crypto.hash(:sha256, :erlang.term_to_binary({remote_ip, kind}))
@@ -36,13 +62,18 @@ defmodule Shroud.Accounts.Passkeys do
     origin = Application.get_env(:shroud, :passkey_origin) || ShroudWeb.Endpoint.url()
     uri = URI.parse(origin)
 
-    unless (uri.scheme == "https" or (uri.scheme == "http" and uri.host == "localhost")) and
-             is_binary(uri.host) and uri.userinfo == nil and uri.path in [nil, ""] do
+    unless allowed_scheme?(uri) and is_binary(uri.host) and uri.userinfo == nil and
+             uri.path in [nil, ""] and
+             uri.query == nil and uri.fragment == nil do
       raise ArgumentError, "passkey origin must be an HTTPS origin (or localhost)"
     end
 
     {origin, uri.host}
   end
+
+  defp allowed_scheme?(%URI{scheme: "https"}), do: true
+  defp allowed_scheme?(%URI{scheme: "http", host: "localhost"}), do: true
+  defp allowed_scheme?(_), do: false
 
   def begin_registration(%User{} = user) do
     challenge = Wax.new_registration_challenge(challenge_options())

@@ -39,7 +39,7 @@ export async function setupPasskeys({ document, window, fetch }) {
     async function start(conditional) {
       try {
         const response = await post("/users/passkeys/options", {});
-        const { publicKey } = await response.json();
+        const { publicKey, token } = await response.json();
         const controller = new AbortController();
         pending = controller;
 
@@ -51,19 +51,24 @@ export async function setupPasskeys({ document, window, fetch }) {
 
         const credentialPromise = window.navigator.credentials.get(request);
         if (conditional) {
-          credentialPromise.then(complete).catch(() => {});
+          credentialPromise.then(credential => complete(credential, token)).catch(error => {
+            if (error.name !== "NotAllowedError" && error.name !== "AbortError") {
+              status.textContent = "Could not sign in with passkey. You can still use your password.";
+            }
+          });
         } else {
-          await complete(await credentialPromise);
+          await complete(await credentialPromise, token);
         }
       } catch (error) {
-        if (!conditional && error.name !== "NotAllowedError" && error.name !== "AbortError") {
+        if (error.name !== "NotAllowedError" && error.name !== "AbortError") {
           status.textContent = "Could not sign in with passkey. You can still use your password.";
         }
       }
     }
 
-    async function complete(credential) {
+    async function complete(credential, token) {
       const result = await post("/users/passkeys", {
+        token,
         rawId: encodeBase64(credential.rawId),
         userHandle: encodeBase64(credential.response.userHandle),
         authenticatorData: encodeBase64(credential.response.authenticatorData),
@@ -84,17 +89,21 @@ export async function setupPasskeys({ document, window, fetch }) {
     }
   }
 
-  if (addForm && supported && window.navigator.credentials.create) {
+  if (addForm) {
     const status = document.getElementById("passkey-status");
 
     addForm.addEventListener("submit", async event => {
       event.preventDefault();
+      if (!supported || !window.navigator.credentials.create) {
+        status.textContent = "This browser does not support passkeys. You can still use your password.";
+        return;
+      }
       status.textContent = "Waiting for your passkey…";
 
       try {
         const password = document.getElementById("add-passkey-password").value;
         const response = await post(addForm.action, { current_password: password });
-        const { publicKey } = await response.json();
+        const { publicKey, token } = await response.json();
         const options = {
           ...publicKey,
           challenge: decodeBase64(publicKey.challenge),
@@ -106,6 +115,7 @@ export async function setupPasskeys({ document, window, fetch }) {
 
         const credential = await window.navigator.credentials.create({ publicKey: options });
         await post("/settings/passkeys", {
+          token,
           rawId: encodeBase64(credential.rawId),
           attestationObject: encodeBase64(credential.response.attestationObject),
           clientDataJSON: encodeBase64(credential.response.clientDataJSON),
