@@ -1,0 +1,157 @@
+defmodule ShroudWeb.PasskeySessionControllerTest do
+  use ShroudWeb.ConnCase
+
+  alias Shroud.Accounts.TOTP
+  alias Shroud.Accounts.PasskeyCredential
+  alias Shroud.Repo
+  import Shroud.AccountsFixtures
+
+  setup do
+    user = user_fixture()
+    user = user |> Shroud.Accounts.User.confirm_changeset() |> Repo.update!()
+    {public, private} = :crypto.generate_key(:ecdh, :secp256r1)
+    <<4, x::binary-size(32), y::binary-size(32)>> = public
+    id = :crypto.strong_rand_bytes(32)
+    key = %{1 => 2, 3 => -7, -1 => 1, -2 => x, -3 => y}
+
+    Repo.insert!(%PasskeyCredential{
+      user_id: user.id,
+      credential_id: id,
+      public_key:
+        key
+        |> Map.new(fn {k, value} ->
+          {k, if(is_binary(value), do: %CBOR.Tag{tag: :bytes, value: value}, else: value)}
+        end)
+        |> CBOR.encode()
+    })
+
+    %{user: user, credential_id: id, private_key: private}
+  end
+
+  test "signed passkey logs in even with TOTP enabled", context do
+    TOTP.enable_totp!(context.user, TOTP.create_secret())
+    options_conn = post(context.conn, ~p"/users/passkeys/options")
+    options = json_response(options_conn, 200)
+    assert options["publicKey"]["userVerification"] == "required"
+    refute Map.has_key?(options["publicKey"], "allowCredentials")
+
+    conn =
+      post(recycle(options_conn), ~p"/users/passkeys", assertion(options, context))
+
+    assert get_session(conn, :user_token)
+    assert redirected_to(conn) == "/"
+  end
+
+  test "unconfirmed accounts retain confirmation redirect", context do
+    user = Repo.update!(Ecto.Changeset.change(context.user, confirmed_at: nil))
+    options_conn = post(context.conn, ~p"/users/passkeys/options")
+
+    conn =
+      post(
+        recycle(options_conn),
+        ~p"/users/passkeys",
+        assertion(json_response(options_conn, 200), %{context | user: user})
+      )
+
+    assert redirected_to(conn) == "/users/confirm"
+  end
+
+  test "an assertion without user verification is rejected", context do
+    options_conn = post(context.conn, ~p"/users/passkeys/options")
+    params = assertion(json_response(options_conn, 200), context, uv: false)
+    conn = post(recycle(options_conn), ~p"/users/passkeys", params)
+    assert json_response(conn, 422)["error"]
+    refute get_session(conn, :user_token)
+  end
+
+  test "a mismatched user handle is rejected", context do
+    options_conn = post(context.conn, ~p"/users/passkeys/options")
+    params = assertion(json_response(options_conn, 200), context)
+
+    conn =
+      post(
+        recycle(options_conn),
+        ~p"/users/passkeys",
+        Map.put(
+          params,
+          "userHandle",
+          Base.url_encode64(:crypto.strong_rand_bytes(32), padding: false)
+        )
+      )
+
+    assert json_response(conn, 422)["error"]
+    refute get_session(conn, :user_token)
+  end
+
+  test "a signed response for another origin is rejected", context do
+    options_conn = post(context.conn, ~p"/users/passkeys/options")
+
+    conn =
+      post(
+        recycle(options_conn),
+        ~p"/users/passkeys",
+        assertion(json_response(options_conn, 200), context, origin: "https://attacker.example")
+      )
+
+    assert json_response(conn, 422)["error"]
+    refute get_session(conn, :user_token)
+  end
+
+  test "a consumed challenge cannot be replayed", context do
+    options_conn = post(context.conn, ~p"/users/passkeys/options")
+    params = assertion(json_response(options_conn, 200), context)
+    assert redirected_to(post(recycle(options_conn), ~p"/users/passkeys", params)) == "/"
+    conn = post(recycle(options_conn), ~p"/users/passkeys", params)
+    assert json_response(conn, 422)["error"]
+    refute get_session(conn, :user_token)
+  end
+
+  test "a malformed response cannot authenticate", context do
+    options_conn = post(context.conn, ~p"/users/passkeys/options")
+    conn = post(recycle(options_conn), ~p"/users/passkeys", %{"rawId" => "%%%"})
+    assert json_response(conn, 422)["error"]
+    refute get_session(conn, :user_token)
+  end
+
+  test "anonymous challenge issuance is rate limited by source address", context do
+    source = %{context.conn | remote_ip: {192, 0, 2, 27}}
+
+    for _ <- 1..30 do
+      assert json_response(post(source, ~p"/users/passkeys/options"), 200)
+    end
+
+    assert json_response(post(source, ~p"/users/passkeys/options"), 429)["error"]
+    other = %{context.conn | remote_ip: {192, 0, 2, 28}}
+    assert json_response(post(other, ~p"/users/passkeys/options"), 200)
+  end
+
+  defp assertion(options, %{user: user, credential_id: id, private_key: private}, opts \\ []) do
+    challenge = options["publicKey"]["challenge"]
+
+    client_data =
+      Jason.encode!(%{
+        type: "webauthn.get",
+        challenge: challenge,
+        origin: Keyword.get(opts, :origin, "http://localhost:4002")
+      })
+
+    flags = if Keyword.get(opts, :uv, true), do: 0x05, else: 0x01
+    auth_data = :crypto.hash(:sha256, "localhost") <> <<flags, 1::32>>
+
+    signature =
+      :crypto.sign(:ecdsa, :sha256, auth_data <> :crypto.hash(:sha256, client_data), [
+        private,
+        :secp256r1
+      ])
+
+    encode = &Base.url_encode64(&1, padding: false)
+
+    %{
+      "rawId" => encode.(id),
+      "userHandle" => encode.(user.passkey_handle),
+      "authenticatorData" => encode.(auth_data),
+      "clientDataJSON" => encode.(client_data),
+      "signature" => encode.(signature)
+    }
+  end
+end
