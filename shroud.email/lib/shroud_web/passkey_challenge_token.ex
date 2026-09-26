@@ -12,9 +12,8 @@ defmodule ShroudWeb.PasskeyChallengeToken do
       {:ok, {token, csrf}} when is_binary(token) ->
         session_csrf = get_session(conn, :_csrf_token)
 
-        if (is_binary(csrf) and is_binary(session_csrf) and
-              Plug.Crypto.secure_compare(csrf, session_csrf)) or
-             (is_nil(csrf) and is_nil(session_csrf)),
+        if is_binary(csrf) and is_binary(session_csrf) and
+             Plug.Crypto.secure_compare(csrf, session_csrf),
            do: {:ok, token},
            else: :error
 

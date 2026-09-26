@@ -34,14 +34,7 @@ defmodule Shroud.Accounts.Passkeys do
 
   defp trusted_proxy?(peer) do
     peer in Application.get_env(:shroud, :passkey_trusted_proxies, []) or
-      Enum.any?(Application.get_env(:shroud, :passkey_trusted_proxy_hosts, []), fn host ->
-        Enum.any?([:inet, :inet6], fn family ->
-          case :inet.getaddrs(String.to_charlist(host), family) do
-            {:ok, addresses} -> peer in addresses
-            _ -> false
-          end
-        end)
-      end)
+      peer in Application.get_env(:shroud, :passkey_resolved_proxy_ips, [])
   end
 
   def allow_request?(remote_ip, kind) when kind in [:options, :verify] do

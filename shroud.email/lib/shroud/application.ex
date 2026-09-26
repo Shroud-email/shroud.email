@@ -14,6 +14,7 @@ defmodule Shroud.Application do
       ShroudWeb.Telemetry,
       # Start the PubSub system
       {Phoenix.PubSub, name: Shroud.PubSub},
+      {Shroud.Accounts.PasskeyProxyResolver, name: Shroud.Accounts.PasskeyProxyResolver},
       # Start the Endpoint (http/https)
       ShroudWeb.Endpoint,
       {Oban, Application.fetch_env!(:shroud, Oban)},
