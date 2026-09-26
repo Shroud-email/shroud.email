@@ -11,4 +11,12 @@ defmodule ShroudWeb.PasskeyChallengeTokenTest do
     assert PasskeyChallengeToken.verify(first, signed) == {:ok, "challenge"}
     assert PasskeyChallengeToken.verify(second, signed) == :error
   end
+
+  test "a challenge signed without a CSRF session cannot be used by another empty session" do
+    first = build_conn() |> init_test_session(%{})
+    second = build_conn() |> init_test_session(%{})
+    signed = PasskeyChallengeToken.sign(first, "challenge")
+
+    assert PasskeyChallengeToken.verify(second, signed) == :error
+  end
 end

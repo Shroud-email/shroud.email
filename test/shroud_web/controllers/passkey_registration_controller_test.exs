@@ -5,8 +5,13 @@ defmodule ShroudWeb.PasskeyRegistrationControllerTest do
   alias Shroud.Accounts.PasskeyCredential
   alias Shroud.Repo
   import Shroud.AccountsFixtures
+  import Shroud.PasskeyFixtures
 
   setup :register_and_log_in_user
+
+  setup %{conn: conn} do
+    %{conn: get(conn, ~p"/settings/security")}
+  end
 
   test "only a confirmed user with current password may start enrollment", %{conn: conn} do
     path = ~p"/settings/passkeys/options"
@@ -163,38 +168,5 @@ defmodule ShroudWeb.PasskeyRegistrationControllerTest do
     assert response =~ "Passkeys"
     assert response =~ "Laptop"
     assert response =~ "Add passkey"
-  end
-
-  defp registration_response(options) do
-    {public, _private} = :crypto.generate_key(:ecdh, :secp256r1)
-    <<4, x::binary-size(32), y::binary-size(32)>> = public
-    id = :crypto.strong_rand_bytes(32)
-
-    key = %{
-      1 => 2,
-      3 => -7,
-      -1 => 1,
-      -2 => %CBOR.Tag{tag: :bytes, value: x},
-      -3 => %CBOR.Tag{tag: :bytes, value: y}
-    }
-
-    credential_data = <<0::128, byte_size(id)::16, id::binary>> <> CBOR.encode(key)
-    auth_data = :crypto.hash(:sha256, "localhost") <> <<0x45, 0::32>> <> credential_data
-
-    attestation =
-      CBOR.encode(%{
-        "fmt" => "none",
-        "attStmt" => %{},
-        "authData" => %CBOR.Tag{tag: :bytes, value: auth_data}
-      })
-
-    client_data =
-      Jason.encode!(%{
-        type: "webauthn.create",
-        challenge: options.challenge,
-        origin: "http://localhost:4002"
-      })
-
-    {id, attestation, client_data}
   end
 end

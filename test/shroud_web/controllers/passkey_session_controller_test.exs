@@ -7,7 +7,7 @@ defmodule ShroudWeb.PasskeySessionControllerTest do
   alias Shroud.Repo
   import Shroud.AccountsFixtures
 
-  setup do
+  setup %{conn: conn} do
     user = user_fixture()
     user = user |> User.confirm_changeset() |> Repo.update!()
     {public, private} = :crypto.generate_key(:ecdh, :secp256r1)
@@ -26,7 +26,7 @@ defmodule ShroudWeb.PasskeySessionControllerTest do
         |> CBOR.encode()
     })
 
-    %{user: user, credential_id: id, private_key: private}
+    %{conn: get(conn, ~p"/users/log_in"), user: user, credential_id: id, private_key: private}
   end
 
   test "signed passkey logs in even with TOTP enabled", context do
@@ -149,11 +149,18 @@ defmodule ShroudWeb.PasskeySessionControllerTest do
 
   test "only configured proxy peers can supply the client address", context do
     freeze_rate_limit_minute()
+    previous_proxies = Application.fetch_env(:shroud, :passkey_trusted_proxies)
     Application.put_env(:shroud, :passkey_trusted_proxies, [{192, 0, 2, 41}])
-    on_exit(fn -> Application.delete_env(:shroud, :passkey_trusted_proxies) end)
 
-    proxy = %{context.conn | remote_ip: {192, 0, 2, 41}}
-    spoofed = %{context.conn | remote_ip: {192, 0, 2, 42}}
+    on_exit(fn ->
+      case previous_proxies do
+        {:ok, proxies} -> Application.put_env(:shroud, :passkey_trusted_proxies, proxies)
+        :error -> Application.delete_env(:shroud, :passkey_trusted_proxies)
+      end
+    end)
+
+    proxy = %{recycle(context.conn) | remote_ip: {192, 0, 2, 41}}
+    spoofed = %{recycle(context.conn) | remote_ip: {192, 0, 2, 42}}
     header = "198.51.100.1, 198.51.100.2"
 
     for _ <- 1..30 do
