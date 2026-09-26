@@ -91,6 +91,20 @@ defmodule Shroud.Accounts.PasskeysTest do
         origin: "http://localhost:4002"
       })
 
+    assert {:error, :invalid_registration} =
+             Passkeys.register(user, options.token, attestation, client_data, "Laptop", <<1>>)
+
+    assert Shroud.Accounts.list_passkeys(user) == []
+
+    {:ok, options} = Passkeys.begin_registration(user)
+
+    client_data =
+      Jason.encode!(%{
+        type: "webauthn.create",
+        challenge: options.challenge,
+        origin: "http://localhost:4002"
+      })
+
     assert {:ok, saved} =
              Passkeys.register(user, options.token, attestation, client_data, "Laptop")
 
