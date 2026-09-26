@@ -58,4 +58,46 @@ defmodule Shroud.Accounts.PasskeysTest do
     assert Enum.count(results, &match?({:ok, _}, &1)) == 1
     assert Enum.count(results, &(&1 == {:error, :invalid_challenge})) == 1
   end
+
+  test "Wax verifies an actual attestation and persists only its public credential" do
+    user = user_fixture()
+    {:ok, options} = Passkeys.begin_registration(user)
+    {public, _private} = :crypto.generate_key(:ecdh, :secp256r1)
+    <<4, x::binary-size(32), y::binary-size(32)>> = public
+    id = :crypto.strong_rand_bytes(32)
+
+    cose = %{
+      1 => 2,
+      3 => -7,
+      -1 => 1,
+      -2 => %CBOR.Tag{tag: :bytes, value: x},
+      -3 => %CBOR.Tag{tag: :bytes, value: y}
+    }
+
+    credential_data = <<0::128, byte_size(id)::16, id::binary>> <> CBOR.encode(cose)
+    auth_data = :crypto.hash(:sha256, "localhost") <> <<0x45, 0::32>> <> credential_data
+
+    attestation =
+      CBOR.encode(%{
+        "fmt" => "none",
+        "attStmt" => %{},
+        "authData" => %CBOR.Tag{tag: :bytes, value: auth_data}
+      })
+
+    client_data =
+      Jason.encode!(%{
+        type: "webauthn.create",
+        challenge: options.challenge,
+        origin: "http://localhost:4002"
+      })
+
+    assert {:ok, saved} =
+             Passkeys.register(user, options.token, attestation, client_data, "Laptop")
+
+    assert saved.credential_id == id
+    assert saved.user_id == user.id
+    assert saved.label == "Laptop"
+    assert {:error, _} = Passkeys.register(user, options.token, attestation, client_data, "Again")
+    assert length(Shroud.Accounts.list_passkeys(user)) == 1
+  end
 end

@@ -116,6 +116,9 @@ defmodule ShroudWeb.Router do
 
     get("/settings", UserSettingsController, :redirect_to_account)
     put("/settings/password", UserSettingsController, :update_password)
+    post("/settings/passkeys/options", PasskeyRegistrationController, :options)
+    post("/settings/passkeys", PasskeyRegistrationController, :create)
+    delete("/settings/passkeys/:id", PasskeyRegistrationController, :delete)
     # Route for changing email of an already-confirmed account
     get("/settings/confirm_email/:token", UserSettingsController, :confirm_email)
 
