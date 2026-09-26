@@ -12,35 +12,54 @@ defmodule ShroudWeb.PasskeyRegistrationController do
   def options(conn, %{"current_password" => password}) do
     user = conn.assigns.current_user
 
-    if User.valid_password?(user, password) do
-      {:ok, options} = Passkeys.begin_registration(user)
+    cond do
+      not Passkeys.allow_request?(Passkeys.request_ip(conn), :options) ->
+        conn |> put_status(:too_many_requests) |> json(%{error: "Too many passkey requests"})
 
-      json(conn, %{
-        token: PasskeyChallengeToken.sign(conn, options.token),
-        publicKey: %{
-          challenge: options.challenge,
-          rp: %{id: options.rp_id, name: "Shroud.email"},
-          user: %{
-            id: options.user_handle,
-            name: options.user_email,
-            displayName: options.user_email
-          },
-          pubKeyCredParams: [%{type: "public-key", alg: -7}, %{type: "public-key", alg: -257}],
-          authenticatorSelection: %{residentKey: "required", userVerification: "required"},
-          excludeCredentials:
-            Enum.map(options.exclude_credentials, &%{type: "public-key", id: &1}),
-          attestation: "none",
-          timeout: 300_000
-        }
-      })
-    else
-      conn |> put_status(:forbidden) |> json(%{error: "Could not authorize passkey registration"})
+      User.valid_password?(user, password) ->
+        {:ok, options} = Passkeys.begin_registration(user)
+
+        json(conn, %{
+          token: PasskeyChallengeToken.sign(conn, options.token),
+          publicKey: %{
+            challenge: options.challenge,
+            rp: %{id: options.rp_id, name: "Shroud.email"},
+            user: %{
+              id: options.user_handle,
+              name: options.user_email,
+              displayName: options.user_email
+            },
+            pubKeyCredParams: [%{type: "public-key", alg: -7}, %{type: "public-key", alg: -257}],
+            authenticatorSelection: %{residentKey: "required", userVerification: "required"},
+            excludeCredentials:
+              Enum.map(options.exclude_credentials, &%{type: "public-key", id: &1}),
+            attestation: "none",
+            timeout: 300_000
+          }
+        })
+
+      true ->
+        conn
+        |> put_status(:forbidden)
+        |> json(%{error: "Could not authorize passkey registration"})
     end
   end
 
-  def options(conn, _), do: conn |> put_status(:forbidden) |> json(%{error: "Invalid request"})
+  def options(conn, _) do
+    if Passkeys.allow_request?(Passkeys.request_ip(conn), :options),
+      do: conn |> put_status(:forbidden) |> json(%{error: "Invalid request"}),
+      else: conn |> put_status(:too_many_requests) |> json(%{error: "Too many passkey requests"})
+  end
 
   def create(conn, params) do
+    if Passkeys.allow_request?(Passkeys.request_ip(conn), :verify) do
+      finish_registration(conn, params)
+    else
+      conn |> put_status(:too_many_requests) |> json(%{error: "Too many passkey requests"})
+    end
+  end
+
+  defp finish_registration(conn, params) do
     token =
       case PasskeyChallengeToken.verify(conn, params["token"]) do
         {:ok, token} -> token

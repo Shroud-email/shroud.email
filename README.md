@@ -35,6 +35,9 @@ If a reverse proxy terminates HTTPS, set `PASSKEY_TRUSTED_PROXY_IPS` to its
 comma-separated, exact peer IP addresses so passkey request limits use the
 last `X-Forwarded-For` address it supplies; leave it unset for direct traffic.
 The proxy must append the actual client address to that header.
+For a proxy whose container IP changes, set `PASSKEY_TRUSTED_PROXY_HOSTS` to its
+internal DNS name instead (for example, `caddy` in Docker Compose). Only requests
+from a configured proxy peer may use its `X-Forwarded-For` header.
 
 To send test emails, use e.g. [Swaks](https://www.jetmore.org/john/code/swaks/):
 ```

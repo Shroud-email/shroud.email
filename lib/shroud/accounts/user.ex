@@ -63,7 +63,10 @@ defmodule Shroud.Accounts.User do
     |> cast(attrs, [:email, :password, :status])
     |> validate_email()
     |> validate_password(opts)
-    |> put_change(:passkey_handle, :crypto.strong_rand_bytes(32))
+    |> put_change(
+      :passkey_handle,
+      if(is_nil(user.id), do: :crypto.strong_rand_bytes(32), else: user.passkey_handle)
+    )
   end
 
   defp validate_email(changeset) do
