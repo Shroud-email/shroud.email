@@ -190,7 +190,9 @@
   <div id="passkey-list" class="mt-4 space-y-3">
     <%= for key <- @passkeys do %>
       <div class="flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 dark:border-gray-700 pt-3">
-        <span class="text-sm text-gray-900 dark:text-gray-100">{key.label || "Passkey"}</span>
+        <span class="text-sm text-gray-900 dark:text-gray-100">
+          {key.label || "Passkey"} · added {Calendar.strftime(key.inserted_at, "%b %d, %Y")}
+        </span>
         <.form
           for={@passkey_form}
           action={~p"/settings/passkeys/#{Base.url_encode64(key.credential_id, padding: false)}"}

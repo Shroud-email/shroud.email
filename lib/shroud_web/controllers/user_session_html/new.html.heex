@@ -23,7 +23,7 @@
         <div>
           <%= label f, :email, class: "block text-sm font-medium text-gray-700 dark:text-gray-300" %>
           <div class="mt-1">
-            <%= email_input f, :email, required: true, autocomplete: "email", class: "appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-xs placeholder-gray-400 focus:outline-hidden focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400" %>
+            <%= email_input f, :email, required: true, autocomplete: "username webauthn", class: "appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-xs placeholder-gray-400 focus:outline-hidden focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400" %>
           </div>
         </div>
 
@@ -53,6 +53,10 @@
           <%= submit "Sign in", class: "btn btn-primary w-full" %>
         </div>
       </.form>
+      <div class="mt-5 border-t border-gray-200 dark:border-gray-700 pt-5">
+        <button id="passkey-login-button" type="button" hidden class="btn btn-white w-full">Sign in with a passkey</button>
+        <p id="passkey-login-status" role="status" aria-live="polite" class="mt-2 text-sm text-gray-600 dark:text-gray-300"></p>
+      </div>
     </div>
   </div>
 </div>
