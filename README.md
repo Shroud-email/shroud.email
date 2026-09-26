@@ -31,6 +31,10 @@ Set `APP_DOMAIN` to the canonical public HTTPS host in production and serve logi
 and Security settings on that same host. Plain HTTP works only on `localhost` in
 development; passkeys enrolled on one host cannot be used on another (including
 an orb portal URL). Apply database migrations before enabling passkey enrollment.
+If a reverse proxy terminates HTTPS, set `PASSKEY_TRUSTED_PROXY_IPS` to its
+comma-separated, exact peer IP addresses so passkey request limits use the
+last `X-Forwarded-For` address it supplies; leave it unset for direct traffic.
+The proxy must append the actual client address to that header.
 
 To send test emails, use e.g. [Swaks](https://www.jetmore.org/john/code/swaks/):
 ```
