@@ -17,6 +17,8 @@ defmodule Shroud.Accounts.User do
     field :totp_backup_codes, Shroud.Encrypted.StringList
 
     has_many :user_tokens, Shroud.Accounts.UserToken
+    has_many :passkey_credentials, Shroud.Accounts.PasskeyCredential
+    field :passkey_handle, :binary
 
     field :paddle_customer_id, :string
     field :paddle_subscription_id, :string
@@ -61,6 +63,10 @@ defmodule Shroud.Accounts.User do
     |> cast(attrs, [:email, :password, :status])
     |> validate_email()
     |> validate_password(opts)
+    |> put_change(
+      :passkey_handle,
+      if(is_nil(user.id), do: :crypto.strong_rand_bytes(32), else: user.passkey_handle)
+    )
   end
 
   defp validate_email(changeset) do

@@ -1,5 +1,6 @@
 defmodule ShroudWeb.UserSettingsController do
   use ShroudWeb, :controller
+  import Phoenix.Component, only: [to_form: 2]
 
   alias Shroud.{Accounts, Billing}
   alias Shroud.Accounts.TOTP
@@ -7,6 +8,7 @@ defmodule ShroudWeb.UserSettingsController do
 
   plug :assign_email_and_password_changesets
   plug :assign_totp_fields
+  plug :assign_passkey_fields when action in [:security, :update]
   plug :put_layout, html: {ShroudWeb.Layouts, :settings}
 
   def redirect_to_account(conn, _params) do
@@ -212,6 +214,12 @@ defmodule ShroudWeb.UserSettingsController do
     conn
     |> assign(:otp_qr_code, nil)
     |> assign(:otp_backup_codes, nil)
+  end
+
+  defp assign_passkey_fields(conn, _opts) do
+    conn
+    |> assign(:passkeys, Accounts.list_passkeys(conn.assigns.current_user))
+    |> assign(:passkey_form, to_form(%{"current_password" => ""}, as: :passkey))
   end
 
   defp configured?(value), do: is_binary(value) and value != ""

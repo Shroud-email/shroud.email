@@ -91,6 +91,10 @@ config :logger, :console,
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
 
+config :phoenix,
+       :filter_parameters,
+       ~w(password secret token rawId userHandle authenticatorData clientDataJSON attestationObject signature)
+
 config :fun_with_flags, :cache,
   enabled: true,
   # in seconds

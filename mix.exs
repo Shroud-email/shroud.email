@@ -93,6 +93,7 @@ defmodule Shroud.MixProject do
       {:req, "~> 0.6"},
       {:quantum, "~> 3.4"},
       {:nimble_totp, "~> 1.0"},
+      {:wax_, "~> 0.7"},
       {:eqrcode, "~> 0.2.0"},
       {:cloak_ecto, "~> 1.2"},
       {:mime, "~> 2.0"},

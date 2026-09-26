@@ -30,6 +30,7 @@ import Alpine from "alpinejs";
 import Tooltip from "@ryangjchandler/alpine-tooltip";
 import { initializePaddle } from "@paddle/paddle-js";
 import { setupPaddleCheckout } from "./paddle_checkout.mjs";
+import { setupPasskeys } from "./passkeys.mjs";
 
 Alpine.plugin(Tooltip);
 window.Alpine = Alpine;
@@ -40,6 +41,7 @@ initTheme();
 window.setTheme = setTheme;
 
 setupPaddleCheckout({ document, window, initializePaddle });
+setupPasskeys({ document, window, fetch: window.fetch.bind(window) });
 
 let csrfToken = document
   .querySelector("meta[name='csrf-token']")
