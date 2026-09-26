@@ -35,11 +35,13 @@ export async function setupPasskeys({ document, window, fetch }) {
     if (!supported) return;
     button.hidden = false;
     let pending;
+    let generation = 0;
 
-    async function start(conditional) {
+    async function start(conditional, currentGeneration) {
       try {
         const response = await post("/users/passkeys/options", {});
         const { publicKey, token } = await response.json();
+        if (currentGeneration !== generation) return;
         const controller = new AbortController();
         pending = controller;
 
@@ -51,22 +53,23 @@ export async function setupPasskeys({ document, window, fetch }) {
 
         const credentialPromise = window.navigator.credentials.get(request);
         if (conditional) {
-          credentialPromise.then(credential => complete(credential, token)).catch(error => {
-            if (error.name !== "NotAllowedError" && error.name !== "AbortError") {
+          credentialPromise.then(credential => complete(credential, token, currentGeneration)).catch(error => {
+            if (currentGeneration === generation && error.name !== "NotAllowedError" && error.name !== "AbortError") {
               status.textContent = "Could not sign in with passkey. You can still use your password.";
             }
           });
         } else {
-          await complete(await credentialPromise, token);
+          await complete(await credentialPromise, token, currentGeneration);
         }
       } catch (error) {
-        if (error.name !== "NotAllowedError" && error.name !== "AbortError") {
+        if (currentGeneration === generation && error.name !== "NotAllowedError" && error.name !== "AbortError") {
           status.textContent = "Could not sign in with passkey. You can still use your password.";
         }
       }
     }
 
-    async function complete(credential, token) {
+    async function complete(credential, token, currentGeneration) {
+      if (currentGeneration !== generation) return;
       const result = await post("/users/passkeys", {
         token,
         rawId: encodeBase64(credential.rawId),
@@ -75,17 +78,20 @@ export async function setupPasskeys({ document, window, fetch }) {
         clientDataJSON: encodeBase64(credential.response.clientDataJSON),
         signature: encodeBase64(credential.response.signature),
       });
-      window.location.assign(result.url);
+      if (currentGeneration === generation) window.location.assign(result.url);
     }
 
     button.addEventListener("click", async () => {
+      const currentGeneration = ++generation;
       pending?.abort();
-      await start(false);
+      await start(false, currentGeneration);
     });
 
+    const conditionalGeneration = generation;
     if (typeof window.PublicKeyCredential.isConditionalMediationAvailable === "function" &&
-        await window.PublicKeyCredential.isConditionalMediationAvailable()) {
-      await start(true);
+        await window.PublicKeyCredential.isConditionalMediationAvailable() &&
+        generation === conditionalGeneration) {
+      await start(true, conditionalGeneration);
     }
   }
 

@@ -82,6 +82,48 @@ test("manual picker aborts pending autofill and cancellation keeps password avai
   assert.equal(env.elements["login-form"].handlers.submit, undefined);
 });
 
+test("manual picker wins while conditional capability detection is pending", async () => {
+  let resolveCapability;
+  const calls = [];
+  const env = environment({ credentials: { get: options => {
+    calls.push(options);
+    return Promise.reject(new DOMException("canceled", "NotAllowedError"));
+  } } });
+  env.window.PublicKeyCredential.isConditionalMediationAvailable = () =>
+    new Promise(resolve => { resolveCapability = resolve; });
+  const fetch = async () => ({ ok: true, json: async () => ({ publicKey: { challenge: "AQID" } }) });
+
+  const setup = setupPasskeys({ ...env, fetch });
+  await env.elements["passkey-login-button"].handlers.click();
+  resolveCapability(true);
+  await setup;
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].mediation, undefined);
+});
+
+test("manual picker wins when conditional options finish late", async () => {
+  let resolveConditionalOptions;
+  let requests = 0;
+  const calls = [];
+  const env = environment({ credentials: { get: options => {
+    calls.push(options);
+    return Promise.reject(new DOMException("canceled", "NotAllowedError"));
+  } } });
+  const fetch = () => ++requests === 1
+    ? new Promise(resolve => { resolveConditionalOptions = resolve; })
+    : Promise.resolve({ ok: true, json: async () => ({ publicKey: { challenge: "AQID" } }) });
+
+  const setup = setupPasskeys({ ...env, fetch });
+  await Promise.resolve();
+  await env.elements["passkey-login-button"].handlers.click();
+  resolveConditionalOptions({ ok: true, json: async () => ({ publicKey: { challenge: "AQID" } }) });
+  await setup;
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].mediation, undefined);
+});
+
 test("enrollment sends binary attestation after requesting discoverable user-verified options", async () => {
   const requests = [];
   let receivedOptions;
