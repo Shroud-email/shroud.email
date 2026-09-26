@@ -49,7 +49,11 @@ defmodule ShroudWeb.Endpoint do
     body_reader: {ShroudWeb.Plugs.CachingBodyReader, :read_body, []},
     json_decoder: Phoenix.json_library()
 
-  plug Sentry.PlugContext
+  plug Sentry.PlugContext, body_scrubber: {__MODULE__, :sentry_body}
+
+  def sentry_body(%Plug.Conn{path_info: ["users", "passkeys" | _]}), do: %{}
+  def sentry_body(%Plug.Conn{path_info: ["settings", "passkeys" | _]}), do: %{}
+  def sentry_body(conn), do: Sentry.PlugContext.default_body_scrubber(conn)
 
   plug Plug.MethodOverride
   plug Plug.Head

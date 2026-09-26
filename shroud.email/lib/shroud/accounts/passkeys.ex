@@ -97,10 +97,9 @@ defmodule Shroud.Accounts.Passkeys do
   def register(user, token, attestation, client_data, label, raw_id \\ nil)
 
   def register(%User{} = user, token, attestation, client_data, label, raw_id)
-      when is_binary(attestation) and byte_size(attestation) <= 16_384 and
-             is_binary(client_data) and byte_size(client_data) <= 4_096 and
-             is_binary(label) and byte_size(label) <= 100 do
+      when is_binary(token) do
     with {:ok, challenge} <- consume_challenge(token, :registration, user),
+         true <- valid_registration_payload?(attestation, client_data, label),
          {:ok, {auth_data, _attestation_result}} <-
            verify_registration(attestation, client_data, challenge),
          %{credential_id: id, credential_public_key: key} <- auth_data.attested_credential_data,
@@ -121,6 +120,14 @@ defmodule Shroud.Accounts.Passkeys do
   end
 
   def register(_, _, _, _, _, _), do: {:error, :invalid_registration}
+
+  defp valid_registration_payload?(attestation, client_data, label)
+       when is_binary(attestation) and byte_size(attestation) <= 16_384 and
+              is_binary(client_data) and byte_size(client_data) <= 4_096 and
+              is_binary(label) and byte_size(label) <= 100,
+       do: true
+
+  defp valid_registration_payload?(_, _, _), do: false
 
   def authenticate(token, raw_id, user_handle, auth_data, signature, client_data)
       when is_binary(raw_id) and is_binary(user_handle) and is_binary(auth_data) and

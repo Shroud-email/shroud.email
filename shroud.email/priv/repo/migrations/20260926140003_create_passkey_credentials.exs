@@ -10,7 +10,13 @@ defmodule Shroud.Repo.Migrations.CreatePasskeyCredentials do
             ""
 
     alter table(:users) do
-      modify :passkey_handle, :binary, null: false
+      modify :passkey_handle, :binary,
+        null: false,
+        default:
+          fragment(
+            "decode(replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', ''), 'hex')"
+          ),
+        from: {:binary, null: true, default: nil}
     end
 
     create unique_index(:users, [:passkey_handle])
