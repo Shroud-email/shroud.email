@@ -1,6 +1,7 @@
 defmodule Shroud.Accounts.Passkeys do
   import Ecto.Query
 
+  alias Ecto.Adapters.SQL
   alias Shroud.Accounts.{PasskeyChallenge, PasskeyCredential, User}
   alias Shroud.Repo
 
@@ -12,7 +13,7 @@ defmodule Shroud.Accounts.Passkeys do
     limit = if kind == :options, do: 30, else: 60
 
     %{rows: [[attempts]]} =
-      Ecto.Adapters.SQL.query!(
+      SQL.query!(
         Repo,
         """
         INSERT INTO passkey_rate_limits (source, minute, attempts) VALUES ($1, $2, 1)
@@ -23,7 +24,7 @@ defmodule Shroud.Accounts.Passkeys do
       )
 
     if kind == :options do
-      Ecto.Adapters.SQL.query!(Repo, "DELETE FROM passkey_rate_limits WHERE minute < $1", [
+      SQL.query!(Repo, "DELETE FROM passkey_rate_limits WHERE minute < $1", [
         minute - 2
       ])
     end
@@ -62,7 +63,9 @@ defmodule Shroud.Accounts.Passkeys do
     {:ok, store_challenge(challenge, nil)}
   end
 
-  def register(%User{} = user, token, attestation, client_data, label)
+  def register(user, token, attestation, client_data, label, raw_id \\ nil)
+
+  def register(%User{} = user, token, attestation, client_data, label, raw_id)
       when is_binary(attestation) and byte_size(attestation) <= 16_384 and
              is_binary(client_data) and byte_size(client_data) <= 4_096 and
              is_binary(label) and byte_size(label) <= 100 do
@@ -70,6 +73,7 @@ defmodule Shroud.Accounts.Passkeys do
          {:ok, {auth_data, _attestation_result}} <-
            verify_registration(attestation, client_data, challenge),
          %{credential_id: id, credential_public_key: key} <- auth_data.attested_credential_data,
+         true <- is_nil(raw_id) or raw_id == id,
          {:ok, credential} <-
            %PasskeyCredential{user_id: user.id}
            |> PasskeyCredential.changeset(%{
@@ -85,14 +89,32 @@ defmodule Shroud.Accounts.Passkeys do
     end
   end
 
-  def register(_, _, _, _, _), do: {:error, :invalid_registration}
+  def register(_, _, _, _, _, _), do: {:error, :invalid_registration}
 
   def authenticate(token, raw_id, user_handle, auth_data, signature, client_data)
-      when is_binary(raw_id) and byte_size(raw_id) <= 1_024 and
-             is_binary(user_handle) and byte_size(user_handle) <= 64 and
-             is_binary(auth_data) and byte_size(auth_data) <= 16_384 and
-             is_binary(signature) and byte_size(signature) <= 1_024 and
-             is_binary(client_data) and byte_size(client_data) <= 4_096 do
+      when is_binary(raw_id) and is_binary(user_handle) and is_binary(auth_data) and
+             is_binary(signature) and is_binary(client_data) do
+    authenticate_binaries(token, raw_id, user_handle, auth_data, signature, client_data)
+  end
+
+  def authenticate(token, _, _, _, _, _) do
+    if is_binary(token), do: consume_challenge(token, :authentication, nil)
+    {:error, :invalid_assertion}
+  end
+
+  defp authenticate_binaries(token, raw_id, user_handle, auth_data, signature, client_data)
+       when byte_size(raw_id) <= 1_024 and byte_size(user_handle) <= 64 and
+              byte_size(auth_data) <= 16_384 and byte_size(signature) <= 1_024 and
+              byte_size(client_data) <= 4_096 do
+    verify_authentication(token, raw_id, user_handle, auth_data, signature, client_data)
+  end
+
+  defp authenticate_binaries(token, _, _, _, _, _) do
+    if is_binary(token), do: consume_challenge(token, :authentication, nil)
+    {:error, :invalid_assertion}
+  end
+
+  defp verify_authentication(token, raw_id, user_handle, auth_data, signature, client_data) do
     with {:ok, challenge} <- consume_challenge(token, :authentication, nil),
          %PasskeyCredential{} = credential <- Shroud.Accounts.get_passkey(raw_id),
          %User{} = user <- Repo.get(User, credential.user_id),
@@ -107,11 +129,6 @@ defmodule Shroud.Accounts.Passkeys do
     end
   end
 
-  def authenticate(token, _, _, _, _, _) do
-    if is_binary(token), do: consume_challenge(token, :authentication, nil)
-    {:error, :invalid_assertion}
-  end
-
   defp encode_public_key(key) do
     key
     |> Map.new(fn {k, value} ->
@@ -121,14 +138,16 @@ defmodule Shroud.Accounts.Passkeys do
   end
 
   defp decode_public_key(binary) do
-    with {:ok, key, ""} when is_map(key) <- CBOR.decode(binary) do
-      {:ok,
-       Map.new(key, fn
-         {k, %CBOR.Tag{tag: :bytes, value: bytes}} -> {k, bytes}
-         pair -> pair
-       end)}
-    else
-      _ -> {:error, :invalid_key}
+    case CBOR.decode(binary) do
+      {:ok, key, ""} when is_map(key) ->
+        {:ok,
+         Map.new(key, fn
+           {k, %CBOR.Tag{tag: :bytes, value: bytes}} -> {k, bytes}
+           pair -> pair
+         end)}
+
+      _ ->
+        {:error, :invalid_key}
     end
   rescue
     _ -> {:error, :invalid_key}
@@ -143,19 +162,23 @@ defmodule Shroud.Accounts.Passkeys do
   defp update_counter(credential, new_count) do
     old_count = credential.sign_count
 
-    if old_count > 0 and new_count > 0 and new_count <= old_count do
-      {:error, :counter_rollback}
-    else
-      if new_count > old_count do
-        Repo.update_all(
-          from(c in PasskeyCredential,
-            where: c.id == ^credential.id and c.sign_count < ^new_count
-          ),
-          set: [sign_count: new_count]
-        )
-      end
+    cond do
+      old_count > 0 and new_count > 0 and new_count <= old_count ->
+        {:error, :counter_rollback}
 
-      :ok
+      new_count > old_count ->
+        case Repo.update_all(
+               from(c in PasskeyCredential,
+                 where: c.id == ^credential.id and c.sign_count < ^new_count
+               ),
+               set: [sign_count: new_count]
+             ) do
+          {1, _} -> :ok
+          _ -> {:error, :counter_rollback}
+        end
+
+      true ->
+        :ok
     end
   end
 

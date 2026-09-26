@@ -26,6 +26,12 @@ To start the server:
 
 Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
 
+Passkeys use the configured Phoenix endpoint URL as their WebAuthn origin and RP ID.
+Set `APP_DOMAIN` to the canonical public HTTPS host in production and serve login
+and Security settings on that same host. Plain HTTP works only on `localhost` in
+development; passkeys enrolled on one host cannot be used on another (including
+an orb portal URL). Apply database migrations before enabling passkey enrollment.
+
 To send test emails, use e.g. [Swaks](https://www.jetmore.org/john/code/swaks/):
 ```
 swaks --to test@example.com --server 127.0.0.1 --port 2525

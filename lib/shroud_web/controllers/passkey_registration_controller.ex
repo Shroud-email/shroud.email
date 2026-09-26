@@ -47,13 +47,15 @@ defmodule ShroudWeb.PasskeyRegistrationController do
     result =
       with {:ok, attestation} <- decode(params["attestationObject"]),
            {:ok, client_data} <- decode(params["clientDataJSON"]),
+           {:ok, raw_id} <- decode(params["rawId"]),
            true <- is_binary(token) do
         Passkeys.register(
           conn.assigns.current_user,
           token,
           attestation,
           client_data,
-          params["label"] || "Passkey"
+          params["label"] || "Passkey",
+          raw_id
         )
       else
         _ ->
