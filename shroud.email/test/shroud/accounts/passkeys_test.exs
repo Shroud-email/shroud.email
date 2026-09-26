@@ -1,6 +1,7 @@
 defmodule Shroud.Accounts.PasskeysTest do
   use Shroud.DataCase
 
+  alias Config.Reader
   alias Shroud.Accounts.{PasskeyChallenge, Passkeys}
   import Shroud.AccountsFixtures
 
@@ -57,6 +58,73 @@ defmodule Shroud.Accounts.PasskeysTest do
     results = Enum.map(tasks, &Task.await/1)
     assert Enum.count(results, &match?({:ok, _}, &1)) == 1
     assert Enum.count(results, &(&1 == {:error, :invalid_challenge})) == 1
+  end
+
+  test "trusted proxy addresses normalize equivalent IPv6 spellings" do
+    previous = System.get_env("PASSKEY_TRUSTED_PROXY_IPS")
+    System.put_env("PASSKEY_TRUSTED_PROXY_IPS", "0:0:0:0:0:0:0:1, 192.0.2.41")
+
+    on_exit(fn ->
+      if previous,
+        do: System.put_env("PASSKEY_TRUSTED_PROXY_IPS", previous),
+        else: System.delete_env("PASSKEY_TRUSTED_PROXY_IPS")
+    end)
+
+    config = Reader.read!("config/runtime.exs", env: :test)
+
+    assert [{0, 0, 0, 0, 0, 0, 0, 1}, {192, 0, 2, 41}] =
+             get_in(config, [:shroud, :passkey_trusted_proxies])
+
+    Application.put_env(
+      :shroud,
+      :passkey_trusted_proxies,
+      get_in(config, [:shroud, :passkey_trusted_proxies])
+    )
+
+    on_exit(fn -> Application.delete_env(:shroud, :passkey_trusted_proxies) end)
+
+    conn = Plug.Test.conn(:post, "/users/passkeys/options")
+    conn = %{conn | remote_ip: {0, 0, 0, 0, 0, 0, 0, 1}}
+    conn = Plug.Conn.put_req_header(conn, "x-forwarded-for", "198.51.100.2")
+    assert Passkeys.request_ip(conn) == {198, 51, 100, 2}
+  end
+
+  test "a configured proxy hostname trusts only its resolved peer" do
+    Application.put_env(:shroud, :passkey_trusted_proxy_hosts, ["localhost"])
+    on_exit(fn -> Application.delete_env(:shroud, :passkey_trusted_proxy_hosts) end)
+
+    conn = Plug.Test.conn(:post, "/users/passkeys/options")
+    conn = Plug.Conn.put_req_header(conn, "x-forwarded-for", "198.51.100.2")
+    assert Passkeys.request_ip(%{conn | remote_ip: {127, 0, 0, 1}}) == {198, 51, 100, 2}
+    assert Passkeys.request_ip(%{conn | remote_ip: {192, 0, 2, 41}}) == {192, 0, 2, 41}
+  end
+
+  test "verification-only rate-limit traffic prunes expired minute rows" do
+    minute = div(System.system_time(:second), 60)
+
+    Ecto.Adapters.SQL.query!(
+      Repo,
+      "INSERT INTO passkey_rate_limits (source, minute, attempts) VALUES ($1, $2, 1)",
+      [:crypto.strong_rand_bytes(32), minute - 3]
+    )
+
+    assert Passkeys.allow_request?({198, 51, 100, 14}, :verify)
+
+    assert Repo.aggregate(
+             from(r in "passkey_rate_limits", where: r.minute < ^(minute - 2)),
+             :count
+           ) == 0
+  end
+
+  test "rate limits can be exercised in a controlled minute" do
+    minute = div(System.system_time(:second), 60) + 10
+    Application.put_env(:shroud, :passkey_rate_limit_minute, minute)
+    on_exit(fn -> Application.delete_env(:shroud, :passkey_rate_limit_minute) end)
+
+    assert Passkeys.allow_request?({192, 0, 2, 99}, :options)
+
+    assert Repo.aggregate(from(r in "passkey_rate_limits", where: r.minute == ^minute), :count) ==
+             1
   end
 
   test "Wax verifies an actual attestation and persists only its public credential" do

@@ -135,6 +135,7 @@ defmodule ShroudWeb.PasskeySessionControllerTest do
   end
 
   test "anonymous challenge issuance is rate limited by source address", context do
+    freeze_rate_limit_minute()
     source = %{context.conn | remote_ip: {192, 0, 2, 27}}
 
     for _ <- 1..30 do
@@ -147,7 +148,8 @@ defmodule ShroudWeb.PasskeySessionControllerTest do
   end
 
   test "only configured proxy peers can supply the client address", context do
-    Application.put_env(:shroud, :passkey_trusted_proxies, ["192.0.2.41"])
+    freeze_rate_limit_minute()
+    Application.put_env(:shroud, :passkey_trusted_proxies, [{192, 0, 2, 41}])
     on_exit(fn -> Application.delete_env(:shroud, :passkey_trusted_proxies) end)
 
     proxy = %{context.conn | remote_ip: {192, 0, 2, 41}}
@@ -184,6 +186,11 @@ defmodule ShroudWeb.PasskeySessionControllerTest do
              ),
              200
            )
+  end
+
+  defp freeze_rate_limit_minute do
+    Application.put_env(:shroud, :passkey_rate_limit_minute, div(System.system_time(:second), 60))
+    on_exit(fn -> Application.delete_env(:shroud, :passkey_rate_limit_minute) end)
   end
 
   defp assertion(options, %{user: user, credential_id: id, private_key: private}, opts \\ []) do

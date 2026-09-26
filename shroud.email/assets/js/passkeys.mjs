@@ -34,6 +34,7 @@ export async function setupPasskeys({ document, window, fetch }) {
     const status = document.getElementById("passkey-login-status");
     if (!supported) return;
     button.hidden = false;
+    document.getElementById("passkey-login").hidden = false;
     let pending;
     let generation = 0;
 

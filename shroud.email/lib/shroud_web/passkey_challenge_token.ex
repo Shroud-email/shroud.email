@@ -10,7 +10,13 @@ defmodule ShroudWeb.PasskeyChallengeToken do
   def verify(conn, signed) when is_binary(signed) do
     case Phoenix.Token.verify(ShroudWeb.Endpoint, @salt, signed, max_age: 300) do
       {:ok, {token, csrf}} when is_binary(token) ->
-        if csrf == get_session(conn, :_csrf_token), do: {:ok, token}, else: :error
+        session_csrf = get_session(conn, :_csrf_token)
+
+        if (is_binary(csrf) and is_binary(session_csrf) and
+              Plug.Crypto.secure_compare(csrf, session_csrf)) or
+             (is_nil(csrf) and is_nil(session_csrf)),
+           do: {:ok, token},
+           else: :error
 
       _ ->
         :error

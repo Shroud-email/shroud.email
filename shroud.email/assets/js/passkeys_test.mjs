@@ -15,6 +15,7 @@ function environment({ login = true, supported = true, credentials } = {}) {
   const elements = {};
   if (login) {
     elements["login-form"] = element();
+    elements["passkey-login"] = element({ hidden: true });
     elements["passkey-login-button"] = element({ hidden: true });
     elements["passkey-login-status"] = element({ textContent: "" });
   } else {
@@ -46,12 +47,14 @@ test("conditional passkey autofill starts without opening a modal", async () => 
   assert.equal(calls.length, 1);
   assert.equal(calls[0].mediation, "conditional");
   assert.deepEqual([...calls[0].publicKey.challenge], [1, 2, 3]);
+  assert.equal(env.elements["passkey-login"].hidden, false);
   assert.equal(env.elements["passkey-login-button"].hidden, false);
 });
 
 test("unsupported browser does not call server or interfere with password form", async () => {
   const env = environment({ supported: false });
   await setupPasskeys({ ...env, fetch: () => { throw Error("must not fetch"); } });
+  assert.equal(env.elements["passkey-login"].hidden, true);
   assert.equal(env.elements["passkey-login-button"].hidden, true);
   assert.equal(env.elements["login-form"].handlers.submit, undefined);
 });

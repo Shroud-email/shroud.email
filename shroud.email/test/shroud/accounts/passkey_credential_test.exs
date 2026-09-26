@@ -62,4 +62,20 @@ defmodule Shroud.Accounts.PasskeyCredentialTest do
              |> PasskeyCredential.changeset(%{credential_id: id, public_key: <<2>>})
              |> Repo.insert()
   end
+
+  test "credential changesets reject missing ownership and a nil counter" do
+    attrs = %{credential_id: :crypto.strong_rand_bytes(32), public_key: <<1>>}
+    missing_owner = PasskeyCredential.changeset(%PasskeyCredential{}, attrs)
+    refute missing_owner.valid?
+    assert Keyword.has_key?(missing_owner.errors, :user_id)
+
+    nil_counter =
+      PasskeyCredential.changeset(
+        %PasskeyCredential{user_id: user_fixture().id},
+        Map.put(attrs, :sign_count, nil)
+      )
+
+    refute nil_counter.valid?
+    assert Keyword.has_key?(nil_counter.errors, :sign_count)
+  end
 end

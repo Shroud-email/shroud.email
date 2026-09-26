@@ -9,9 +9,8 @@ defmodule Shroud.Accounts.Passkeys do
 
   def request_ip(conn) do
     peer = conn.remote_ip
-    trusted = Application.get_env(:shroud, :passkey_trusted_proxies, [])
 
-    if to_string(:inet.ntoa(peer)) in trusted do
+    if trusted_proxy?(peer) do
       case Plug.Conn.get_req_header(conn, "x-forwarded-for") do
         [header] ->
           header
@@ -33,8 +32,26 @@ defmodule Shroud.Accounts.Passkeys do
     end
   end
 
+  defp trusted_proxy?(peer) do
+    peer in Application.get_env(:shroud, :passkey_trusted_proxies, []) or
+      Enum.any?(Application.get_env(:shroud, :passkey_trusted_proxy_hosts, []), fn host ->
+        Enum.any?([:inet, :inet6], fn family ->
+          case :inet.getaddrs(String.to_charlist(host), family) do
+            {:ok, addresses} -> peer in addresses
+            _ -> false
+          end
+        end)
+      end)
+  end
+
   def allow_request?(remote_ip, kind) when kind in [:options, :verify] do
-    minute = div(System.system_time(:second), 60)
+    minute =
+      Application.get_env(
+        :shroud,
+        :passkey_rate_limit_minute,
+        div(System.system_time(:second), 60)
+      )
+
     source = :crypto.hash(:sha256, :erlang.term_to_binary({remote_ip, kind}))
     limit = if kind == :options, do: 30, else: 60
 
@@ -49,11 +66,7 @@ defmodule Shroud.Accounts.Passkeys do
         [source, minute]
       )
 
-    if kind == :options do
-      SQL.query!(Repo, "DELETE FROM passkey_rate_limits WHERE minute < $1", [
-        minute - 2
-      ])
-    end
+    SQL.query!(Repo, "DELETE FROM passkey_rate_limits WHERE minute < $1", [minute - 2])
 
     attempts <= limit
   end

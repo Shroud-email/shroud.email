@@ -26,6 +26,17 @@ config :shroud,
   passkey_trusted_proxies:
     (System.get_env("PASSKEY_TRUSTED_PROXY_IPS") || "")
     |> String.split(",", trim: true)
+    |> Enum.map(fn address ->
+      address = String.trim(address)
+
+      case :inet.parse_address(String.to_charlist(address)) do
+        {:ok, ip} -> ip
+        {:error, _} -> raise "invalid PASSKEY_TRUSTED_PROXY_IPS address: #{inspect(address)}"
+      end
+    end),
+  passkey_trusted_proxy_hosts:
+    (System.get_env("PASSKEY_TRUSTED_PROXY_HOSTS") || "")
+    |> String.split(",", trim: true)
     |> Enum.map(&String.trim/1)
 
 # In the test env, billing config (incl. a fixed webhook secret) comes from
