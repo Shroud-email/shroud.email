@@ -1,7 +1,7 @@
 defmodule Shroud.Accounts.Passkeys do
   import Ecto.Query
 
-  alias Shroud.Accounts.{PasskeyChallenge, User}
+  alias Shroud.Accounts.{PasskeyChallenge, PasskeyCredential, User}
   alias Shroud.Repo
 
   @challenge_timeout 300
@@ -35,6 +35,37 @@ defmodule Shroud.Accounts.Passkeys do
   def begin_authentication do
     challenge = Wax.new_authentication_challenge(challenge_options())
     {:ok, store_challenge(challenge, nil)}
+  end
+
+  def register(%User{} = user, token, attestation, client_data, label)
+      when is_binary(attestation) and byte_size(attestation) <= 16_384 and
+             is_binary(client_data) and byte_size(client_data) <= 4_096 and
+             is_binary(label) and byte_size(label) <= 100 do
+    with {:ok, challenge} <- consume_challenge(token, :registration, user),
+         {:ok, {auth_data, _attestation_result}} <-
+           verify_registration(attestation, client_data, challenge),
+         %{credential_id: id, credential_public_key: key} <- auth_data.attested_credential_data,
+         {:ok, credential} <-
+           %PasskeyCredential{user_id: user.id}
+           |> PasskeyCredential.changeset(%{
+             credential_id: id,
+             public_key: :erlang.term_to_binary(key),
+             label: label,
+             sign_count: auth_data.sign_count
+           })
+           |> Repo.insert() do
+      {:ok, credential}
+    else
+      _ -> {:error, :invalid_registration}
+    end
+  end
+
+  def register(_, _, _, _, _), do: {:error, :invalid_registration}
+
+  defp verify_registration(attestation, client_data, challenge) do
+    Wax.register(attestation, client_data, challenge)
+  rescue
+    _ -> {:error, :invalid_registration}
   end
 
   def consume_challenge(token, kind, user) when is_binary(token) do
