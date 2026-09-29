@@ -102,10 +102,14 @@ export async function setupPasskeys({ document, window, fetch }) {
     addForm.addEventListener("submit", async event => {
       event.preventDefault();
       if (!supported || !window.navigator.credentials.create) {
+        status.dataset.state = "error";
         status.textContent = "This browser does not support passkeys. You can still use your password.";
         return;
       }
-      status.textContent = "Waiting for your passkey…";
+      status.dataset.state = "pending";
+      status.textContent = "Preparing your passkey…";
+      let timer;
+      let timedOut = false;
 
       try {
         const password = document.getElementById("add-passkey-password").value;
@@ -120,7 +124,15 @@ export async function setupPasskeys({ document, window, fetch }) {
           })),
         };
 
-        const credential = await window.navigator.credentials.create({ publicKey: options });
+        const controller = new AbortController();
+        status.textContent = "Waiting for your passkey…";
+        timer = window.setTimeout(() => {
+          timedOut = true;
+          status.dataset.state = "error";
+          status.textContent = "Passkey request timed out. Please try again.";
+          controller.abort();
+        }, 60_000);
+        const credential = await window.navigator.credentials.create({ publicKey: options, signal: controller.signal });
         await post("/settings/passkeys", {
           token,
           rawId: encodeBase64(credential.rawId),
@@ -129,9 +141,14 @@ export async function setupPasskeys({ document, window, fetch }) {
         });
         window.location.assign("/settings/security");
       } catch (error) {
-        status.textContent = error.name === "NotAllowedError"
-          ? "Passkey creation was canceled."
-          : "Could not add passkey. Please check your password and try again.";
+        if (!timedOut) {
+          status.dataset.state = "error";
+          status.textContent = error.name === "NotAllowedError"
+            ? "Passkey creation was canceled. Please try again."
+            : "Could not add passkey. Please check your password and try again.";
+        }
+      } finally {
+        if (timer !== undefined) window.clearTimeout(timer);
       }
     });
   }

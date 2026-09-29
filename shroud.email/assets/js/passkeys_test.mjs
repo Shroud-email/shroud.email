@@ -21,7 +21,7 @@ function environment({ login = true, supported = true, credentials } = {}) {
   } else {
     elements["add-passkey-form"] = element({ action: "/settings/passkeys/options" });
     elements["add-passkey-password"] = element({ value: "a valid password" });
-    elements["passkey-status"] = element({ textContent: "" });
+    elements["passkey-status"] = element({ textContent: "", dataset: {} });
   }
 
   const document = {
@@ -31,6 +31,8 @@ function environment({ login = true, supported = true, credentials } = {}) {
   const window = {
     PublicKeyCredential: supported ? { isConditionalMediationAvailable: async () => true } : undefined,
     navigator: { credentials },
+    setTimeout,
+    clearTimeout,
     location: { assign() {} },
   };
 
@@ -150,4 +152,40 @@ test("enrollment sends binary attestation after requesting discoverable user-ver
   assert.equal(JSON.parse(requests[1].options.body).attestationObject, "Bw");
   assert.equal(JSON.parse(requests[1].options.body).token, "signed-token");
   assert.equal(requests[0].options.headers["x-csrf-token"], "csrf");
+});
+
+test("stalled enrollment reports a timeout and allows another attempt", async () => {
+  let timeout;
+  let credentialStarted;
+  const started = new Promise(resolve => { credentialStarted = resolve; });
+  let calls = 0;
+  let attempts = 0;
+  const env = environment({ login: false, credentials: { create: ({ signal }) => {
+    if (++attempts === 2) return Promise.reject(new DOMException("canceled", "NotAllowedError"));
+    credentialStarted();
+    return new Promise((_, reject) => signal.addEventListener("abort", () =>
+      reject(new DOMException("aborted", "AbortError"))));
+  } } });
+  env.window.setTimeout = (callback, delay) => { timeout = callback; assert.equal(delay, 60_000); return 1; };
+  env.window.clearTimeout = () => {};
+  const fetch = async () => {
+    calls++;
+    return { ok: true, json: async () => ({ token: "signed-token", publicKey: {
+      challenge: "AQID", user: { id: "BAUG" }, excludeCredentials: [],
+    } }) };
+  };
+
+  await setupPasskeys({ ...env, fetch });
+  const submission = env.elements["add-passkey-form"].handlers.submit({ preventDefault() {} });
+  await started;
+  assert.match(env.elements["passkey-status"].textContent, /Waiting/);
+  timeout();
+  await submission;
+
+  assert.match(env.elements["passkey-status"].textContent, /timed out.*try again/i);
+  assert.equal(env.elements["passkey-status"].dataset.state, "error");
+  assert.equal(calls, 1);
+  await env.elements["add-passkey-form"].handlers.submit({ preventDefault() {} });
+  assert.equal(calls, 2);
+  assert.equal(attempts, 2);
 });

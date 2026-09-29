@@ -166,8 +166,16 @@ defmodule ShroudWeb.PasskeyRegistrationControllerTest do
     })
 
     response = html_response(get(conn, ~p"/settings/security"), 200)
-    assert response =~ "Passkeys"
-    assert response =~ "Laptop"
-    assert response =~ "Add passkey"
+    document = LazyHTML.from_fragment(response)
+    assert document |> LazyHTML.query("#passkey-list") |> LazyHTML.text() =~ "Laptop"
+
+    assert document |> LazyHTML.query("#add-passkey:not([open]) > summary") |> LazyHTML.text() =~
+             "Add passkey"
+
+    assert document
+           |> LazyHTML.query(
+             "#add-passkey:not([open]) #add-passkey-form #add-passkey-password[required]"
+           )
+           |> Enum.any?()
   end
 end

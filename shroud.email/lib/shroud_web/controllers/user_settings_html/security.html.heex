@@ -219,29 +219,36 @@
     <% end %>
   </div>
 
-  <.form
-    for={@passkey_form}
-    action={~p"/settings/passkeys/options"}
-    id="add-passkey-form"
-    class="mt-6 space-y-3"
-  >
-    <label for="add-passkey-password" class="block text-sm text-gray-700 dark:text-gray-300">
-      Current password
-    </label>
-    <input
-      name={@passkey_form[:current_password].name}
-      id="add-passkey-password"
-      type="password"
-      required
-      class="rounded-md border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
-    />
-    <button type="submit" class="btn btn-primary">Add passkey</button>
-    <p
-      id="passkey-status"
-      role="status"
-      aria-live="polite"
-      class="text-sm text-gray-600 dark:text-gray-300"
+  <details id="add-passkey" class="mt-6 text-right">
+    <summary class="btn btn-primary cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+      Add passkey
+    </summary>
+    <.form
+      for={@passkey_form}
+      action={~p"/settings/passkeys/options"}
+      id="add-passkey-form"
+      class="mt-4 ml-auto max-w-sm space-y-3 text-left"
     >
-    </p>
-  </.form>
+      <label for="add-passkey-password" class="block text-sm text-gray-700 dark:text-gray-300">
+        Current password
+      </label>
+      <input
+        name={@passkey_form[:current_password].name}
+        id="add-passkey-password"
+        type="password"
+        required
+        class="w-full rounded-md border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+      />
+      <div class="text-right">
+        <button type="submit" class="btn btn-primary">Continue</button>
+      </div>
+      <p
+        id="passkey-status"
+        role="status"
+        aria-live="polite"
+        class="text-sm text-gray-600 dark:text-gray-300 data-[state=error]:text-red-600 dark:data-[state=error]:text-red-400"
+      >
+      </p>
+    </.form>
+  </details>
 </section>
