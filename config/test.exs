@@ -56,6 +56,8 @@ config :logger, :console, level: :error
 # Initialize plugs at runtime for faster test compilation
 config :phoenix, :plug_init_mode, :runtime
 
+config :sentry, test_mode: true
+
 config :shroud,
   notifier_webhook_url: "webhook.com/webhook"
 
