@@ -91,6 +91,8 @@ config :logger, :console,
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
 
+config :sentry, before_send: {Shroud.ErrorReporter, :before_send}
+
 config :fun_with_flags, :cache,
   enabled: true,
   # in seconds

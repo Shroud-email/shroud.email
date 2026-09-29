@@ -1,4 +1,11 @@
 defmodule Shroud.ErrorReporter do
+  def before_send(%Sentry.Event{
+        original_exception: %Plug.CSRFProtection.InvalidCSRFTokenError{}
+      }),
+      do: nil
+
+  def before_send(event), do: event
+
   def handle_event([:oban, :job, :exception], measure, meta, _) do
     extra =
       meta.job
