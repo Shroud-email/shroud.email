@@ -4,8 +4,11 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'shroud.email/**'
+      - '.github/workflows/build.yml'
     tags:
-      - "*"
+      - "v*"
   workflow_dispatch:
 
 permissions: {}
@@ -28,7 +31,7 @@ jobs:
     runs-on: ${{ matrix.runner }}
     env:
       REGISTRY: ghcr.io
-      IMAGE_NAME: ${{ github.repository }}
+      IMAGE_NAME: shroud-email/shroud.email
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -41,7 +44,7 @@ jobs:
       # matching release in Sentry (see the sentry-release job).
       - name: Compute release version
         id: version
-        run: echo "version=$(git describe --tags --always)" >> "$GITHUB_OUTPUT"
+        run: echo "version=$(git describe --first-parent --tags --match 'v[0-9]*' --always)" >> "$GITHUB_OUTPUT"
         shell: bash
 
       - name: Set up Docker Buildx
@@ -84,15 +87,15 @@ jobs:
         id: build
         uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
         with:
-          context: .
+          context: shroud.email
           push: true
           platforms: ${{ matrix.docker_platform }}
           build-args: |
             SENTRY_RELEASE=${{ steps.version.outputs.version }}
           tags: ${{ steps.meta_arch.outputs.tags }}
           labels: ${{ steps.meta_base.outputs.labels }}
-          cache-from: type=gha,scope=${{ matrix.platform }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
+          cache-from: type=gha,scope=app-${{ matrix.platform }}
+          cache-to: type=gha,mode=max,scope=app-${{ matrix.platform }}
 
       # Save the digest produced by this job and the base tag list once
       - name: Persist digest
@@ -132,7 +135,7 @@ jobs:
       packages: write
     env:
       REGISTRY: ghcr.io
-      IMAGE_NAME: ${{ github.repository }}
+      IMAGE_NAME: shroud-email/shroud.email
     steps:
       - name: Log in to GHCR
         uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
@@ -189,7 +192,7 @@ jobs:
       security-events: write
     env:
       REGISTRY: ghcr.io
-      IMAGE_NAME: ${{ github.repository }}
+      IMAGE_NAME: shroud-email/shroud.email
     steps:
       - name: Log in to GHCR
         uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
@@ -236,7 +239,7 @@ jobs:
 
       - name: Compute release version
         id: version
-        run: echo "version=$(git describe --tags --always)" >> "$GITHUB_OUTPUT"
+        run: echo "version=$(git describe --first-parent --tags --match 'v[0-9]*' --always)" >> "$GITHUB_OUTPUT"
         shell: bash
 
       # Creates the release in Sentry, associates the commits since the last

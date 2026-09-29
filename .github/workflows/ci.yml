@@ -7,6 +7,10 @@ on:
 permissions:
   contents: read
 
+defaults:
+  run:
+    working-directory: shroud.email
+
 jobs:
   test:
     runs-on: blacksmith-2vcpu-ubuntu-2404
@@ -41,9 +45,9 @@ jobs:
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: |
-            deps
-            _build
-          key: ${{ runner.os }}-mix-${{ env.MIX_ENV }}-${{ hashFiles('**/mix.lock') }}
+            shroud.email/deps
+            shroud.email/_build
+          key: ${{ runner.os }}-mix-${{ env.MIX_ENV }}-${{ hashFiles('shroud.email/mix.lock') }}
           restore-keys: |
             ${{ runner.os }}-mix-${{ env.MIX_ENV }}-
             ${{ runner.os }}-mix-
@@ -63,7 +67,7 @@ jobs:
         run: mix coveralls.json
       - uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
         with:
-          files: ./cover/excoveralls.json
+          files: shroud.email/cover/excoveralls.json
           token: ${{ secrets.CODECOV_TOKEN }}
 
   image-e2e:
@@ -80,11 +84,11 @@ jobs:
       - name: Build production image
         uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
         with:
-          context: .
+          context: shroud.email
           load: true
           tags: shroud-e2e-app
-          cache-from: type=gha,scope=amd64
-          cache-to: type=gha,mode=max,scope=amd64
+          cache-from: type=gha,scope=app-amd64
+          cache-to: type=gha,mode=max,scope=app-amd64
       - name: Run Playwright journeys
         run: E2E_SKIP_BUILD=1 bash scripts/run_e2e_tests.sh
       - name: Upload Playwright artifacts
@@ -93,6 +97,6 @@ jobs:
         with:
           name: playwright-artifacts
           path: |
-            e2e/playwright-report
-            e2e/test-results
+            shroud.email/e2e/playwright-report
+            shroud.email/e2e/test-results
           if-no-files-found: ignore
