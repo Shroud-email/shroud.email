@@ -34,11 +34,12 @@ first-parent app-tag description; other projects' tags were not imported.
 Unreleased app commits before the move have root-relative paths, so manifest
 path filtering cannot associate them with `shroud.email/`. The migration's
 `docs: preserve app release history across relocation` commit carries their
-five releasable messages as release-please conventional-commit footers. This
+six releasable messages as release-please conventional-commit footers. This
 preserves their feature/fix entries and the next minor-version bump without
 rewriting the original commits or leaving a permanent `release-as` override.
 Review the first release PR's notes before merging it. The original unreleased
-range is `v1.3.0..9635750`; dependency/build/chore commits remain in that history.
+range, including the Sentry fix incorporated by rebasing, is `v1.3.0..77c286f`;
+dependency/build/chore commits remain in that history.
 
 ## GitHub cutover (not performed by this migration)
 
