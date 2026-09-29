@@ -24,12 +24,9 @@ defmodule ShroudWeb.PasskeyRequestFilterTest do
         Plug.Test.conn(:post, path)
         |> Map.put(:params, %{"current_password" => "private", "clientDataJSON" => "assertion"})
 
-      request =
-        Sentry.PlugContext.build_request_interface_data(conn,
-          body_scrubber: {ShroudWeb.Endpoint, :sentry_body}
-        )
+      Sentry.PlugContext.call(conn, body_scrubber: {ShroudWeb.Endpoint, :sentry_body})
 
-      assert request.data == %{}
+      assert Sentry.Context.get_all().request.data == %{}
     end
   end
 end

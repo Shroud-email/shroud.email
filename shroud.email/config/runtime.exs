@@ -23,6 +23,7 @@ config :shroud,
   cap_secret_key: System.get_env("CAP_SECRET_KEY")
 
 config :shroud,
+  passkey_origin: System.get_env("PASSKEY_ORIGIN"),
   passkey_trusted_proxies:
     (System.get_env("PASSKEY_TRUSTED_PROXY_IPS") || "")
     |> String.split(",", trim: true)
