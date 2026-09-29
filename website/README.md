@@ -4,14 +4,14 @@ This is the website running on [Shroud.email](https://shroud.email). It's a fast
 
 ## Commands
 
-All commands are run from the root of the project, from a terminal:
+Run commands from `website/`, using its mise toolchain (`mise exec -- <command>`):
 
 | Command           | Action                                       |
 |:----------------  |:-------------------------------------------- |
-| `npm install`     | Installs dependencies                        |
-| `npm run dev`     | Starts local dev server at `localhost:3000`  |
-| `npm run build`   | Build your production site to `./dist/`      |
-| `npm run preview` | Preview your build locally, before deploying |
+| `pnpm install --frozen-lockfile` | Installs dependencies from the lockfile |
+| `pnpm run dev`     | Starts the local dev server                 |
+| `pnpm run build`   | Build your production site to `./dist/`      |
+| `pnpm run preview` | Preview your build locally, before deploying |
 
 ## Want to learn more?
 

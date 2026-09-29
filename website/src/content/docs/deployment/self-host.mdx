@@ -16,7 +16,17 @@ You'll need a server running on the public Internet, with ports 25, 80, and 443 
 
 ## Clone our repo
 
-You can find our `docker-compose.yaml` on [GitHub](https://github.com/shroud-email/hosting). Start by cloning this repo.
+Clone the complete [Shroud.email monorepo](https://github.com/Shroud-email/shroud.email)
+and enter its `hosting/` directory:
+
+```bash
+git clone https://github.com/Shroud-email/shroud.email.git
+cd shroud.email/hosting
+```
+
+Run the remaining commands from `hosting/` unless a step says otherwise. Keep the
+sibling `caddy-permissive-file-storage/` directory: the Caddy image builds its
+storage module from that local source.
 
 ## Configure SPF/DKIM
 

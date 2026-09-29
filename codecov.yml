@@ -1,0 +1,3 @@
+# ExCoveralls reports names relative to the Phoenix project directory.
+fixes:
+  - "::shroud.email/"
