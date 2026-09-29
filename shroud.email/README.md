@@ -10,6 +10,9 @@ This repo contains our source code. If you just want to set up your email aliase
 
 ## Contributing
 
+Run these commands from the monorepo's `shroud.email/` directory. Shared Git
+hooks and commitlint are installed with `npm ci` at the monorepo root.
+
 Shroud is built with Elixir and [Phoenix](https://www.phoenixframework.org/). Make sure you
 have Elixir and mix installed.
 
