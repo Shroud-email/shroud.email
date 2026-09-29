@@ -1,6 +1,6 @@
 services:
   web:
-    command: mise exec -- mix phx.server
+    command: cd shroud.email && mise exec -- mix phx.server
     port: 4000
     health: /
     portal:

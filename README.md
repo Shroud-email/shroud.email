@@ -1,42 +1,34 @@
 # [Shroud.email](https://shroud.email/)
 
-[![CI](https://github.com/Shroud-email/shroud.email/actions/workflows/ci.yml/badge.svg)](https://github.com/Shroud-email/shroud.email/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/Shroud-email/shroud.email/branch/main/graph/badge.svg?token=VOCBPBLSVG)](https://codecov.io/gh/Shroud-email/shroud.email)
+Shroud protects your email address with aliases that remove trackers and forward
+messages to your inbox. This monorepo contains the application and its supporting
+projects.
 
-[Shroud.email](https://shroud.email/) is an email privacy service. Protect your email address from spammers and creepy marketers
-by creating unlimited aliases that remove trackers and forward messages to your regular inbox.
+| Project | Contents | Local verification |
+| --- | --- | --- |
+| [shroud.email](shroud.email/) | Elixir/Phoenix application | `mise exec -- mix test` |
+| [website](website/) | Astro site and Bunny edge script | `mise exec -- pnpm run build` |
+| [hosting](hosting/) | Self-hosting Docker Compose stack | `docker compose config --quiet` |
+| [email-trackers](email-trackers/) | Tracker list and publishing script | `node --check scripts/deploy-bunny.mjs` |
+| [caddy-permissive-file-storage](caddy-permissive-file-storage/) | Caddy storage module | `bash test/e2e.sh` (requires xcaddy) |
 
-This repo contains our source code. If you just want to set up your email aliases, sign up for our [free 30-day trial](https://app.shroud.email/users/register).
+Run project commands from their respective directories. Each project keeps its
+own runtime configuration and dependencies; this is not a shared npm workspace.
+Install [mise](https://mise.jdx.dev/), trust the root and project `mise.toml` files,
+and run `mise install` in the project you are working on.
 
-## Contributing
+Run `npm ci` at the root to install commitlint and Git hooks. App development
+instructions are in [shroud.email/README.md](shroud.email/README.md), and agent
+guidance starts in [AGENTS.md](AGENTS.md).
 
-Shroud is built with Elixir and [Phoenix](https://www.phoenixframework.org/). Make sure you
-have Elixir and mix installed.
+## Automation and development orbs
 
-Our agent guidelines live in [`AGENTS.md`](AGENTS.md). If you use Claude Code, install
-something like the [agents-md-loader](https://tangled.org/btao.org/claude-agents-md-loader)
-so that Claude Code reads `AGENTS.md` files (it does not pick them up natively).
+All GitHub Actions live in `.github/workflows/`. Deployments are separated by
+project; shared zizmor, commitlint, and filesystem security checks run once.
 
-To start the server:
+`.agents/setup` prepares the app, website, and Go toolchains in an Amp orb.
+`amp orb services ensure` starts the Phoenix preview and returns its portal URL.
 
-  * Install dependencies with `mix deps.get`
-  * Create and migrate your database with `mix ecto.setup`
-  * Create seed data (if you want) using `mix ecto.seed`
-  * Start Phoenix endpoint with `mix phx.server` or inside IEx with `iex -S mix phx.server`
-
-Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
-
-To send test emails, use e.g. [Swaks](https://www.jetmore.org/john/code/swaks/):
-```
-swaks --to test@example.com --server 127.0.0.1 --port 2525
-```
-
-## Libraries
-
-- [Tailwind CSS](https://tailwindcss.com/) for styles
-- [gen_smtp](https://github.com/gen-smtp/gen_smtp) for receiving emails
-- [Swoosh](https://hexdocs.pm/swoosh/Swoosh.html) for sending emails
-
-# Deploying
-
-Set the environment variables in `example.env`.
+See [migration and cutover notes](docs/monorepo-migration.md) before enabling
+deployments from this repository. Imported history is retained through merge
+commits: **do not squash the migration**.

@@ -1,5 +1,7 @@
 # Repository Guidelines
 
+Run the commands below from `shroud.email/`, not the monorepo root.
+
 ## Project Overview
 
 Shroud.email is an email privacy service built with Elixir/Phoenix. It allows users to create unlimited email aliases that remove trackers and forward messages to their regular inbox.
@@ -152,7 +154,7 @@ mix usage_rules.docs Enum.zip/1
 
 ## Searching Documentation
 
-You should also consult the documentation of any tools you are using, early and often. The best 
+You should also consult the documentation of any tools you are using, early and often. The best
 way to accomplish this is to use the `usage_rules.search_docs` mix task. Once you have
 found what you are looking for, use the links in the search results to get more detail. For example:
 
