@@ -98,6 +98,9 @@ Additional checks passed:
 - `mise exec -- zizmor --offline .github/workflows`: no findings.
 - `mise exec -- pinact run --fix=false --no-api`: all action references pinned.
   This is an offline syntax check, not remote tag/SHA verification.
+  Bunny's `deploy-script@0.5.0` tag format is unsupported by pinact 4.1;
+  `.pinact.yaml` exempts only its exact SHA. The annotated tag was independently
+  resolved through GitHub's API to that SHA. Review Bunny action updates manually.
 - `mix coveralls.json`: 552 tests passed, 76.3% coverage; all 134 reported source
   paths resolve under the app directory. Root `codecov.yml` prefixes upload paths.
 - Production image E2E: two Playwright journeys passed, including alias lifecycle

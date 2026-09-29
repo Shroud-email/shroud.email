@@ -91,7 +91,7 @@ jobs:
         run: deno task build
 
       - name: Deploy script to Bunny Edge Scripting
-        uses: BunnyWay/actions/deploy-script@cfed0ba7842c85686d0dc3a83d8d971991a752f6 # v0.5.0 (deploy-script@0.5.0)
+        uses: BunnyWay/actions/deploy-script@cfed0ba7842c85686d0dc3a83d8d971991a752f6 # deploy-script@0.5.0
         with:
           script_id: ${{ secrets.WEBSITE_BUNNY_STAGING_SCRIPT_ID }}
           deploy_key: ${{ secrets.WEBSITE_BUNNY_STAGING_DEPLOY_KEY }}
