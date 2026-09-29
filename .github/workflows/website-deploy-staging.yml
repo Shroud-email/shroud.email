@@ -13,7 +13,7 @@ name: Website staging deployment
 #   WEBSITE_BUNNY_STAGING_PULLZONE_ID      - staging pull zone id
 #   WEBSITE_BUNNY_STAGING_SCRIPT_ID        - edge script id
 #   WEBSITE_BUNNY_STAGING_DEPLOY_KEY       - edge script deploy key
-#   WEBSITE_BUNNY_API_KEY                  - account API key
+#   BUNNY_API_KEY                          - shared account API key
 
 on:
   workflow_dispatch:
@@ -65,7 +65,7 @@ jobs:
           BUNNY_STORAGE_ZONE: shroud-email-website-staging
           BUNNY_STORAGE_PASSWORD: ${{ secrets.WEBSITE_BUNNY_STAGING_STORAGE_PASSWORD }}
           BUNNY_PULLZONE_ID: ${{ secrets.WEBSITE_BUNNY_STAGING_PULLZONE_ID }}
-          BUNNY_API_KEY: ${{ secrets.WEBSITE_BUNNY_API_KEY }}
+          BUNNY_API_KEY: ${{ secrets.BUNNY_API_KEY }}
 
   deploy-edge-script:
     name: Deploy edge script

@@ -48,7 +48,8 @@ range is `v1.3.0..9635750`; dependency/build/chore commits remain in that histor
    standalone Caddy image. Do not let both old and new repositories publish.
 2. Copy secret values through GitHub's secure settings, using the mapping below.
    Values cannot be recovered through the GitHub API; an owner must supply them.
-   Do not assume the two projects' Bunny account keys are identical.
+   Website production/staging and trackers share the account-level `BUNNY_API_KEY`.
+   Configure it once; storage passwords and script deployment keys stay separate.
 3. Grant `Shroud-email/shroud.email` Actions write access to existing GHCR packages
    `haraka` and `caddy-permissive-file-storage`. The app package name is unchanged.
 4. Preserve the app's existing secrets (`PAT`, `CODECOV_TOKEN`, `SENTRY_AUTH_TOKEN`,
@@ -67,7 +68,7 @@ range is `v1.3.0..9635750`; dependency/build/chore commits remain in that histor
 | --- | --- | --- |
 | website | `BUNNY_STORAGE_PASSWORD` | `WEBSITE_BUNNY_STORAGE_PASSWORD` |
 | website | `BUNNY_PULLZONE_ID` | `WEBSITE_BUNNY_PULLZONE_ID` |
-| website | `BUNNY_API_KEY` | `WEBSITE_BUNNY_API_KEY` |
+| website | `BUNNY_API_KEY` | `BUNNY_API_KEY` |
 | website | `BUNNY_SCRIPT_ID` | `WEBSITE_BUNNY_SCRIPT_ID` |
 | website | `BUNNY_DEPLOY_KEY` | `WEBSITE_BUNNY_DEPLOY_KEY` |
 | website | `BUNNY_STAGING_STORAGE_PASSWORD` | `WEBSITE_BUNNY_STAGING_STORAGE_PASSWORD` |
@@ -76,7 +77,7 @@ range is `v1.3.0..9635750`; dependency/build/chore commits remain in that histor
 | website | `BUNNY_STAGING_DEPLOY_KEY` | `WEBSITE_BUNNY_STAGING_DEPLOY_KEY` |
 | email-trackers | `BUNNY_STORAGE_PASSWORD` | `TRACKERS_BUNNY_STORAGE_PASSWORD` |
 | email-trackers | `BUNNY_PULLZONE_ID` | `TRACKERS_BUNNY_PULLZONE_ID` |
-| email-trackers | `BUNNY_API_KEY` | `TRACKERS_BUNNY_API_KEY` |
+| email-trackers | `BUNNY_API_KEY` | `BUNNY_API_KEY` |
 
 Application, Haraka, and standalone Caddy image identities are still
 `ghcr.io/shroud-email/shroud.email`, `ghcr.io/shroud-email/haraka`, and

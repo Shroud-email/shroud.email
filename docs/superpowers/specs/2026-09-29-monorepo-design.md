@@ -132,8 +132,9 @@ rather than assume `sha-<current monorepo commit>` was published.
 Website and tracker deployments currently reference identically named Bunny
 secrets with different destination credentials. Use project-prefixed secret names
 in the consolidated workflows, with an explicit old-to-new name mapping in the
-cutover notes. Include website staging credentials and shared-account API keys
-in that mapping without assuming their values are identical. Never copy or
+cutover notes. Include website staging credentials in that mapping. Per the
+owner's clarification, share one account-level `BUNNY_API_KEY` secret across
+website production/staging and trackers. Never copy or
 print secret values. Preserve the app's existing secrets where no collision
 exists. Document destination-repository permissions needed to publish existing
 GHCR packages.
