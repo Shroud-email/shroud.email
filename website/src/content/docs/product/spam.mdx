@@ -1,0 +1,39 @@
+---
+title: How we handle spam
+description: How Shroud.email handles spam
+---
+
+import Alert from "~/components/atoms/Alert.astro";
+
+As an email server, we need to be cautious about forwarding spam to your mailbox. If one of your aliases
+receives a spam email and we forwarded it, then it would harm our reputation as a sender, leading to
+lower deliverability rates for legitimate emails.
+
+Instead, if we detect a spam email, we will store it for 7 days and notify you. You can then view the email in our
+web portal and take appropriate actions.
+
+<Alert
+  intent="info"
+  text="Shroud.email will only store emails in two circumstances: if it's spam, or if you've asked us to enable email logging for debugging purposes."
+/>
+
+## I'm receiving spam emails. What do I do?
+
+If one of your aliases starts receiving spam, you have a few options. The first option is the most effective: simply delete or disable the alias. Now it's as if it never existed, and the spammers aren't able to get your attention.
+
+The second option is to block the specific sender that's spamming you. This only works in cases where the spam is originating only from a few addresses. On the spam page on Shroud.email, it's easy to block the sender of a spam email
+using the "block sender" button:
+
+<img
+  src="/img/block-spam-sender.png"
+  alt="app screenshot showing how to block a spam sender"
+/>
+
+## One of my outgoing emails was marked as spam. What do I do?
+
+We also prevent sending spam emails _from_ your aliases. We use industry-standard spam detection systems, but they
+aren't always perfect.
+
+If one of your legitimate emails was marked as spam, the easiest step is to try again -- perhaps making sure you aren't using common spam phrases like "incredible deal" or "meet singles". Short test emails are also often marked as spam.
+
+If that still doesn't work, you can <a href="mailto:contact@shroud.email">contact us</a>.

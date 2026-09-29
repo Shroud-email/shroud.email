@@ -1,0 +1,6 @@
+[tools]
+deno = "2"
+node = "22"
+pnpm = "11"
+zizmor = "1.25.2"
+pinact = "4.1.0"

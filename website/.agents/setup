@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$repo_root"
+
+timed_step() {
+  local description="$1"
+  shift
+  local started_at=$SECONDS
+
+  printf '\n==> %s\n' "$description"
+  "$@"
+  printf '<== %s (%ss)\n' "$description" "$((SECONDS - started_at))"
+}
+
+install_mise() {
+  if command -v mise >/dev/null 2>&1; then
+    return
+  fi
+
+  mkdir -p "$HOME/.local/bin"
+  curl --fail --location --silent --show-error https://mise.run |
+    MISE_INSTALL_PATH="$HOME/.local/bin/mise" sh
+}
+
+timed_step "Bootstrap mise" install_mise
+
+export PATH="$HOME/.local/bin:$PATH"
+mise_bin="$(command -v mise)"
+
+profile_marker="# shroud-email mise activation"
+touch "$HOME/.bash_profile"
+if ! grep -Fqx "$profile_marker" "$HOME/.bash_profile"; then
+  cat >> "$HOME/.bash_profile" <<'EOF'
+
+# shroud-email mise activation
+if [[ -x "$HOME/.local/bin/mise" ]]; then
+  eval "$("$HOME/.local/bin/mise" activate bash)"
+fi
+EOF
+fi
+
+timed_step "Trust mise configuration" "$mise_bin" trust "$repo_root/mise.toml"
+timed_step "Install tools from mise.toml" "$mise_bin" install
+timed_step "Install JavaScript dependencies" "$mise_bin" exec -- pnpm install --frozen-lockfile
+
+cache_edge_dependencies() {
+  cd "$repo_root/edge-script"
+  "$mise_bin" exec -- deno cache --lock=deno.lock src/main.ts build.mjs
+}
+
+timed_step "Cache edge-script dependencies" cache_edge_dependencies

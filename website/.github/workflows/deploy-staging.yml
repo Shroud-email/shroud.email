@@ -1,0 +1,94 @@
+name: Deploy to staging
+
+# Single workflow that deploys EVERYTHING needed to test the staging site:
+# the static site build AND the bunny.net edge script. Run it pointing at the
+# branch you want to test (e.g. geo-localized-pricing) — nothing touches prod.
+#
+# What it deploys:
+#   1. Site build (dist/) → staging storage zone + cache purge
+#   2. Edge script (edge-script/dist/index.ts) → bunny edge scripting
+#
+# Required repo secrets:
+#   BUNNY_STAGING_STORAGE_PASSWORD - staging storage zone read/write password
+#   BUNNY_STAGING_PULLZONE_ID      - staging pull zone id (cache purge)
+#   BUNNY_STAGING_SCRIPT_ID        - edge script id (bunny dashboard)
+#   BUNNY_STAGING_DEPLOY_KEY       - edge script deploy key
+#   BUNNY_API_KEY                  - account API key (cache purge + region lookup)
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch/tag/SHA to deploy"
+        required: true
+        type: string
+        default: "main"
+
+# Prevent two runs from racing to upload to staging.
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  deploy-site:
+    name: Deploy site
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          version: 11
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm run build
+
+      - run: node scripts/deploy-bunny.mjs
+        env:
+          BUNNY_STORAGE_ZONE: shroud-email-website-staging
+          BUNNY_STORAGE_PASSWORD: ${{ secrets.BUNNY_STAGING_STORAGE_PASSWORD }}
+          BUNNY_PULLZONE_ID: ${{ secrets.BUNNY_STAGING_PULLZONE_ID }}
+          BUNNY_API_KEY: ${{ secrets.BUNNY_API_KEY }}
+
+  deploy-edge-script:
+    name: Deploy edge script
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version: v2.x
+
+      - name: Type-check
+        working-directory: edge-script
+        run: deno check src/main.ts
+
+      - name: Bundle
+        working-directory: edge-script
+        run: deno task build
+
+      - name: Deploy script to Bunny Edge Scripting
+        uses: BunnyWay/actions/deploy-script@cfed0ba7842c85686d0dc3a83d8d971991a752f6 # deploy-script@0.5.0
+        with:
+          script_id: ${{ secrets.BUNNY_STAGING_SCRIPT_ID }}
+          deploy_key: ${{ secrets.BUNNY_STAGING_DEPLOY_KEY }}
+          file: edge-script/dist/index.ts

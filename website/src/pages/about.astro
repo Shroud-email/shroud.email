@@ -1,0 +1,191 @@
+---
+import LandingLayout from "../layouts/LandingLayout.astro";
+---
+
+<LandingLayout title="About Shroud.email">
+  <div id="fog" class="relative flex-1 pt-16 pb-12 flex flex-col bg-slate-950 overflow-hidden">
+    <canvas
+      id="fog-canvas"
+      aria-hidden="true"
+      class="absolute inset-0 h-full w-full"
+      style="image-rendering: pixelated;"
+    ></canvas>
+    <div class="relative z-10 rounded bg-white dark:bg-slate-900 dark:text-slate-100 shadow-lg w-120 max-w-full mt-12 sm:mt-24 mx-auto p-6">
+      <h1 class="text-xl font-semibold font-display">About Shroud.email</h1>
+      <p class="mt-6">
+        <span class="font-semibold">Hey, I'm <a href="https://btao.org" target="_blank" class="border-b-2 border-indigo-600 dark:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Tao</a>.</span>
+        I'm the founder and developer behind Shroud.email. Thanks so much for checking out the project!
+      </p>
+
+      <p class="mt-3">
+        I started Shroud.email after trying several email alias services and struggling to find one
+        that had all the features I wanted. In the end, I decided to build it myself: a privacy-focused service
+        that not only gives you email aliases, but also blocks creepy tracking pixels -- and all in a
+        beautiful, simple UI.
+      </p>
+
+      <p class="mt-3">
+        On top of that, the project is fully open-source, and runs on renewable energy in the EU.
+        I use Shroud.email myself every day, and I hope you'll find it useful, too!
+      </p>
+
+      <p class="mt-3">
+        If you have any questions, comments, or suggestions, please feel free to <a href="mailto:hello@shroud.email" class="border-b-2 border-indigo-600 dark:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">send me an email</a>.
+      </p>
+    </div>
+  </div>
+</LandingLayout>
+
+<script>
+  // Pixelated, dithered fog. Framework-free: an fbm value-noise field is
+  // rendered into a low-res buffer, quantised to the slate palette through an
+  // ordered (Bayer) dither, then scaled up with image-rendering: pixelated for
+  // crisp chunky pixels. Replaces the old Vanta.js/Three.js fog (two CDN deps).
+  const PIXEL = 8; // size of each rendered "pixel", in CSS px
+  const FPS = 18; // chunky, retro cadence (also keeps it cheap)
+
+  // Slate ramp, darkest -> lightest (matches the old fog's colour stops).
+  const PALETTE = [
+    [2, 6, 23], // slate-950  #020617
+    [15, 23, 42], // slate-900  #0f172a
+    [30, 41, 59], // slate-800  #1e293b
+    [51, 65, 85], // slate-700  #334155
+    [71, 85, 105], // slate-600  #475569 (a touch of glow)
+  ];
+  const LEVELS = PALETTE.length - 1;
+
+  // 4x4 Bayer threshold matrix, normalised to (0,1).
+  const BAYER = [
+    [0, 8, 2, 10],
+    [12, 4, 14, 6],
+    [3, 11, 1, 9],
+    [15, 7, 13, 5],
+  ].map((row) => row.map((v) => (v + 0.5) / 16));
+
+  const canvas = document.getElementById("fog-canvas") as HTMLCanvasElement | null;
+  const host = document.getElementById("fog");
+  if (canvas && host) {
+    const ctx = canvas.getContext("2d");
+    // Low-res offscreen buffer; one texel per on-screen "pixel".
+    const buf = document.createElement("canvas");
+    const bctx = buf.getContext("2d");
+
+    if (ctx && bctx) {
+      let cols = 0;
+      let rows = 0;
+      let image: ImageData | null = null;
+
+      // Cheap integer hash -> [0,1), for value noise lattice points.
+      const hash = (x: number, y: number) => {
+        let n = (x * 374761393 + y * 668265263) | 0;
+        n = (n ^ (n >> 13)) * 1274126177;
+        return ((n ^ (n >> 16)) >>> 0) / 4294967295;
+      };
+
+      const noise = (x: number, y: number) => {
+        const xi = Math.floor(x);
+        const yi = Math.floor(y);
+        const xf = x - xi;
+        const yf = y - yi;
+        const u = xf * xf * (3 - 2 * xf);
+        const v = yf * yf * (3 - 2 * yf);
+        const tl = hash(xi, yi);
+        const tr = hash(xi + 1, yi);
+        const bl = hash(xi, yi + 1);
+        const br = hash(xi + 1, yi + 1);
+        return tl * (1 - u) * (1 - v) + tr * u * (1 - v) + bl * (1 - u) * v + br * u * v;
+      };
+
+      // Fractal Brownian motion: 4 octaves, normalised to ~[0,1].
+      const fbm = (x: number, y: number) => {
+        let sum = 0;
+        let amp = 0.5;
+        let freq = 1;
+        for (let i = 0; i < 4; i++) {
+          sum += amp * noise(x * freq, y * freq);
+          freq *= 2;
+          amp *= 0.5;
+        }
+        return sum / 0.9375;
+      };
+
+      const resize = () => {
+        const w = host.clientWidth;
+        const h = host.clientHeight;
+        if (!w || !h) return;
+        canvas.width = w;
+        canvas.height = h;
+        cols = Math.ceil(w / PIXEL);
+        rows = Math.ceil(h / PIXEL);
+        buf.width = cols;
+        buf.height = rows;
+        image = bctx.createImageData(cols, rows);
+        ctx.imageSmoothingEnabled = false;
+      };
+
+      const render = (t: number) => {
+        if (!image) return;
+        const data = image.data;
+        const tx = t * 0.18; // horizontal drift
+        const ty = t * 0.06; // slow vertical churn
+        let i = 0;
+        for (let y = 0; y < rows; y++) {
+          const by = BAYER[y & 3]!;
+          for (let x = 0; x < cols; x++) {
+            // Two layers drifting in opposite directions for a swirling feel.
+            const n =
+              0.6 * fbm(x * 0.05 + tx, y * 0.05 + ty) +
+              0.4 * fbm(x * 0.11 - tx * 0.5, y * 0.11 + ty * 0.5 + 40);
+            // Ordered dither between adjacent palette bands.
+            const scaled = Math.min(0.9999, Math.max(0, n)) * LEVELS;
+            const lo = Math.floor(scaled);
+            const idx = lo + (scaled - lo > by[x & 3]! ? 1 : 0);
+            const c = PALETTE[idx > LEVELS ? LEVELS : idx]!;
+            data[i++] = c[0]!;
+            data[i++] = c[1]!;
+            data[i++] = c[2]!;
+            data[i++] = 255;
+          }
+        }
+        bctx.putImageData(image, 0, 0);
+        ctx.drawImage(buf, 0, 0, cols, rows, 0, 0, canvas.width, canvas.height);
+      };
+
+      resize();
+
+      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+      let raf = 0;
+      let last = 0;
+      const frameMs = 1000 / FPS;
+
+      const loop = (now: number) => {
+        raf = requestAnimationFrame(loop);
+        if (now - last < frameMs) return;
+        last = now;
+        render(now / 1000);
+      };
+
+      const start = () => {
+        cancelAnimationFrame(raf);
+        if (reduced.matches) {
+          render(0); // single static frame
+        } else {
+          raf = requestAnimationFrame(loop);
+        }
+      };
+
+      // Debounced resize: re-buffer, then redraw/restart.
+      let resizeTimer = 0;
+      window.addEventListener("resize", () => {
+        window.clearTimeout(resizeTimer);
+        resizeTimer = window.setTimeout(() => {
+          resize();
+          start();
+        }, 150);
+      });
+      reduced.addEventListener("change", start);
+
+      start();
+    }
+  }
+</script>

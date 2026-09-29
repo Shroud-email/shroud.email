@@ -1,0 +1,13 @@
+{
+  // Used by `deno task build` to bundle the edge script.
+  "tasks": {
+    "build": "mkdir -p dist && deno run -A build.mjs",
+    "check": "deno check src/main.ts",
+    "dev": "deno run --allow-net --allow-read src/main.ts"
+  },
+  "lint": {
+    "rules": {
+      "tags": ["recommended"]
+    }
+  }
+}

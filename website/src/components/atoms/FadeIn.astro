@@ -1,0 +1,16 @@
+---
+type Direction = "up" | "down" | "left" | "right";
+
+export interface Props {
+  fromDirection?: Direction;
+  class?: string;
+}
+
+const { fromDirection = "up", class: className = "" } = Astro.props;
+---
+
+<!-- Scroll reveal. The global observer in BaseLayout toggles `is-visible`;
+     gated on `motion-ok`, so content is visible by default without JS. -->
+<div class:list={["fade-in", fromDirection, className]}>
+  <slot />
+</div>

@@ -1,0 +1,246 @@
+---
+const navigation = [
+  { name: "Privacy protection", href: "/privacy-protection/" },
+  { name: "Pricing", href: "/pricing/" },
+];
+
+const moreLinks = [
+  {
+    name: "Blog",
+    description: "Stay up to date with Shroud.email",
+    href: "/blog/",
+    icon: "M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z",
+  },
+  {
+    name: "Docs",
+    description: "Learn more about our API",
+    href: "/docs/",
+    icon: "M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25",
+  },
+  {
+    name: "GitHub",
+    description: "All contributions are welcome",
+    href: "https://github.com/Shroud-email/shroud.email",
+    icon: "M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3-4.5 16.5",
+  },
+  {
+    name: "Discussions",
+    description: "Join the community",
+    href: "https://github.com/Shroud-email/shroud.email/discussions",
+    icon: "M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z",
+  },
+];
+
+const LOGO_PATH =
+  "M857.793543,640.527693 C786.052223,793.814748 630.426559,900 450,900 C415.299912,900 381.517158,896.072426 349.072035,888.637574 Z M897.121,398.815174 C899.02295,415.613814 900,432.692806 900,450 C900,470.570531 898.619761,490.818689 895.946842,510.656917 L223.221723,838.763897 C190.827668,819.826598 161.013181,796.956271 134.433288,770.807943 Z M830.084994,208.987702 C847.878637,236.990332 862.662845,267.092913 873.982439,298.840269 L69.9150057,691.012298 C52.1213626,663.009668 37.337155,632.907087 26.0175608,601.159731 Z M676.778277,61.2361026 C709.172332,80.1734019 738.986819,103.043729 765.566712,129.192057 L2.87899982,501.184826 C0.977049545,484.386186 0,467.307194 0,450 C0,429.429469 1.3802389,409.181311 4.05315767,389.343083 Z M450,0 C484.700443,0 518.483534,3.92765489 550.928962,11.3626549 L42.2064569,259.472307 C113.947777,106.185252 269.573441,0 450,0 Z";
+
+const navLink =
+  "rounded text-base font-medium text-slate-200 transition-colors hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950";
+---
+
+<header
+  class="fixed inset-x-0 top-0 z-40 h-16 border-b border-white/5 bg-slate-950/85 backdrop-blur"
+>
+  <nav
+    aria-label="Global"
+    class="mx-auto flex h-full max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8"
+  >
+    <div class="flex items-center gap-8">
+      <a
+        href="/"
+        class="flex items-center gap-2.5 rounded text-xl font-semibold text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+      >
+        <svg
+          class="size-6 text-indigo-400"
+          viewBox="0 0 900 900"
+          fill="currentColor"
+          aria-hidden="true"
+        >
+          <path d={LOGO_PATH}></path>
+        </svg>
+        Shroud.email
+      </a>
+
+      <div class="hidden items-center gap-6 md:flex">
+        {
+          navigation.map((item) => (
+            <a href={item.href} class={navLink}>
+              {item.name}
+            </a>
+          ))
+        }
+
+        <div class="relative">
+          <button
+            type="button"
+            data-disclosure-button
+            aria-expanded="false"
+            aria-controls="more-menu"
+            class={`group inline-flex items-center gap-1.5 ${navLink}`}
+          >
+            More
+            <svg
+              class="size-4 text-slate-400 transition-transform group-aria-expanded:rotate-180"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                d="M12.53 16.28a.75.75 0 0 1-1.06 0l-7.5-7.5a.75.75 0 0 1 1.06-1.06L12 14.69l6.97-6.97a.75.75 0 1 1 1.06 1.06l-7.5 7.5Z"
+              ></path>
+            </svg>
+          </button>
+
+          <div
+            id="more-menu"
+            data-disclosure-panel
+            hidden
+            class="absolute left-1/2 top-full mt-3 w-screen max-w-sm -translate-x-1/2"
+          >
+            <div
+              class="overflow-hidden rounded-xl bg-white p-2 shadow-lg ring-1 ring-slate-900/5 dark:bg-slate-900 dark:ring-white/10"
+            >
+              {
+                moreLinks.map((item) => (
+                  <a
+                    href={item.href}
+                    class="flex items-start gap-4 rounded-lg p-3 transition-colors hover:bg-slate-50 focus:outline-none focus-visible:bg-slate-50 dark:hover:bg-slate-800 dark:focus-visible:bg-slate-800"
+                  >
+                    <svg
+                      class="mt-0.5 size-6 flex-none text-indigo-600 dark:text-indigo-400"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d={item.icon} />
+                    </svg>
+                    <span>
+                      <span class="block font-medium text-slate-900 dark:text-slate-100">
+                        {item.name}
+                      </span>
+                      <span class="mt-0.5 block text-sm text-slate-500 dark:text-slate-400">
+                        {item.description}
+                      </span>
+                    </span>
+                  </a>
+                ))
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <a
+        href="https://app.shroud.email/users/log_in"
+        class={`hidden md:inline-flex ${navLink}`}
+      >
+        Log in
+      </a>
+
+      <button
+        type="button"
+        data-disclosure-button
+        aria-expanded="false"
+        aria-controls="mobile-menu"
+        class="group inline-flex items-center justify-center rounded-md p-2.5 text-slate-300 transition-colors hover:bg-white/5 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-300 md:hidden"
+      >
+        <span class="sr-only">Open main menu</span>
+        <svg
+          class="size-6 group-aria-expanded:hidden"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"></path>
+        </svg>
+        <svg
+          class="hidden size-6 group-aria-expanded:block"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M6 18 18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+  </nav>
+
+  <div
+    id="mobile-menu"
+    data-disclosure-panel
+    hidden
+    class="absolute inset-x-0 top-full border-b border-slate-200 bg-white shadow-lg md:hidden dark:border-slate-800 dark:bg-slate-900"
+  >
+    <div class="space-y-1 px-3 py-4">
+      {
+        [...navigation, ...moreLinks].map((item) => (
+          <a
+            href={item.href}
+            class="block rounded-md px-3 py-2 text-base font-medium text-slate-900 hover:bg-slate-50 focus:outline-none focus-visible:bg-slate-50 dark:text-slate-100 dark:hover:bg-slate-800 dark:focus-visible:bg-slate-800"
+          >
+            {item.name}
+          </a>
+        ))
+      }
+      <a
+        href="https://app.shroud.email/users/log_in"
+        class="mt-3 block rounded-lg bg-indigo-500 px-3 py-2.5 text-center font-medium text-white transition-colors hover:bg-indigo-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 focus-visible:ring-offset-2"
+      >
+        Log in
+      </a>
+    </div>
+  </div>
+</header>
+
+<script>
+  function closeAll(buttons: NodeListOf<HTMLElement>) {
+    for (const b of buttons) {
+      b.setAttribute("aria-expanded", "false");
+      const p = document.getElementById(b.getAttribute("aria-controls") || "");
+      if (p) p.hidden = true;
+    }
+  }
+
+  const buttons = document.querySelectorAll<HTMLElement>(
+    "[data-disclosure-button]",
+  );
+
+  for (const btn of buttons) {
+    const panel = document.getElementById(
+      btn.getAttribute("aria-controls") || "",
+    );
+    if (!panel) continue;
+
+    btn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const isOpen = btn.getAttribute("aria-expanded") === "true";
+      closeAll(buttons);
+      if (!isOpen) {
+        btn.setAttribute("aria-expanded", "true");
+        panel.hidden = false;
+      }
+    });
+
+    // Clicks inside a panel shouldn't bubble up to the document closer.
+    panel.addEventListener("click", (event) => event.stopPropagation());
+  }
+
+  document.addEventListener("click", () => closeAll(buttons));
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeAll(buttons);
+  });
+</script>

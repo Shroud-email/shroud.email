@@ -1,0 +1,11 @@
+---
+import LandingLayout from "../layouts/LandingLayout.astro";
+import PricingComponent from "../components/organisms/Pricing.vue";
+
+const description =
+  "Shroud.email pricing. A free plan with 5 aliases, or £25/year for unlimited aliases and custom domains.";
+---
+
+<LandingLayout title="Pricing" description={description}>
+  <PricingComponent />
+</LandingLayout>

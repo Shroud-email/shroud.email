@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /newsletter-success/
+
+Sitemap: https://shroud.email/sitemap-index.xml

@@ -1,0 +1,49 @@
+---
+import { Icon } from "astro-icon/components";
+
+type Intent = "error" | "warning" | "info";
+interface Props {
+  intent: Intent;
+  text: string;
+}
+
+const { intent, text } = Astro.props;
+
+let iconName: string;
+let iconClasses: string;
+let containerClasses: string;
+let textClasses: string;
+switch (intent) {
+  case "error":
+    iconName = "heroicons-solid:exclamation";
+    iconClasses = "text-red-400";
+    containerClasses = "bg-red-50 border-red-400";
+    textClasses = "text-red-700";
+    break;
+  case "warning":
+    iconName = "heroicons-solid:exclamation";
+    iconClasses = "text-yellow-400";
+    containerClasses = "bg-yellow-50 border-yellow-400";
+    textClasses = "text-yellow-700";
+    break;
+  case "info":
+    iconName = "heroicons-solid:information-circle";
+    iconClasses = "text-blue-400";
+    containerClasses = "bg-blue-50 border-blue-400";
+    textClasses = "text-blue-700";
+    break;
+}
+---
+
+<div class:list={["border-l-4 p-4 rounded", containerClasses]}>
+  <div class="flex items-center">
+    <div class="shrink-0">
+      <Icon name={iconName} class:list={["h-5 w-5", iconClasses]} />
+    </div>
+    <div class="ml-3">
+      <p class:list={["text-sm", textClasses]}>
+        {text}
+      </p>
+    </div>
+  </div>
+</div>

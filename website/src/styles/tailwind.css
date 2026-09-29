@@ -1,0 +1,143 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@layer base {
+  @font-face {
+    font-family: "Manrope";
+    src: url("../assets/fonts/manrope-latin-400-normal.woff2") format("woff2");
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+  }
+
+  @font-face {
+    font-family: "Manrope";
+    src: url("../assets/fonts/manrope-latin-500-normal.woff2") format("woff2");
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+  }
+
+  @font-face {
+    font-family: "Manrope";
+    src: url("../assets/fonts/manrope-latin-600-normal.woff2") format("woff2");
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+  }
+
+  @font-face {
+    font-family: "Manrope";
+    src: url("../assets/fonts/manrope-latin-700-normal.woff2") format("woff2");
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+  }
+}
+
+/* Dark mode follows the OS setting automatically (no toggle). `dark:` keeps
+   Tailwind v4's default prefers-color-scheme behaviour, and every surface is
+   themed for dark below / inline so coverage is complete (a partial theme is
+   what produces light-on-light). */
+
+@theme {
+  /* Manrope throughout; display hierarchy comes from size and weight. */
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-sans);
+
+  /* Brand accent. Semantic aliases over Tailwind's (already-OKLCH) indigo so
+     redesigned markup has stable token names and one canonical brand colour. */
+  --color-brand: var(--color-indigo-500);
+  --color-brand-strong: var(--color-indigo-600);
+  --color-brand-soft: var(--color-indigo-400);
+
+  /* Ink / surface tokens, tinted toward the brand hue (~277). Light values;
+     overridden for dark mode just below. */
+  --color-ink: oklch(0.21 0.04 277);
+  --color-surface: oklch(0.99 0.004 277);
+  --color-surface-sunken: oklch(0.97 0.006 277);
+}
+
+/* Dark-mode token flip. Mirrors the slate-950/900 + slate-50 ramp the dark:
+   utilities use, keeping the ~277 hue tint. Applies anywhere the semantic
+   tokens are consumed. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-ink: oklch(0.97 0.01 277);
+    --color-surface: oklch(0.21 0.03 277);
+    --color-surface-sunken: oklch(0.17 0.025 277);
+  }
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    /* Let native UI (form controls, scrollbars) follow the OS theme too. */
+    color-scheme: light dark;
+  }
+
+  /* Honour reduced-motion globally: neutralises scroll-smooth, scroll-driven
+     reveals, and component transitions without touching each one. The
+     !important is intentional and required to override utility/inline
+     transitions, so the noImportantStyles rule is suppressed here. */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      /* biome-ignore lint/complexity/noImportantStyles: reduced-motion reset must win */
+      scroll-behavior: auto !important;
+    }
+
+    *,
+    *::before,
+    *::after {
+      /* biome-ignore lint/complexity/noImportantStyles: reduced-motion reset must win */
+      animation-duration: 0.01ms !important;
+      /* biome-ignore lint/complexity/noImportantStyles: reduced-motion reset must win */
+      animation-iteration-count: 1 !important;
+      /* biome-ignore lint/complexity/noImportantStyles: reduced-motion reset must win */
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* Scroll-reveal primitive shared by the .astro and .vue wrappers.
+     Hidden initial state applies ONLY when motion is allowed (the `motion-ok`
+     class is set before first paint), so no-JS, crawlers and reduced-motion
+     users always get fully visible content with no flash. */
+  .fade-in {
+    transition:
+      opacity 700ms cubic-bezier(0.22, 1, 0.36, 1),
+      transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  html.motion-ok .fade-in {
+    opacity: 0;
+  }
+  html.motion-ok .fade-in.up {
+    transform: translateY(1rem);
+  }
+  html.motion-ok .fade-in.down {
+    transform: translateY(-1rem);
+  }
+  html.motion-ok .fade-in.left {
+    transform: translateX(1rem);
+  }
+  html.motion-ok .fade-in.right {
+    transform: translateX(-1rem);
+  }
+  /* Must out-specify the `html.motion-ok .fade-in[.dir]` hiding rules above
+     (which carry an html type selector), so the reveal actually wins. */
+  html.motion-ok .fade-in.is-visible {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* @tailwindcss/typography wraps inline <code> in literal backtick characters
+     via code::before / code::after. Code already renders in monospace, so drop
+     the backticks across every `.prose` block site-wide. `.prose code` carries
+     more specificity than the plugin's :where()-wrapped rule, so it wins
+     without !important. */
+  .prose code::before,
+  .prose code::after {
+    content: none;
+  }
+}

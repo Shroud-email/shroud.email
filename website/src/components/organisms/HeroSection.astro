@@ -1,0 +1,110 @@
+---
+import { Image } from "astro:assets";
+import appScreenshot from "~/assets/app-screenshot.webp";
+import ScrollingText from "~/components/atoms/ScrollingText.astro";
+
+export interface Props {
+  learnMoreId: string;
+}
+
+const { learnMoreId } = Astro.props;
+
+const trust = [
+  "Free plan available",
+  "No credit card",
+  "Open source",
+  "EU-hosted on renewable energy",
+];
+---
+
+<section class="relative isolate overflow-hidden bg-slate-950">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div
+            class="grid items-center gap-12 pt-28 pb-16 sm:pt-32 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-16 lg:pt-40 lg:pb-28"
+        >
+            <div class="max-w-xl">
+                <h1
+                    class="font-display font-semibold tracking-tight text-balance text-white text-[clamp(2.5rem,6vw,4.5rem)] leading-[1.04]"
+                >
+                    Hide your email from{" "}
+                    <span class="text-indigo-400" aria-hidden="true">
+                        <ScrollingText
+                            words={[
+                                "spammers",
+                                "hackers",
+                                "advertisers",
+                                "creeps",
+                            ]}
+                        />
+                    </span>
+                    <span class="sr-only"
+                        >spammers, hackers, advertisers, and creeps</span
+                    >
+                </h1>
+
+                <p
+                    class="mt-6 max-w-prose text-lg leading-relaxed text-pretty text-slate-300 sm:text-xl"
+                >
+                    Your email address is your ID on the web. Keep it private
+                    with aliases that forward messages to your inbox, minus the
+                    trackers.
+                </p>
+
+                <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+                    <a
+                        href="https://app.shroud.email/users/register"
+                        class="inline-flex items-center justify-center rounded-lg bg-indigo-500 px-5 py-3 font-medium text-white shadow-sm transition-colors hover:bg-indigo-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+                    >
+                        Sign up for free
+                    </a>
+                    <a
+                        href={"#" + learnMoreId}
+                        class="inline-flex items-center justify-center rounded-lg border border-white/15 px-5 py-3 font-medium text-white transition-colors hover:bg-white/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+                    >
+                        Learn more
+                    </a>
+                </div>
+
+                <ul
+                    class="mt-8 flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-400"
+                >
+                    {
+                        trust.map((item) => (
+                            <li class="flex items-center gap-2">
+                                <svg
+                                    class="size-4 flex-none text-indigo-400"
+                                    viewBox="0 0 20 20"
+                                    fill="currentColor"
+                                    aria-hidden="true"
+                                >
+                                    <path
+                                        fill-rule="evenodd"
+                                        d="M16.704 5.29a1 1 0 0 1 .006 1.414l-7.25 7.3a1 1 0 0 1-1.42 0l-3.75-3.77a1 1 0 1 1 1.42-1.41l3.04 3.057 6.54-6.585a1 1 0 0 1 1.414-.006Z"
+                                        clip-rule="evenodd"
+                                    />
+                                </svg>
+                                {item}
+                            </li>
+                        ))
+                    }
+                </ul>
+            </div>
+
+            <div class="relative lg:-mr-8 xl:-mr-16">
+                <div
+                    class="rounded-2xl bg-slate-900/70 p-2 ring-1 ring-white/10"
+                >
+                    <Image
+                        class="w-full rounded-lg ring-1 ring-white/5"
+                        src={appScreenshot}
+                        alt="The Shroud.email dashboard listing several email aliases, each showing how many messages it has forwarded"
+                        layout="constrained"
+                        width={700}
+                        loading="eager"
+                        fetchpriority="high"
+                    />
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

@@ -1,0 +1,16 @@
+---
+import LandingLayout from "~/layouts/LandingLayout.astro";
+import NewsletterForm from "~/components/molecules/NewsletterForm.astro";
+import PageHeader from "~/components/molecules/PageHeader.astro";
+
+const title = "Newsletter";
+const description =
+  "We're only just getting started. Sign up for our newsletter for occassional product updates and news.";
+---
+
+<LandingLayout title={title} description={description}>
+  <PageHeader title={title} description={description} />
+  <div class="mx-auto mb-12 sm:mb-24">
+    <NewsletterForm />
+  </div>
+</LandingLayout>

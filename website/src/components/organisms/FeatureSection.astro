@@ -1,0 +1,128 @@
+---
+import FadeIn from "~/components/atoms/FadeIn.astro";
+
+const features = [
+    {
+        name: "Stop spammers cold",
+        description:
+            "Block a spammy sender at will, or give a noisy alias a holiday by switching it off entirely.",
+        icon: "M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636",
+    },
+    {
+        name: "Block trackers",
+        description:
+            "Senders don't get to know if or when you read their mail. Shroud.email strips tracking pixels so your privacy stays intact.",
+        icon: "M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88",
+    },
+    {
+        name: "Fully open-source",
+        description:
+            "Every part of Shroud.email is open source, licensed under the AGPL v3. Read it, run it, trust it.",
+        icon: "M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3-4.5 16.5",
+    },
+    {
+        name: "Custom domains",
+        description:
+            "Use your own domain for aliases. Take your aliases with you if you ever leave.",
+        icon: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm0 0c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0v18M3.6 9h16.8M3.6 15h16.8",
+        paidOnly: true,
+    },
+    {
+        name: "Unlimited aliases",
+        description:
+            "Make a fresh alias every time a website asks for your email. No limits.",
+        icon: "M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75",
+        paidOnly: true,
+    },
+    {
+        name: "Reply from your aliases",
+        description:
+            "Send email from your aliases, without ever revealing your real address.",
+        icon: "M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3",
+        paidOnly: true,
+    },
+];
+---
+
+<section class="bg-slate-50 dark:bg-slate-900">
+    <div class="mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-28 lg:px-8">
+        <FadeIn>
+            <div class="max-w-2xl">
+                <h2
+                    class="font-display text-3xl font-semibold tracking-tight text-balance text-slate-900 dark:text-slate-50 sm:text-4xl lg:text-5xl"
+                >
+                    What Shroud.email can do
+                </h2>
+                <p
+                    class="mt-4 max-w-prose text-lg text-slate-600 dark:text-slate-400"
+                >
+                    Take back control of your inbox, with no limits and no
+                    asterisks.
+                </p>
+            </div>
+        </FadeIn>
+
+        <FadeIn>
+            <div
+                class="mt-12 grid grid-cols-1 gap-px overflow-hidden rounded-2xl bg-slate-200 dark:bg-slate-800 ring-1 ring-slate-200 dark:ring-slate-800 sm:mt-16 sm:grid-cols-2 lg:grid-cols-3"
+            >
+                {
+                    features.map((feature) => (
+                        <div class="bg-slate-50 dark:bg-slate-900 p-6 transition-colors hover:bg-white dark:hover:bg-slate-800 lg:p-8">
+                            <div class="flex items-center gap-3">
+                                <svg
+                                    class="size-5 flex-none text-indigo-500"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.5"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    aria-hidden="true"
+                                >
+                                    <path d={feature.icon} />
+                                </svg>
+                                <h3 class="font-display text-lg font-semibold text-slate-900 dark:text-slate-50">
+                                    {feature.name}
+                                </h3>
+                                {feature.paidOnly && (
+                                    <span class="group relative inline-flex">
+                                        <button
+                                            type="button"
+                                            class="inline-flex size-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
+                                            aria-label="Paid plan only"
+                                            aria-describedby={`tip-${feature.name.replace(/\s+/g, "-").toLowerCase()}`}
+                                        >
+                                            <svg
+                                                class="size-3"
+                                                viewBox="0 0 20 20"
+                                                fill="currentColor"
+                                                aria-hidden="true"
+                                            >
+                                                <path
+                                                    fill-rule="evenodd"
+                                                    d="M16.704 5.29a1 1 0 0 1 .006 1.414l-7.25 7.3a1 1 0 0 1-1.42 0l-3.75-3.77a1 1 0 1 1 1.42-1.41l3.04 3.057 6.54-6.585a1 1 0 0 1 1.414-.006Z"
+                                                    clip-rule="evenodd"
+                                                />
+                                            </svg>
+                                        </button>
+                                        <span
+                                            role="tooltip"
+                                            id={`tip-${feature.name.replace(/\s+/g, "-").toLowerCase()}`}
+                                            class="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 z-10 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs font-medium text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 dark:bg-slate-700"
+                                        >
+                                            Paid plan only
+                                        </span>
+                                    </span>
+                                )}
+                            </div>
+                            <p class="mt-3 leading-relaxed text-slate-600 dark:text-slate-400">
+                                {feature.description}
+                            </p>
+                        </div>
+                    ))
+                }
+            </div>
+        </FadeIn>
+    </div>
+</section>
