@@ -82,7 +82,7 @@ defmodule Shroud.MixProject do
       {:canada, "~> 2.0"},
       {:mjml, "~> 6.0"},
       {:floki, "~> 0.38"},
-      {:sentry, "~> 13.0"},
+      {:sentry, "~> 13.5"},
       # Sentry 13's default HTTP client (Sentry.FinchClient) requires Finch;
       # the legacy Sentry.HackneyClient is deprecated. Sentry manages its own
       # Finch pool, so no extra supervision is needed.
