@@ -1,12 +1,19 @@
-name: Deploy
+name: Caddy module
 on:
   push:
     branches: [ "main" ]
+    paths:
+      - 'caddy-permissive-file-storage/**'
+      - '.github/workflows/caddy-deploy.yml'
   pull_request:
     branches: [ "**" ]
 
 permissions:
   contents: read
+
+defaults:
+  run:
+    working-directory: caddy-permissive-file-storage
 
 jobs:
   test:
@@ -19,15 +26,7 @@ jobs:
         with:
           go-version: '1.24'
           cache: true
-      - name: Cache Go modules
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
+          cache-dependency-path: caddy-permissive-file-storage/go.sum
       - run: go install github.com/caddyserver/xcaddy/cmd/xcaddy@v0.4.6
       - run: bash test/e2e.sh
 
@@ -40,7 +39,7 @@ jobs:
       packages: write
     env:
       REGISTRY: ghcr.io
-      IMAGE_NAME: ${{ github.repository }}
+      IMAGE_NAME: shroud-email/caddy-permissive-file-storage
     steps:
       - uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3
         with:
@@ -59,7 +58,7 @@ jobs:
       - name: Build container
         uses: docker/build-push-action@1104d471370f9806843c095c1db02b5a90c5f8b6 # v3
         with:
-          context: .
+          context: caddy-permissive-file-storage
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

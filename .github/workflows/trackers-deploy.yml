@@ -1,16 +1,23 @@
-name: Deploy to bunny.net
+name: Tracker list deployment
 
 on:
   push:
     branches: [main]
+    paths:
+      - 'email-trackers/**'
+      - '.github/workflows/trackers-deploy.yml'
   workflow_dispatch:
 
 # Avoid overlapping deploys racing to upload to the same storage zone.
 concurrency:
-  group: deploy-bunny
+  group: trackers-production
   cancel-in-progress: true
 
 permissions: {}
+
+defaults:
+  run:
+    working-directory: email-trackers
 
 jobs:
   deploy:
@@ -28,6 +35,6 @@ jobs:
 
       - run: node scripts/deploy-bunny.mjs
         env:
-          BUNNY_STORAGE_PASSWORD: ${{ secrets.BUNNY_STORAGE_PASSWORD }}
-          BUNNY_PULLZONE_ID: ${{ secrets.BUNNY_PULLZONE_ID }}
-          BUNNY_API_KEY: ${{ secrets.BUNNY_API_KEY }}
+          BUNNY_STORAGE_PASSWORD: ${{ secrets.TRACKERS_BUNNY_STORAGE_PASSWORD }}
+          BUNNY_PULLZONE_ID: ${{ secrets.TRACKERS_BUNNY_PULLZONE_ID }}
+          BUNNY_API_KEY: ${{ secrets.TRACKERS_BUNNY_API_KEY }}

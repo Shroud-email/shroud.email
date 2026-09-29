@@ -2,6 +2,10 @@
 
 Docker Compose configuration for self-hosting Shroud.email.
 
+Clone the complete `Shroud-email/shroud.email` monorepo and run the commands below
+from its `hosting/` directory. Do not copy this directory on its own: the Caddy
+build also needs `../caddy-permissive-file-storage/`.
+
 Please read our [deployment documentation](https://shroud.email/docs/deployment/self-host) on our website.
 
 If you want to get up and running with Shroud.email quickly, and don't want to maintain your own mailserver, you can sign up for our hosted version [here](https://app.shroud.email/users/register).
@@ -25,7 +29,7 @@ leave the defaults get HTTP-01 and never need a Bunny key.
 ## Living on the edge
 
 The committed `docker-compose.yaml` tracks the stable image. If you'd rather
-run the latest `:edge` build (rebuilt on every push to `main`) and have it
+run the latest `:edge` build (rebuilt when the app changes on `main`) and have it
 auto-update, copy the example override and bring the stack up:
 
 ```

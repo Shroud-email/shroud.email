@@ -1,0 +1,5 @@
+**
+!caddy-permissive-file-storage/
+!caddy-permissive-file-storage/go.mod
+!caddy-permissive-file-storage/go.sum
+!caddy-permissive-file-storage/*.go

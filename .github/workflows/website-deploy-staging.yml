@@ -1,4 +1,4 @@
-name: Deploy to staging
+name: Website staging deployment
 
 # Single workflow that deploys EVERYTHING needed to test the staging site:
 # the static site build AND the bunny.net edge script. Run it pointing at the
@@ -9,11 +9,11 @@ name: Deploy to staging
 #   2. Edge script (edge-script/dist/index.ts) → bunny edge scripting
 #
 # Required repo secrets:
-#   BUNNY_STAGING_STORAGE_PASSWORD - staging storage zone read/write password
-#   BUNNY_STAGING_PULLZONE_ID      - staging pull zone id (cache purge)
-#   BUNNY_STAGING_SCRIPT_ID        - edge script id (bunny dashboard)
-#   BUNNY_STAGING_DEPLOY_KEY       - edge script deploy key
-#   BUNNY_API_KEY                  - account API key (cache purge + region lookup)
+#   WEBSITE_BUNNY_STAGING_STORAGE_PASSWORD - staging storage zone password
+#   WEBSITE_BUNNY_STAGING_PULLZONE_ID      - staging pull zone id
+#   WEBSITE_BUNNY_STAGING_SCRIPT_ID        - edge script id
+#   WEBSITE_BUNNY_STAGING_DEPLOY_KEY       - edge script deploy key
+#   WEBSITE_BUNNY_API_KEY                  - account API key
 
 on:
   workflow_dispatch:
@@ -26,7 +26,7 @@ on:
 
 # Prevent two runs from racing to upload to staging.
 concurrency:
-  group: deploy-staging
+  group: website-staging
   cancel-in-progress: true
 
 permissions: {}
@@ -35,6 +35,9 @@ jobs:
   deploy-site:
     name: Deploy site
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: website
     permissions:
       contents: read
     steps:
@@ -51,6 +54,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+          cache-dependency-path: website/pnpm-lock.yaml
 
       - run: pnpm install --frozen-lockfile
 
@@ -59,9 +63,9 @@ jobs:
       - run: node scripts/deploy-bunny.mjs
         env:
           BUNNY_STORAGE_ZONE: shroud-email-website-staging
-          BUNNY_STORAGE_PASSWORD: ${{ secrets.BUNNY_STAGING_STORAGE_PASSWORD }}
-          BUNNY_PULLZONE_ID: ${{ secrets.BUNNY_STAGING_PULLZONE_ID }}
-          BUNNY_API_KEY: ${{ secrets.BUNNY_API_KEY }}
+          BUNNY_STORAGE_PASSWORD: ${{ secrets.WEBSITE_BUNNY_STAGING_STORAGE_PASSWORD }}
+          BUNNY_PULLZONE_ID: ${{ secrets.WEBSITE_BUNNY_STAGING_PULLZONE_ID }}
+          BUNNY_API_KEY: ${{ secrets.WEBSITE_BUNNY_API_KEY }}
 
   deploy-edge-script:
     name: Deploy edge script
@@ -79,16 +83,16 @@ jobs:
           deno-version: v2.x
 
       - name: Type-check
-        working-directory: edge-script
+        working-directory: website/edge-script
         run: deno check src/main.ts
 
       - name: Bundle
-        working-directory: edge-script
+        working-directory: website/edge-script
         run: deno task build
 
       - name: Deploy script to Bunny Edge Scripting
-        uses: BunnyWay/actions/deploy-script@cfed0ba7842c85686d0dc3a83d8d971991a752f6 # deploy-script@0.5.0
+        uses: BunnyWay/actions/deploy-script@cfed0ba7842c85686d0dc3a83d8d971991a752f6 # v0.5.0 (deploy-script@0.5.0)
         with:
-          script_id: ${{ secrets.BUNNY_STAGING_SCRIPT_ID }}
-          deploy_key: ${{ secrets.BUNNY_STAGING_DEPLOY_KEY }}
-          file: edge-script/dist/index.ts
+          script_id: ${{ secrets.WEBSITE_BUNNY_STAGING_SCRIPT_ID }}
+          deploy_key: ${{ secrets.WEBSITE_BUNNY_STAGING_DEPLOY_KEY }}
+          file: website/edge-script/dist/index.ts

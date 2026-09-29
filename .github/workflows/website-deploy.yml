@@ -1,13 +1,16 @@
-name: Deploy to bunny.net
+name: Website production deployment
 
 on:
   push:
     branches: [main]
+    paths:
+      - 'website/**'
+      - '.github/workflows/website-deploy.yml'
   workflow_dispatch:
 
 # Avoid overlapping deploys racing to upload to the same storage zone.
 concurrency:
-  group: deploy-bunny
+  group: website-production
   cancel-in-progress: true
 
 permissions: {}
@@ -16,6 +19,9 @@ jobs:
   deploy-site:
     name: Deploy site
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: website
     permissions:
       contents: read
     steps:
@@ -31,6 +37,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+          cache-dependency-path: website/pnpm-lock.yaml
 
       - run: pnpm install --frozen-lockfile
 
@@ -38,9 +45,9 @@ jobs:
 
       - run: node scripts/deploy-bunny.mjs
         env:
-          BUNNY_STORAGE_PASSWORD: ${{ secrets.BUNNY_STORAGE_PASSWORD }}
-          BUNNY_PULLZONE_ID: ${{ secrets.BUNNY_PULLZONE_ID }}
-          BUNNY_API_KEY: ${{ secrets.BUNNY_API_KEY }}
+          BUNNY_STORAGE_PASSWORD: ${{ secrets.WEBSITE_BUNNY_STORAGE_PASSWORD }}
+          BUNNY_PULLZONE_ID: ${{ secrets.WEBSITE_BUNNY_PULLZONE_ID }}
+          BUNNY_API_KEY: ${{ secrets.WEBSITE_BUNNY_API_KEY }}
 
   deploy-edge-script:
     name: Deploy edge script
@@ -57,16 +64,16 @@ jobs:
           deno-version: v2.x
 
       - name: Type-check
-        working-directory: edge-script
+        working-directory: website/edge-script
         run: deno check src/main.ts
 
       - name: Bundle
-        working-directory: edge-script
+        working-directory: website/edge-script
         run: deno task build
 
       - name: Deploy script to Bunny Edge Scripting
-        uses: BunnyWay/actions/deploy-script@cfed0ba7842c85686d0dc3a83d8d971991a752f6 # deploy-script@0.5.0
+        uses: BunnyWay/actions/deploy-script@cfed0ba7842c85686d0dc3a83d8d971991a752f6 # v0.5.0 (deploy-script@0.5.0)
         with:
-          script_id: ${{ secrets.BUNNY_SCRIPT_ID }}
-          deploy_key: ${{ secrets.BUNNY_DEPLOY_KEY }}
-          file: edge-script/dist/index.ts
+          script_id: ${{ secrets.WEBSITE_BUNNY_SCRIPT_ID }}
+          deploy_key: ${{ secrets.WEBSITE_BUNNY_DEPLOY_KEY }}
+          file: website/edge-script/dist/index.ts

@@ -4,8 +4,10 @@
 #   - caddy-dns/bunny: DNS-01 ACME via Bunny.net, opt-in via Caddyfile.bunny.
 FROM caddy:2.10-builder AS builder
 
+COPY caddy-permissive-file-storage /src
+
 RUN xcaddy build v2.10.0 \
-    --with github.com/Shroud-email/caddy-permissive-file-storage@main \
+    --with github.com/Shroud-email/caddy-permissive-file-storage=/src \
     --with github.com/caddy-dns/bunny@v1.2.0
 
 # Production image

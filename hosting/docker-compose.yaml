@@ -94,7 +94,9 @@ services:
       - CAP_SECRET_KEY=${CAP_SECRET_KEY}
 
   caddy:
-    build: ./caddy
+    build:
+      context: ..
+      dockerfile: hosting/caddy/Dockerfile
     restart: unless-stopped
     environment:
       - ADMIN_EMAIL=${ADMIN_EMAIL}
