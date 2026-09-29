@@ -1,0 +1,3 @@
+# xcaddy build creates this temp directory during builds and cleans it up
+# itself; guard against a stray one left behind by an interrupted build.
+buildenv_*/
