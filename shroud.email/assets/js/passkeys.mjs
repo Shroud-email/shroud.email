@@ -17,11 +17,12 @@ export async function setupPasskeys({ document, window, fetch }) {
   const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute("content");
   const supported = !!(window.PublicKeyCredential && window.navigator.credentials);
 
-  async function post(url, body, redirect = "follow") {
+  async function post(url, body, redirect = "follow", signal) {
     const response = await fetch(url, {
       method: "POST",
       credentials: "same-origin",
       redirect,
+      signal,
       headers: { "content-type": "application/json", "x-csrf-token": csrf },
       body: JSON.stringify(body),
     });
@@ -98,14 +99,17 @@ export async function setupPasskeys({ document, window, fetch }) {
 
   if (addForm) {
     const status = document.getElementById("passkey-status");
+    const submit = document.getElementById("add-passkey-submit");
 
     addForm.addEventListener("submit", async event => {
       event.preventDefault();
+      if (submit.disabled) return;
       if (!supported || !window.navigator.credentials.create) {
         status.dataset.state = "error";
         status.textContent = "This browser does not support passkeys. You can still use your password.";
         return;
       }
+      submit.disabled = true;
       status.dataset.state = "pending";
       status.textContent = "Preparing your passkey…";
       let timer;
@@ -125,20 +129,26 @@ export async function setupPasskeys({ document, window, fetch }) {
         };
 
         const controller = new AbortController();
-        status.textContent = "Waiting for your passkey…";
-        timer = window.setTimeout(() => {
+        const onTimeout = () => {
           timedOut = true;
           status.dataset.state = "error";
           status.textContent = "Passkey request timed out. Please try again.";
           controller.abort();
-        }, 60_000);
+        };
+        status.textContent = "Waiting for your passkey…";
+        timer = window.setTimeout(onTimeout, 60_000);
         const credential = await window.navigator.credentials.create({ publicKey: options, signal: controller.signal });
+        if (timedOut) return;
+        window.clearTimeout(timer);
+        status.textContent = "Saving your passkey…";
+        timer = window.setTimeout(onTimeout, 60_000);
         await post("/settings/passkeys", {
           token,
           rawId: encodeBase64(credential.rawId),
           attestationObject: encodeBase64(credential.response.attestationObject),
           clientDataJSON: encodeBase64(credential.response.clientDataJSON),
-        });
+        }, "follow", controller.signal);
+        if (timedOut) return;
         window.location.assign("/settings/security");
       } catch (error) {
         if (!timedOut) {
@@ -149,6 +159,7 @@ export async function setupPasskeys({ document, window, fetch }) {
         }
       } finally {
         if (timer !== undefined) window.clearTimeout(timer);
+        submit.disabled = false;
       }
     });
   }

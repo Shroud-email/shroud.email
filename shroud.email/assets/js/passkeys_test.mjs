@@ -21,6 +21,7 @@ function environment({ login = true, supported = true, credentials } = {}) {
   } else {
     elements["add-passkey-form"] = element({ action: "/settings/passkeys/options" });
     elements["add-passkey-password"] = element({ value: "a valid password" });
+    elements["add-passkey-submit"] = element({ disabled: false });
     elements["passkey-status"] = element({ textContent: "", dataset: {} });
   }
 
@@ -154,6 +155,60 @@ test("enrollment sends binary attestation after requesting discoverable user-ver
   assert.equal(requests[0].options.headers["x-csrf-token"], "csrf");
 });
 
+test("enrollment remains disabled while saving and restores the button on failure", async () => {
+  let rejectSave;
+  let saving;
+  const savingStarted = new Promise(resolve => { saving = resolve; });
+  const env = environment({ login: false, credentials: { create: async () => ({
+    rawId: Uint8Array.from([9]).buffer,
+    response: { attestationObject: Uint8Array.from([7]).buffer, clientDataJSON: Uint8Array.from([8]).buffer },
+  }) } });
+  const fetch = async url => url.endsWith("/options")
+    ? { ok: true, json: async () => ({ token: "signed-token", publicKey: {
+      challenge: "AQID", user: { id: "BAUG" }, excludeCredentials: [],
+    } }) }
+    : new Promise((_, reject) => { rejectSave = reject; saving(); });
+
+  await setupPasskeys({ ...env, fetch });
+  const submission = env.elements["add-passkey-form"].handlers.submit({ preventDefault() {} });
+  await savingStarted;
+  assert.equal(env.elements["add-passkey-submit"].disabled, true);
+  assert.match(env.elements["passkey-status"].textContent, /Saving your passkey/);
+  rejectSave(new Error("network unavailable"));
+  await submission;
+  assert.equal(env.elements["add-passkey-submit"].disabled, false);
+  assert.equal(env.elements["passkey-status"].dataset.state, "error");
+});
+
+test("saving an enrolled passkey times out and becomes retryable", async () => {
+  let timeout;
+  let saving;
+  const savingStarted = new Promise(resolve => { saving = resolve; });
+  const env = environment({ login: false, credentials: { create: async () => ({
+    rawId: Uint8Array.from([9]).buffer,
+    response: { attestationObject: Uint8Array.from([7]).buffer, clientDataJSON: Uint8Array.from([8]).buffer },
+  }) } });
+  env.window.setTimeout = callback => { timeout = callback; return 1; };
+  env.window.clearTimeout = () => {};
+  const fetch = async (url, options) => url.endsWith("/options")
+    ? { ok: true, json: async () => ({ token: "signed-token", publicKey: {
+      challenge: "AQID", user: { id: "BAUG" }, excludeCredentials: [],
+    } }) }
+    : new Promise((_, reject) => {
+      saving();
+      options.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+    });
+
+  await setupPasskeys({ ...env, fetch });
+  const submission = env.elements["add-passkey-form"].handlers.submit({ preventDefault() {} });
+  await savingStarted;
+  assert.match(env.elements["passkey-status"].textContent, /Saving your passkey/);
+  timeout();
+  await submission;
+  assert.match(env.elements["passkey-status"].textContent, /timed out.*try again/i);
+  assert.equal(env.elements["add-passkey-submit"].disabled, false);
+});
+
 test("stalled enrollment reports a timeout and allows another attempt", async () => {
   let timeout;
   let credentialStarted;
@@ -179,10 +234,12 @@ test("stalled enrollment reports a timeout and allows another attempt", async ()
   const submission = env.elements["add-passkey-form"].handlers.submit({ preventDefault() {} });
   await started;
   assert.match(env.elements["passkey-status"].textContent, /Waiting/);
+  assert.equal(env.elements["add-passkey-submit"].disabled, true);
   timeout();
   await submission;
 
   assert.match(env.elements["passkey-status"].textContent, /timed out.*try again/i);
+  assert.equal(env.elements["add-passkey-submit"].disabled, false);
   assert.equal(env.elements["passkey-status"].dataset.state, "error");
   assert.equal(calls, 1);
   await env.elements["add-passkey-form"].handlers.submit({ preventDefault() {} });
