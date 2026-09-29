@@ -1,0 +1,10 @@
+[tools]
+elixir = "1.20.4-otp-28"
+erlang = "28"
+node = "24.8.0"
+pinact = "4.1.0"
+zizmor = "1.25.2"
+
+[tasks.e2e]
+description = "Run Playwright journeys against the production Docker image"
+run = "bash scripts/run_e2e_tests.sh"
