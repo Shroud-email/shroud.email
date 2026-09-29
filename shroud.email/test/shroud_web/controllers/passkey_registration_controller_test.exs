@@ -9,10 +9,6 @@ defmodule ShroudWeb.PasskeyRegistrationControllerTest do
 
   setup :register_and_log_in_user
 
-  setup %{conn: conn} do
-    %{conn: get(conn, ~p"/settings/security")}
-  end
-
   test "only a confirmed user with current password may start enrollment", %{conn: conn} do
     path = ~p"/settings/passkeys/options"
     assert json_response(post(conn, path, %{current_password: "wrong"}), 403)
@@ -125,7 +121,12 @@ defmodule ShroudWeb.PasskeyRegistrationControllerTest do
   end
 
   test "canceled or malformed enrollment creates no credential", %{conn: conn, user: user} do
-    conn = post(conn, ~p"/settings/passkeys/options", %{current_password: valid_user_password()})
+    conn =
+      conn
+      |> get(~p"/settings/security")
+      |> recycle()
+      |> post(~p"/settings/passkeys/options", %{current_password: valid_user_password()})
+
     token = json_response(conn, 200)["token"]
 
     assert json_response(

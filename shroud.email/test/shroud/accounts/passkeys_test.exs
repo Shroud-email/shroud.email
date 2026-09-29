@@ -4,6 +4,7 @@ defmodule Shroud.Accounts.PasskeysTest do
   alias Config.Reader
   alias Ecto.Adapters.SQL
   alias Shroud.Accounts.{PasskeyChallenge, PasskeyProxyResolver, Passkeys}
+  import ExUnit.CaptureLog
   import Shroud.AccountsFixtures
   import Shroud.PasskeyFixtures
 
@@ -98,59 +99,55 @@ defmodule Shroud.Accounts.PasskeysTest do
   end
 
   test "a configured proxy hostname trusts only its resolved peer" do
-    previous_hosts = Application.fetch_env(:shroud, :passkey_trusted_proxy_hosts)
-    previous_resolved = Application.fetch_env(:shroud, :passkey_resolved_proxy_ips)
-    Application.put_env(:shroud, :passkey_trusted_proxy_hosts, ["localhost"])
+    resolver =
+      start_supervised!(
+        {PasskeyProxyResolver,
+         name: :passkey_test_proxy_resolver, table: :passkey_test_proxy_ips, hosts: ["localhost"]}
+      )
 
-    on_exit(fn ->
-      case previous_hosts do
-        {:ok, hosts} -> Application.put_env(:shroud, :passkey_trusted_proxy_hosts, hosts)
-        :error -> Application.delete_env(:shroud, :passkey_trusted_proxy_hosts)
-      end
-
-      case previous_resolved do
-        {:ok, ips} -> Application.put_env(:shroud, :passkey_resolved_proxy_ips, ips)
-        :error -> Application.delete_env(:shroud, :passkey_resolved_proxy_ips)
-      end
-    end)
-
-    resolver = start_supervised!({PasskeyProxyResolver, name: :passkey_test_proxy_resolver})
     send(resolver, :refresh)
     :sys.get_state(resolver)
 
     conn = Plug.Test.conn(:post, "/users/passkeys/options")
     conn = Plug.Conn.put_req_header(conn, "x-forwarded-for", "198.51.100.2")
-    assert Passkeys.request_ip(%{conn | remote_ip: {127, 0, 0, 1}}) == {198, 51, 100, 2}
-    assert Passkeys.request_ip(%{conn | remote_ip: {192, 0, 2, 41}}) == {192, 0, 2, 41}
 
-    Application.put_env(:shroud, :passkey_trusted_proxy_hosts, [])
-    send(resolver, :refresh)
-    :sys.get_state(resolver)
-    assert Passkeys.request_ip(%{conn | remote_ip: {127, 0, 0, 1}}) == {127, 0, 0, 1}
+    assert Passkeys.request_ip(%{conn | remote_ip: {127, 0, 0, 1}}, :passkey_test_proxy_ips) ==
+             {198, 51, 100, 2}
+
+    assert Passkeys.request_ip(%{conn | remote_ip: {192, 0, 2, 41}}, :passkey_test_proxy_ips) ==
+             {192, 0, 2, 41}
   end
 
-  test "proxy checks use resolved peers without looking up DNS during a request" do
-    previous_hosts = Application.fetch_env(:shroud, :passkey_trusted_proxy_hosts)
-    previous_resolved = Application.fetch_env(:shroud, :passkey_resolved_proxy_ips)
-    Application.put_env(:shroud, :passkey_trusted_proxy_hosts, ["unresolvable.invalid"])
-    Application.put_env(:shroud, :passkey_resolved_proxy_ips, [{192, 0, 2, 41}])
+  test "resolver snapshots are owned by their worker, not application configuration" do
+    resolver =
+      start_supervised!(
+        {PasskeyProxyResolver,
+         name: :passkey_isolated_resolver, table: :passkey_isolated_ips, hosts: ["localhost"]}
+      )
 
-    on_exit(fn ->
-      for {key, previous} <- [
-            {:passkey_trusted_proxy_hosts, previous_hosts},
-            {:passkey_resolved_proxy_ips, previous_resolved}
-          ] do
-        case previous do
-          {:ok, value} -> Application.put_env(:shroud, key, value)
-          :error -> Application.delete_env(:shroud, key)
-        end
-      end
-    end)
+    send(resolver, :refresh)
+    :sys.get_state(resolver)
 
-    conn = Plug.Test.conn(:post, "/users/passkeys/options")
-    conn = Plug.Conn.put_req_header(conn, "x-forwarded-for", "198.51.100.2")
-    assert Passkeys.request_ip(%{conn | remote_ip: {192, 0, 2, 41}}) == {198, 51, 100, 2}
-    assert Passkeys.request_ip(%{conn | remote_ip: {192, 0, 2, 42}}) == {192, 0, 2, 42}
+    assert PasskeyProxyResolver.trusted?({127, 0, 0, 1}, :passkey_isolated_ips)
+    refute PasskeyProxyResolver.trusted?({192, 0, 2, 41}, :passkey_isolated_ips)
+    refute PasskeyProxyResolver.trusted?({127, 0, 0, 1})
+  end
+
+  test "an unavailable configured proxy logs a warning" do
+    resolver =
+      start_supervised!(
+        {PasskeyProxyResolver,
+         name: :passkey_unavailable_resolver, table: :passkey_unavailable_ips, hosts: [""]}
+      )
+
+    log =
+      capture_log(fn ->
+        send(resolver, :refresh)
+        :sys.get_state(resolver)
+      end)
+
+    assert log =~ "Passkey trusted proxy"
+    refute PasskeyProxyResolver.trusted?({127, 0, 0, 1}, :passkey_unavailable_ips)
   end
 
   test "verification-only rate-limit traffic prunes expired minute rows" do

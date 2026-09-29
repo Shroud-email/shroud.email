@@ -2,15 +2,15 @@ defmodule Shroud.Accounts.Passkeys do
   import Ecto.Query
 
   alias Ecto.Adapters.SQL
-  alias Shroud.Accounts.{PasskeyChallenge, PasskeyCredential, User}
+  alias Shroud.Accounts.{PasskeyChallenge, PasskeyCredential, PasskeyProxyResolver, User}
   alias Shroud.Repo
 
   @challenge_timeout 300
 
-  def request_ip(conn) do
+  def request_ip(conn, proxy_table \\ PasskeyProxyResolver) do
     peer = conn.remote_ip
 
-    if trusted_proxy?(peer) do
+    if trusted_proxy?(peer, proxy_table) do
       case Plug.Conn.get_req_header(conn, "x-forwarded-for") do
         [header] ->
           header
@@ -32,9 +32,9 @@ defmodule Shroud.Accounts.Passkeys do
     end
   end
 
-  defp trusted_proxy?(peer) do
+  defp trusted_proxy?(peer, proxy_table) do
     peer in Application.get_env(:shroud, :passkey_trusted_proxies, []) or
-      peer in Application.get_env(:shroud, :passkey_resolved_proxy_ips, [])
+      PasskeyProxyResolver.trusted?(peer, proxy_table)
   end
 
   def allow_request?(remote_ip, kind) when kind in [:options, :verify] do
