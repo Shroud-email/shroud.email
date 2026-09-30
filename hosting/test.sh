@@ -46,7 +46,7 @@ cp -r "$hosting/haraka/haraka_config" "$scratch/haraka"
 printf 'example.com\n' > "$scratch/haraka/config/me"
 certdir="$scratch/caddy/certificates/acme-v02.api.letsencrypt.org-directory/example.com"
 copy_certs() {
-  docker run --rm -e EMAIL_DOMAIN=example.com \
+  docker run --rm --user "$(id -u):$(id -g)" -e EMAIL_DOMAIN=example.com \
     -v "$scratch/caddy:/caddy:ro" -v "$scratch/pem:/pem" \
     -v "$scratch/haraka/config:/haraka-config" \
     shroud-cron:test /workdir/bundle_certs.sh
