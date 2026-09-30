@@ -144,7 +144,7 @@ defmodule ShroudWeb.UserSettingsLive do
 
   def handle_event("add_passkey", params, socket) do
     user = Repo.reload!(socket.assigns.current_user)
-    password = get_in(params, ["passkey", "current_password"])
+    password = passkey_password(params)
     socket = socket |> cancel_passkey() |> assign(:passkey_password_error, nil)
 
     cond do
@@ -267,7 +267,7 @@ defmodule ShroudWeb.UserSettingsLive do
         is_nil(user.confirmed_at) ->
           {:noreply, assign(socket, :passkey_password_error, "Could not remove passkey.")}
 
-        not User.valid_password?(user, get_in(params, ["passkey", "current_password"])) ->
+        not User.valid_password?(user, passkey_password(params)) ->
           {:noreply,
            assign(socket, :passkey_password_error, "Incorrect password. Please try again.")}
 
@@ -419,6 +419,12 @@ defmodule ShroudWeb.UserSettingsLive do
   end
 
   defp configured?(value), do: is_binary(value) and value != ""
+
+  defp passkey_password(%{"passkey" => %{"current_password" => password}})
+       when is_binary(password) and byte_size(password) in 1..72,
+       do: password
+
+  defp passkey_password(_), do: nil
 
   defp open_passkey_dialog(socket, dialog) do
     socket

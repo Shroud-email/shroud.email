@@ -57,12 +57,14 @@ defmodule Shroud.Accounts.Passkeys do
          {:ok, {auth_data, _attestation_result}} <-
            verify_registration(attestation, client_data, challenge),
          %{credential_id: id, credential_public_key: key} <- auth_data.attested_credential_data,
+         true <- is_binary(id) and byte_size(id) in 1..1_024,
          true <- is_nil(raw_id) or raw_id == id,
+         {:ok, public_key} <- encode_public_key(key),
          {:ok, credential} <-
            %PasskeyCredential{user_id: user.id}
            |> PasskeyCredential.changeset(%{
              credential_id: id,
-             public_key: encode_public_key(key),
+             public_key: public_key,
              label: label,
              sign_count: auth_data.sign_count
            })
@@ -122,12 +124,41 @@ defmodule Shroud.Accounts.Passkeys do
   end
 
   defp encode_public_key(key) do
-    key
-    |> Map.new(fn {k, value} ->
-      {k, if(is_binary(value), do: %CBOR.Tag{tag: :bytes, value: value}, else: value)}
-    end)
-    |> CBOR.encode()
+    with {:ok, fields} <- public_key_fields(key) do
+      encoded =
+        key
+        |> Map.take(fields)
+        |> Map.new(fn {k, value} ->
+          {k, if(is_binary(value), do: %CBOR.Tag{tag: :bytes, value: value}, else: value)}
+        end)
+        |> CBOR.encode()
+
+      {:ok, encoded}
+    end
   end
+
+  defp public_key_fields(%{1 => 2, 3 => -7, -1 => 1, -2 => x, -3 => y})
+       when is_binary(x) and byte_size(x) == 32 and is_binary(y) and byte_size(y) == 32 do
+    # ECDH validates that the supplied point belongs to P-256.
+    :crypto.compute_key(:ecdh, <<4, x::binary, y::binary>>, <<1>>, :secp256r1)
+    {:ok, [1, 3, -1, -2, -3]}
+  rescue
+    _ in [ErlangError, ArgumentError] -> {:error, :invalid_key}
+  end
+
+  defp public_key_fields(%{1 => 3, 3 => -257, -1 => n, -2 => e})
+       when is_binary(n) and byte_size(n) in 256..1_024 and is_binary(e) and
+              byte_size(e) in 1..8 do
+    modulus = :binary.decode_unsigned(n)
+    exponent = :binary.decode_unsigned(e)
+
+    if modulus >= Integer.pow(2, 2047) and rem(modulus, 2) == 1 and
+         exponent >= 3 and rem(exponent, 2) == 1 and exponent < modulus,
+       do: {:ok, [1, 3, -1, -2]},
+       else: {:error, :invalid_key}
+  end
+
+  defp public_key_fields(_), do: {:error, :invalid_key}
 
   defp decode_public_key(binary) do
     case CBOR.decode(binary) do
@@ -152,25 +183,16 @@ defmodule Shroud.Accounts.Passkeys do
   end
 
   defp update_counter(credential, new_count) do
-    old_count = credential.sign_count
-
-    cond do
-      old_count > 0 and new_count > 0 and new_count <= old_count ->
-        {:error, :counter_rollback}
-
-      new_count > old_count ->
-        case Repo.update_all(
-               from(c in PasskeyCredential,
-                 where: c.id == ^credential.id and c.sign_count < ^new_count
-               ),
-               set: [sign_count: new_count]
-             ) do
-          {1, _} -> :ok
-          _ -> {:error, :counter_rollback}
-        end
-
-      true ->
-        :ok
+    case Repo.update_all(
+           from(c in PasskeyCredential,
+             where:
+               c.id == ^credential.id and
+                 ((c.sign_count == 0 and ^new_count == 0) or c.sign_count < ^new_count)
+           ),
+           set: [sign_count: new_count]
+         ) do
+      {1, _} -> :ok
+      _ -> {:error, :counter_rollback}
     end
   end
 

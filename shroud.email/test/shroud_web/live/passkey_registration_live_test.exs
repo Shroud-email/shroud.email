@@ -156,8 +156,14 @@ defmodule ShroudWeb.PasskeyRegistrationLiveTest do
     assert Accounts.list_passkeys(user) == []
 
     view |> element("#add-passkey-button") |> render_click()
-    refute has_element?(view, "#passkey-confirm[disabled]")
+    assert has_element?(view, "#passkey-dialog")
+    assert has_element?(view, "#add-passkey-form")
+    assert has_element?(view, "#passkey-confirm:not([disabled])")
     refute has_element?(view, "#passkey-password-error")
+
+    render_hook(view, "passkey_registered", response(authorize(view)))
+    assert_reply(view, %{})
+    assert [_credential] = Accounts.list_passkeys(user)
   end
 
   test "malformed responses consume authorization and cannot be replayed", %{
@@ -248,6 +254,49 @@ defmodule ShroudWeb.PasskeyRegistrationLiveTest do
     render_submit(view, "add_passkey", %{passkey: %{current_password: valid_user_password()}})
     assert has_element?(view, "#passkey-status[data-state=error]", "Could not authorize")
     refute_push_event(view, "passkey-register", _)
+  end
+
+  test "unsupported browsers see an explanation inside the add dialog", %{view: view} do
+    render_hook(view, "passkey_supported", %{supported: false})
+    view |> element("#add-passkey-button") |> render_click()
+    assert has_element?(view, "#passkey-dialog")
+    assert has_element?(view, "#passkey-confirm[disabled]")
+    assert has_element?(view, "#passkey-dialog-status", "This browser does not support passkeys")
+  end
+
+  test "malformed passwords fail inline without crashing or authorizing enrollment", %{
+    view: view,
+    user: user
+  } do
+    view |> element("#add-passkey-button") |> render_click()
+
+    for value <- [
+          nil,
+          "unexpected",
+          [],
+          %{},
+          %{"current_password" => []},
+          %{"current_password" => String.duplicate("x", 73)}
+        ] do
+      render_submit(view, "add_passkey", %{"passkey" => value})
+      assert has_element?(view, "#passkey-password-error", "Incorrect password")
+      refute_push_event(view, "passkey-register", _)
+    end
+
+    render_hook(view, "passkey_registered", response(authorize(view)))
+    assert_reply(view, %{})
+    [credential] = Accounts.list_passkeys(user)
+    view |> element("#remove-passkey-button-#{credential.id}") |> render_click()
+
+    for value <- ["unexpected", [], %{"current_password" => %{}}] do
+      render_submit(view, "remove_passkey", %{
+        "credential_id" => Base.url_encode64(credential.credential_id, padding: false),
+        "passkey" => value
+      })
+
+      assert has_element?(view, "#passkey-password-error", "Incorrect password")
+      assert Accounts.get_passkey(credential.credential_id)
+    end
   end
 
   defp authorize(view) do

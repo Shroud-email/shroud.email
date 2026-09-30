@@ -1,8 +1,8 @@
 defmodule Shroud.PasskeyFixtures do
-  def registration_response(options) do
+  def registration_response(options, opts \\ []) do
     {public, _private} = :crypto.generate_key(:ecdh, :secp256r1)
     <<4, x::binary-size(32), y::binary-size(32)>> = public
-    id = :crypto.strong_rand_bytes(32)
+    id = Keyword.get(opts, :id, :crypto.strong_rand_bytes(32))
 
     key = %{
       1 => 2,
@@ -12,6 +12,7 @@ defmodule Shroud.PasskeyFixtures do
       -3 => %CBOR.Tag{tag: :bytes, value: y}
     }
 
+    key = Keyword.get(opts, :key, key)
     credential_data = <<0::128, byte_size(id)::16, id::binary>> <> CBOR.encode(key)
     auth_data = :crypto.hash(:sha256, "localhost") <> <<0x45, 0::32>> <> credential_data
 

@@ -288,7 +288,11 @@
             )
           ]}
         >
-          {@passkey_status}
+          <%= if @passkey_dialog.action == :add && !@passkey_supported do %>
+            This browser does not support passkeys. You can still use your password.
+          <% else %>
+            {@passkey_status}
+          <% end %>
         </p>
       </div>
       <:buttons>
