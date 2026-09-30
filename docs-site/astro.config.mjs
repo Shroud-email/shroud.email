@@ -5,6 +5,7 @@ import starlightOpenAPI, { openAPISidebarGroups } from "starlight-openapi";
 export default defineConfig({
   site: "https://docs.shroud.email",
   trailingSlash: "always",
+  server: { allowedHosts: [".onamp.dev"] },
   integrations: [
     starlight({
       title: "Shroud.email",
