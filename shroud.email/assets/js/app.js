@@ -39,13 +39,31 @@ Alpine.start();
 initTheme();
 window.setTheme = setTheme;
 
-setupPaddleCheckout({ document, window, initializePaddle });
+window.addEventListener("phx:set-theme", (event) => setTheme(event.detail.theme));
+window.addEventListener("shroud:copy", async (event) => {
+  try {
+    await navigator.clipboard.writeText(event.detail.text);
+  } catch {
+    window.alert("Could not copy your backup codes. Please select and copy them manually.");
+  }
+});
 
 let csrfToken = document
   .querySelector("meta[name='csrf-token']")
   .getAttribute("content");
 let liveSocket = new LiveSocket("/live", Socket, {
-  hooks: { Modal, Notification },
+  hooks: {
+    Modal,
+    Notification,
+    PaddleCheckout: {
+      mounted() {
+        this.cleanup = setupPaddleCheckout({ document, window, initializePaddle });
+      },
+      destroyed() {
+        this.cleanup.dispose();
+      },
+    },
+  },
   params: { _csrf_token: csrfToken },
   dom: {
     onBeforeElUpdated(from, to) {

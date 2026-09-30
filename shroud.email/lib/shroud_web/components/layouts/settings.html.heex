@@ -1,96 +1,36 @@
 <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
   <.logging_warning current_user={@current_user} />
-  <p :if={Flash.get(@flash, :info)} class="alert alert-info mb-6" role="alert">
+  <p :if={Flash.get(@flash, :info)} id="settings-info" class="alert alert-info mb-6" role="alert">
     {Flash.get(@flash, :info)}
   </p>
-  <p :if={Flash.get(@flash, :error)} class="alert alert-error mb-6" role="alert">
+  <p :if={Flash.get(@flash, :error)} id="settings-error" class="alert alert-error mb-6" role="alert">
     {Flash.get(@flash, :error)}
   </p>
   <div class="lg:grid lg:grid-cols-12 lg:gap-x-5">
     <aside class="px-2 sm:px-6 lg:px-0 lg:col-span-3">
-      <nav class="space-y-1">
+      <nav class="space-y-1" aria-label="Settings">
         <.link
-          patch={~p"/settings/account"}
-          class={active_class(
-            @conn,
-            ~p"/settings/account",
+          :for={{action, label, icon, path} <- [
+            {:account, "Account", :user_circle, ~p"/settings/account"},
+            {:security, "Security", :key, ~p"/settings/security"},
+            {:appearance, "Appearance", :paint_brush, ~p"/settings/appearance"},
+            {:billing, "Plan & Billing", :credit_card, ~p"/settings/billing"}
+          ]}
+          id={"settings-nav-#{action}"}
+          patch={path}
+          aria-current={if @live_action == action or (action == :billing and @live_action == :lifetime), do: "page"}
+          class={[
             "text-gray-900 hover:text-gray-900 hover:bg-gray-50 group rounded-md px-3 py-2 flex items-center text-sm font-medium dark:text-gray-100 dark:hover:text-gray-100 dark:hover:bg-gray-700",
-            "bg-gray-50 text-indigo-700 hover:text-indigo-700 hover:bg-white dark:bg-gray-700 dark:text-indigo-400 dark:hover:text-indigo-400 dark:hover:bg-gray-600"
-          )}
+            (@live_action == action or (action == :billing and @live_action == :lifetime)) &&
+              "bg-gray-50 text-indigo-700 hover:text-indigo-700 hover:bg-white dark:bg-gray-700 dark:text-indigo-400 dark:hover:text-indigo-400 dark:hover:bg-gray-600"
+          ]}
         >
-          <.icon name={:user_circle} class={active_class(
-            @conn,
-            ~p"/settings/account",
-            "text-gray-400 group-hover:text-gray-500 shrink-0 -ml-1 mr-3 h-6 w-6",
-            "text-indigo-500 group-hover:text-indigo-500"
-          )} />
-          <span class="truncate">
-            Account
-          </span>
-        </.link>
-
-        <.link
-          patch={~p"/settings/security"}
-          class={active_class(
-            @conn,
-            ~p"/settings/security",
-            "text-gray-900 hover:text-gray-900 hover:bg-gray-50 group rounded-md px-3 py-2 flex items-center text-sm font-medium dark:text-gray-100 dark:hover:text-gray-100 dark:hover:bg-gray-700",
-            "bg-gray-50 text-indigo-700 hover:text-indigo-700 hover:bg-white dark:bg-gray-700 dark:text-indigo-400 dark:hover:text-indigo-400 dark:hover:bg-gray-600"
-          )}
-        >
-          <.icon name={:key} class={active_class(
-            @conn,
-            ~p"/settings/security",
-            "text-gray-400 group-hover:text-gray-500 shrink-0 -ml-1 mr-3 h-6 w-6",
-            "text-indigo-500 group-hover:text-indigo-500"
-          )} />
-          <span class="truncate">
-            Security
-          </span>
-        </.link>
-
-        <.link
-          patch={~p"/settings/appearance"}
-          class={active_class(
-            @conn,
-            ~p"/settings/appearance",
-            "text-gray-900 hover:text-gray-900 hover:bg-gray-50 group rounded-md px-3 py-2 flex items-center text-sm font-medium dark:text-gray-100 dark:hover:text-gray-100 dark:hover:bg-gray-700",
-            "bg-gray-50 text-indigo-700 hover:text-indigo-700 hover:bg-white dark:bg-gray-700 dark:text-indigo-400 dark:hover:text-indigo-400 dark:hover:bg-gray-600"
-          )}
-        >
-          <.icon name={:paint_brush} class={active_class(
-            @conn,
-            ~p"/settings/appearance",
-            "text-gray-400 group-hover:text-gray-500 shrink-0 -ml-1 mr-3 h-6 w-6",
-            "text-indigo-500 group-hover:text-indigo-500"
-          )} />
-          <span class="truncate">
-            Appearance
-          </span>
-        </.link>
-
-        <.link
-          patch={~p"/settings/billing"}
-          class={active_class(
-            @conn,
-            ~p"/settings/billing",
-            "text-gray-900 hover:text-gray-900 hover:bg-gray-50 group rounded-md px-3 py-2 flex items-center text-sm font-medium dark:text-gray-100 dark:hover:text-gray-100 dark:hover:bg-gray-700",
-            "bg-gray-50 text-indigo-700 hover:text-indigo-700 hover:bg-white dark:bg-gray-700 dark:text-indigo-400 dark:hover:text-indigo-400 dark:hover:bg-gray-600"
-          )}
-        >
-          <.icon name={:credit_card} class={active_class(
-            @conn,
-            ~p"/settings/billing",
-            "text-gray-400 group-hover:text-gray-500 shrink-0 -ml-1 mr-3 h-6 w-6",
-            "text-indigo-500 group-hover:text-indigo-500"
-          )} />
-          <span class="truncate">
-            Plan &amp; Billing
-          </span>
+          <.icon name={icon} class={"text-gray-400 group-hover:text-gray-500 shrink-0 -ml-1 mr-3 h-6 w-6 " <>
+            if(@live_action == action or (action == :billing and @live_action == :lifetime), do: "text-indigo-500 group-hover:text-indigo-500", else: "")} />
+          <span class="truncate">{label}</span>
         </.link>
       </nav>
     </aside>
-
     <div class="space-y-6 sm:px-6 lg:px-0 lg:col-span-9">
       {@inner_content}
     </div>

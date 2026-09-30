@@ -42,6 +42,9 @@ function fixture({ token = "test_token", checkout = true, priceId } = {}) {
     addEventListener(name, listener) {
       listeners[name] = listener;
     },
+    removeEventListener(name, listener) {
+      if (listeners[name] === listener) delete listeners[name];
+    },
   };
 
   return { button, document, listeners, priceAmount, priceCurrency };
@@ -235,4 +238,67 @@ test("failed initialization clears the transient price state", async () => {
   });
 
   assert.equal(priceCurrency.textContent, "Price shown at checkout");
+});
+
+test("remounting checkout removes the previous click handler", async () => {
+  const { document, listeners, button } = fixture();
+  let requests = 0;
+  const window = {
+    fetch: async () => {
+      requests++;
+      return { ok: true, json: async () => ({ transaction_id: "txn_123" }) };
+    },
+  };
+  const initializePaddle = async () => ({ Checkout: { open() {} } });
+  const first = setupPaddleCheckout({ document, window, initializePaddle });
+  await first;
+  first.dispose();
+  assert.equal(listeners.click, undefined);
+  await setupPaddleCheckout({ document, window, initializePaddle });
+  await listeners.click({ target: button });
+  assert.equal(requests, 1);
+});
+
+test("disposing during Paddle initialization cancels the pending checkout", async () => {
+  const { document, listeners, button } = fixture();
+  const initialization = Promise.withResolvers();
+  let requests = 0;
+  const opened = [];
+  const checkout = setupPaddleCheckout({
+    document,
+    window: {
+      fetch: async () => { requests++; },
+    },
+    initializePaddle: () => initialization.promise,
+  });
+  const click = listeners.click({ target: button });
+  checkout.dispose();
+  initialization.resolve({ Checkout: { open: (options) => opened.push(options) } });
+  await click;
+  assert.equal(requests, 0);
+  assert.deepEqual(opened, []);
+});
+
+test("disposing during transaction creation prevents opening checkout on another page", async () => {
+  const { document, listeners, button } = fixture();
+  const transaction = Promise.withResolvers();
+  const requested = Promise.withResolvers();
+  const opened = [];
+  const checkout = setupPaddleCheckout({
+    document,
+    window: {
+      fetch: () => {
+        requested.resolve();
+        return transaction.promise;
+      },
+    },
+    initializePaddle: async () => ({ Checkout: { open: (options) => opened.push(options) } }),
+  });
+  await checkout;
+  const click = listeners.click({ target: button });
+  await requested.promise;
+  checkout.dispose();
+  transaction.resolve({ ok: true, json: async () => ({ transaction_id: "txn_123" }) });
+  await click;
+  assert.deepEqual(opened, []);
 });

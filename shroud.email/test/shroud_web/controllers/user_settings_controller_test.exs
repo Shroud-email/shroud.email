@@ -1,7 +1,7 @@
 defmodule ShroudWeb.UserSettingsControllerTest do
   use ShroudWeb.ConnCase, async: true
 
-  alias Shroud.{Accounts, Billing, Repo}
+  alias Shroud.Accounts
   import Shroud.AccountsFixtures
 
   setup :register_and_log_in_user
@@ -20,30 +20,10 @@ defmodule ShroudWeb.UserSettingsControllerTest do
     end
   end
 
-  describe "POST /settings/billing/lifetime" do
-    test "redeems a lifetime code through the settings form", %{conn: conn, user: user} do
-      conn = get(conn, ~p"/settings/billing/lifetime")
-      assert html_response(conn, 200) =~ "Sign up for a lifetime account"
-
-      code = Billing.create_lifetime_code()
-      conn = post(conn, ~p"/settings/billing/lifetime", %{"lifetime_code" => code})
-
-      assert redirected_to(conn) == ~p"/settings/billing"
-
-      assert Flash.get(conn.assigns.flash, :info) ==
-               "You have successfully signed up for lifetime access!"
-
-      conn = get(recycle(conn), ~p"/settings/billing")
-      assert html_response(conn, 200) =~ "You're on a lifetime plan"
-      assert Repo.reload!(user).status == :lifetime
-    end
-  end
-
-  describe "PUT /settings (change password form)" do
+  describe "PUT /settings/password" do
     test "updates the user password and resets tokens", %{conn: conn, user: user} do
       new_password_conn =
-        put(conn, ~p"/settings", %{
-          "action" => "update_password",
+        put(conn, ~p"/settings/password", %{
           "current_password" => valid_user_password(),
           "user" => %{
             "password" => "new valid password",
@@ -59,8 +39,7 @@ defmodule ShroudWeb.UserSettingsControllerTest do
 
     test "does not update password on invalid data", %{conn: conn} do
       old_password_conn =
-        put(conn, ~p"/settings", %{
-          "action" => "update_password",
+        put(conn, ~p"/settings/password", %{
           "current_password" => "invalid",
           "user" => %{
             "password" => "too short",
@@ -68,41 +47,10 @@ defmodule ShroudWeb.UserSettingsControllerTest do
           }
         })
 
-      response = html_response(old_password_conn, 200)
-      assert response =~ "should be at least 12 character(s)"
-      assert response =~ "does not match password"
-      assert response =~ "is not valid"
+      assert redirected_to(old_password_conn) == ~p"/settings/security"
+      assert Flash.get(old_password_conn.assigns.flash, :error) =~ "Password could not be updated"
 
       assert get_session(old_password_conn, :user_token) == get_session(conn, :user_token)
-    end
-  end
-
-  describe "PUT /settings (change email form)" do
-    @tag :capture_log
-    test "updates the user email", %{conn: conn, user: user} do
-      conn =
-        put(conn, ~p"/settings", %{
-          "action" => "update_email",
-          "current_password" => valid_user_password(),
-          "user" => %{"email" => unique_user_email()}
-        })
-
-      assert redirected_to(conn) == ~p"/settings/account"
-      assert Flash.get(conn.assigns.flash, :info) =~ "A link to confirm your email"
-      assert Accounts.get_user_by_email(user.email)
-    end
-
-    test "does not update email on invalid data", %{conn: conn} do
-      conn =
-        put(conn, ~p"/settings", %{
-          "action" => "update_email",
-          "current_password" => "invalid",
-          "user" => %{"email" => "with spaces"}
-        })
-
-      response = html_response(conn, 200)
-      assert response =~ "is invalid"
-      assert response =~ "is not valid"
     end
   end
 

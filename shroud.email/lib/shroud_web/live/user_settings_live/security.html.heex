@@ -1,0 +1,87 @@
+<.form for={@password_form} action={~p"/settings/password"} method="put" phx-submit="update_password" phx-trigger-action={@trigger_password_submit} id="update_password">
+  <div class="shadow-sm dark:shadow-gray-900/50 sm:rounded-md sm:overflow-hidden">
+    <div class="bg-white dark:bg-gray-800 py-6 px-4 space-y-6 sm:p-6">
+      <div>
+        <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100">Password</h3>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Make sure to use a secure password.</p>
+      </div>
+      <div class="grid grid-cols-3 gap-6">
+        <div class="col-span-3">
+          <.input field={@password_form[:password]} label="New password" type="password" autocomplete="new-password" required />
+        </div>
+        <div class="col-span-3">
+          <.input field={@password_form[:password_confirmation]} label="Confirm new password" type="password" autocomplete="new-password" required />
+        </div>
+        <div class="col-span-3">
+          <.input field={@password_form[:current_password]} label="Current password" type="password" name="current_password" id="current_password_for_password" autocomplete="current-password" required />
+        </div>
+      </div>
+    </div>
+    <div class="px-4 py-3 bg-gray-50 dark:bg-gray-700 text-right sm:px-6">
+      <button type="submit" class="btn btn-primary" phx-disable-with="Saving…">Change password</button>
+    </div>
+  </div>
+</.form>
+
+<div class="shadow-sm dark:shadow-gray-900/50 sm:rounded-md sm:overflow-hidden">
+  <div class="bg-white dark:bg-gray-800 py-6 px-4 space-y-6 sm:p-6">
+    <div>
+      <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100">Two-factor authentication</h3>
+      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+        <%= if @current_user.totp_enabled do %>
+          Two-factor authentication is currently <span class="font-bold">enabled</span>.
+          You have {length(@current_user.totp_backup_codes)} backup codes remaining.
+        <% else %>
+          Two-factor authentication is currently <span class="font-bold">disabled</span>.
+        <% end %>
+      </p>
+    </div>
+
+    <%= cond do %>
+      <% !@current_user.totp_enabled and is_nil(@otp_qr_code) -> %>
+        <div class="text-right">
+          <button id="generate_totp_secret" phx-click="generate_totp_secret" class="btn btn-primary">Enable two-factor authentication</button>
+        </div>
+      <% not is_nil(@otp_qr_code) -> %>
+        <p class="mt-1">
+          To enable two-factor authentication, scan the QR code below with a TOTP app
+          like <a href="https://authy.com/" target="_blank" rel="noopener noreferrer">Authy</a>, then enter
+          the authentication code at the bottom.
+        </p>
+        <div id="totp-qr-code" class="flex justify-center my-3">{raw(@otp_qr_code)}</div>
+        <.form for={@totp_form} phx-submit="enable_totp" id="enable_totp">
+          <div class="w-64 mx-auto">
+            <.input field={@totp_form[:verification_code]} label="Verification code" id="verification_code" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="one-time-code" required />
+          </div>
+          <div class="text-right mt-6">
+            <button type="submit" class="btn btn-primary" phx-disable-with="Activating…">Activate two-factor authentication</button>
+          </div>
+        </.form>
+      <% @totp_backup_codes -> %>
+        <div id="totp-backup-codes">
+          <p class="mb-4">
+            You have enabled two-factor authentication. These are your backup codes. Be sure to save them in a safe place.
+            <span class="font-bold">They will only be shown once.</span>
+          </p>
+          <div class="grid grid-cols-1 md:grid-cols-2 w-full gap-3 mb-6">
+            <div :for={backup_code <- @totp_backup_codes} class="font-mono text-center">{backup_code}</div>
+          </div>
+          <div class="text-right space-x-3">
+            <button phx-click={Phoenix.LiveView.JS.dispatch("shroud:copy", detail: %{text: Enum.join(@totp_backup_codes, "\n")})} class="btn btn-primary">Copy backup codes</button>
+            <button id="dismiss-backup-codes" phx-click="dismiss_backup_codes" class="btn btn-secondary">I've saved my backup codes</button>
+          </div>
+        </div>
+      <% @show_disable_totp -> %>
+        <.form for={@totp_form} phx-submit="disable_totp" id="disable_totp">
+          <.input field={@totp_form[:verification_code]} label="Verification code" id="verification_code" inputmode="numeric" pattern="[0-9]{6,8}" minlength="6" maxlength="8" autocomplete="one-time-code" required />
+          <div class="mt-6 text-right">
+            <button type="submit" class="btn btn-primary" phx-disable-with="Disabling…">Disable two-factor authentication</button>
+          </div>
+        </.form>
+      <% true -> %>
+        <div class="text-right">
+          <button id="show-disable-totp" phx-click="show_disable_totp" class="btn btn-white">Disable two-factor authentication</button>
+        </div>
+    <% end %>
+  </div>
+</div>
