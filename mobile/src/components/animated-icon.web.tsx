@@ -4,6 +4,7 @@ import Animated, { Keyframe, Easing } from 'react-native-reanimated';
 
 import classes from './animated-icon.module.css';
 const DURATION = 300;
+const GLOW_DURATION = 60 * 1000 * 4;
 
 export function AnimatedSplashOverlay() {
   return null;
@@ -44,7 +45,7 @@ const glowKeyframe = new Keyframe({
     transform: [{ rotateZ: '-180deg' }, { scale: 0.8 }],
     opacity: 0,
   },
-  [DURATION / 1000]: {
+  [(DURATION / GLOW_DURATION) * 100]: {
     transform: [{ rotateZ: '0deg' }, { scale: 1 }],
     opacity: 1,
     easing: Easing.elastic(0.7),
@@ -57,7 +58,7 @@ const glowKeyframe = new Keyframe({
 export function AnimatedIcon() {
   return (
     <View style={styles.iconContainer}>
-      <Animated.View entering={glowKeyframe.duration(60 * 1000 * 4)} style={styles.glow}>
+      <Animated.View entering={glowKeyframe.duration(GLOW_DURATION)} style={styles.glow}>
         <Image style={styles.glow} source={require('@/assets/images/logo-glow.png')} />
       </Animated.View>
 

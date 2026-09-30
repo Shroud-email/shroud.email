@@ -2,6 +2,12 @@
   "name": "mobile",
   "main": "expo-router/entry",
   "version": "1.0.0",
+  "license": "AGPL-3.0-only",
+  "overrides": {
+    "xcode@3.0.1": {
+      "uuid": "11.1.1"
+    }
+  },
   "dependencies": {
     "@expo/ui": "~57.0.21",
     "expo": "~57.0.26",
@@ -39,7 +45,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "test": "node --test scripts/*.test.js"
   },
   "private": true
 }

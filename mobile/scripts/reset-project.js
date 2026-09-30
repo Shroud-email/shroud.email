@@ -2,7 +2,7 @@
 
 /**
  * This script is used to reset the project to a blank state.
- * It deletes or moves the /src and /scripts directories to /example based on user input and creates a new /src/app directory with an index.tsx and _layout.tsx file.
+ * It deletes or moves /src to /example based on user input and creates a new /src/app directory with an index.tsx and _layout.tsx file.
  * You can remove the `reset-project` script from package.json and safely delete this file after running it.
  */
 
@@ -11,7 +11,7 @@ const path = require("path");
 const readline = require("readline");
 
 const root = process.cwd();
-const oldDirs = ["src", "scripts"];
+const oldDirs = ["src"];
 const exampleDir = "example";
 const newAppDir = "src/app";
 const exampleDirPath = path.join(root, exampleDir);
@@ -97,6 +97,7 @@ const moveDirectories = async (userInput) => {
     );
   } catch (error) {
     console.error(`❌ Error during script execution: ${error.message}`);
+    process.exitCode = 1;
   }
 };
 
@@ -108,6 +109,7 @@ rl.question(
       moveDirectories(userInput).finally(() => rl.close());
     } else {
       console.log("❌ Invalid input. Please enter 'Y' or 'N'.");
+      process.exitCode = 1;
       rl.close();
     }
   }
