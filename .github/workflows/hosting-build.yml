@@ -1,6 +1,10 @@
 name: Hosting images
 on:
   pull_request:
+    paths:
+      - 'hosting/**'
+      - 'caddy-permissive-file-storage/**'
+      - '.github/workflows/hosting-build.yml'
   push:
     branches: [ "main" ]
     paths:

@@ -1,0 +1,6 @@
+{$CAP_DOMAIN} {
+  reverse_proxy cap:3000
+  tls {
+    issuer acme
+  }
+}
