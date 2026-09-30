@@ -230,7 +230,7 @@ if config_env() == :prod do
   if sentry_dsn = System.get_env("SENTRY_DSN") do
     config :sentry,
       dsn: sentry_dsn,
-      environment_name: config_env(),
+      environment_name: System.get_env("SENTRY_ENVIRONMENT") || config_env(),
       release: System.get_env("SENTRY_RELEASE"),
       integrations: [
         oban: [
