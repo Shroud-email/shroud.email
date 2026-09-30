@@ -16,7 +16,6 @@ defmodule ShroudWeb.PasskeyLoginLive do
     {:ok,
      socket
      |> assign(:csrf, csrf)
-     |> assign(:source_ip, Passkeys.request_ip(socket))
      |> assign(:passkey_supported, false)
      |> assign(:current_token, nil)
      |> assign(:error, nil)
@@ -31,23 +30,19 @@ defmodule ShroudWeb.PasskeyLoginLive do
   end
 
   def handle_event("passkey_options", _params, socket) do
-    if Passkeys.allow_request?(socket.assigns.source_ip, :options) do
-      {:ok, options} = Passkeys.begin_authentication()
-      signed = PasskeyChallengeToken.sign(socket.assigns.csrf, options.token)
+    {:ok, options} = Passkeys.begin_authentication()
+    signed = PasskeyChallengeToken.sign(socket.assigns.csrf, options.token)
 
-      {:reply,
-       %{
-         token: signed,
-         publicKey: %{
-           challenge: options.challenge,
-           rpId: options.rp_id,
-           userVerification: "required",
-           timeout: 300_000
-         }
-       }, assign(socket, current_token: signed, error: nil)}
-    else
-      {:reply, %{error: "rate_limited"}, assign(socket, :error, error_message("rate_limited"))}
-    end
+    {:reply,
+     %{
+       token: signed,
+       publicKey: %{
+         challenge: options.challenge,
+         rpId: options.rp_id,
+         userVerification: "required",
+         timeout: 300_000
+       }
+     }, assign(socket, current_token: signed, error: nil)}
   end
 
   def handle_event("passkey_assertion", params, socket) do
@@ -122,7 +117,6 @@ defmodule ShroudWeb.PasskeyLoginLive do
 
   defp secure_token_match?(_, _), do: false
 
-  defp error_message("rate_limited"), do: "Too many passkey attempts. Please try again later."
   defp error_message("timeout"), do: "Passkey request timed out. Please try again."
   defp error_message("canceled"), do: "Passkey sign-in was canceled. Please try again."
 

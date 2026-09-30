@@ -12,8 +12,7 @@ defmodule ShroudWeb.PasskeySessionController do
       end
 
     result =
-      with true <- Passkeys.allow_request?(Passkeys.request_ip(conn), :verify),
-           {:ok, raw_id} <- Passkeys.decode_base64url(params["rawId"]),
+      with {:ok, raw_id} <- Passkeys.decode_base64url(params["rawId"]),
            {:ok, handle} <- Passkeys.decode_base64url(params["userHandle"]),
            {:ok, auth_data} <- Passkeys.decode_base64url(params["authenticatorData"]),
            {:ok, signature} <- Passkeys.decode_base64url(params["signature"]),

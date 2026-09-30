@@ -25,7 +25,6 @@ defmodule ShroudWeb.UserSettingsLive do
         passkey_form: to_form(%{"current_password" => ""}, as: :passkey),
         passkey_dialog: nil,
         passkey_password_error: nil,
-        passkey_source_ip: Passkeys.request_ip(socket),
         passkey_supported: false,
         passkey_token: nil,
         passkey_pending: false,
@@ -149,9 +148,6 @@ defmodule ShroudWeb.UserSettingsLive do
     socket = socket |> cancel_passkey() |> assign(:passkey_password_error, nil)
 
     cond do
-      not Passkeys.allow_request?(socket.assigns.passkey_source_ip, :options) ->
-        {:noreply, passkey_failure(socket, "Too many passkey requests. Please try again later.")}
-
       user.confirmed_at && User.valid_password?(user, password) ->
         {:ok, options} = Passkeys.begin_registration(user)
 
@@ -194,8 +190,7 @@ defmodule ShroudWeb.UserSettingsLive do
     token = socket.assigns.passkey_token
 
     result =
-      with true <- Passkeys.allow_request?(socket.assigns.passkey_source_ip, :verify),
-           true <- user.confirmed_at != nil,
+      with true <- user.confirmed_at != nil,
            true <- authorized_passkey_token?(socket, params["token"]),
            {:ok, attestation} <- Passkeys.decode_base64url(params["attestationObject"]),
            {:ok, client_data} <- Passkeys.decode_base64url(params["clientDataJSON"]),

@@ -35,11 +35,6 @@ portal host when developing through an HTTPS portal. Serve login and Security
 settings on that same host. Without `APP_DOMAIN`, development uses plain HTTP on
 `localhost`; passkeys enrolled on one host cannot be used on another. Apply
 database migrations before enabling passkey enrollment.
-If a reverse proxy terminates HTTPS, set `PASSKEY_TRUSTED_PROXY_HOSTS` to its
-comma-separated internal DNS names (for example, `caddy` in Docker Compose) so
-passkey request limits use the last `X-Forwarded-For` address it supplies. Leave
-it unset for direct traffic. The proxy must append the actual client address to
-that header; only requests from a resolved proxy peer may use it.
 
 To send test emails, use e.g. [Swaks](https://www.jetmore.org/john/code/swaks/):
 ```

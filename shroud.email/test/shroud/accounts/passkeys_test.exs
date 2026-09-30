@@ -1,9 +1,7 @@
 defmodule Shroud.Accounts.PasskeysTest do
   use Shroud.DataCase
 
-  alias Ecto.Adapters.SQL
-  alias Shroud.Accounts.{PasskeyChallenge, PasskeyProxyResolver, Passkeys}
-  import ExUnit.CaptureLog
+  alias Shroud.Accounts.{PasskeyChallenge, Passkeys}
   import Shroud.AccountsFixtures
   import Shroud.PasskeyFixtures
 
@@ -44,14 +42,6 @@ defmodule Shroud.Accounts.PasskeysTest do
     for invalid <- [String.duplicate("A", 24_004), "!", nil, %{}] do
       assert Passkeys.decode_base64url(invalid) == :error
     end
-  end
-
-  test "resolver initializes proxy trust before returning its initial state" do
-    assert {:ok, _state} =
-             PasskeyProxyResolver.init(table: :passkey_boot_ips, hosts: ["localhost"])
-
-    assert PasskeyProxyResolver.trusted?({127, 0, 0, 1}, :passkey_boot_ips)
-    refute PasskeyProxyResolver.trusted?({192, 0, 2, 41}, :passkey_boot_ips)
   end
 
   test "registration challenges are fresh and bound to a user" do
@@ -107,105 +97,6 @@ defmodule Shroud.Accounts.PasskeysTest do
     results = Enum.map(tasks, &Task.await/1)
     assert Enum.count(results, &match?({:ok, _}, &1)) == 1
     assert Enum.count(results, &(&1 == {:error, :invalid_challenge})) == 1
-  end
-
-  test "a configured proxy hostname trusts only its resolved peer" do
-    resolver =
-      start_supervised!(
-        {PasskeyProxyResolver,
-         name: :passkey_test_proxy_resolver, table: :passkey_test_proxy_ips, hosts: ["localhost"]}
-      )
-
-    send(resolver, :refresh)
-    :sys.get_state(resolver)
-
-    conn = Plug.Test.conn(:post, "/users/passkeys/options")
-    conn = Plug.Conn.put_req_header(conn, "x-forwarded-for", "198.51.100.1, 198.51.100.2")
-
-    assert Passkeys.request_ip(%{conn | remote_ip: {127, 0, 0, 1}}, :passkey_test_proxy_ips) ==
-             {198, 51, 100, 2}
-
-    assert Passkeys.request_ip(%{conn | remote_ip: {192, 0, 2, 41}}, :passkey_test_proxy_ips) ==
-             {192, 0, 2, 41}
-
-    minute = div(System.system_time(:second), 60)
-    Application.put_env(:shroud, :passkey_rate_limit_minute, minute)
-    on_exit(fn -> Application.delete_env(:shroud, :passkey_rate_limit_minute) end)
-
-    client = Passkeys.request_ip(%{conn | remote_ip: {127, 0, 0, 1}}, :passkey_test_proxy_ips)
-    for _ <- 1..30, do: assert(Passkeys.allow_request?(client, :options))
-    refute Passkeys.allow_request?(client, :options)
-
-    other_conn = Plug.Conn.put_req_header(conn, "x-forwarded-for", "198.51.100.3")
-
-    other_client =
-      Passkeys.request_ip(%{other_conn | remote_ip: {127, 0, 0, 1}}, :passkey_test_proxy_ips)
-
-    assert Passkeys.allow_request?(other_client, :options)
-  end
-
-  test "resolver snapshots are owned by their worker, not application configuration" do
-    resolver =
-      start_supervised!(
-        {PasskeyProxyResolver,
-         name: :passkey_isolated_resolver, table: :passkey_isolated_ips, hosts: ["localhost"]}
-      )
-
-    send(resolver, :refresh)
-    :sys.get_state(resolver)
-
-    assert PasskeyProxyResolver.trusted?({127, 0, 0, 1}, :passkey_isolated_ips)
-    refute PasskeyProxyResolver.trusted?({192, 0, 2, 41}, :passkey_isolated_ips)
-    refute PasskeyProxyResolver.trusted?({127, 0, 0, 1})
-  end
-
-  test "an unavailable configured proxy logs a warning" do
-    boot_log =
-      capture_log(fn ->
-        start_supervised!(
-          {PasskeyProxyResolver,
-           name: :passkey_unavailable_resolver, table: :passkey_unavailable_ips, hosts: [""]}
-        )
-      end)
-
-    refresh_log =
-      capture_log(fn ->
-        resolver = Process.whereis(:passkey_unavailable_resolver)
-        send(resolver, :refresh)
-        :sys.get_state(resolver)
-      end)
-
-    assert boot_log =~ "Passkey trusted proxy"
-    assert refresh_log =~ "Passkey trusted proxy"
-    refute PasskeyProxyResolver.trusted?({127, 0, 0, 1}, :passkey_unavailable_ips)
-  end
-
-  test "verification-only rate-limit traffic prunes expired minute rows" do
-    minute = div(System.system_time(:second), 60)
-
-    SQL.query!(
-      Repo,
-      "INSERT INTO passkey_rate_limits (source, minute, attempts) VALUES ($1, $2, 1)",
-      [:crypto.strong_rand_bytes(32), minute - 3]
-    )
-
-    assert Passkeys.allow_request?({198, 51, 100, 14}, :verify)
-
-    assert Repo.aggregate(
-             from(r in "passkey_rate_limits", where: r.minute < ^(minute - 2)),
-             :count
-           ) == 0
-  end
-
-  test "rate limits can be exercised in a controlled minute" do
-    minute = div(System.system_time(:second), 60) + 10
-    Application.put_env(:shroud, :passkey_rate_limit_minute, minute)
-    on_exit(fn -> Application.delete_env(:shroud, :passkey_rate_limit_minute) end)
-
-    assert Passkeys.allow_request?({192, 0, 2, 99}, :options)
-
-    assert Repo.aggregate(from(r in "passkey_rate_limits", where: r.minute == ^minute), :count) ==
-             1
   end
 
   test "Wax verifies an actual attestation and persists only its public credential" do

@@ -1,8 +1,7 @@
 defmodule Shroud.Accounts.Passkeys do
   import Ecto.Query
 
-  alias Ecto.Adapters.SQL
-  alias Shroud.Accounts.{PasskeyChallenge, PasskeyCredential, PasskeyProxyResolver, User}
+  alias Shroud.Accounts.{PasskeyChallenge, PasskeyCredential, User}
   alias Shroud.Repo
 
   @challenge_timeout 300
@@ -12,72 +11,6 @@ defmodule Shroud.Accounts.Passkeys do
   end
 
   def decode_base64url(_), do: :error
-
-  def request_ip(source, proxy_table \\ PasskeyProxyResolver)
-
-  def request_ip(%Phoenix.LiveView.Socket{} = socket, proxy_table) do
-    %{address: address} = Phoenix.LiveView.get_connect_info(socket, :peer_data)
-
-    request_ip(
-      %Plug.Conn{
-        remote_ip: address,
-        req_headers: Phoenix.LiveView.get_connect_info(socket, :x_headers) || []
-      },
-      proxy_table
-    )
-  end
-
-  def request_ip(%Plug.Conn{} = conn, proxy_table) do
-    peer = conn.remote_ip
-
-    if PasskeyProxyResolver.trusted?(peer, proxy_table) do
-      case Plug.Conn.get_req_header(conn, "x-forwarded-for") do
-        [header] ->
-          header
-          |> String.split(",")
-          |> List.last()
-          |> String.trim()
-          |> String.to_charlist()
-          |> :inet.parse_address()
-          |> case do
-            {:ok, ip} -> ip
-            _ -> peer
-          end
-
-        _ ->
-          peer
-      end
-    else
-      peer
-    end
-  end
-
-  def allow_request?(remote_ip, kind) when kind in [:options, :verify] do
-    minute =
-      Application.get_env(
-        :shroud,
-        :passkey_rate_limit_minute,
-        div(System.system_time(:second), 60)
-      )
-
-    source = :crypto.hash(:sha256, :erlang.term_to_binary({remote_ip, kind}))
-    limit = if kind == :options, do: 30, else: 60
-
-    %{rows: [[attempts]]} =
-      SQL.query!(
-        Repo,
-        """
-        INSERT INTO passkey_rate_limits (source, minute, attempts) VALUES ($1, $2, 1)
-        ON CONFLICT (source, minute) DO UPDATE SET attempts = passkey_rate_limits.attempts + 1
-        RETURNING attempts
-        """,
-        [source, minute]
-      )
-
-    SQL.query!(Repo, "DELETE FROM passkey_rate_limits WHERE minute < $1", [minute - 2])
-
-    attempts <= limit
-  end
 
   def origin_and_rp_id do
     origin = ShroudWeb.Endpoint.url()

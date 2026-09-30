@@ -132,35 +132,19 @@ defmodule ShroudWeb.PasskeySessionControllerTest do
     assert html_response(context.conn, 200) =~ "login-form"
   end
 
-  test "LiveView options are limited per source address and verification has a separate limit",
-       context do
-    Application.put_env(:shroud, :passkey_rate_limit_minute, div(System.system_time(:second), 60))
-    on_exit(fn -> Application.delete_env(:shroud, :passkey_rate_limit_minute) end)
+  test "repeated options and invalid assertions do not block a valid sign-in", context do
+    for _ <- 1..31, do: assert(options(context.view).token)
     issued = options(context.view)
-    for _ <- 1..29, do: options(context.view)
-    render_hook(context.view, "passkey_options")
-    assert_reply(context.view, %{error: "rate_limited"})
 
-    conn = %{build_conn() | remote_ip: {192, 0, 2, 28}} |> get(~p"/users/log_in")
-    csrf = get_session(conn, :_csrf_token)
+    for _ <- 1..61 do
+      conn = post(recycle(context.conn), ~p"/users/passkeys", %{})
+      assert redirected_to(conn) == "/users/log_in"
+      refute get_session(conn, :user_token)
+    end
 
-    conn =
-      conn
-      |> recycle()
-      |> put_private(:live_view_connect_info, %{
-        peer_data: %{address: {192, 0, 2, 28}},
-        x_headers: []
-      })
-
-    {:ok, other, _} =
-      live_isolated(conn, ShroudWeb.PasskeyLoginLive, session: %{"csrf" => csrf})
-
-    assert options(other).token
-
-    for _ <- 1..60, do: post(recycle(context.conn), ~p"/users/passkeys", %{})
     conn = post(recycle(context.conn), ~p"/users/passkeys", assertion(issued, context))
-    assert redirected_to(conn) == "/users/log_in"
-    refute get_session(conn, :user_token)
+    assert redirected_to(conn) == "/settings/security"
+    assert get_session(conn, :user_token)
   end
 
   defp options(view) do

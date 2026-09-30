@@ -227,38 +227,20 @@ defmodule ShroudWeb.PasskeyRegistrationLiveTest do
     refute has_element?(view, "#passkey-password-error")
   end
 
-  test "registration option issuance is rate limited", %{view: view} do
-    view |> element("#add-passkey-button") |> render_click()
-    Application.put_env(:shroud, :passkey_rate_limit_minute, div(System.system_time(:second), 60))
-    on_exit(fn -> Application.delete_env(:shroud, :passkey_rate_limit_minute) end)
-
-    for _ <- 1..30 do
-      render_submit(view, "add_passkey", %{passkey: %{current_password: "wrong"}})
-      assert has_element?(view, "#passkey-password-error", "Incorrect password")
-    end
-
-    render_submit(view, "add_passkey", %{passkey: %{current_password: valid_user_password()}})
-    assert has_element?(view, "#passkey-dialog-status", "Too many passkey requests")
-    assert Repo.aggregate("passkey_challenges", :count) == 0
-  end
-
-  test "registration verification is independently rate limited before persisting", %{
+  test "invalid responses do not block subsequent authorized enrollment", %{
     view: view,
     user: user
   } do
-    Application.put_env(:shroud, :passkey_rate_limit_minute, div(System.system_time(:second), 60))
-    on_exit(fn -> Application.delete_env(:shroud, :passkey_rate_limit_minute) end)
-
-    for _ <- 1..60 do
+    for _ <- 1..61 do
       render_hook(view, "passkey_registered", %{})
       assert_reply(view, %{error: "invalid_registration"})
     end
 
+    assert Accounts.list_passkeys(user) == []
     options = authorize(view)
     render_hook(view, "passkey_registered", response(options))
-    assert_reply(view, %{error: "invalid_registration"})
-    assert Accounts.list_passkeys(user) == []
-    assert has_element?(view, "#passkey-dialog-status", "Could not add passkey")
+    assert_reply(view, %{})
+    assert [_credential] = Accounts.list_passkeys(user)
   end
 
   test "a user unconfirmed after mounting cannot enroll", %{view: view, user: user} do
