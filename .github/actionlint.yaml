@@ -2,4 +2,3 @@ self-hosted-runner:
   labels:
     - depot-ubuntu-24.04
     - depot-ubuntu-24.04-4
-    - depot-ubuntu-24.04-arm-4

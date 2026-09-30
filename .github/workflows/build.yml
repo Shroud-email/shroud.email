@@ -19,17 +19,9 @@ jobs:
       contents: read
       packages: write
       id-token: write
-    strategy:
-      matrix:
-        platform: [amd64, arm64]
-        include:
-          - platform: amd64
-            runner: depot-ubuntu-24.04-4
-            docker_platform: linux/amd64
-          - platform: arm64
-            runner: depot-ubuntu-24.04-arm-4
-            docker_platform: linux/arm64
-    runs-on: ${{ matrix.runner }}
+    runs-on: depot-ubuntu-24.04
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
     env:
       REGISTRY: ghcr.io
       IMAGE_NAME: shroud-email/shroud.email
@@ -58,9 +50,8 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Base (unsuffixed) tags used for final multi-arch manifest
-      - name: Extract base tags
-        id: meta_base
+      - name: Extract tags and labels
+        id: meta
         uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf # v6.0.0
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
@@ -73,114 +64,18 @@ jobs:
             type=edge,branch=main
             type=sha
 
-      # Arch-suffixed tags pushed by each matrix job (avoids collisions)
-      - name: Extract arch-suffixed tags
-        id: meta_arch
-        uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf # v6.0.0
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          flavor: |
-            latest=false
-            suffix=-${{ matrix.platform }},onlatest=true
-          tags: ${{ steps.meta_base.outputs.tags }}
-
-      - name: Build & push (single-arch)
+      - name: Build & push (multi-arch)
         id: build
         uses: depot/build-push-action@98e78adca7817480b8185f474a400b451d74e287 # v1.18.0
         with:
           project: 40gdpbrdf7
           context: shroud.email
           push: true
-          platforms: ${{ matrix.docker_platform }}
+          platforms: linux/amd64,linux/arm64
           build-args: |
             SENTRY_RELEASE=${{ steps.version.outputs.version }}
-          tags: ${{ steps.meta_arch.outputs.tags }}
-          labels: ${{ steps.meta_base.outputs.labels }}
-
-      # Save the digest produced by this job and the base tag list once
-      - name: Persist digest
-        env:
-          DIGEST: ${{ steps.build.outputs.digest }}
-        run: |
-          echo "$DIGEST" > digest-${{ matrix.platform }}.txt
-        shell: bash
-
-      - name: Upload digest artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: digest-${{ matrix.platform }}
-          path: digest-${{ matrix.platform }}.txt
-
-      - name: Persist base tags (once)
-        if: matrix.platform == 'amd64'
-        env:
-          TAGS: ${{ steps.meta_base.outputs.tags }}
-        run: |
-          echo "$TAGS" > tags.txt
-        shell: bash
-
-      - name: Upload base tags (once)
-        if: matrix.platform == 'amd64'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: tags
-          path: tags.txt
-
-  merge-manifests:
-    name: Merge multi-arch manifests
-    needs: build
-    runs-on: depot-ubuntu-24.04
-    permissions:
-      contents: read
-      packages: write
-    env:
-      REGISTRY: ghcr.io
-      IMAGE_NAME: shroud-email/shroud.email
-    steps:
-      - name: Log in to GHCR
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Download artifacts
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          pattern: "{tags,digest-*}"
-          path: artifacts
-          merge-multiple: true
-
-      - name: Create & push multi-arch manifests (by digest)
-        env:
-          REGISTRY: ${{ env.REGISTRY }}
-          IMAGE_NAME: ${{ env.IMAGE_NAME }}
-        run: |-
-          set -euo pipefail
-
-          AMD_DIGEST="$(cat artifacts/digest-amd64.txt)"
-          ARM_DIGEST="$(cat artifacts/digest-arm64.txt)"
-          TAGS_FILE="artifacts/tags.txt"
-
-          # Ensure lowercase for GHCR (owner/repo can come mixed-case from GitHub)
-          IMAGE_REF="${REGISTRY}/${IMAGE_NAME}"
-          IMAGE_REF="${IMAGE_REF,,}"
-
-          if [[ -z "$AMD_DIGEST" || -z "$ARM_DIGEST" ]]; then
-            echo "Missing digests" >&2
-            exit 1
-          fi
-
-          mapfile -t REFS < "$TAGS_FILE"
-          for ref in "${REFS[@]}"; do
-            tag="${ref##*:}"
-
-            # Compose a multi-arch manifest purely from digests (most reliable)
-            docker buildx imagetools create \
-              -t "${IMAGE_REF}:${tag}" \
-              "${IMAGE_REF}@${AMD_DIGEST}" \
-              "${IMAGE_REF}@${ARM_DIGEST}"
-          done
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
 
   scan:
     name: Trivy image scan
@@ -200,15 +95,12 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Download amd64 digest
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: digest-amd64
       - name: Resolve image ref
         id: ref
+        env:
+          DIGEST: ${{ needs.build.outputs.digest }}
         run: |
           set -euo pipefail
-          DIGEST="$(cat digest-amd64.txt)"
           IMAGE_REF="${REGISTRY}/${IMAGE_NAME}"
           IMAGE_REF="${IMAGE_REF,,}@${DIGEST}"
           echo "image=${IMAGE_REF}" >> "$GITHUB_OUTPUT"
@@ -226,7 +118,7 @@ jobs:
 
   sentry-release:
     name: Create Sentry release
-    needs: merge-manifests
+    needs: build
     runs-on: depot-ubuntu-24.04
     permissions:
       contents: read
