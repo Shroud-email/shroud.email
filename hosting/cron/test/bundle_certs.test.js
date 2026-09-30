@@ -1,13 +1,13 @@
 'use strict';
 
 const assert = require('node:assert/strict');
-const { execFileSync } = require('node:child_process');
+const { execFileSync, spawn } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { test } = require('node:test');
 
-test('bundler atomically publishes a validated pair and preserves active versions on failure', t => {
+test('bundler atomically publishes a validated pair and preserves active versions on failure', async t => {
   const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'shroud-bundle-certs-'));
   t.after(() => fs.rmSync(fixture, { recursive: true, force: true }));
   const pem = path.join(fixture, 'pem');
@@ -80,4 +80,74 @@ test('bundler atomically publishes a validated pair and preserves active version
   for (let dailyRun = 0; dailyRun < 3; dailyRun++) run();
   assert.equal(fs.readlinkSync(path.join(pem, 'current')), currentVersion);
   assert.deepEqual(fs.readdirSync(path.join(pem, 'versions')).sort(), expectedVersions);
+
+  // Hold one run after publication while a second run starts. Without a lock
+  // around publication and pruning, the first run's stale current_version can
+  // prune the second run's newly active directory.
+  const pauseClaim = path.join(fixture, 'pause-claim');
+  const pauseEntered = path.join(fixture, 'pause-entered');
+  const pauseRelease = path.join(fixture, 'pause-release');
+  const flockClaim = path.join(fixture, 'flock-claim');
+  const secondAtLock = path.join(fixture, 'second-at-lock');
+  const realTouch = execFileSync('sh', ['-c', 'command -v touch'], { encoding: 'utf8' }).trim();
+  const realFlock = execFileSync('sh', ['-c', 'command -v flock'], { encoding: 'utf8' }).trim();
+  fs.rmSync(path.join(bin, 'mv'));
+  fs.writeFileSync(path.join(bin, 'touch'), `#!/bin/sh
+if mkdir "$PAUSE_CLAIM" 2>/dev/null; then
+  "${realTouch}" "$PAUSE_ENTERED"
+  while [ ! -e "$PAUSE_RELEASE" ]; do sleep 0.01; done
+fi
+exec "${realTouch}" "$@"
+`, { mode: 0o755 });
+  fs.writeFileSync(path.join(bin, 'flock'), `#!/bin/sh
+if ! mkdir "$FLOCK_CLAIM" 2>/dev/null; then "${realTouch}" "$SECOND_AT_LOCK"; fi
+exec "${realFlock}" "$@"
+`, { mode: 0o755 });
+  env.PATH = `${bin}:${originalPath}`;
+  Object.assign(env, { PAUSE_CLAIM: pauseClaim, PAUSE_ENTERED: pauseEntered,
+    PAUSE_RELEASE: pauseRelease, FLOCK_CLAIM: flockClaim, SECOND_AT_LOCK: secondAtLock });
+
+  const runAsync = () => new Promise((resolve, reject) => {
+    const child = spawn('bash', [script], { env, stdio: 'pipe' });
+    let stderr = '';
+    child.stderr.on('data', chunk => { stderr += chunk; });
+    child.on('error', reject);
+    child.on('close', code => code === 0 ? resolve() : reject(new Error(stderr)));
+  });
+  const waitFor = async file => {
+    for (let attempt = 0; attempt < 500; attempt++) {
+      if (fs.existsSync(file)) return;
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
+    throw new Error(`timed out waiting for ${file}`);
+  };
+
+  fs.writeFileSync(path.join(caddy, 'mail.example.key'), second.key);
+  fs.writeFileSync(path.join(caddy, 'mail.example.crt'), second.cert);
+  const firstRun = runAsync();
+  let secondRun;
+  try {
+    await waitFor(pauseEntered);
+    // Independently prove the publisher still holds the kernel lock before
+    // pruning. This fails even if a competing process merely happens to finish
+    // after it and would otherwise conceal the race.
+    assert.throws(() => execFileSync(realFlock,
+      ['-n', path.join(pem, '.bundle_certs.lock'), 'true']), { status: 1 });
+    fs.writeFileSync(path.join(caddy, 'mail.example.key'), first.key);
+    fs.writeFileSync(path.join(caddy, 'mail.example.crt'), first.cert);
+    secondRun = runAsync();
+    await waitFor(secondAtLock);
+  } finally {
+    // Release paused children even when a wait or assertion fails.
+    fs.writeFileSync(pauseRelease, 'release');
+    await Promise.all([firstRun, secondRun]);
+  }
+
+  const finalCurrent = fs.readlinkSync(path.join(pem, 'current'));
+  assert.match(finalCurrent, /^versions\/tls\./);
+  assert.deepEqual(fs.readFileSync(path.join(pem, 'current/tls_key.pem')), first.key);
+  assert.deepEqual(fs.readFileSync(path.join(pem, 'current/tls_cert.pem')), first.cert);
+  const retainedVersions = fs.readdirSync(path.join(pem, 'versions'));
+  assert.ok(retainedVersions.includes(path.basename(finalCurrent)));
+  assert.ok(retainedVersions.length <= 2, `retained ${retainedVersions.length} versions`);
 });

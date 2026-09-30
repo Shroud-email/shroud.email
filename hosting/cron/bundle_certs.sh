@@ -10,6 +10,10 @@ TLS_CONFIG="${TLS_CONFIG:-/haraka-config/tls.ini}"
 VERSIONS_DIR="$PEM_DIR/versions"
 
 mkdir -p "$VERSIONS_DIR"
+# Serialize the complete sync. In particular, a publisher must not prune using
+# a current version that another run has replaced while this run was copying.
+exec 9>"$PEM_DIR/.bundle_certs.lock"
+flock 9
 version_dir=$(mktemp -d "$VERSIONS_DIR/tls.XXXXXX")
 next_link="$PEM_DIR/.current.$$"
 version_name() {
