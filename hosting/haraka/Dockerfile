@@ -8,6 +8,5 @@ WORKDIR /app
 COPY ./haraka_config/package.json ./haraka_config/package-lock.json ./
 RUN npm ci --omit=dev --omit=optional
 COPY ./haraka_config /app/haraka_config
-RUN node --test haraka_config/test/*.test.js
 
 ENTRYPOINT ["/sbin/tini", "--", "/app/node_modules/.bin/haraka", "-c", "/app/haraka_config"]

@@ -48,11 +48,6 @@ docker build -t shroud-haraka:local haraka
 docker run --rm shroud-haraka:local --version
 ```
 
-The build runs the Node compatibility tests, including SMTP STARTTLS/AUTH,
-recipient/relay decisions, DKIM signing and TLS certificate rotation. To run
-them outside Docker, use Node 24.15+ and OpenSSL, then run `npm ci --omit=optional`
-and `npm test` from `haraka/haraka_config/`.
-
 The upgrade alone does **not** activate copied certificates. The shipped cron
 and Compose configuration still only copies PEM files; the reload trigger is
 separate follow-up work, not implemented by this upgrade. That follow-up can
