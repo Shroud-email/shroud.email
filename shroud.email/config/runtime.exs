@@ -227,10 +227,18 @@ if config_env() == :prod do
 
   # Sentry error reporting. SENTRY_RELEASE is baked into the image at build
   # time (see Dockerfile).
-  if sentry_dsn = System.get_env("SENTRY_DSN") do
+  sentry_dsn = System.get_env("SENTRY_DSN")
+
+  if sentry_dsn not in [nil, ""] do
+    sentry_environment =
+      case System.get_env("SENTRY_ENVIRONMENT") do
+        value when value in [nil, ""] -> config_env()
+        value -> value
+      end
+
     config :sentry,
       dsn: sentry_dsn,
-      environment_name: config_env(),
+      environment_name: sentry_environment,
       release: System.get_env("SENTRY_RELEASE"),
       integrations: [
         oban: [
@@ -238,5 +246,9 @@ if config_env() == :prod do
           cron: [enabled: true]
         ]
       ]
+  else
+    # Sentry also reads this variable directly; a blank DSN is invalid.
+    System.delete_env("SENTRY_DSN")
+    config :sentry, dsn: nil
   end
 end
