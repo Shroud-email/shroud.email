@@ -56,12 +56,11 @@ sign messages from your domain, so recipients can be sure that emails were not f
 First, generate your keypair. From the repo you cloned, run the following:
 
 ```bash
-# cd to the dkim directory so keys are created in the right place
-$ cd haraka/haraka_config/config/dkim
-$ ./dkim_key_gen.sh example.com # use your domain
+# Run in a subshell so later commands still run from hosting/.
+(cd haraka/haraka_config/config/dkim && ./dkim_key_gen.sh example.com)
 ```
 
-Now, look in the directory `./example.com/dns`. This file shows the TXT DNS record you need to add.
+Now, look in `haraka/haraka_config/config/dkim/example.com/dns`. This file shows the TXT DNS record you need to add.
 
 ### Step 4: Set up DMARC
 

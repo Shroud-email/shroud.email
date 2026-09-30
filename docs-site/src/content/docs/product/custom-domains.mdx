@@ -33,9 +33,9 @@ We require a number of DNS records to be set up:
 | :------------------ | :----------------------------------------------------------- |
 | `shroud-verify` TXT | Prove that the domain belongs to you                         |
 | MX record           | Tell senders to direct emails to the Shroud.email mailserver |
-| SPF record          | Prevent others from forging emails from your domain          |
-| DKIM record         | Prevent email spoofing                                       |
-| DMARC record        | Prevent email spoofing                                       |
+| SPF record          | Identify servers authorised to send mail for your domain    |
+| DKIM record         | Authenticate messages signed by your domain                  |
+| DMARC record        | Monitor SPF/DKIM alignment and request authentication reports |
 
 Once that's done, you can create aliases with this domain:
 

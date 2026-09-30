@@ -18,7 +18,7 @@ permissions:
 jobs:
   test-cron:
     name: Certificate sync tests and cron image
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -49,6 +49,10 @@ jobs:
           context: hosting/haraka
           platforms: linux/amd64
           push: false
+          load: true
+          tags: shroud-haraka:test
+      - name: Test recipient pool and acceptance policy
+        run: docker run --rm --entrypoint node shroud-haraka:test --test haraka_config/test/rcpt_to.host_list_base_shroud.test.js
 
   publish-haraka:
     if: github.event_name == 'push'

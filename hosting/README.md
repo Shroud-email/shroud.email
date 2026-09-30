@@ -12,46 +12,7 @@ If you want to get up and running with Shroud.email quickly, and don't want to m
 
 Copy `haraka/haraka_config/config/me.example` to `haraka/haraka_config/config/me` and set your mail hostname.
 
-## Haraka 3 upgrade
-
-Haraka is pinned to **3.3.4**, the latest stable release checked on 2026-09-30
-against both the [upstream GitHub release](https://github.com/haraka/Haraka/releases/tag/v3.3.4)
-and the [npm `latest` tag](https://www.npmjs.com/package/Haraka). The image uses
-Node 24 LTS; Haraka itself requires Node 20+, but its current build dependencies
-require a newer Node patch release. Haraka, the active external plugins, and
-PostgreSQL client dependencies are locked in `haraka/haraka_config/package-lock.json`.
-They are installed under `/app/node_modules`, outside the Compose configuration
-bind mount.
-
-When upgrading an existing installation, migrate its local configuration too:
-
-- `dnsbl` and `backscatterer` become one `dns-list` plugin. Move custom DNS zones
-  and rejection settings into `dns-list.ini`; the committed configuration keeps
-  the old Spamhaus list and enables the null-sender/postmaster backscatter check.
-- `dkim_sign` becomes `dkim`. Move local `dkim_sign.ini` settings into `[sign]`
-  in `dkim.ini`: `disabled=false` becomes `enabled=true`, and `headers_to_sign`
-  becomes `headers`. The existing `config/dkim/<domain>/private` and `selector`
-  files still work. Signing remains opt-in, as in 2.8.28; verification remains
-  disabled unless deliberately enabled under `[verify]`.
-- Header settings, SMTPUTF8 and strict RFC 1869 settings move from `smtp.ini` to
-  `connection.ini`. Migrate old greeting, UUID, message-size and line-limit files
-  using the [upstream migration table](https://github.com/haraka/Haraka/blob/v3.3.4/CHANGELOG.md#310---2025-01-30).
-  Keep the new `max`, `message` and `uuid` sections: missing sections can break
-  SMTP sessions. The committed message-size limit is 25 MiB.
-- `mail_from.is_resolvable.ini` uses `timeout_ms` and `[reject] no_mx=deny`;
-  the committed configuration retains the 20-second DNS timeout.
-
-To verify without publishing or starting the deployment stack:
-
-```sh
-docker build -t shroud-haraka:local haraka
-docker run --rm shroud-haraka:local --version
-```
-
-The build runs the Node compatibility tests, including SMTP STARTTLS/AUTH,
-recipient/relay decisions, DKIM signing and TLS certificate rotation. To run
-them outside Docker, use Node 24.15+ and OpenSSL, then run `npm ci --omit=optional`
-and `npm test` from `haraka/haraka_config/`.
+## SMTP certificate sync
 
 The Haraka upgrade alone does **not** activate copied certificates. This hosting
 stack includes a separate certificate-sync fix in cron and Compose: it validates
@@ -102,9 +63,9 @@ image is published.
 
 The compose file includes a [Cap](https://trycap.dev) self-hosted CAPTCHA
 instance. It is **opt-in at the application level**: the
-services run by default, but the widget is not rendered and verification
-is not performed until you set all three `CAP_*` variables on the `web`
-service.
+containers and Caddy route are disabled by default. Enable the `cap` Compose
+profile and select a Cap Caddyfile, then set all three `CAP_*` variables on
+`web` to render the widget and perform verification.
 
 > **Public ingress required.** `CAP_INSTANCE_URL` must be a URL a user's
 > browser can reach over HTTPS.
@@ -118,8 +79,9 @@ service.
 
 2. Choose a public hostname (for example, `cap.example.com`), set it as
    `CAP_DOMAIN` in `.env`, and create a DNS A/AAAA record pointing that hostname
-   to this server. When `CAP_DOMAIN` is unset, Caddy uses the inert
-   `disabled.localhost` default, so the Cap UI is not publicly accessible.
+   to this server. Set `COMPOSE_PROFILES=cap` and `CAP_CADDYFILE=http.caddy`
+   (or `bunny.caddy` for Bunny DNS-01). When `CAP_CADDYFILE` is blank, Caddy
+   imports the disabled configuration and does not expose a Cap route.
 
 3. Start Cap and Caddy. Caddy reads `CAP_DOMAIN` when Compose creates the
    container and automatically provisions HTTPS for the hostname:

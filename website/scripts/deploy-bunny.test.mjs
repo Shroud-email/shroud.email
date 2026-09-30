@@ -5,7 +5,7 @@ process.env.BUNNY_STORAGE_PASSWORD = "test";
 process.env.BUNNY_PULLZONE_ID = "1";
 process.env.BUNNY_API_KEY = "test";
 
-const { listFiles, publishFiles } = await import("./deploy-bunny.mjs");
+const { listFiles, publishFiles } = await import("../../scripts/deploy-bunny.mjs");
 
 test("recursively inventories files without deleting directories", async (t) => {
   const calls = [];

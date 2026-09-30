@@ -53,4 +53,4 @@ Verify website and deployment-script changes from this directory with `mise exec
 
 ## Deployment
 
-bunny.net via the production and staging website deployment workflows. `scripts/deploy-bunny.mjs` uploads the static `dist/` output to a bunny.net Storage Zone, publishes `404.html` as `bunnycdn_errors/404.html`, removes stale objects, and purges the Pull Zone cache. The workflows separately deploy the middleware in `edge-script/` to bunny.net Edge Scripting.
+bunny.net via the production and staging website deployment workflows. The repository-root `scripts/deploy-bunny.mjs` uploads the static `dist/` output to a bunny.net Storage Zone, publishes `404.html` as `bunnycdn_errors/404.html`, removes stale objects, and purges the Pull Zone cache. The workflows separately deploy the middleware in `edge-script/` to bunny.net Edge Scripting.

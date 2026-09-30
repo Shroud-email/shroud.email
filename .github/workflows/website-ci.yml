@@ -4,11 +4,15 @@ on:
   pull_request:
     paths:
       - 'website/**'
+      - 'scripts/deploy-bunny.mjs'
+      - 'shared/components/PostHog.astro'
       - '.github/workflows/website-ci.yml'
   push:
     branches: [main]
     paths:
       - 'website/**'
+      - 'scripts/deploy-bunny.mjs'
+      - 'shared/components/PostHog.astro'
       - '.github/workflows/website-ci.yml'
 
 permissions:
@@ -17,7 +21,7 @@ permissions:
 jobs:
   website:
     name: Website tests and build
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     defaults:
       run:
         working-directory: website
@@ -38,7 +42,7 @@ jobs:
 
   edge:
     name: Edge pricing tests and build
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     defaults:
       run:
         working-directory: website/edge-script
