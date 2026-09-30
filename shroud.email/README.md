@@ -30,17 +30,16 @@ To start the server:
 Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
 
 Passkeys use the configured Phoenix endpoint URL as their WebAuthn origin and RP ID.
-Set `APP_DOMAIN` to the canonical public HTTPS host in production and serve login
-and Security settings on that same host. Plain HTTP works only on `localhost` in
-development; passkeys enrolled on one host cannot be used on another (including
-an orb portal URL). Apply database migrations before enabling passkey enrollment.
-If a reverse proxy terminates HTTPS, set `PASSKEY_TRUSTED_PROXY_IPS` to its
-comma-separated, exact peer IP addresses so passkey request limits use the
-last `X-Forwarded-For` address it supplies; leave it unset for direct traffic.
-The proxy must append the actual client address to that header.
-For a proxy whose container IP changes, set `PASSKEY_TRUSTED_PROXY_HOSTS` to its
-internal DNS name instead (for example, `caddy` in Docker Compose). Only requests
-from a configured proxy peer may use its `X-Forwarded-For` header.
+Set `APP_DOMAIN` to the canonical public HTTPS host in production, or the public
+portal host when developing through an HTTPS portal. Serve login and Security
+settings on that same host. Without `APP_DOMAIN`, development uses plain HTTP on
+`localhost`; passkeys enrolled on one host cannot be used on another. Apply
+database migrations before enabling passkey enrollment.
+If a reverse proxy terminates HTTPS, set `PASSKEY_TRUSTED_PROXY_HOSTS` to its
+comma-separated internal DNS names (for example, `caddy` in Docker Compose) so
+passkey request limits use the last `X-Forwarded-For` address it supplies. Leave
+it unset for direct traffic. The proxy must append the actual client address to
+that header; only requests from a resolved proxy peer may use it.
 
 To send test emails, use e.g. [Swaks](https://www.jetmore.org/john/code/swaks/):
 ```

@@ -147,26 +147,14 @@ defmodule ShroudWeb.PasskeySessionControllerTest do
     assert json_response(post(other, ~p"/users/passkeys/options"), 200)
   end
 
-  test "only configured proxy peers can supply the client address", context do
+  test "untrusted peers cannot evade rate limits with forwarded headers", context do
     freeze_rate_limit_minute()
-    previous_proxies = Application.fetch_env(:shroud, :passkey_trusted_proxies)
-    Application.put_env(:shroud, :passkey_trusted_proxies, [{192, 0, 2, 41}])
-
-    on_exit(fn ->
-      case previous_proxies do
-        {:ok, proxies} -> Application.put_env(:shroud, :passkey_trusted_proxies, proxies)
-        :error -> Application.delete_env(:shroud, :passkey_trusted_proxies)
-      end
-    end)
-
-    proxy = %{recycle(context.conn) | remote_ip: {192, 0, 2, 41}}
     spoofed = %{recycle(context.conn) | remote_ip: {192, 0, 2, 42}}
-    header = "198.51.100.1, 198.51.100.2"
 
-    for _ <- 1..30 do
+    for i <- 1..30 do
       assert json_response(
                post(
-                 put_req_header(proxy, "x-forwarded-for", header),
+                 put_req_header(spoofed, "x-forwarded-for", "198.51.100.#{i}"),
                  ~p"/users/passkeys/options"
                ),
                200
@@ -174,24 +162,11 @@ defmodule ShroudWeb.PasskeySessionControllerTest do
     end
 
     assert json_response(
-             post(put_req_header(proxy, "x-forwarded-for", header), ~p"/users/passkeys/options"),
+             post(
+               put_req_header(spoofed, "x-forwarded-for", "198.51.100.31"),
+               ~p"/users/passkeys/options"
+             ),
              429
-           )
-
-    assert json_response(
-             post(
-               put_req_header(proxy, "x-forwarded-for", "198.51.100.3"),
-               ~p"/users/passkeys/options"
-             ),
-             200
-           )
-
-    assert json_response(
-             post(
-               put_req_header(spoofed, "x-forwarded-for", header),
-               ~p"/users/passkeys/options"
-             ),
-             200
            )
   end
 

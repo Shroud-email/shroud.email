@@ -2,6 +2,10 @@ import Config
 
 if Config.config_env() == :dev do
   DotenvParser.load_file(".env")
+
+  if app_domain = System.get_env("APP_DOMAIN") do
+    config :shroud, ShroudWeb.Endpoint, url: [host: app_domain, scheme: "https", port: 443]
+  end
 end
 
 # Optional: Chatwoot support widget. Set CHATWOOT_BASE_URL to the URL of
@@ -23,18 +27,6 @@ config :shroud,
   cap_secret_key: System.get_env("CAP_SECRET_KEY")
 
 config :shroud,
-  passkey_origin: System.get_env("PASSKEY_ORIGIN"),
-  passkey_trusted_proxies:
-    (System.get_env("PASSKEY_TRUSTED_PROXY_IPS") || "")
-    |> String.split(",", trim: true)
-    |> Enum.map(fn address ->
-      address = String.trim(address)
-
-      case :inet.parse_address(String.to_charlist(address)) do
-        {:ok, ip} -> ip
-        {:error, _} -> raise "invalid PASSKEY_TRUSTED_PROXY_IPS address: #{inspect(address)}"
-      end
-    end),
   passkey_trusted_proxy_hosts:
     (System.get_env("PASSKEY_TRUSTED_PROXY_HOSTS") || "")
     |> String.split(",", trim: true)

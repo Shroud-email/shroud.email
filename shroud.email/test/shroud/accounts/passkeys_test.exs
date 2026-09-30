@@ -1,12 +1,39 @@
 defmodule Shroud.Accounts.PasskeysTest do
   use Shroud.DataCase
 
-  alias Config.Reader
   alias Ecto.Adapters.SQL
   alias Shroud.Accounts.{PasskeyChallenge, PasskeyProxyResolver, Passkeys}
   import ExUnit.CaptureLog
   import Shroud.AccountsFixtures
   import Shroud.PasskeyFixtures
+
+  test "both ceremonies use the configured HTTPS endpoint origin and hostname" do
+    config = Application.fetch_env!(:shroud, ShroudWeb.Endpoint)
+    on_exit(fn -> ShroudWeb.Endpoint.config_change([{ShroudWeb.Endpoint, config}], []) end)
+
+    ShroudWeb.Endpoint.config_change(
+      [
+        {ShroudWeb.Endpoint,
+         Keyword.put(config, :url, host: "app.example.com", scheme: "https", port: 443)}
+      ],
+      []
+    )
+
+    assert Passkeys.origin_and_rp_id() == {"https://app.example.com", "app.example.com"}
+
+    user = user_fixture()
+    {:ok, registration} = Passkeys.begin_registration(user)
+    {:ok, authentication} = Passkeys.begin_authentication()
+
+    for {options, kind, owner} <- [
+          {registration, :registration, user},
+          {authentication, :authentication, nil}
+        ] do
+      assert {:ok, challenge} = Passkeys.consume_challenge(options.token, kind, owner)
+      assert challenge.origin == "https://app.example.com"
+      assert challenge.rp_id == "app.example.com"
+    end
+  end
 
   test "base64url decoding is shared and bounded at 24,000 encoded bytes" do
     assert Passkeys.decode_base64url("-_8") == {:ok, <<251, 255>>}
@@ -82,41 +109,6 @@ defmodule Shroud.Accounts.PasskeysTest do
     assert Enum.count(results, &(&1 == {:error, :invalid_challenge})) == 1
   end
 
-  test "trusted proxy addresses normalize equivalent IPv6 spellings" do
-    previous = System.get_env("PASSKEY_TRUSTED_PROXY_IPS")
-    previous_proxies = Application.fetch_env(:shroud, :passkey_trusted_proxies)
-    System.put_env("PASSKEY_TRUSTED_PROXY_IPS", "0:0:0:0:0:0:0:1, 192.0.2.41")
-
-    on_exit(fn ->
-      if previous,
-        do: System.put_env("PASSKEY_TRUSTED_PROXY_IPS", previous),
-        else: System.delete_env("PASSKEY_TRUSTED_PROXY_IPS")
-    end)
-
-    config = Reader.read!("config/runtime.exs", env: :test)
-
-    assert [{0, 0, 0, 0, 0, 0, 0, 1}, {192, 0, 2, 41}] =
-             get_in(config, [:shroud, :passkey_trusted_proxies])
-
-    Application.put_env(
-      :shroud,
-      :passkey_trusted_proxies,
-      get_in(config, [:shroud, :passkey_trusted_proxies])
-    )
-
-    on_exit(fn ->
-      case previous_proxies do
-        {:ok, proxies} -> Application.put_env(:shroud, :passkey_trusted_proxies, proxies)
-        :error -> Application.delete_env(:shroud, :passkey_trusted_proxies)
-      end
-    end)
-
-    conn = Plug.Test.conn(:post, "/users/passkeys/options")
-    conn = %{conn | remote_ip: {0, 0, 0, 0, 0, 0, 0, 1}}
-    conn = Plug.Conn.put_req_header(conn, "x-forwarded-for", "198.51.100.2")
-    assert Passkeys.request_ip(conn) == {198, 51, 100, 2}
-  end
-
   test "a configured proxy hostname trusts only its resolved peer" do
     resolver =
       start_supervised!(
@@ -128,13 +120,28 @@ defmodule Shroud.Accounts.PasskeysTest do
     :sys.get_state(resolver)
 
     conn = Plug.Test.conn(:post, "/users/passkeys/options")
-    conn = Plug.Conn.put_req_header(conn, "x-forwarded-for", "198.51.100.2")
+    conn = Plug.Conn.put_req_header(conn, "x-forwarded-for", "198.51.100.1, 198.51.100.2")
 
     assert Passkeys.request_ip(%{conn | remote_ip: {127, 0, 0, 1}}, :passkey_test_proxy_ips) ==
              {198, 51, 100, 2}
 
     assert Passkeys.request_ip(%{conn | remote_ip: {192, 0, 2, 41}}, :passkey_test_proxy_ips) ==
              {192, 0, 2, 41}
+
+    minute = div(System.system_time(:second), 60)
+    Application.put_env(:shroud, :passkey_rate_limit_minute, minute)
+    on_exit(fn -> Application.delete_env(:shroud, :passkey_rate_limit_minute) end)
+
+    client = Passkeys.request_ip(%{conn | remote_ip: {127, 0, 0, 1}}, :passkey_test_proxy_ips)
+    for _ <- 1..30, do: assert(Passkeys.allow_request?(client, :options))
+    refute Passkeys.allow_request?(client, :options)
+
+    other_conn = Plug.Conn.put_req_header(conn, "x-forwarded-for", "198.51.100.3")
+
+    other_client =
+      Passkeys.request_ip(%{other_conn | remote_ip: {127, 0, 0, 1}}, :passkey_test_proxy_ips)
+
+    assert Passkeys.allow_request?(other_client, :options)
   end
 
   test "resolver snapshots are owned by their worker, not application configuration" do

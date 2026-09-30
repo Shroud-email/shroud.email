@@ -16,7 +16,7 @@ defmodule Shroud.Accounts.Passkeys do
   def request_ip(conn, proxy_table \\ PasskeyProxyResolver) do
     peer = conn.remote_ip
 
-    if trusted_proxy?(peer, proxy_table) do
+    if PasskeyProxyResolver.trusted?(peer, proxy_table) do
       case Plug.Conn.get_req_header(conn, "x-forwarded-for") do
         [header] ->
           header
@@ -36,11 +36,6 @@ defmodule Shroud.Accounts.Passkeys do
     else
       peer
     end
-  end
-
-  defp trusted_proxy?(peer, proxy_table) do
-    peer in Application.get_env(:shroud, :passkey_trusted_proxies, []) or
-      PasskeyProxyResolver.trusted?(peer, proxy_table)
   end
 
   def allow_request?(remote_ip, kind) when kind in [:options, :verify] do
@@ -71,7 +66,7 @@ defmodule Shroud.Accounts.Passkeys do
   end
 
   def origin_and_rp_id do
-    origin = Application.get_env(:shroud, :passkey_origin) || ShroudWeb.Endpoint.url()
+    origin = ShroudWeb.Endpoint.url()
     uri = URI.parse(origin)
 
     unless allowed_scheme?(uri) and is_binary(uri.host) and uri.userinfo == nil and
