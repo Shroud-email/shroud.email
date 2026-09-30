@@ -1,3 +1,39 @@
+import tippy from "tippy.js";
+
+export function createCopyToClipboardHook({
+  createTooltip = tippy,
+  writeText = (text) => navigator.clipboard.writeText(text),
+} = {}) {
+  return {
+    mounted() {
+      this.tooltip = createTooltip(this.el, {
+        content: "Copy to clipboard",
+        hideOnClick: false,
+      });
+
+      this.copy = async () => {
+        clearTimeout(this.resetTimer);
+        await writeText(this.el.dataset.clipboardText);
+        this.tooltip.setContent("Copied!");
+        this.resetTimer = setTimeout(
+          () => this.tooltip.setContent("Copy to clipboard"),
+          2000,
+        );
+      };
+
+      this.el.addEventListener("click", this.copy);
+    },
+
+    destroyed() {
+      clearTimeout(this.resetTimer);
+      this.el.removeEventListener("click", this.copy);
+      this.tooltip.destroy();
+    },
+  };
+}
+
+export const CopyToClipboard = createCopyToClipboardHook();
+
 export const Notification = {
   mounted() {
     const hide = () =>
