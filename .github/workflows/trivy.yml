@@ -13,7 +13,7 @@ jobs:
   fs-scan:
     if: github.event_name == 'pull_request'
     name: Filesystem scan
-    runs-on: blacksmith-2vcpu-ubuntu-2404
+    runs-on: depot-ubuntu-24.04
     permissions:
       contents: read
       security-events: write
@@ -41,7 +41,7 @@ jobs:
   image-scan:
     if: github.event_name == 'schedule'
     name: Scheduled image scan
-    runs-on: blacksmith-2vcpu-ubuntu-2404
+    runs-on: depot-ubuntu-24.04
     permissions:
       contents: read
       packages: read

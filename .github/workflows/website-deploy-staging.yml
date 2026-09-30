@@ -34,7 +34,7 @@ permissions: {}
 jobs:
   deploy-site:
     name: Deploy site
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     defaults:
       run:
         working-directory: website
@@ -69,7 +69,7 @@ jobs:
 
   deploy-edge-script:
     name: Deploy edge script
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     permissions:
       contents: read
     steps:

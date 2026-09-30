@@ -10,7 +10,7 @@ permissions: {}
 
 jobs:
   zizmor:
-    runs-on: blacksmith-2vcpu-ubuntu-2404
+    runs-on: depot-ubuntu-24.04
     permissions:
       contents: read
       actions: read
