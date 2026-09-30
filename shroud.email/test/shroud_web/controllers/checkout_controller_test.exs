@@ -430,6 +430,54 @@ defmodule ShroudWeb.CheckoutControllerTest do
       post_event(conn, older)
       assert Repo.get!(User, user.id).status == :active
     end
+
+    for {name, previous, incoming, expected_status} <- [
+          {"newer cancellation across a month rollover", ~N[2026-07-31 12:00:00.900000],
+           ~N[2026-08-01 12:00:00.100000], :free},
+          {"newer cancellation across a month rollover without fractions",
+           ~N[2026-07-31 12:00:00.000000], ~N[2026-08-01 12:00:00.000000], :free},
+          {"newer cancellation across a second rollover", ~N[2026-08-01 12:00:00.900000],
+           ~N[2026-08-01 12:00:01.100000], :free},
+          {"older cancellation across a month rollover", ~N[2026-08-01 12:00:00.100000],
+           ~N[2026-07-31 12:00:00.900000], :active},
+          {"equal timestamp cancellation", ~N[2026-08-01 12:00:00.100000],
+           ~N[2026-08-01 12:00:00.100000], :active}
+        ] do
+      test name, %{conn: conn} do
+        user =
+          user_fixture(%{
+            status: :active,
+            paddle_customer_id: "ctm_rollover",
+            paddle_subscription_id: "sub_rollover",
+            paddle_price_id: "pri_test_yearly",
+            plan_expires_at: @period_end_naive,
+            last_paddle_event_at: unquote(Macro.escape(previous))
+          })
+
+        event =
+          subscription_event("canceled", "ctm_rollover", "sub_rollover",
+            nil_billing: true,
+            event_type: "subscription.canceled",
+            occurred_at: unquote(NaiveDateTime.to_iso8601(incoming) <> "Z")
+          )
+
+        conn = post_event(conn, event)
+        assert response(conn, 200) == ""
+
+        updated_user = Repo.reload!(user)
+        assert updated_user.status == unquote(expected_status)
+
+        if unquote(expected_status) == :free do
+          assert updated_user.last_paddle_event_at == unquote(Macro.escape(incoming))
+          assert is_nil(updated_user.plan_expires_at)
+          refute Shroud.Accounts.paid?(updated_user)
+        else
+          assert updated_user.last_paddle_event_at == unquote(Macro.escape(previous))
+          assert updated_user.plan_expires_at == @period_end_naive
+          assert Shroud.Accounts.paid?(updated_user)
+        end
+      end
+    end
   end
 
   # --- Event fixtures ---
