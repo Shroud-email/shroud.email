@@ -1,6 +1,6 @@
 ---
 import { Image } from "astro:assets";
-import howItWorks from "~/assets/howitworks.webp";
+import howItWorks from "~/assets/howitworks.svg";
 import FadeIn from "~/components/atoms/FadeIn.astro";
 
 const steps = [
@@ -51,8 +51,6 @@ const steps = [
           alt="A list of incoming emails, each labelled as blocked, trackers removed, or forwarded"
           layout="constrained"
           width={448}
-          widths={[380, 448, 640, 665, 750]}
-          sizes="(min-width: 480px) 448px, calc(100vw - 2rem)"
           loading="lazy"
           decoding="async"
         />

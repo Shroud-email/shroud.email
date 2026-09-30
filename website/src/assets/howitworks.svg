@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="615" viewBox="0 0 760 615" fill="none">
+  <title>Incoming emails protected by Shroud.email</title>
+  <desc>Did you read my email? and You're a winner! are blocked. Big savings! has its trackers removed. It's been a while! is forwarded.</desc>
+  <defs>
+    <filter id="shadow" x="-5%" y="-10%" width="110%" height="130%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="5" stdDeviation="4" flood-color="#0f172a" flood-opacity="0.18" />
+    </filter>
+    <g id="envelope">
+      <circle cx="0" cy="0" r="37" fill="#6860e8" />
+      <g stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="-17" y="-13" width="34" height="26" rx="3" />
+        <path d="m-16-10 13 11a5 5 0 0 0 6 0l13-11" />
+      </g>
+    </g>
+  </defs>
+  <g fill="#fff" stroke="#e2e8f0" filter="url(#shadow)">
+    <rect x="10" y="10" width="725" height="136" rx="14" />
+    <rect x="10" y="158" width="725" height="136" rx="14" />
+    <rect x="10" y="306" width="725" height="136" rx="14" />
+    <rect x="10" y="454" width="725" height="136" rx="14" />
+  </g>
+  <use href="#envelope" x="83" y="79" />
+  <use href="#envelope" x="83" y="227" />
+  <use href="#envelope" x="83" y="375" />
+  <use href="#envelope" x="83" y="523" />
+  <g fill="#0a0a0a" font-family="Arial, Helvetica, sans-serif" font-size="24">
+    <g font-size="26" font-weight="700">
+      <text x="162" y="68">Did you read my email?</text>
+      <text x="162" y="216">Big savings!</text>
+      <text x="162" y="364">It’s been a while!</text>
+      <text x="162" y="512">You’re a winner!</text>
+    </g>
+    <text x="162" y="104">From tim@marketing.com</text>
+    <text x="162" y="252">From news@eshop.com</text>
+    <text x="162" y="400">From johnny@oldfriends.net</text>
+    <text x="162" y="548">From scammer@fake.org</text>
+  </g>
+  <rect x="535" y="55" width="174" height="48" rx="24" fill="#faeaea" />
+  <rect x="484" y="203" width="225" height="48" rx="24" fill="#fcf0df" />
+  <rect x="535" y="351" width="174" height="48" rx="24" fill="#e3f5ed" />
+  <rect x="535" y="499" width="174" height="48" rx="24" fill="#faeaea" />
+  <g font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" text-anchor="middle">
+    <text x="622" y="87" fill="#b8322a">Blocked</text>
+    <text x="596.5" y="235" fill="#aa5a2c">Trackers removed</text>
+    <text x="622" y="383" fill="#2c6854">Forwarded</text>
+    <text x="622" y="531" fill="#b8322a">Blocked</text>
+  </g>
+</svg>
