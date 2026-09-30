@@ -74,6 +74,33 @@ packages across SDK versions. Recheck these findings when upgrading Expo.
 
 ## License
 
-The mobile app follows the repository's AGPL-3.0 license (see `LICENSE`). The
-Expo starter's original MIT copyright and license notice are preserved in
-`LICENSE.expo` for the imported template code and artwork.
+The mobile app follows the repository's AGPL-3.0 license (see the
+[root LICENSE](../LICENSE)).
+
+The source and artwork copied from the Expo starter template retain their
+original MIT notice below. This attribution is for the copied template, not
+for modifications to Expo itself.
+
+```text
+The MIT License (MIT)
+
+Copyright (c) 2015-present 650 Industries, Inc. (aka Expo)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
