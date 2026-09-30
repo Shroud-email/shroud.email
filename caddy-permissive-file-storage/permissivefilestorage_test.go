@@ -88,6 +88,41 @@ func TestStoreRejectsKeyEscapingRootWithoutChangingOutsidePath(t *testing.T) {
 	assertMode(t, outsideFile, 0600)
 }
 
+func TestStoreRejectsSymlinkDirectoryWithoutChangingOutsidePath(t *testing.T) {
+	base := t.TempDir()
+	root := filepath.Join(base, "storage")
+	outside := filepath.Join(base, "outside")
+	if err := os.Mkdir(root, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(outside, 0711); err != nil {
+		t.Fatal(err)
+	}
+	outsideFile := filepath.Join(outside, "value")
+	oldValue := []byte("unchanged")
+	if err := os.WriteFile(outsideFile, oldValue, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(root, "link")); err != nil {
+		t.Fatal(err)
+	}
+
+	storage := &CertmagicStorage{FileStorage: certmagicFileStorage(root)}
+	if err := storage.Store(context.Background(), "link/value", []byte("replaced")); err == nil {
+		t.Fatal("Store accepted a symlinked directory")
+	}
+
+	value, err := os.ReadFile(outsideFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(value, oldValue) {
+		t.Errorf("outside file content = %q, want %q", value, oldValue)
+	}
+	assertMode(t, outside, 0711)
+	assertMode(t, outsideFile, 0600)
+}
+
 func TestStoreReadersSeeOnlyCompleteValues(t *testing.T) {
 	root := t.TempDir()
 	storage := &CertmagicStorage{FileStorage: certmagicFileStorage(root)}

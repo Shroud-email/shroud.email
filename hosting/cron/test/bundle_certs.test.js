@@ -49,17 +49,35 @@ test('bundler atomically publishes a validated pair and preserves active version
   fs.mkdirSync(bin);
   const realMv = execFileSync('sh', ['-c', 'command -v mv'], { encoding: 'utf8' }).trim();
   fs.writeFileSync(path.join(bin, 'mv'), `#!/bin/sh\n"${realMv}" "$@"\nexit 1\n`, { mode: 0o755 });
-  env.PATH = `${bin}:${process.env.PATH}`;
+  const originalPath = env.PATH;
+  env.PATH = `${bin}:${originalPath}`;
   // Simulate an interruption immediately after the switch, before the reload trigger.
   assert.throws(run);
   assert.notEqual(fs.readlinkSync(path.join(pem, 'current')), 'versions/old');
   assert.deepEqual(fs.readFileSync(path.join(pem, 'current/tls_key.pem')), second.key);
   assert.deepEqual(fs.readFileSync(path.join(pem, 'current/tls_cert.pem')), second.cert);
   assert.equal(fs.statSync(tlsIni).mtimeMs, 0);
+  const secondVersion = fs.readlinkSync(path.join(pem, 'current'));
 
-  delete env.PATH;
+  env.PATH = originalPath;
   run();
+  // Unchanged content does not create another version, but recovers the reload.
+  assert.equal(fs.readlinkSync(path.join(pem, 'current')), secondVersion);
   assert.deepEqual(fs.readFileSync(path.join(pem, 'current/tls_cert.pem')), second.cert);
   assert.ok(fs.statSync(tlsIni).mtimeMs > 0);
   assert.deepEqual(fs.readdirSync(pem).filter(name => name.startsWith('.current')), []);
+  assert.deepEqual(fs.readdirSync(path.join(pem, 'versions')).sort(),
+    ['old', path.basename(secondVersion)].sort());
+
+  // Another renewal retains the immediate previous pair, not all historical keys.
+  fs.writeFileSync(path.join(caddy, 'mail.example.key'), first.key);
+  fs.writeFileSync(path.join(caddy, 'mail.example.crt'), first.cert);
+  run();
+  const currentVersion = fs.readlinkSync(path.join(pem, 'current'));
+  assert.notEqual(currentVersion, secondVersion);
+  const expectedVersions = [path.basename(currentVersion), path.basename(secondVersion)].sort();
+  assert.deepEqual(fs.readdirSync(path.join(pem, 'versions')).sort(), expectedVersions);
+  for (let dailyRun = 0; dailyRun < 3; dailyRun++) run();
+  assert.equal(fs.readlinkSync(path.join(pem, 'current')), currentVersion);
+  assert.deepEqual(fs.readdirSync(path.join(pem, 'versions')).sort(), expectedVersions);
 });

@@ -12,6 +12,32 @@ VERSIONS_DIR="$PEM_DIR/versions"
 mkdir -p "$VERSIONS_DIR"
 version_dir=$(mktemp -d "$VERSIONS_DIR/tls.XXXXXX")
 next_link="$PEM_DIR/.current.$$"
+version_name() {
+  case "$1" in
+    versions/*/*|versions/) return 1 ;;
+    versions/*) printf '%s\n' "${1#versions/}" ;;
+    *) return 1 ;;
+  esac
+}
+prune_versions() {
+  active=$1
+  previous=$2
+  if [ -z "$previous" ]; then
+    for candidate in "$VERSIONS_DIR"/*; do
+      [ -d "$candidate" ] || continue
+      [ "${candidate##*/}" = "$active" ] && continue
+      if [ -z "$previous" ] || [ "$candidate" -nt "$VERSIONS_DIR/$previous" ]; then
+        previous=${candidate##*/}
+      fi
+    done
+  fi
+  for candidate in "$VERSIONS_DIR"/*; do
+    [ -d "$candidate" ] || continue
+    candidate=${candidate##*/}
+    [ "$candidate" = "$active" ] || [ "$candidate" = "$previous" ] ||
+      rm -rf "$VERSIONS_DIR/$candidate"
+  done
+}
 cleanup() {
   # An interruption immediately after rename must not remove the active version.
   if [ -n "$version_dir" ] &&
@@ -38,10 +64,26 @@ if [ "$key_public" != "$cert_public" ]; then
   exit 1
 fi
 
+current_link=$(readlink "$PEM_DIR/current" || true)
+current_version=$(version_name "$current_link" || true)
+if [ -n "$current_version" ] &&
+  cmp -s "$version_dir/tls_key.pem" "$PEM_DIR/current/tls_key.pem" &&
+  cmp -s "$version_dir/tls_cert.pem" "$PEM_DIR/current/tls_cert.pem"; then
+  rm -rf "$version_dir"
+  version_dir=
+  # Also recover a prior interruption between publication and the reload trigger.
+  touch "$TLS_CONFIG"
+  prune_versions "$current_version" ""
+  echo "Caddy certs are unchanged; keeping the current Haraka certificate."
+  exit 0
+fi
+
 # The temporary link and current live on the same filesystem. BusyBox mv -T uses
 # rename(2), so readers see either the complete old version or the complete new one.
 ln -s "versions/${version_dir##*/}" "$next_link"
 mv -fT "$next_link" "$PEM_DIR/current"
+active_version=${version_dir##*/}
 version_dir=
 touch "$TLS_CONFIG"
+prune_versions "$active_version" "$current_version"
 echo "Copied Caddy certs to Haraka."

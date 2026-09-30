@@ -59,7 +59,16 @@ func (fs *CertmagicStorage) Store(_ context.Context, key string, value []byte) e
 	}
 
 	directory := filepath.Dir(filename)
+	if err := rejectSymlinkDirectories(root, directory); err != nil {
+		return err
+	}
 	if err := os.MkdirAll(directory, 0755); err != nil {
+		return err
+	}
+	// This storage is intended for a trusted shared volume. Recheck after
+	// creation to catch pre-existing links, but do not claim confinement if an
+	// attacker can concurrently replace directories on the volume.
+	if err := rejectSymlinkDirectories(root, directory); err != nil {
 		return err
 	}
 
@@ -98,4 +107,33 @@ func (fs *CertmagicStorage) Store(_ context.Context, key string, value []byte) e
 		return err
 	}
 	return os.Rename(tempName, filename)
+}
+
+func rejectSymlinkDirectories(root, directory string) error {
+	rel, err := filepath.Rel(root, directory)
+	if err != nil {
+		return fmt.Errorf("resolve storage directory relative to root: %w", err)
+	}
+
+	current := root
+	components := []string{"."}
+	if rel != "." {
+		components = append(components, strings.Split(rel, string(filepath.Separator))...)
+	}
+	for _, component := range components {
+		if component != "." {
+			current = filepath.Join(current, component)
+		}
+		info, err := os.Lstat(current)
+		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("storage directory %q is a symbolic link", current)
+		}
+	}
+	return nil
 }

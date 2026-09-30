@@ -2,6 +2,9 @@ name: Website checks
 
 on:
   pull_request:
+    paths:
+      - 'website/**'
+      - '.github/workflows/website-ci.yml'
   push:
     branches: [main]
     paths:
