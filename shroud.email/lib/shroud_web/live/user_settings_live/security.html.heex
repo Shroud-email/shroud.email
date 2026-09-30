@@ -187,98 +187,126 @@
       <span class="text-sm text-gray-900 dark:text-gray-100">
         {key.label || "Passkey"} · added {Calendar.strftime(key.inserted_at, "%b %d, %Y")}
       </span>
-      <details
-        id={"remove-passkey-prompt-#{key.id}"}
-        open={Map.has_key?(@passkey_remove_errors, key.id)}
-        class="ml-auto text-right"
+      <button
+        id={"remove-passkey-button-#{key.id}"}
+        type="button"
+        phx-click={
+          Phoenix.LiveView.JS.push_focus() |> Phoenix.LiveView.JS.push("open_passkey_dialog")
+        }
+        phx-value-action="remove"
+        phx-value-id={key.id}
+        class="cursor-pointer text-sm font-medium text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400"
       >
-        <summary class="btn btn-white cursor-pointer list-none [&::-webkit-details-marker]:hidden">
-          Remove passkey
-        </summary>
-        <.form
-          for={@passkey_form}
-          phx-submit="remove_passkey"
-          id={"remove-passkey-#{key.id}"}
-          class="mt-3 ml-auto max-w-sm space-y-3 text-left"
-        >
-          <input
-            type="hidden"
-            name="credential_id"
-            value={Base.url_encode64(key.credential_id, padding: false)}
-          />
-          <.input
-            field={@passkey_form[:current_password]}
-            label="Current password"
-            type="password"
-            id={"remove-passkey-password-#{key.id}"}
-            aria-invalid={to_string(Map.has_key?(@passkey_remove_errors, key.id))}
-            aria-describedby={
-              if Map.has_key?(@passkey_remove_errors, key.id),
-                do: "remove-passkey-password-error-#{key.id}"
-            }
-            autocomplete="current-password"
-            required
-          />
-          <p
-            :if={Map.has_key?(@passkey_remove_errors, key.id)}
-            id={"remove-passkey-password-error-#{key.id}"}
-            role="alert"
-            class="text-sm text-red-600 dark:text-red-400"
-          >
-            {@passkey_remove_errors[key.id]}
-          </p>
-          <div class="text-right">
-            <button type="submit" class="btn btn-white" phx-disable-with="Removing…">
-              Remove passkey
-            </button>
-          </div>
-        </.form>
-      </details>
+        Remove
+      </button>
     </div>
   </div>
 
-  <details id="add-passkey" open={@passkey_pending || @passkey_error} class="mt-6 text-right">
-    <summary class="btn btn-primary cursor-pointer list-none [&::-webkit-details-marker]:hidden">
-      Add passkey
-    </summary>
-    <.form
-      for={@passkey_form}
-      phx-submit="add_passkey"
-      id="add-passkey-form"
-      class="mt-4 ml-auto max-w-sm space-y-3 text-left"
+  <div class="mt-6 text-right">
+    <button
+      id="add-passkey-button"
+      type="button"
+      phx-click={
+        Phoenix.LiveView.JS.push_focus() |> Phoenix.LiveView.JS.push("open_passkey_dialog")
+      }
+      phx-value-action="add"
+      class="btn btn-primary"
     >
-      <.input
-        field={@passkey_form[:current_password]}
-        label="Current password"
-        type="password"
-        id="add-passkey-password"
-        aria-invalid={to_string(@passkey_password_error != nil)}
-        aria-describedby={if @passkey_password_error, do: "add-passkey-password-error"}
-        autocomplete="current-password"
-        required
-      />
-      <p
-        :if={@passkey_password_error}
-        id="add-passkey-password-error"
-        role="alert"
-        class="text-sm text-red-600 dark:text-red-400"
-      >
-        {@passkey_password_error}
-      </p>
-      <div class="text-right">
-        <button
-          id="add-passkey-submit"
-          type="submit"
-          class="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-          disabled={@passkey_pending || !@passkey_supported}
-          phx-disable-with="Preparing…"
+      Add passkey
+    </button>
+  </div>
+
+  <.form
+    :if={@passkey_dialog}
+    for={@passkey_form}
+    phx-submit={if @passkey_dialog.action == :add, do: "add_passkey", else: "remove_passkey"}
+    phx-remove={Phoenix.LiveView.JS.pop_focus()}
+    id={
+      if @passkey_dialog.action == :add,
+        do: "add-passkey-form",
+        else: "remove-passkey-#{@passkey_dialog.credential.id}"
+    }
+  >
+    <.live_component
+      module={PopupAlert}
+      id="passkey-dialog"
+      show={true}
+      on_close={:passkey_dialog_closed}
+      title={if @passkey_dialog.action == :add, do: "Add a passkey", else: "Remove passkey?"}
+      text={
+        if @passkey_dialog.action == :add,
+          do: "Enter your current password, then choose where to save your passkey.",
+          else:
+            "Enter your current password to remove this passkey. You can still sign in with your password."
+      }
+      icon={:lock_closed}
+    >
+      <div class="mt-4 space-y-2">
+        <p
+          :if={@passkey_dialog.action == :remove}
+          class="text-sm font-medium text-gray-900 dark:text-gray-100"
         >
-          Continue
-        </button>
+          {@passkey_dialog.credential.label || "Passkey"} · added {Calendar.strftime(
+            @passkey_dialog.credential.inserted_at,
+            "%b %d, %Y"
+          )}
+        </p>
+        <input
+          :if={@passkey_dialog.action == :remove}
+          type="hidden"
+          name="credential_id"
+          value={Base.url_encode64(@passkey_dialog.credential.credential_id, padding: false)}
+        />
+        <.input
+          field={@passkey_form[:current_password]}
+          label="Current password"
+          type="password"
+          id="passkey-password"
+          aria-invalid={to_string(@passkey_password_error != nil)}
+          aria-describedby={if @passkey_password_error, do: "passkey-password-error"}
+          autocomplete="current-password"
+          autofocus
+          required
+        />
+        <p
+          :if={@passkey_password_error}
+          id="passkey-password-error"
+          role="alert"
+          class="text-sm text-red-600 dark:text-red-400"
+        >
+          {@passkey_password_error}
+        </p>
+        <p
+          id="passkey-dialog-status"
+          role="status"
+          aria-live="polite"
+          class={[
+            "text-sm",
+            if(@passkey_error,
+              do: "text-red-600 dark:text-red-400",
+              else: "text-gray-500 dark:text-gray-400"
+            )
+          ]}
+        >
+          {@passkey_status}
+        </p>
       </div>
-    </.form>
-  </details>
+      <:buttons>
+        <.button
+          id="passkey-confirm"
+          type="submit"
+          text={if @passkey_dialog.action == :add, do: "Continue", else: "Remove passkey"}
+          intent={if @passkey_dialog.action == :add, do: :primary, else: :danger}
+          disabled={@passkey_pending || (@passkey_dialog.action == :add && !@passkey_supported)}
+          phx-disable-with={
+            if @passkey_dialog.action == :add, do: "Preparing…", else: "Removing…"
+          }
+        />
+      </:buttons>
+    </.live_component>
+  </.form>
   <p
+    :if={!@passkey_dialog}
     id="passkey-status"
     role="status"
     aria-live="polite"

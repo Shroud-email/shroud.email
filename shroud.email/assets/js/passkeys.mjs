@@ -51,6 +51,7 @@ export function createPasskeyHooks(window, document) {
       this.passkeyTimer = null;
       this.pushEvent("passkey_supported", { supported: supported(window) });
       this.handleEvent("passkey-register", payload => this.registerPasskey(payload));
+      this.handleEvent("passkey-cancel", () => this.cancelPasskeyRegistration());
     },
 
     async registerPasskey({ token, publicKey }) {

@@ -20,61 +20,62 @@ defmodule ShroudWeb.PasskeyRegistrationLiveTest do
     view: view,
     user: user
   } do
+    refute has_element?(view, "#passkey-dialog")
+    view |> element("#add-passkey-button") |> render_click()
     view |> form("#add-passkey-form", passkey: %{current_password: "wrong"}) |> render_submit()
 
     assert has_element?(
              view,
-             "#add-passkey-form #add-passkey-password-error",
+             "#add-passkey-form #passkey-password-error",
              "Incorrect password"
            )
 
-    assert has_element?(view, "#add-passkey-password[aria-invalid=true]")
+    assert has_element?(view, "#passkey-password[aria-invalid=true]")
     refute has_element?(view, "#settings-error")
-    assert has_element?(view, "#add-passkey[open]")
+    assert has_element?(view, "#passkey-dialog[role=dialog]")
     refute_push_event(view, "passkey-register", _)
 
     options = authorize(view)
-    refute has_element?(view, "#add-passkey-password-error")
+    refute has_element?(view, "#passkey-password-error")
 
     assert options.publicKey.authenticatorSelection == %{
              residentKey: "required",
              userVerification: "required"
            }
 
-    assert has_element?(view, "#add-passkey-submit[disabled]")
-    assert has_element?(view, "#add-passkey[open]")
+    assert has_element?(view, "#passkey-confirm[disabled]")
+    assert has_element?(view, "#passkey-dialog")
     render_hook(view, "passkey_status", %{token: options.token, phase: "waiting"})
-    assert has_element?(view, "#passkey-status", "Waiting for your passkey")
+    assert has_element?(view, "#passkey-dialog-status", "Waiting for your passkey")
     render_hook(view, "passkey_registered", response(options))
 
     assert_reply(view, %{})
     assert [credential] = Accounts.list_passkeys(user)
-    assert has_element?(view, "#remove-passkey-#{credential.id}")
+    assert has_element?(view, "#remove-passkey-button-#{credential.id}")
     assert has_element?(view, "#passkey-status", "Passkey added.")
-    refute has_element?(view, "#add-passkey-submit[disabled]")
-    refute has_element?(view, "#add-passkey[open]")
+    refute has_element?(view, "#passkey-dialog")
 
     view |> element("#settings-nav-account") |> render_click()
     view |> element("#settings-nav-security") |> render_click()
-    assert has_element?(view, "#remove-passkey-#{credential.id}")
-    refute has_element?(view, "#remove-passkey-prompt-#{credential.id}[open]")
+    assert has_element?(view, "#remove-passkey-button-#{credential.id}")
+    refute has_element?(view, "#passkey-dialog")
+    view |> element("#remove-passkey-button-#{credential.id}") |> render_click()
 
     view
     |> form("#remove-passkey-#{credential.id}", passkey: %{current_password: "wrong"})
     |> render_submit()
 
     assert Accounts.get_passkey(credential.credential_id)
-    assert has_element?(view, "#remove-passkey-prompt-#{credential.id}[open]")
+    assert has_element?(view, "#passkey-dialog")
 
     assert has_element?(
              view,
-             "#remove-passkey-#{credential.id} #remove-passkey-password-error-#{credential.id}",
+             "#remove-passkey-#{credential.id} #passkey-password-error",
              "Incorrect password"
            )
 
-    assert has_element?(view, "#remove-passkey-password-#{credential.id}[aria-invalid=true]")
+    assert has_element?(view, "#passkey-password[aria-invalid=true]")
     refute has_element?(view, "#settings-error")
-    refute has_element?(view, "#add-passkey-password-error")
 
     view
     |> form("#remove-passkey-#{credential.id}",
@@ -82,7 +83,8 @@ defmodule ShroudWeb.PasskeyRegistrationLiveTest do
     )
     |> render_submit()
 
-    refute has_element?(view, "#remove-passkey-#{credential.id}")
+    refute has_element?(view, "#remove-passkey-button-#{credential.id}")
+    refute has_element?(view, "#passkey-dialog")
     assert Accounts.list_passkeys(user) == []
   end
 
@@ -126,8 +128,8 @@ defmodule ShroudWeb.PasskeyRegistrationLiveTest do
   } do
     options = authorize(view)
     render_hook(view, "passkey_error", %{token: options.token, reason: "timeout"})
-    assert has_element?(view, "#passkey-status[data-state=error]", "timed out")
-    refute has_element?(view, "#add-passkey-submit[disabled]")
+    assert has_element?(view, "#passkey-dialog-status", "timed out")
+    refute has_element?(view, "#passkey-confirm[disabled]")
     render_hook(view, "passkey_registered", response(options))
     assert_reply(view, %{error: "invalid_registration"})
 
@@ -138,6 +140,24 @@ defmodule ShroudWeb.PasskeyRegistrationLiveTest do
     render_hook(view, "passkey_registered", response(options))
     assert_reply(view, %{error: "invalid_registration"})
     assert Accounts.list_passkeys(user) == []
+  end
+
+  test "closing the dialog cancels pending enrollment and rejects a late result", %{
+    view: view,
+    user: user
+  } do
+    options = authorize(view)
+    view |> element("#passkey-dialog") |> render_hook("hide", %{})
+    refute has_element?(view, "#passkey-dialog")
+    assert_push_event(view, "passkey-cancel", %{})
+
+    render_hook(view, "passkey_registered", response(options))
+    assert_reply(view, %{error: "invalid_registration"})
+    assert Accounts.list_passkeys(user) == []
+
+    view |> element("#add-passkey-button") |> render_click()
+    refute has_element?(view, "#passkey-confirm[disabled]")
+    refute has_element?(view, "#passkey-password-error")
   end
 
   test "malformed responses consume authorization and cannot be replayed", %{
@@ -183,30 +203,42 @@ defmodule ShroudWeb.PasskeyRegistrationLiveTest do
       })
 
     {:ok, view, _} = live(conn, ~p"/settings/security")
-    refute has_element?(view, "#remove-passkey-prompt-#{first.id}[open]")
-    refute has_element?(view, "#remove-passkey-prompt-#{second.id}[open]")
+    refute has_element?(view, "#passkey-dialog")
+    view |> element("#remove-passkey-button-#{second.id}") |> render_click()
 
     view
     |> form("#remove-passkey-#{second.id}", passkey: %{current_password: "wrong"})
     |> render_submit()
 
-    refute has_element?(view, "#remove-passkey-password-error-#{first.id}")
-    assert has_element?(view, "#remove-passkey-password-error-#{second.id}", "Incorrect password")
+    refute has_element?(view, "#remove-passkey-#{first.id}")
+
+    assert has_element?(
+             view,
+             "#remove-passkey-#{second.id} #passkey-password-error",
+             "Incorrect password"
+           )
+
     refute has_element?(view, "#settings-error")
     assert length(Accounts.list_passkeys(user)) == 2
+
+    view |> element("#passkey-dialog") |> render_hook("hide", %{})
+    refute has_element?(view, "#passkey-dialog")
+    view |> element("#remove-passkey-button-#{first.id}") |> render_click()
+    refute has_element?(view, "#passkey-password-error")
   end
 
   test "registration option issuance is rate limited", %{view: view} do
+    view |> element("#add-passkey-button") |> render_click()
     Application.put_env(:shroud, :passkey_rate_limit_minute, div(System.system_time(:second), 60))
     on_exit(fn -> Application.delete_env(:shroud, :passkey_rate_limit_minute) end)
 
     for _ <- 1..30 do
       render_submit(view, "add_passkey", %{passkey: %{current_password: "wrong"}})
-      assert has_element?(view, "#add-passkey-password-error", "Incorrect password")
+      assert has_element?(view, "#passkey-password-error", "Incorrect password")
     end
 
     render_submit(view, "add_passkey", %{passkey: %{current_password: valid_user_password()}})
-    assert has_element?(view, "#passkey-status", "Too many passkey requests")
+    assert has_element?(view, "#passkey-dialog-status", "Too many passkey requests")
     assert Repo.aggregate("passkey_challenges", :count) == 0
   end
 
@@ -226,7 +258,7 @@ defmodule ShroudWeb.PasskeyRegistrationLiveTest do
     render_hook(view, "passkey_registered", response(options))
     assert_reply(view, %{error: "invalid_registration"})
     assert Accounts.list_passkeys(user) == []
-    assert has_element?(view, "#passkey-status[data-state=error]")
+    assert has_element?(view, "#passkey-dialog-status", "Could not add passkey")
   end
 
   test "a user unconfirmed after mounting cannot enroll", %{view: view, user: user} do
@@ -237,6 +269,10 @@ defmodule ShroudWeb.PasskeyRegistrationLiveTest do
   end
 
   defp authorize(view) do
+    if !has_element?(view, "#add-passkey-form") do
+      view |> element("#add-passkey-button") |> render_click()
+    end
+
     view
     |> form("#add-passkey-form", passkey: %{current_password: valid_user_password()})
     |> render_submit()

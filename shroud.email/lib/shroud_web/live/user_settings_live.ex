@@ -3,6 +3,7 @@ defmodule ShroudWeb.UserSettingsLive do
 
   alias Shroud.{Accounts, Billing, Repo}
   alias Shroud.Accounts.{Passkeys, TOTP, User}
+  alias ShroudWeb.Components.PopupAlert
 
   embed_templates "user_settings_live/*"
 
@@ -22,8 +23,8 @@ defmodule ShroudWeb.UserSettingsLive do
         totp_backup_codes: nil,
         show_disable_totp: false,
         passkey_form: to_form(%{"current_password" => ""}, as: :passkey),
+        passkey_dialog: nil,
         passkey_password_error: nil,
-        passkey_remove_errors: %{},
         passkey_source_ip: Passkeys.request_ip(socket),
         passkey_supported: false,
         passkey_token: nil,
@@ -43,7 +44,7 @@ defmodule ShroudWeb.UserSettingsLive do
     socket =
       if socket.assigns.live_action == :security,
         do: stream(socket, :passkeys, Accounts.list_passkeys(user), reset: true),
-        else: cancel_passkey(socket)
+        else: socket |> cancel_passkey() |> assign(:passkey_dialog, nil)
 
     billing_config = Application.get_env(:shroud, :billing, [])
     price_id = billing_config[:paddle_yearly_price_id]
@@ -125,6 +126,23 @@ defmodule ShroudWeb.UserSettingsLive do
     {:noreply, assign(socket, :passkey_supported, supported == true)}
   end
 
+  def handle_event("open_passkey_dialog", %{"action" => "add"}, socket) do
+    {:noreply, open_passkey_dialog(socket, %{action: :add})}
+  end
+
+  def handle_event("open_passkey_dialog", %{"action" => "remove", "id" => id}, socket) do
+    credential =
+      socket.assigns.current_user
+      |> Accounts.list_passkeys()
+      |> Enum.find(&(to_string(&1.id) == id))
+
+    if credential do
+      {:noreply, open_passkey_dialog(socket, %{action: :remove, credential: credential})}
+    else
+      {:noreply, socket}
+    end
+  end
+
   def handle_event("add_passkey", params, socket) do
     user = Repo.reload!(socket.assigns.current_user)
     password = get_in(params, ["passkey", "current_password"])
@@ -191,7 +209,12 @@ defmodule ShroudWeb.UserSettingsLive do
       {:ok, credential} ->
         {:reply, %{},
          socket
-         |> assign(passkey_token: nil, passkey_pending: false, passkey_status: "Passkey added.")
+         |> assign(
+           passkey_token: nil,
+           passkey_pending: false,
+           passkey_dialog: nil,
+           passkey_status: "Passkey added."
+         )
          |> stream_insert(:passkeys, credential)}
 
       _ ->
@@ -247,25 +270,18 @@ defmodule ShroudWeb.UserSettingsLive do
            Enum.find(credentials, &(&1.credential_id == id)) do
       cond do
         is_nil(user.confirmed_at) ->
-          {:noreply,
-           socket
-           |> assign(:passkey_remove_errors, %{credential.id => "Could not remove passkey."})
-           |> stream(:passkeys, credentials, reset: true)}
+          {:noreply, assign(socket, :passkey_password_error, "Could not remove passkey.")}
 
         not User.valid_password?(user, get_in(params, ["passkey", "current_password"])) ->
           {:noreply,
-           socket
-           |> assign(:passkey_remove_errors, %{
-             credential.id => "Incorrect password. Please try again."
-           })
-           |> stream(:passkeys, credentials, reset: true)}
+           assign(socket, :passkey_password_error, "Incorrect password. Please try again.")}
 
         true ->
           Accounts.remove_passkey(user, id)
 
           {:noreply,
            socket
-           |> assign(:passkey_remove_errors, %{})
+           |> assign(passkey_dialog: nil, passkey_password_error: nil)
            |> stream(:passkeys, Accounts.list_passkeys(user), reset: true)
            |> put_flash(:info, "Passkey removed.")}
       end
@@ -367,6 +383,22 @@ defmodule ShroudWeb.UserSettingsLive do
     end
   end
 
+  @impl true
+  def handle_info(:passkey_dialog_closed, socket) do
+    {:noreply,
+     socket
+     |> cancel_passkey()
+     |> assign(
+       passkey_dialog: nil,
+       passkey_password_error: nil,
+       passkey_status: nil,
+       passkey_error: false
+     )
+     |> push_event("passkey-cancel", %{})}
+  end
+
+  def handle_info(_message, socket), do: {:noreply, socket}
+
   attr :field, Phoenix.HTML.FormField, required: true
   attr :label, :string, required: true
   attr :type, :string, default: "text"
@@ -392,6 +424,18 @@ defmodule ShroudWeb.UserSettingsLive do
   end
 
   defp configured?(value), do: is_binary(value) and value != ""
+
+  defp open_passkey_dialog(socket, dialog) do
+    socket
+    |> cancel_passkey()
+    |> assign(
+      passkey_dialog: dialog,
+      passkey_password_error: nil,
+      passkey_status: nil,
+      passkey_error: false,
+      passkey_form: to_form(%{"current_password" => ""}, as: :passkey)
+    )
+  end
 
   defp authorized_passkey_token?(socket, encoded) do
     with token when is_binary(token) <- socket.assigns.passkey_token,

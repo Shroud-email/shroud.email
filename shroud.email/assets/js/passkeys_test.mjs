@@ -129,6 +129,23 @@ test("registration times out even if the authenticator ignores abort and discard
   assert.equal(env.events.some(event => event.name === "passkey_registered"), false);
 });
 
+test("closing the dialog aborts enrollment and suppresses late authenticator results", async () => {
+  let finish;
+  let signal;
+  const env = setup({ credentials: { create: options => {
+    signal = options.signal;
+    return new Promise(resolve => { finish = resolve; });
+  } } });
+  env.mount(env.hooks.PasskeyRegistration);
+  const work = env.handlers["passkey-register"](registrationPayload());
+  env.handlers["passkey-cancel"]();
+  assert.equal(signal.aborted, true);
+  finish({ rawId: bytes(9), response: { attestationObject: bytes(7), clientDataJSON: bytes(8) } });
+  await work;
+  assert.equal(env.events.some(event => event.name === "passkey_registered"), false);
+  assert.equal(env.events.some(event => event.name === "passkey_error"), false);
+});
+
 test("conditional cancellation is quiet while modal cancellation is reported", async () => {
   const env = setup({ credentials: { get: async () => { throw new DOMException("no", "NotAllowedError"); } } });
   env.mount(env.hooks.PasskeyLogin);
