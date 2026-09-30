@@ -105,7 +105,10 @@ defmodule ShroudWeb.Api.V1.Schemas do
     }
   end
 
-  def aliases_page, do: page(:email_aliases, email_alias(), email_alias().example)
+  def aliases_page do
+    alias_schema = email_alias()
+    page(:email_aliases, alias_schema, alias_schema.example)
+  end
 
   def domains_page do
     domain = %Schema{

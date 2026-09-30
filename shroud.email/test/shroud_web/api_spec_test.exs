@@ -82,7 +82,9 @@ defmodule ShroudWeb.ApiSpecTest do
           if operation.requestBody, do: Map.values(operation.requestBody.content), else: []
 
       for media <- contents do
-        assert_raw_schema(media.example || media.schema.example, media.schema)
+        example = if is_nil(media.example), do: media.schema.example, else: media.example
+        refute is_nil(example), "Missing JSON example for #{operation.operationId}"
+        assert_raw_schema(example, media.schema)
       end
     end
   end

@@ -12,7 +12,7 @@ function deploy(cwd, env = {}, scriptUrl = script) {
   return spawnSync(process.execPath, ["--input-type=module", "--eval", `
     const calls = [];
     globalThis.fetch = async (url, options = {}) => {
-      calls.push({url, method: options.method || 'GET', contentType: options.headers?.['Content-Type'], body: options.body?.toString()});
+      calls.push({url, method: options.method || 'GET', accessKey: options.headers?.AccessKey, contentType: options.headers?.['Content-Type'], body: options.body?.toString()});
       if (url === 'https://api.bunny.net/storagezone') {
         return Response.json([{Name: 'docs-test', Region: 'uk'}]);
       }
@@ -61,6 +61,14 @@ test("uploads the custom build only to its own regional zone, then purges its ca
   const result = deploy(cwd);
   assert.equal(result.status, 0, result.stderr);
   const calls = requests(result);
+  assert.deepEqual(calls.find((call) => call.url === "https://api.bunny.net/storagezone"), {
+    url: "https://api.bunny.net/storagezone", method: "GET", accessKey: "test-account-key",
+  });
+  for (const method of ["GET", "DELETE", "PUT"]) {
+    const storageCalls = calls.filter((call) => new URL(call.url).host === "uk.storage.bunnycdn.com" && call.method === method);
+    assert.ok(storageCalls.length > 0);
+    assert.ok(storageCalls.every((call) => call.accessKey === "test-storage-password"));
+  }
   const uploads = calls.filter((call) => call.method === "PUT");
   assert.deepEqual(uploads.map((call) => new URL(call.url).pathname).sort(), [
     "/docs-test/404.html",
@@ -73,7 +81,7 @@ test("uploads the custom build only to its own regional zone, then purges its ca
   assert.equal(uploads.find((call) => call.url.endsWith("/openapi.json")).contentType, "application/json; charset=utf-8");
   assert.equal(uploads.find((call) => call.url.endsWith("/bunnycdn_errors/404.html")).body, "Docs not found");
   assert.equal(calls.find((call) => call.method === "DELETE").url, "https://uk.storage.bunnycdn.com/docs-test/old-page.html");
-  assert.deepEqual(calls.at(-1), {url: "https://api.bunny.net/pullzone/456/purgeCache", method: "POST"});
+  assert.deepEqual(calls.at(-1), {url: "https://api.bunny.net/pullzone/456/purgeCache", method: "POST", accessKey: "test-account-key"});
 });
 
 test("the marketing default still uses the script-relative dist and existing zone", async (t) => {
@@ -91,7 +99,10 @@ test("the marketing default still uses the script-relative dist and existing zon
     BUNNY_STORAGE_ENDPOINT: "storage.bunnycdn.com",
   }, pathToFileURL(copy).href);
   assert.equal(result.status, 0, result.stderr);
-  const uploads = requests(result).filter((call) => call.method === "PUT");
+  assert.equal(result.stderr, "");
+  const calls = requests(result);
+  assert.ok(calls.every((call) => call.url !== "https://api.bunny.net/storagezone"));
+  const uploads = calls.filter((call) => call.method === "PUT");
   assert.deepEqual(uploads.map((call) => call.url).sort(), [
     "https://storage.bunnycdn.com/shroud-email-website/404.html",
     "https://storage.bunnycdn.com/shroud-email-website/bunnycdn_errors/404.html",

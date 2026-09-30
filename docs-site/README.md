@@ -67,10 +67,11 @@ custom build directory cannot fall back to the marketing-site zone. The uploader
 checks the local build before clearing the destination, then replaces its contents
 and purges the cache. Deployments run serially to avoid partial cancelled uploads.
 
-Uploader tests use mocked HTTP requests and disposable local fixtures:
+Uploader tests use mocked HTTP requests and disposable local fixtures. From
+`docs-site/`, run:
 
 ```sh
-node --test ../website/scripts/deploy-bunny.test.mjs
+mise exec -- node --test ../website/scripts/deploy-bunny.test.mjs
 ```
 
 Once the docs domain is live, update the marketing site's docs links and configure

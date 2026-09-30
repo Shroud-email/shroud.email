@@ -10,7 +10,7 @@
     "check": "astro check",
     "preview": "astro preview"
   },
-  "dependencies": {
+  "devDependencies": {
     "@astrojs/check": "0.9.10",
     "@astrojs/markdown-remark": "6.3.11",
     "@astrojs/starlight": "0.37.6",
