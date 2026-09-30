@@ -1,7 +1,8 @@
-# Fork PR fallback: Depot CI does not yet support fork pull requests.
 name: CI
 on:
   pull_request:
+  push:
+    branches: ["main"]
 
 permissions:
   contents: read
@@ -12,9 +13,7 @@ defaults:
 
 jobs:
   test:
-    name: Fork PR / test
-    if: github.event.pull_request.head.repo.full_name != github.repository
-    runs-on: ubuntu-24.04
+    runs-on: depot-ubuntu-24.04
     env:
       MIX_ENV: test
       LOOPS_API_KEY: secret
@@ -72,9 +71,8 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
 
   image-e2e:
-    name: Fork PR / Production image E2E
-    if: github.event.pull_request.head.repo.full_name != github.repository
-    runs-on: ubuntu-24.04
+    name: Production image E2E
+    runs-on: depot-ubuntu-24.04-4
     permissions:
       contents: read
     steps:

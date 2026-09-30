@@ -1,18 +1,19 @@
-# Fork PR fallback: Depot CI does not yet support fork pull requests.
 name: Trivy
 
 on:
   pull_request:
     branches: ["main"]
+  schedule:
+    - cron: '27 7 * * 5'
 
 permissions:
   contents: read
 
 jobs:
   fs-scan:
-    if: github.event.pull_request.head.repo.full_name != github.repository
-    name: Fork PR / Filesystem scan
-    runs-on: ubuntu-24.04
+    if: github.event_name == 'pull_request'
+    name: Filesystem scan
+    runs-on: depot-ubuntu-24.04
     permissions:
       contents: read
       security-events: write
@@ -29,6 +30,33 @@ jobs:
           # Temporary migration exception for imported dependency vulnerabilities.
           # Remove after website and Caddy dependency upgrades; keep app scanning enabled.
           skip-files: 'website/pnpm-lock.yaml,caddy-permissive-file-storage/go.mod'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@ce64ddcb0d8d890d2df4a9d1c04ff297367dea2a # v3.35.2
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  image-scan:
+    if: github.event_name == 'schedule'
+    name: Scheduled image scan
+    runs-on: depot-ubuntu-24.04
+    permissions:
+      contents: read
+      packages: read
+      security-events: write
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ghcr.io/shroud-email/shroud.email:edge
           format: 'sarif'
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH,MEDIUM'

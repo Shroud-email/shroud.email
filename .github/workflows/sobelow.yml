@@ -1,7 +1,8 @@
-# Fork PR fallback: Depot CI does not yet support fork pull requests.
 name: Sobelow
 
 on:
+  push:
+    branches: ["main"]
   pull_request:
     branches: ["main"]
 
@@ -14,12 +15,10 @@ defaults:
 
 jobs:
   security-scan:
-    name: Fork PR / security-scan
-    if: github.event.pull_request.head.repo.full_name != github.repository
     permissions:
       contents: read
       security-events: write
-    runs-on: ubuntu-24.04
+    runs-on: depot-ubuntu-24.04
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
