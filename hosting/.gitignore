@@ -1,0 +1,9 @@
+.DS_Store
+.env
+docker-compose.override.yaml
+node_modules/
+haraka/haraka_config/queue
+haraka/haraka_config/config/dhparams.pem
+haraka/haraka_config/config/me
+haraka/haraka_config/config/dkim
+!haraka/haraka_config/config/dkim/dkim_key_gen.sh

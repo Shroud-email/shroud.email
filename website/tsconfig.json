@@ -1,0 +1,13 @@
+{
+  "extends": "astro/tsconfigs/strictest",
+  "compilerOptions": {
+    "strictNullChecks": true,
+    "baseUrl": ".",
+    "paths": {
+      "~/*": ["src/*"]
+    },
+    "exactOptionalPropertyTypes": false,
+    "jsx": "preserve"
+  },
+  "exclude": ["edge-script", "dist", ".astro"]
+}

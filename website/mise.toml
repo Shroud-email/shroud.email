@@ -1,0 +1,4 @@
+[tools]
+deno = "2"
+node = "22"
+pnpm = "11"

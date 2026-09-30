@@ -1,0 +1,127 @@
+name: shroud
+services:
+
+  db:
+    image: postgres:14.0-alpine3.14
+    restart: unless-stopped
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_DB=${DB_DATABASE}
+    dns:
+      - 1.1.1.1
+      - 1.0.0.1
+
+  spamassassin:
+    image: dinkel/spamassassin
+    restart: unless-stopped
+    logging:
+      driver: none
+
+  haraka:
+    image: ghcr.io/shroud-email/haraka:main
+    restart: unless-stopped
+    depends_on:
+      - spamassassin
+      - db
+    ports:
+      - "25:25"
+    environment:
+      - EMAIL_DOMAIN=${EMAIL_DOMAIN}
+      - SMTP_USERNAME=${SMTP_USERNAME}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - PGHOST=db
+      - PGUSER=${DB_USER}
+      - PGPASSWORD=${DB_PASSWORD}
+      - PGDATABASE=${DB_DATABASE}
+    volumes:
+      - ./haraka/haraka_config:/app/haraka_config
+      - pem_certs:/app/haraka_config/config/certs
+
+  cap:
+    image: tiago2/cap:3
+    restart: unless-stopped
+    depends_on:
+      - valkey
+    environment:
+      - ADMIN_KEY=${CAP_ADMIN_KEY}
+      - REDIS_URL=redis://valkey:6379
+      - CORS_ORIGIN=https://${APP_DOMAIN}
+
+  valkey:
+    image: valkey/valkey:9-alpine
+    restart: unless-stopped
+    command: valkey-server --save 60 1 --loglevel warning --maxmemory 256mb --maxmemory-policy noeviction
+    volumes:
+      - valkey_data:/data
+
+  web:
+    image: ghcr.io/shroud-email/shroud.email:1
+    restart: unless-stopped
+    depends_on:
+      - db
+      - haraka
+    environment:
+      - ADMIN_EMAIL=${ADMIN_EMAIL}
+      - APP_DOMAIN=${APP_DOMAIN}
+      - EMAIL_DOMAIN=${EMAIL_DOMAIN}
+      - DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_DATABASE}
+      - SECRET_KEY_BASE=${SECRET_KEY_BASE}
+      - PASSKEY_TRUSTED_PROXY_HOSTS=caddy
+      - SMTP_RELAY=haraka
+      - SMTP_USERNAME=${SMTP_USERNAME}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - SENTRY_DSN=${SENTRY_DSN}
+      - DB_ENCRYPTION_KEY=${DB_ENCRYPTION_KEY}
+      - PADDLE_API_KEY=${PADDLE_API_KEY}
+      - PADDLE_CLIENT_TOKEN=${PADDLE_CLIENT_TOKEN}
+      - PADDLE_ENVIRONMENT=${PADDLE_ENVIRONMENT}
+      - PADDLE_WEBHOOK_SECRET=${PADDLE_WEBHOOK_SECRET}
+      - PADDLE_YEARLY_PRICE_ID=${PADDLE_YEARLY_PRICE_ID}
+      - NOTIFIER_WEBHOOK_URL=${NOTIFIER_WEBHOOK_URL}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - S3_BUCKET=${S3_BUCKET}
+      - S3_HOST=${S3_HOST}
+      - LOOPS_API_KEY=${LOOPS_API_KEY}
+      - LOOPS_ACTIVE_USERS_LIST_ID=${LOOPS_ACTIVE_USERS_LIST_ID}
+      - CHATWOOT_MAC_TOKEN=${CHATWOOT_MAC_TOKEN}
+      - CHATWOOT_BASE_URL=${CHATWOOT_BASE_URL}
+      - CAP_INSTANCE_URL=${CAP_INSTANCE_URL:-https://${CAP_DOMAIN}}
+      - CAP_SITE_KEY=${CAP_SITE_KEY}
+      - CAP_SECRET_KEY=${CAP_SECRET_KEY}
+
+  caddy:
+    build:
+      context: ..
+      dockerfile: hosting/caddy/Dockerfile
+    restart: unless-stopped
+    environment:
+      - ADMIN_EMAIL=${ADMIN_EMAIL}
+      - APP_DOMAIN=${APP_DOMAIN}
+      - EMAIL_DOMAIN=${EMAIL_DOMAIN}
+      - BUNNY_API_KEY=${BUNNY_API_KEY}
+      - CAP_DOMAIN=${CAP_DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy_data:/data
+      - ${CADDYFILE_PATH:-./caddy/Caddyfile}:/etc/caddy/Caddyfile
+
+  cron:
+    build: ./cron
+    restart: unless-stopped
+    environment:
+      - EMAIL_DOMAIN=${EMAIL_DOMAIN}
+    volumes:
+      - caddy_data:/caddy
+      - pem_certs:/pem
+
+volumes:
+  db_data:
+  caddy_data:
+  pem_certs:
+  valkey_data:

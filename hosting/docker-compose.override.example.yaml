@@ -1,0 +1,25 @@
+# For those who want to live on the edge.
+#
+# Tracks the :edge image (rebuilt on every push to main) and uses Watchtower
+# to auto-pull and recreate the web container whenever a new image is published.
+#
+# On the server:
+#   cp docker-compose.override.example.yaml docker-compose.override.yaml
+#   docker compose up -d
+# docker compose merges docker-compose.override.yaml automatically (no -f needed).
+services:
+  web:
+    image: ghcr.io/shroud-email/shroud.email:edge
+    labels:
+      - com.centurylinklabs.watchtower.enable=true   # opt this container in
+
+  watchtower:
+    image: containrrr/watchtower:1.7.1
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_LABEL_ENABLE=true   # ONLY update opted-in containers — never db
+      - WATCHTOWER_POLL_INTERVAL=300   # poll GHCR every 5 min
+      - WATCHTOWER_CLEANUP=true        # delete old images after updating
+      - DOCKER_API_VERSION=1.44        # watchtower 1.7.1's SDK defaults to 1.25, too old for Docker Engine 28+

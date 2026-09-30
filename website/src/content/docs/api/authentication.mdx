@@ -1,0 +1,46 @@
+---
+title: Authentication
+description: "API authentication documentation"
+---
+
+import Alert from "~/components/atoms/Alert.astro";
+
+<Alert
+  intent="info"
+  text="For our hosted Shroud.email, use the host https://app.shroud.email for this API. If you're self-hosting, replace this with your own instance's domain!"
+/>
+
+To use the Shroud.email API, all requests must include an authorization header with a bearer token. You can create an API token using the API endpoint at `/api/v1/token`. These tokens give access to your Shroud.email account, so keep them secret!
+
+The header is a standard Authorization header, e.g.:
+
+```
+Authorization: Bearer c2hyb3VkLmVtYWlsIHRva2VuIDotKQ==
+```
+
+## Create an API token
+
+`POST /api/v1/token`
+
+Post to this endpoint with your Shroud.email username and password to get an API token.
+
+If your account has two-factor authentication enabled, you must also include a valid TOTP code in your request. If not, you can leave out the `totp` key.
+
+### Example
+
+```
+POST /api/v1/token
+
+{
+  "email": "user@example.com",
+  "password": "correcthorsebatterystaple",
+  "totp": 123456
+}
+
+--
+Response:
+
+{
+  "token": "c2hyb3VkLmVtYWlsIHRva2VuIDotKQ=="
+}
+```

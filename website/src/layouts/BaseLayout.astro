@@ -1,0 +1,226 @@
+---
+import "../styles/tailwind.css";
+import { SEO } from "astro-seo";
+import { OPEN_GRAPH, SITE } from "../config";
+
+export interface Props {
+    title?: string;
+    description?: string;
+}
+let { title, description } = Astro.props;
+title = title
+    ? `${title} | ${SITE.title}`
+    : `${SITE.title} | Email, meet privacy.`;
+const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+const canonicalImageSrc = new URL(OPEN_GRAPH.image.src, Astro.site).toString();
+const imageAlt = OPEN_GRAPH.image.alt;
+---
+
+<html
+    class="h-full scroll-smooth antialiased [font-feature-settings:'ss01']"
+    lang="en"
+>
+    <head>
+        <meta charset="UTF-8" />
+        <script is:inline>
+            // Gate JS-driven motion (scroll reveals, rotating hero word) on a class
+            // set before first paint. When absent — no JS, or reduced-motion — all
+            // content renders visible and static. No flash, crawler-safe.
+            if (
+                window.matchMedia &&
+                !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+            ) {
+                document.documentElement.classList.add("motion-ok");
+            }
+        </script>
+        <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+        <meta name="viewport" content="width=device-width" />
+        <meta name="color-scheme" content="light dark" />
+        <link
+            rel="alternate"
+            type="application/rss+xml"
+            href="/blog/rss.xml"
+            title="RSS"
+        />
+        <link rel="sitemap" href="/sitemap-index.xml" />
+
+        <link rel="canonical" href={canonicalURL} />
+
+        <SEO
+            title={title}
+            description={description ?? SITE.description}
+            openGraph={{
+                basic: {
+                    title: title,
+                    type: "website",
+                    image: canonicalImageSrc,
+                    url: canonicalURL.toString(),
+                },
+                image: { url: canonicalImageSrc, alt: imageAlt },
+                optional: {
+                    siteName: SITE.title,
+                    locale: OPEN_GRAPH.locale,
+                },
+            }}
+            twitter={{
+                card: "summary_large_image",
+                title: title,
+                description: description ?? SITE.description,
+                image: canonicalImageSrc,
+                imageAlt: imageAlt,
+            }}
+        />
+
+        <slot name="head" />
+    </head>
+
+    <body class="h-full bg-white dark:bg-slate-950">
+        <div class="h-full">
+            <slot />
+        </div>
+
+        <script is:inline>
+            function loadPostHog() {
+                if (window.posthog && window.posthog.__SV) return;
+
+                !(function (t, e) {
+                    var o, n, p, r;
+                    e.__SV ||
+                        ((window.posthog = e),
+                        (e._i = []),
+                        (e.init = function (i, s, a) {
+                            function g(t, e) {
+                                var o = e.split(".");
+                                (2 == o.length && ((t = t[o[0]]), (e = o[1])),
+                                    (t[e] = function () {
+                                        t.push(
+                                            [e].concat(
+                                                Array.prototype.slice.call(
+                                                    arguments,
+                                                    0,
+                                                ),
+                                            ),
+                                        );
+                                    }));
+                            }
+                            (((p = t.createElement("script")).type =
+                                "text/javascript"),
+                                (p.crossOrigin = "anonymous"),
+                                (p.async = !0),
+                                (p.src =
+                                    s.api_host.replace(
+                                        ".i.posthog.com",
+                                        "-assets.i.posthog.com",
+                                    ) + "/static/array.js"),
+                                (r =
+                                    t.getElementsByTagName(
+                                        "script",
+                                    )[0]).parentNode.insertBefore(p, r));
+                            var u = e;
+                            for (
+                                void 0 !== a
+                                    ? (u = e[a] = [])
+                                    : (a = "posthog"),
+                                    u.people = u.people || [],
+                                    u.toString = function (t) {
+                                        var e = "posthog";
+                                        return (
+                                            "posthog" !== a && (e += "." + a),
+                                            t || (e += " (stub)"),
+                                            e
+                                        );
+                                    },
+                                    u.people.toString = function () {
+                                        return u.toString(1) + ".people (stub)";
+                                    },
+                                    o =
+                                        "init Ce js Ls Te Fs Ds capture Ye calculateEventProperties Us register register_once register_for_session unregister unregister_for_session Ws getFeatureFlag getFeatureFlagPayload isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSurveysLoaded onSessionId getSurveys getActiveMatchingSurveys renderSurvey displaySurvey canRenderSurvey canRenderSurveyAsync identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty Bs zs createPersonProfile Hs Ms Gs opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing get_explicit_consent_status is_capturing clear_opt_in_out_capturing Ns debug L qs getPageViewId captureTraceFeedback captureTraceMetric".split(
+                                            " ",
+                                        ),
+                                    n = 0;
+                                n < o.length;
+                                n++
+                            )
+                                g(u, o[n]);
+                            e._i.push([i, s, a]);
+                        }),
+                        (e.__SV = 1));
+                })(document, window.posthog || []);
+                window.posthog.init(
+                    "phc_9q2mSOtde8Gj01Y41ok3beG5Lrt89INpUBrO46SqKD7",
+                    {
+                        api_host: "https://ph.btao.org",
+                        defaults: "2025-05-24",
+                        cookieless_mode: "always",
+                    },
+                );
+            }
+
+            function loadChatwoot() {
+                if (document.querySelector("script[data-chatwoot-sdk]")) return;
+
+                window.chatwootSettings = {
+                    availableMessage: "Send us a message.",
+                    unavailableMessage: "Send us a message.",
+                };
+
+                var baseUrl = "https://support.shroud.email";
+                var sdk = document.createElement("script");
+                var firstScript = document.getElementsByTagName("script")[0];
+                sdk.src = baseUrl + "/packs/js/sdk.js";
+                sdk.async = true;
+                sdk.dataset.chatwootSdk = "";
+                firstScript.parentNode.insertBefore(sdk, firstScript);
+                sdk.onload = function () {
+                    window.chatwootSDK.run({
+                        websiteToken: "7j9ZdJCJR5ZGaYkCMN2EvAhp",
+                        baseUrl: baseUrl,
+                    });
+                };
+            }
+
+            function loadThirdParties() {
+                loadPostHog();
+                loadChatwoot();
+            }
+
+            function scheduleWhenIdle() {
+                if ("requestIdleCallback" in window) {
+                    window.requestIdleCallback(loadThirdParties);
+                } else {
+                    window.setTimeout(loadThirdParties, 0);
+                }
+            }
+
+            if (document.readyState === "complete") {
+                scheduleWhenIdle();
+            } else {
+                window.addEventListener("load", scheduleWhenIdle, {
+                    once: true,
+                });
+            }
+        </script>
+
+        <script>
+            // Scroll-reveal: toggle `is-visible` on .fade-in elements as they enter
+            // the viewport. Only runs when motion is allowed (the `motion-ok` class is
+            // set before first paint); otherwise the CSS keeps everything visible.
+            if (document.documentElement.classList.contains("motion-ok")) {
+                const io = new IntersectionObserver(
+                    (entries) => {
+                        for (const entry of entries) {
+                            if (entry.isIntersecting) {
+                                entry.target.classList.add("is-visible");
+                                io.unobserve(entry.target);
+                            }
+                        }
+                    },
+                    { threshold: 0.15, rootMargin: "0px 0px -10% 0px" },
+                );
+                for (const el of document.querySelectorAll(".fade-in")) {
+                    io.observe(el);
+                }
+            }
+        </script>
+    </body>
+</html>

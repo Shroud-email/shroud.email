@@ -1,0 +1,63 @@
+---
+export interface Props {
+  words: string[];
+  class?: string;
+}
+
+const { words, class: className = "" } = Astro.props;
+const maxLen = Math.max(...words.map((w) => w.length));
+---
+
+<span
+  class:list={[
+    "scrolling-text relative inline-block overflow-hidden align-bottom",
+    className,
+  ]}
+  style={`width:${maxLen}ch;height:1.1em`}
+  data-words={JSON.stringify(words)}
+>
+  <span class="scrolling-text__word absolute inset-x-0 top-0">{words[0]}</span>
+</span>
+
+<script>
+  const EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
+
+  function startRotation(host: HTMLElement) {
+    let words: string[];
+    try {
+      words = JSON.parse(host.dataset.words || "[]");
+    } catch {
+      return;
+    }
+    if (words.length < 2) return;
+
+    const word = host.querySelector<HTMLElement>(".scrolling-text__word");
+    if (!word) return;
+
+    let i = 0;
+    setInterval(() => {
+      i = (i + 1) % words.length;
+      // Exit the current word upward.
+      word.style.transition = `transform 500ms ${EASE}, opacity 500ms ${EASE}`;
+      word.style.transform = "translateY(-100%)";
+      word.style.opacity = "0";
+      setTimeout(() => {
+        // Swap text, reset below, then enter upward into place.
+        word.textContent = words[i] ?? "";
+        word.style.transition = "none";
+        word.style.transform = "translateY(100%)";
+        void word.offsetHeight; // force reflow so the next transition runs
+        word.style.transition = `transform 500ms ${EASE}, opacity 500ms ${EASE}`;
+        word.style.transform = "translateY(0)";
+        word.style.opacity = "1";
+      }, 500);
+    }, 2600);
+  }
+
+  // Only animate when motion is allowed (set before first paint in BaseLayout).
+  if (document.documentElement.classList.contains("motion-ok")) {
+    for (const el of document.querySelectorAll<HTMLElement>(".scrolling-text")) {
+      startRotation(el);
+    }
+  }
+</script>

@@ -1,0 +1,8 @@
+version: 3
+rules:
+  # Pinact 4.1 cannot parse the non-semver tag deploy-script@0.5.0.
+  # Verified via GitHub's annotated tag API; review updates manually.
+  # Limit this exception to the verified SHA, not all versions of the action.
+  - ignore: true
+    conditions:
+      - expr: 'ActionName == "BunnyWay/actions/deploy-script" && ActionVersion == "cfed0ba7842c85686d0dc3a83d8d971991a752f6"'

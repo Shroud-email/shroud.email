@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# This repository has no services or authentication that need repairing when
+# an orb resumes. Toolchains and dependencies are restored from its snapshot.
+exit 0

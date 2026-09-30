@@ -1,0 +1,94 @@
+---
+import { Image } from "astro:assets";
+import howItWorks from "~/assets/howitworks.webp";
+import FadeIn from "~/components/atoms/FadeIn.astro";
+
+const steps = [
+  {
+    n: "1",
+    name: "Forward emails…",
+    description:
+      "Every email sent to one of your aliases is forwarded on to your real address. You never have to hand out your real address again.",
+  },
+  {
+    n: "2",
+    name: "…minus the trackers.",
+    description:
+      "Tracker blocking strips tracking pixels out of your mail, so senders can't see when, or where, you opened it.",
+  },
+  {
+    n: "3",
+    name: "Don't worry about spam.",
+    description:
+      "Finished with an alias? Delete it. If a single sender is bugging you, block just them and keep the rest.",
+  },
+];
+---
+
+<section id="learn-more" class="scroll-mt-20 bg-white dark:bg-slate-950">
+  <div class="mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-28 lg:px-8">
+    <FadeIn>
+      <div class="max-w-3xl">
+        <h2
+          class="font-display text-3xl font-semibold tracking-tight text-balance text-slate-900 dark:text-slate-50 sm:text-4xl lg:text-5xl"
+        >
+          Spammers and marketers don't just see your email address. They see
+          dollar signs.
+        </h2>
+        <p class="mt-6 max-w-prose text-lg leading-relaxed text-pretty text-slate-600 dark:text-slate-400">
+          Your address gets harvested, sold, and used to follow you across the
+          internet. Tracking pixels quietly tell senders the moment, and the
+          place, you open their emails.
+        </p>
+      </div>
+    </FadeIn>
+
+    <div class="mt-16 grid gap-12 sm:mt-24 lg:grid-cols-2 lg:items-center lg:gap-16">
+      <FadeIn fromDirection="left">
+        <Image
+          class="mx-auto w-full max-w-md rounded-xl ring-1 ring-slate-900/5 dark:ring-white/10 lg:mx-0"
+          src={howItWorks}
+          alt="A list of incoming emails, each labelled as blocked, trackers removed, or forwarded"
+          layout="constrained"
+          width={448}
+          widths={[380, 448, 640, 665, 750]}
+          sizes="(min-width: 480px) 448px, calc(100vw - 2rem)"
+          loading="lazy"
+          decoding="async"
+        />
+      </FadeIn>
+
+      <FadeIn fromDirection="right">
+        <div>
+          <h3
+            class="font-display text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50 sm:text-3xl"
+          >
+            How it works
+          </h3>
+          <p class="mt-3 max-w-prose text-lg text-slate-600 dark:text-slate-400">
+            The next time a website asks for your email, create a unique alias
+            with Shroud.email that hides your real identity.
+          </p>
+
+          <ol class="mt-10 space-y-8">
+            {
+              steps.map((step) => (
+                <li class="flex gap-5">
+                  <span class="font-display text-2xl font-semibold tabular-nums leading-none text-indigo-500">
+                    {step.n}
+                  </span>
+                  <div class="-mt-1">
+                    <h4 class="font-display text-lg font-semibold text-slate-900 dark:text-slate-50">
+                      {step.name}
+                    </h4>
+                    <p class="mt-1 text-slate-600 dark:text-slate-400">{step.description}</p>
+                  </div>
+                </li>
+              ))
+            }
+          </ol>
+        </div>
+      </FadeIn>
+    </div>
+  </div>
+</section>

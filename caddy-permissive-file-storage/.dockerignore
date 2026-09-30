@@ -1,0 +1,16 @@
+# Exclude version control from the Docker build context.
+.git/
+.gitignore
+
+# Exclude xcaddy build artifacts (also gitignored locally).
+buildenv_*/
+
+# Exclude CI/IDE metadata not needed for the image.
+.github/
+
+# Exclude docs; not needed in the runtime image.
+*.md
+docs/
+
+# Exclude the test itself from the runtime image.
+test/

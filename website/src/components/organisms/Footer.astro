@@ -1,0 +1,120 @@
+---
+import NewsletterForm from "~/components/molecules/NewsletterForm.astro";
+import { Icon } from "astro-icon/components";
+
+const firstColLinks = [
+  {
+    title: "Company",
+    children: [
+      { name: "About", href: "/about/" },
+      { name: "Blog", href: "/blog/" },
+      { name: "Docs", href: "/docs/" },
+      { name: "Contact", href: "mailto:hello@shroud.email" },
+    ],
+  },
+  {
+    title: "Comparisons",
+    children: [{ name: "vs. Firefox Relay", href: "/vs/firefox-relay/" }],
+  },
+];
+
+const secondColLinks = [
+  {
+    title: "Practical",
+    children: [
+      { name: "Privacy", href: "/privacy/" },
+      { name: "Terms", href: "/terms/" },
+      { name: "System status", href: "https://status.shroud.email/" },
+    ],
+  },
+];
+
+const year = new Date().getFullYear();
+---
+
+<footer class="bg-slate-950" aria-labelledby="footer-heading">
+  <h2 id="footer-heading" class="sr-only">Footer</h2>
+  <div class="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:py-16 lg:px-8">
+    <div class="xl:grid xl:grid-cols-3 xl:gap-8">
+      <div class="grid grid-cols-2 gap-8 xl:col-span-2">
+        <div class="md:grid md:grid-cols-2 md:gap-8">
+          {
+            firstColLinks.map(({ title, children }) => (
+              <div class="mt-12 md:mt-0">
+                <h3 class="text-sm font-semibold text-slate-300 tracking-wider uppercase">
+                  {title}
+                </h3>
+                <ul role="list" class="mt-4 space-y-4">
+                  {children.map(({ name, href }) => (
+                    <li>
+                      <a
+                        href={href}
+                        class="rounded text-base text-slate-300 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+                      >
+                        {name}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))
+          }
+        </div>
+        <div class="md:grid md:grid-cols-2 md:gap-8">
+          {
+            secondColLinks.map(({ title, children }) => (
+              <div class="mt-12 md:mt-0">
+                <h3 class="text-sm font-semibold text-slate-300 tracking-wider uppercase">
+                  {title}
+                </h3>
+                <ul role="list" class="mt-4 space-y-4">
+                  {children.map(({ name, href }) => (
+                    <li>
+                      <a
+                        href={href}
+                        class="rounded text-base text-slate-300 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+                      >
+                        {name}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))
+          }
+        </div>
+      </div>
+      <div class="mt-8 xl:mt-0">
+        <h3
+          class="text-sm font-semibold text-slate-300 tracking-wider uppercase"
+        >
+          Subscribe to our newsletter
+        </h3>
+        <p class="mt-4 text-base text-slate-300">
+          The latest product updates and news, lovingly delivered to your inbox.
+        </p>
+        <div class="mt-4 sm:max-w-md">
+          <NewsletterForm onDarkSurface />
+        </div>
+      </div>
+    </div>
+    <div
+      class="mt-8 border-t border-slate-800 pt-8 md:flex md:items-center md:justify-between"
+    >
+      <div class="flex space-x-6 md:order-2">
+        <a
+          href="https://github.com/Shroud-email/shroud.email"
+          target="_blank"
+          rel="noopener"
+          class="rounded text-slate-400 hover:text-slate-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+        >
+          <span class="sr-only">GitHub</span>
+          <Icon name="mdi:github" class="h-6 w-6" />
+        </a>
+      </div>
+      <p class="mt-8 text-base text-slate-400 md:mt-0 md:order-1">
+        &copy; {year} <a href="https://workinghypothes.is/" class="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">Working Hypothesis Ltd</a>. All rights reserved.
+      </p>
+    </div>
+  </div>
+</footer>

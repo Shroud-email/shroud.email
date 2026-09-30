@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$repo_root"
+
 step() {
   local name="$1"
   shift
@@ -79,10 +82,17 @@ install_mise() {
 
   export PATH="$HOME/.local/bin:$PATH"
   "$mise_bin" trust --yes mise.toml
+  "$mise_bin" install --yes
+  "$mise_bin" trust --yes shroud.email/mise.toml
+  "$mise_bin" trust --yes caddy-permissive-file-storage/mise.toml
   # Debian 12 can use Bob's Ubuntu 22.04 OTP build; avoid compiling Erlang from source.
   # Install Erlang first so Elixir's install dependency is present before mise runs in parallel.
-  MISE_ERLANG_PRECOMPILED_OS=ubuntu-22.04 "$mise_bin" install --yes erlang
-  "$mise_bin" install --yes
+  (
+    cd shroud.email
+    MISE_ERLANG_PRECOMPILED_OS=ubuntu-22.04 "$mise_bin" install --yes erlang
+    "$mise_bin" install --yes
+  )
+  (cd caddy-permissive-file-storage && "$mise_bin" install --yes)
 }
 
 configure_login_shell() {
@@ -110,7 +120,6 @@ prepare_environment() {
 }
 
 install_javascript_dependencies() {
-  mise exec -- npm ci
   mise exec -- npm --prefix assets ci
   mise exec -- npm --prefix e2e ci
 }
@@ -175,12 +184,15 @@ step "Install system packages" install_apt_packages \
 step "Install Docker" install_docker
 step "Install pinned toolchain" install_mise
 step "Configure login shell" configure_login_shell
+step "Install repository tooling" mise exec -- npm ci
+cd "$repo_root/shroud.email"
 step "Prepare local environment" prepare_environment
 step "Install JavaScript dependencies" install_javascript_dependencies
 step "Install and compile Elixir dependencies" install_elixir_dependencies
 step "Configure PostgreSQL" configure_postgresql
 step "Create and migrate databases" prepare_databases
 step "Seed development database" seed_development_database
+step "Prepare website" bash "$repo_root/website/.agents/setup"
 
 echo
 echo "Orb setup complete."

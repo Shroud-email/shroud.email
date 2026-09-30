@@ -1,0 +1,32 @@
+---
+import LandingLayout from "~/layouts/LandingLayout.astro";
+import PageHeader from "~/components/molecules/PageHeader.astro";
+
+interface Props {
+  content: {
+    title: string;
+    description: string;
+  };
+}
+const {
+  content: { title, description },
+} = Astro.props;
+---
+
+<LandingLayout title={title} description={description}>
+  <PageHeader title={title} description={description} />
+  <div class="comparison-content mt-6 prose prose-indigo dark:prose-invert prose-lg text-slate-700 dark:text-slate-300 mx-auto max-w-prose px-3 [&_h2]:border-l-[3px] [&_h2]:border-brand-strong [&_h2]:pl-4 dark:[&_h2]:border-brand-soft">
+    <slot />
+  </div>
+
+  <div class="max-w-2xl mx-auto text-center py-16 px-4 sm:py-20 sm:px-6 lg:px-8">
+    <h2 class="text-3xl font-extrabold text-slate-900 dark:text-slate-50 sm:text-4xl font-display">
+      <span class="block">Like what you hear?</span>
+      <span class="block">Try Shroud.email today.</span>
+    </h2>
+    <p class="mt-4 text-lg leading-6 text-slate-800 dark:text-slate-300">Start free with 5 aliases, no credit card needed.</p>
+    <a href="https://app.shroud.email/users/register" class="mt-8 w-full inline-flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-800 sm:w-auto">
+      Sign up
+    </a>
+  </div>
+</LandingLayout>
