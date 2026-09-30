@@ -538,7 +538,7 @@ defmodule ShroudWeb.Api.V1.EmailAliasControllerTest do
       assert response(conn, 204)
     end
 
-    test "preserves the legacy 422 response for missing and deleted aliases", %{
+    test "returns 422 for missing and deleted aliases", %{
       conn: conn,
       user: user,
       address: address
