@@ -8,6 +8,25 @@ defmodule Shroud.Accounts.PasskeysTest do
   import Shroud.AccountsFixtures
   import Shroud.PasskeyFixtures
 
+  test "base64url decoding is shared and bounded at 24,000 encoded bytes" do
+    assert Passkeys.decode_base64url("-_8") == {:ok, <<251, 255>>}
+
+    assert Passkeys.decode_base64url(String.duplicate("A", 24_000)) ==
+             {:ok, :binary.copy(<<0>>, 18_000)}
+
+    for invalid <- [String.duplicate("A", 24_004), "!", nil, %{}] do
+      assert Passkeys.decode_base64url(invalid) == :error
+    end
+  end
+
+  test "resolver initializes proxy trust before returning its initial state" do
+    assert {:ok, _state} =
+             PasskeyProxyResolver.init(table: :passkey_boot_ips, hosts: ["localhost"])
+
+    assert PasskeyProxyResolver.trusted?({127, 0, 0, 1}, :passkey_boot_ips)
+    refute PasskeyProxyResolver.trusted?({192, 0, 2, 41}, :passkey_boot_ips)
+  end
+
   test "registration challenges are fresh and bound to a user" do
     user = user_fixture()
     other = user_fixture()
@@ -134,19 +153,23 @@ defmodule Shroud.Accounts.PasskeysTest do
   end
 
   test "an unavailable configured proxy logs a warning" do
-    resolver =
-      start_supervised!(
-        {PasskeyProxyResolver,
-         name: :passkey_unavailable_resolver, table: :passkey_unavailable_ips, hosts: [""]}
-      )
-
-    log =
+    boot_log =
       capture_log(fn ->
+        start_supervised!(
+          {PasskeyProxyResolver,
+           name: :passkey_unavailable_resolver, table: :passkey_unavailable_ips, hosts: [""]}
+        )
+      end)
+
+    refresh_log =
+      capture_log(fn ->
+        resolver = Process.whereis(:passkey_unavailable_resolver)
         send(resolver, :refresh)
         :sys.get_state(resolver)
       end)
 
-    assert log =~ "Passkey trusted proxy"
+    assert boot_log =~ "Passkey trusted proxy"
+    assert refresh_log =~ "Passkey trusted proxy"
     refute PasskeyProxyResolver.trusted?({127, 0, 0, 1}, :passkey_unavailable_ips)
   end
 

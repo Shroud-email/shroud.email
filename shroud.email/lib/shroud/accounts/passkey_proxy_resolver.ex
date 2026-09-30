@@ -22,19 +22,21 @@ defmodule Shroud.Accounts.PasskeyProxyResolver do
   def init(opts) do
     table = Keyword.get(opts, :table, __MODULE__)
     :ets.new(table, [:named_table, :protected, :set, read_concurrency: true])
-    :ets.insert(table, {:addresses, []})
-    send(self(), :refresh)
 
     {:ok,
-     %{
+     refresh(%{
        table: table,
        hosts:
          Keyword.get(opts, :hosts, Application.get_env(:shroud, :passkey_trusted_proxy_hosts, []))
-     }}
+     })}
   end
 
   @impl true
   def handle_info(:refresh, state) do
+    {:noreply, refresh(state)}
+  end
+
+  defp refresh(state) do
     addresses =
       for host <- state.hosts,
           family <- [:inet, :inet6],
@@ -53,6 +55,6 @@ defmodule Shroud.Accounts.PasskeyProxyResolver do
 
     delay = if state.hosts != [] and addresses == [], do: @retry_interval, else: @refresh_interval
     Process.send_after(self(), :refresh, delay)
-    {:noreply, state}
+    state
   end
 end

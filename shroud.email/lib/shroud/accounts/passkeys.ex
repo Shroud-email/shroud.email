@@ -7,6 +7,12 @@ defmodule Shroud.Accounts.Passkeys do
 
   @challenge_timeout 300
 
+  def decode_base64url(value) when is_binary(value) and byte_size(value) <= 24_000 do
+    Base.url_decode64(value, padding: false)
+  end
+
+  def decode_base64url(_), do: :error
+
   def request_ip(conn, proxy_table \\ PasskeyProxyResolver) do
     peer = conn.remote_ip
 

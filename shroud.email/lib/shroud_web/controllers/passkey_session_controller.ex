@@ -31,11 +31,11 @@ defmodule ShroudWeb.PasskeySessionController do
 
     result =
       with true <- Passkeys.allow_request?(Passkeys.request_ip(conn), :verify),
-           {:ok, raw_id} <- decode(params["rawId"]),
-           {:ok, handle} <- decode(params["userHandle"]),
-           {:ok, auth_data} <- decode(params["authenticatorData"]),
-           {:ok, signature} <- decode(params["signature"]),
-           {:ok, client_data} <- decode(params["clientDataJSON"]),
+           {:ok, raw_id} <- Passkeys.decode_base64url(params["rawId"]),
+           {:ok, handle} <- Passkeys.decode_base64url(params["userHandle"]),
+           {:ok, auth_data} <- Passkeys.decode_base64url(params["authenticatorData"]),
+           {:ok, signature} <- Passkeys.decode_base64url(params["signature"]),
+           {:ok, client_data} <- Passkeys.decode_base64url(params["clientDataJSON"]),
            true <- is_binary(token) do
         Passkeys.authenticate(token, raw_id, handle, auth_data, signature, client_data)
       else
@@ -54,10 +54,4 @@ defmodule ShroudWeb.PasskeySessionController do
         |> json(%{error: "Could not sign in with passkey"})
     end
   end
-
-  defp decode(value) when is_binary(value) and byte_size(value) <= 24_000 do
-    Base.url_decode64(value, padding: false)
-  end
-
-  defp decode(_), do: :error
 end

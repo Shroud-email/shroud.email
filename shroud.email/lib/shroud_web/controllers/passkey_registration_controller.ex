@@ -67,9 +67,9 @@ defmodule ShroudWeb.PasskeyRegistrationController do
       end
 
     result =
-      with {:ok, attestation} <- decode(params["attestationObject"]),
-           {:ok, client_data} <- decode(params["clientDataJSON"]),
-           {:ok, raw_id} <- decode(params["rawId"]),
+      with {:ok, attestation} <- Passkeys.decode_base64url(params["attestationObject"]),
+           {:ok, client_data} <- Passkeys.decode_base64url(params["clientDataJSON"]),
+           {:ok, raw_id} <- Passkeys.decode_base64url(params["rawId"]),
            true <- is_binary(token) do
         Passkeys.register(
           conn.assigns.current_user,
@@ -102,7 +102,7 @@ defmodule ShroudWeb.PasskeyRegistrationController do
 
   def delete(conn, %{"id" => id, "current_password" => password}) do
     with true <- User.valid_password?(conn.assigns.current_user, password),
-         {:ok, raw_id} <- decode(id),
+         {:ok, raw_id} <- Passkeys.decode_base64url(id),
          :ok <- Accounts.remove_passkey(conn.assigns.current_user, raw_id) do
       conn |> put_flash(:info, "Passkey removed.") |> redirect(to: ~p"/settings/security")
     else
@@ -118,10 +118,4 @@ defmodule ShroudWeb.PasskeyRegistrationController do
       conn
       |> put_flash(:error, "Could not remove passkey.")
       |> redirect(to: ~p"/settings/security")
-
-  defp decode(value) when is_binary(value) and byte_size(value) <= 24_000 do
-    Base.url_decode64(value, padding: false)
-  end
-
-  defp decode(_), do: :error
 end
