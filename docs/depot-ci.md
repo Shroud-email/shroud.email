@@ -91,6 +91,15 @@ Automatic triggers register when `.depot/workflows/` is merged to the default
 branch. Inspect runs with `depot ci run list --repo Shroud-email/shroud.email`
 and `depot ci status <run-id>`; use `depot ci logs` to inspect failures.
 Manual workflows are dispatched through Depot, not GitHub's Actions UI.
+Sobelow and Trivy retain SARIF reports as Depot artifacts. Normal ref-based
+runs upload them using GitHub's public code-scanning SARIF API, with the existing
+`security-events: write` GitHub App token permission, and wait for processing.
+The CodeQL upload action cannot be used here: it looks up a GitHub Actions run
+that does not exist for Depot jobs. Local `depot ci run` (`api`) and ref-less runs
+skip GitHub publishing, since local patches may not match a GitHub commit.
+Those runs still scan and retain the report (e.g. `sobelow-sarif`) for review.
+Sobelow source locations are prefixed with `shroud.email/` for the monorepo.
+
 For example, after explicitly authorizing a staging deployment:
 
 ```sh
@@ -101,6 +110,7 @@ depot ci dispatch --repo Shroud-email/shroud.email \
 Local static validation from the repository root:
 
 ```sh
+node --test .depot/scripts/upload-sarif.test.mjs
 actionlint -config-file .github/actionlint.yaml .depot/workflows/*.yml .github/workflows/*.yml
 mise exec -- zizmor --offline .depot/workflows/*.yml .github/workflows/*.yml
 mise exec -- pinact run --fix=false --no-api .depot/workflows/*.yml .github/workflows/*.yml

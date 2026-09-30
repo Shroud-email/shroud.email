@@ -56,8 +56,15 @@ jobs:
         # :http_util.timestamp/0), and it only fires intermittently (gated by a
         # 12h timestamp file in ~/.sobelow), so without this it fails flakily.
         run: mix sobelow --private --format sarif --out results.sarif
-      - name: Upload report
-        uses: github/codeql-action/upload-sarif@ce64ddcb0d8d890d2df4a9d1c04ff297367dea2a # v3.35.2
+      - name: Retain SARIF report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          sarif_file: shroud.email/results.sarif
-          checkout_path: shroud.email
+          name: sobelow-sarif
+          path: shroud.email/results.sarif
+          if-no-files-found: ignore
+      - name: Upload report to GitHub Security
+        working-directory: .
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node .depot/scripts/upload-sarif.mjs shroud.email/results.sarif shroud.email sobelow
