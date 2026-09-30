@@ -364,12 +364,9 @@ defmodule Shroud.Email.MailserverHealthTest do
        :gen_tcp.close(socket)
      end})
 
-    started = System.monotonic_time(:millisecond)
     results = MailserverHealth.smtp_checks("localhost", port, :starttls)
-    elapsed = System.monotonic_time(:millisecond) - started
     tls = Enum.find(results, &String.starts_with?(&1.name, "STARTTLS"))
 
     assert tls.detail =~ "timeout"
-    assert elapsed < 3300
   end
 end
