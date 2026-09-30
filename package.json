@@ -1,7 +1,7 @@
 {
   "name": "shroud.email",
   "scripts": {
-    "test": "node --test assets/js/*_test.mjs",
+    "test": "node --test shroud.email/assets/js/*_test.mjs",
     "prepare": "husky"
   },
   "dependencies": {
