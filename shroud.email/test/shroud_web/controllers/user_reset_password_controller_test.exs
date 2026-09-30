@@ -31,6 +31,12 @@ defmodule ShroudWeb.UserResetPasswordControllerTest do
       assert redirected_to(conn) == "/users/log_in"
       assert Flash.get(conn.assigns.flash, :info) =~ "If your email is in our system"
       assert Repo.get_by!(Accounts.UserToken, user_id: user.id).context == "reset_password"
+
+      response = conn |> recycle() |> get(~p"/users/log_in") |> html_response(200)
+      alert = response |> Floki.parse_document!() |> Floki.find("#login-info[role=alert]")
+
+      assert Floki.text(alert) =~
+               "If your email is in our system, you will receive instructions to reset your password shortly."
     end
 
     test "does not send reset password token if email is invalid", %{conn: conn} do
@@ -42,6 +48,12 @@ defmodule ShroudWeb.UserResetPasswordControllerTest do
       assert redirected_to(conn) == "/users/log_in"
       assert Flash.get(conn.assigns.flash, :info) =~ "If your email is in our system"
       assert Repo.all(Accounts.UserToken) == []
+
+      response = conn |> recycle() |> get(~p"/users/log_in") |> html_response(200)
+      alert = response |> Floki.parse_document!() |> Floki.find("#login-info[role=alert]")
+
+      assert Floki.text(alert) =~
+               "If your email is in our system, you will receive instructions to reset your password shortly."
     end
   end
 
@@ -100,6 +112,10 @@ defmodule ShroudWeb.UserResetPasswordControllerTest do
       refute get_session(conn, :user_token)
       assert Flash.get(conn.assigns.flash, :info) =~ "Password reset successfully"
       assert Accounts.get_user_by_email_and_password(user.email, "new valid password")
+
+      response = conn |> recycle() |> get(~p"/users/log_in") |> html_response(200)
+      alert = response |> Floki.parse_document!() |> Floki.find("#login-info[role=alert]")
+      assert Floki.text(alert) =~ "Password reset successfully."
     end
 
     test "does not reset password on invalid data", %{conn: conn, token: token} do
@@ -137,6 +153,12 @@ defmodule ShroudWeb.UserResetPasswordControllerTest do
 
       assert redirected_to(conn) == "/users/reset_password"
       assert Flash.get(conn.assigns.flash, :error) =~ "verification"
+
+      response = conn |> recycle() |> get(~p"/users/reset_password") |> html_response(200)
+      document = Floki.parse_document!(response)
+      alert = Floki.find(document, "#reset-password-error[role=alert]")
+      assert Floki.text(alert) =~ "CAPTCHA verification failed. Please try again."
+      assert Floki.find(document, "#login-info") == []
     after
       disable_cap()
     end
