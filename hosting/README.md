@@ -31,8 +31,14 @@ When upgrading an existing installation, migrate its local configuration too:
 - `dkim_sign` becomes `dkim`. Move local `dkim_sign.ini` settings into `[sign]`
   in `dkim.ini`: `disabled=false` becomes `enabled=true`, and `headers_to_sign`
   becomes `headers`. The existing `config/dkim/<domain>/private` and `selector`
-  files still work. Signing remains opt-in, as in 2.8.28; verification remains
-  disabled unless deliberately enabled under `[verify]`.
+  files still work. Preserve existing DKIM private keys, selectors, matching DNS
+  records and any local configuration overrides when upgrading. Signing is
+  enabled, with `headers=From` to preserve the Haraka 2 effective defaults;
+  the message body is still signed. Enabling signing does not automatically
+  provision custom-domain keys or DNS records. Without usable key material and
+  a selector, the plugin records the missing configuration and continues without
+  adding a signature. Verification remains disabled unless deliberately enabled
+  under `[verify]`.
 - Header settings, SMTPUTF8 and strict RFC 1869 settings move from `smtp.ini` to
   `connection.ini`. Migrate old greeting, UUID, message-size and line-limit files
   using the [upstream migration table](https://github.com/haraka/Haraka/blob/v3.3.4/CHANGELOG.md#310---2025-01-30).
