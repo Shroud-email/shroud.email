@@ -2,19 +2,12 @@
 
 Standalone Astro Starlight site for `https://docs.shroud.email`. Product and
 deployment guides live in `src/content/docs/`; API reference pages are generated
-by `starlight-openapi` from `public/openapi.json`.
+by `starlight-openapi` from the committed `../shroud.email/openapi.json`.
 
 ## Build and preview
 
-Install the app's Mix dependencies and toolchain as described in
-[`../shroud.email/README.md`](../shroud.email/README.md). Then, from `shroud.email/`:
-
-```sh
-mise exec -- mix openapi.spec.json --spec ShroudWeb.ApiSpec --start-app=false --pretty=true ../docs-site/public/openapi.json
-```
-
-The exporter compiles the app but does not start it or require a database. From
-`docs-site/`:
+Building or editing the docs only requires Node.js and pnpm, not Elixir or a
+database. From `docs-site/`:
 
 ```sh
 mise trust
@@ -24,9 +17,28 @@ mise exec -- pnpm build
 mise exec -- pnpm dev
 ```
 
-Regenerate the spec after changing API annotations. CI generates it before every
-docs build. The JSON and build output are ignored; neither is a second source of
-truth.
+## Updating the OpenAPI specification
+
+The Elixir annotations are the source of truth; `shroud.email/openapi.json` is a
+generated snapshot, not edited by hand. After changing API annotations, install
+the app's Mix dependencies and toolchain as described in
+[`../shroud.email/README.md`](../shroud.email/README.md), then from `shroud.email/`:
+
+```sh
+mise exec -- mix openapi.spec.json --spec ShroudWeb.ApiSpec --start-app=false --pretty=true openapi.json
+```
+
+Commit the regenerated JSON alongside the source changes. The exporter compiles
+the app but does not start it or require a database. To check it without rewriting
+the file, from `shroud.email/`:
+
+```sh
+mise exec -- mix openapi.spec.json --spec ShroudWeb.ApiSpec --start-app=false --pretty=true --check=true openapi.json
+```
+
+CI runs this sync check in the existing Elixir test job and fails if the committed
+spec differs from the generated output. A separate Node-only job builds the docs
+in parallel using the committed spec. Build output remains ignored.
 
 ## Editing documentation
 
@@ -56,9 +68,10 @@ policy; this integration does not change the existing privacy behavior.
 
 ## Deployment and cutover
 
-`.github/workflows/docs-deploy.yml` automatically generates the spec, builds the
-site and publishes `dist/` to Bunny Storage on changes to docs or app source on
-`main`. It also supports manual dispatch on `main`; pull requests only build and
+`.github/workflows/docs-deploy.yml` builds the site from the committed spec and
+publishes `dist/` to Bunny Storage on changes to docs, the spec, shared analytics,
+or deployment tooling on `main`. Deployment requires only Node.js and pnpm, not
+Elixir. It also supports manual dispatch on `main`; pull requests only build and
 never deploy. The uploader publishes Bunny's custom 404 page and purges the Pull
 Zone cache. Both sites use the shared `../scripts/deploy-bunny.mjs` uploader.
 No Node.js server is required in production.

@@ -17,7 +17,7 @@ export default defineConfig({
         starlightOpenAPI([
           {
             base: "api",
-            schema: "./public/openapi.json",
+            schema: "../shroud.email/openapi.json",
             sidebar: { label: "API reference", collapsed: false },
           },
         ]),
