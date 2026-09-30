@@ -9,6 +9,18 @@ Deno.test("GB uses UK pricing", () => {
   assertEquals(usesUKPricing("GB"), true);
 });
 
+Deno.test("GG uses UK pricing", () => {
+  assertEquals(usesUKPricing("GG"), true);
+});
+
+Deno.test("JE uses UK pricing", () => {
+  assertEquals(usesUKPricing("JE"), true);
+});
+
+Deno.test("IM uses UK pricing", () => {
+  assertEquals(usesUKPricing("IM"), true);
+});
+
 Deno.test("worldwide countries do not use UK pricing", () => {
   assertEquals(usesUKPricing("US"), false);
 });

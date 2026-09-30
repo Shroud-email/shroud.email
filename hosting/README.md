@@ -130,8 +130,11 @@ service.
 4. Open `https://<CAP_DOMAIN>` and create a site key.  Cap authenticates with a
    session token issued by logging in with the `ADMIN_KEY`. Create a `siteKey` and `secretKey` in the Cap UI.
 
-5. Set `CAP_INSTANCE_URL`, `CAP_SITE_KEY`, and `CAP_SECRET_KEY` in `.env`, then
-   restart `web`:
+5. Set `CAP_INSTANCE_URL` in `.env` to the public URL
+   (`https://<CAP_DOMAIN>`), set `CAP_SITE_KEY` to the `siteKey` returned by
+   `/server/keys`, and set `CAP_SECRET_KEY` to its returned `secretKey`. Then
+   recreate `web` so Compose applies the updated environment (`restart` does
+   not refresh it):
    ```bash
-   docker compose restart web
+   docker compose up -d web
    ```

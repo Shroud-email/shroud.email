@@ -6,8 +6,8 @@ SELECTOR="shroudemail"
 
 usage()
 {
-    echo "   usage: ${0} <example.com>" 2>&1
-    echo 2>&1
+    echo "   usage: ${0} <example.com>" >&2
+    echo >&2
     exit 1
 }
 
@@ -19,9 +19,9 @@ fi
 mkdir -p "$DOMAIN"
 cd "$DOMAIN" || exit
 
-if [ -e private ]; then
-    echo "Refusing to overwrite existing DKIM private key: ${DOMAIN}/private" 2>&1
-    echo "Remove it explicitly before generating a replacement key." 2>&1
+if [ -e private ] || [ -L private ]; then
+    echo "Refusing to overwrite existing DKIM private key: ${DOMAIN}/private" >&2
+    echo "Remove it explicitly before generating a replacement key." >&2
     exit 1
 fi
 

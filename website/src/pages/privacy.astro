@@ -310,9 +310,10 @@ import LandingLayout from "../layouts/LandingLayout.astro";
         <dd>
           We keep message content only until delivery succeeds or delivery attempts
           end. However, when email-data logging is enabled for an account, we store
-          a full copy of messages for troubleshooting. We also store delivery bounce
-          reports. These stored copies are not deleted automatically and remain
-          until we delete them.
+          full copies of messages for troubleshooting. Separately, we store delivery
+          bounce reports regardless of whether email-data logging is enabled. Full
+          copies stored through logging and bounce reports are not deleted automatically
+          and remain until we delete them.
         </dd>
 
         <dt><strong>Spam</strong></dt>

@@ -28,6 +28,7 @@ jobs:
           cache: true
           cache-dependency-path: caddy-permissive-file-storage/go.sum
       - run: go install github.com/caddyserver/xcaddy/cmd/xcaddy@v0.4.6
+      - run: go test -race ./...
       - run: bash test/e2e.sh
 
   deploy:

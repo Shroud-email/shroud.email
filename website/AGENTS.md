@@ -11,10 +11,12 @@ Marketing/docs website for [Shroud.email](https://shroud.email), an email privac
 - `mise exec -- pnpm install --frozen-lockfile` — install dependencies from `pnpm-lock.yaml`
 - `mise exec -- pnpm run dev` — local dev server
 - `mise exec -- pnpm run build` — type-check (`astro check` + `vue-tsc --noEmit`) then build
+- `mise exec -- pnpm test` — run the Node.js tests in `scripts/*.test.mjs`
 - `mise exec -- pnpm run preview` — serve production build locally
 - `mise exec -- pnpm run lint` — format + lint with Biome (auto-fixes)
+- From `edge-script/`, `mise exec -- deno task test` — run the Deno edge-script tests
 
-No test framework is configured. Verify changes with `mise exec -- pnpm run build`.
+Verify website and deployment-script changes from this directory with `mise exec -- pnpm test` and `mise exec -- pnpm run build`. For changes under `edge-script/`, also run `mise exec -- deno task test` from `edge-script/`.
 
 ## Architecture
 

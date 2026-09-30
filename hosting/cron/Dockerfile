@@ -13,6 +13,6 @@ RUN chmod +x /etc/periodic/daily/bundle_certs /usr/local/bin/start
 VOLUME /pem
 
 HEALTHCHECK --interval=5s --timeout=2s --retries=60 \
-    CMD test -f /tmp/startup-sync-complete && test -s /pem/tls_key.pem && test -s /pem/tls_cert.pem
+    CMD test -f /tmp/startup-sync-complete && test -s /pem/current/tls_key.pem && test -s /pem/current/tls_cert.pem
 
 CMD ["/usr/local/bin/start"]

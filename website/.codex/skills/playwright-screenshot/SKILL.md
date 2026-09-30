@@ -27,5 +27,5 @@ npx playwright install
 
 ## Script reference
 
-- `scripts/take_screenshots.sh <url> [output_dir] [widths_csv] [height]`
+- `website/.codex/skills/playwright-screenshot/scripts/take_screenshots.sh <url> [output_dir] [widths_csv] [height]`
 - Defaults: `output_dir=./screenshots`, `widths_csv=1440,1200,1024,768,375`, `height=900`.

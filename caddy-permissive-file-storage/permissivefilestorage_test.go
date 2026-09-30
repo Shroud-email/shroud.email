@@ -57,6 +57,37 @@ func TestStoreSetsModesOnNewPathsWithRestrictiveUmask(t *testing.T) {
 	assertMode(t, filepath.Join(root, "new", "nested", "value"), 0644)
 }
 
+func TestStoreRejectsKeyEscapingRootWithoutChangingOutsidePath(t *testing.T) {
+	base := t.TempDir()
+	root := filepath.Join(base, "storage")
+	outside := filepath.Join(base, "outside")
+	if err := os.Mkdir(outside, 0711); err != nil {
+		t.Fatal(err)
+	}
+	outsideFile := filepath.Join(outside, "value")
+	oldValue := []byte("unchanged")
+	if err := os.WriteFile(outsideFile, oldValue, 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	storage := &CertmagicStorage{FileStorage: certmagicFileStorage(root)}
+	for _, key := range []string{"../outside/value", "", ".", "nested/.."} {
+		if err := storage.Store(context.Background(), key, []byte("replaced")); err == nil {
+			t.Fatalf("Store accepted invalid key %q", key)
+		}
+	}
+
+	value, err := os.ReadFile(outsideFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(value, oldValue) {
+		t.Errorf("outside file content = %q, want %q", value, oldValue)
+	}
+	assertMode(t, outside, 0711)
+	assertMode(t, outsideFile, 0600)
+}
+
 func TestStoreReadersSeeOnlyCompleteValues(t *testing.T) {
 	root := t.TempDir()
 	storage := &CertmagicStorage{FileStorage: certmagicFileStorage(root)}

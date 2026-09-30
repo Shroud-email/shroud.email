@@ -1,4 +1,11 @@
-if ! git diff --cached --find-renames --name-only --diff-filter=ACMRD -- shroud.email/ | grep -q .; then
+staged_paths=$(git diff --cached --find-renames --name-only --diff-filter=ACMRD -- shroud.email/)
+diff_status=$?
+
+if [ "$diff_status" -ne 0 ]; then
+  exit "$diff_status"
+fi
+
+if [ -z "$staged_paths" ]; then
   exit 0
 fi
 

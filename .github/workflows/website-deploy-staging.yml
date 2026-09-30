@@ -2,7 +2,7 @@ name: Website staging deployment
 
 # Single workflow that deploys EVERYTHING needed to test the staging site:
 # the static site build AND the bunny.net edge script. It only runs from and
-# deploys the trusted main branch — nothing touches prod.
+# deploys the triggering commit from the trusted main branch — nothing touches prod.
 #
 # What it deploys:
 #   1. Site build (dist/) → staging storage zone + cache purge
@@ -38,7 +38,7 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          ref: refs/heads/main
+          ref: ${{ github.sha }}
           persist-credentials: false
 
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
@@ -71,7 +71,7 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          ref: refs/heads/main
+          ref: ${{ github.sha }}
           persist-credentials: false
 
       - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
@@ -81,6 +81,10 @@ jobs:
       - name: Type-check
         working-directory: website/edge-script
         run: deno check src/main.ts
+
+      - name: Test
+        working-directory: website/edge-script
+        run: deno task test
 
       - name: Bundle
         working-directory: website/edge-script

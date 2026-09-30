@@ -3,7 +3,7 @@
 
 # Pretty Feed
 
-Styles an RSS feed, making it friendly for humans viewers, and adds a link
+Styles an RSS feed, making it friendly for human viewers, and adds a link
 to aboutfeeds.com for new user onboarding. See it in action:
 
    https://interconnected.org/home/feed

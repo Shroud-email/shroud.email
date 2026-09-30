@@ -2,8 +2,10 @@ package permissivefilestorage
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/caddyserver/caddy/v2"
 	"github.com/caddyserver/caddy/v2/modules/filestorage"
@@ -40,7 +42,22 @@ func (s PermissiveStorage) CertMagicStorage() (certmagic.Storage, error) {
 
 // Override Store to use globally-readable permissions
 func (fs *CertmagicStorage) Store(_ context.Context, key string, value []byte) error {
-	filename := fs.Filename(key)
+	root, err := filepath.Abs(fs.Path)
+	if err != nil {
+		return fmt.Errorf("resolve storage root: %w", err)
+	}
+	filename, err := filepath.Abs(fs.Filename(key))
+	if err != nil {
+		return fmt.Errorf("resolve storage destination: %w", err)
+	}
+	rel, err := filepath.Rel(root, filename)
+	if err != nil {
+		return fmt.Errorf("resolve storage destination relative to root: %w", err)
+	}
+	if rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("storage key %q escapes storage root", key)
+	}
+
 	directory := filepath.Dir(filename)
 	if err := os.MkdirAll(directory, 0755); err != nil {
 		return err
@@ -49,7 +66,6 @@ func (fs *CertmagicStorage) Store(_ context.Context, key string, value []byte) e
 	// MkdirAll and CreateTemp apply the process umask when creating paths and do
 	// not update permissions on paths that already exist. Set the requested
 	// permissions explicitly so storage remains readable in both cases.
-	root := filepath.Clean(fs.Path)
 	for current := directory; ; current = filepath.Dir(current) {
 		if err := os.Chmod(current, 0755); err != nil {
 			return err

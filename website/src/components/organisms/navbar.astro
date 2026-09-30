@@ -213,10 +213,15 @@ const navLink =
   ) {
     for (const b of buttons) {
       const isOpen = b.getAttribute("aria-expanded") === "true";
-      b.setAttribute("aria-expanded", "false");
       const p = document.getElementById(b.getAttribute("aria-controls") || "");
+      const activeElement = document.activeElement;
+      const shouldRestoreFocus =
+        restoreFocus &&
+        isOpen &&
+        (activeElement === b || (activeElement && p?.contains(activeElement)));
+      b.setAttribute("aria-expanded", "false");
       if (p) p.hidden = true;
-      if (restoreFocus && isOpen) b.focus();
+      if (shouldRestoreFocus) b.focus();
     }
   }
 

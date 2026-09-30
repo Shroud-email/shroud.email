@@ -1,5 +1,9 @@
 # Commitizen is optional; automation and explicit commit messages need no prompt.
+hook_pgid=$(ps -o pgid= -p $$ 2>/dev/null | tr -d ' ')
+tty_pgid=$(ps -o tpgid= -p $$ 2>/dev/null | tr -d ' ')
+
 if [ -z "${2:-}" ] && [ -x shroud.email/assets/node_modules/.bin/cz ] &&
+  [ -n "$hook_pgid" ] && [ "$hook_pgid" = "$tty_pgid" ] &&
   (: </dev/tty) 2>/dev/null; then
   shroud.email/assets/node_modules/.bin/cz --hook </dev/tty >/dev/tty || true
 fi

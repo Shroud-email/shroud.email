@@ -43,11 +43,11 @@ if ! grep -Fqx "$profile_marker" "$login_profile"; then
   cat >> "$login_profile" <<'EOF'
 
 # shroud-email mise activation
-if [[ -x "$HOME/.local/bin/mise" ]]; then
+if [ -x "$HOME/.local/bin/mise" ]; then
   export PATH="$HOME/.local/bin:$PATH"
 fi
 mise_bin="$(command -v mise 2>/dev/null || true)"
-if [[ -n "$mise_bin" ]]; then
+if [ -n "$mise_bin" ] && [ -n "${BASH_VERSION:-}" ]; then
   eval "$("$mise_bin" activate bash)"
 fi
 EOF

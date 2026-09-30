@@ -1,9 +1,9 @@
 'use strict'
 
 const assert = require('node:assert/strict')
-const {execFileSync} = require('node:child_process')
 const Module = require('node:module')
-const {afterEach, test} = require('node:test')
+const {afterEach, beforeEach, test} = require('node:test')
+const {Client} = require('pg')
 
 const verified_domains_query = `SELECT domain FROM custom_domains
 WHERE ownership_verified_at > (CURRENT_TIMESTAMP AT TIME ZONE 'UTC') - INTERVAL '1 day'
@@ -14,6 +14,7 @@ WHERE ownership_verified_at > (CURRENT_TIMESTAMP AT TIME ZONE 'UTC') - INTERVAL 
 
 const plugin_path = require.resolve('../plugins/rcpt_to.host_list_base_shroud')
 const original_load = Module._load
+const original_email_domain = process.env.EMAIL_DOMAIN
 
 function load_plugin (query) {
     const pools = []
@@ -44,10 +45,18 @@ function load_plugin (query) {
     return {plugin: require(plugin_path), pools}
 }
 
+beforeEach(() => {
+    delete process.env.EMAIL_DOMAIN
+})
+
 afterEach(() => {
     Module._load = original_load
     delete require.cache[plugin_path]
-    delete process.env.EMAIL_DOMAIN
+    if (original_email_domain === undefined) {
+        delete process.env.EMAIL_DOMAIN
+    } else {
+        process.env.EMAIL_DOMAIN = original_email_domain
+    }
 })
 
 test('shares one bounded pool across host-list loads', async () => {
@@ -96,8 +105,11 @@ test('handles idle pooled-client errors instead of leaving them unhandled', () =
 })
 
 test('database predicate matches fully_verified? timestamp semantics', {
-    skip: process.env.TEST_DATABASE_URL == null && process.env.DATABASE_URL == null,
+    skip: process.env.TEST_DATABASE_URL == null,
 }, async () => {
+    // A prior test may have replaced Module._load to mock pg for the plugin.
+    Module._load = original_load
+
     const sql = `WITH custom_domains(
         domain, ownership_verified_at, mx_verified_at, spf_verified_at,
         dkim_verified_at, dmarc_verified_at
@@ -106,10 +118,13 @@ test('database predicate matches fully_verified? timestamp semantics', {
         ('stale.example', CURRENT_TIMESTAMP AT TIME ZONE 'UTC', CURRENT_TIMESTAMP AT TIME ZONE 'UTC', CURRENT_TIMESTAMP AT TIME ZONE 'UTC' - INTERVAL '1 day', CURRENT_TIMESTAMP AT TIME ZONE 'UTC', CURRENT_TIMESTAMP AT TIME ZONE 'UTC'),
         ('missing.example', CURRENT_TIMESTAMP AT TIME ZONE 'UTC', CURRENT_TIMESTAMP AT TIME ZONE 'UTC', CURRENT_TIMESTAMP AT TIME ZONE 'UTC', CURRENT_TIMESTAMP AT TIME ZONE 'UTC', NULL)
     ) ${verified_domains_query}`
-    const output = execFileSync('psql', [
-        process.env.TEST_DATABASE_URL || process.env.DATABASE_URL,
-        '--no-align', '--tuples-only', '--command', sql,
-    ], {encoding: 'utf8'})
+    const client = new Client({connectionString: process.env.TEST_DATABASE_URL})
 
-    assert.equal(output.trim(), 'verified.example')
+    try {
+        await client.connect()
+        const result = await client.query(sql)
+        assert.deepEqual(result.rows, [{domain: 'verified.example'}])
+    } finally {
+        await client.end()
+    }
 })

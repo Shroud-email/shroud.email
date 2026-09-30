@@ -47,12 +47,19 @@ const updateFog = () => {
   }
 };
 
-const cleanupFog = () => {
-  reducedMotion.removeEventListener("change", updateFog);
+const cleanupFog = (event) => {
   fog?.destroy();
+  fog = undefined;
+
+  if (!event.persisted) {
+    reducedMotion.removeEventListener("change", updateFog);
+  }
 };
 
 reducedMotion.addEventListener("change", updateFog);
-window.addEventListener("pagehide", cleanupFog, { once: true });
+window.addEventListener("pagehide", cleanupFog);
+window.addEventListener("pageshow", (event) => {
+  if (event.persisted) updateFog();
+});
 updateFog();
 </script>
