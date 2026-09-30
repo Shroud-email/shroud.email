@@ -40,8 +40,12 @@ initTheme();
 window.setTheme = setTheme;
 
 window.addEventListener("phx:set-theme", (event) => setTheme(event.detail.theme));
-window.addEventListener("shroud:copy", (event) => {
-  navigator.clipboard.writeText(event.detail.text);
+window.addEventListener("shroud:copy", async (event) => {
+  try {
+    await navigator.clipboard.writeText(event.detail.text);
+  } catch {
+    window.alert("Could not copy your backup codes. Please select and copy them manually.");
+  }
 });
 
 let csrfToken = document

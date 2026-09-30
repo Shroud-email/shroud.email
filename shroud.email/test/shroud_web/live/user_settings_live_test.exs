@@ -156,6 +156,30 @@ defmodule ShroudWeb.UserSettingsLiveTest do
     assert has_element?(view, "#show-disable-totp")
   end
 
+  test "pending 2FA enrollment survives navigation between settings tabs", %{
+    conn: conn,
+    user: user
+  } do
+    {:ok, view, _} = live(conn, ~p"/settings/security")
+    view |> element("#generate_totp_secret") |> render_click()
+    secret = :sys.get_state(view.pid).socket.assigns.totp_secret
+
+    view |> element("#settings-nav-account") |> render_click()
+    view |> element("#settings-nav-security") |> render_click()
+    assert has_element?(view, "#totp-qr-code svg")
+
+    view
+    |> form("#enable_totp", verification_code: NimbleTOTP.verification_code(secret))
+    |> render_submit()
+
+    assert Repo.reload!(user).totp_enabled
+    assert Repo.reload!(user).totp_secret == secret
+    assert has_element?(view, "#totp-backup-codes")
+    view |> element("#settings-nav-account") |> render_click()
+    view |> element("#settings-nav-security") |> render_click()
+    refute has_element?(view, "#totp-backup-codes")
+  end
+
   test "invalid enrollment clears the pending secret without enabling 2FA", %{
     conn: conn,
     user: user
@@ -175,6 +199,9 @@ defmodule ShroudWeb.UserSettingsLiveTest do
     TOTP.enable_totp!(user, TOTP.create_secret())
     {:ok, view, _} = live(conn, ~p"/settings/security")
     view |> element("#show-disable-totp") |> render_click()
+    view |> element("#settings-nav-appearance") |> render_click()
+    view |> element("#settings-nav-security") |> render_click()
+    assert has_element?(view, "#disable_totp")
     view |> form("#disable_totp", verification_code: "invalid") |> render_submit()
     assert Repo.reload!(user).totp_enabled
     assert has_element?(view, "#settings-error", "Invalid two-factor")

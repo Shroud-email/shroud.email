@@ -258,3 +258,47 @@ test("remounting checkout removes the previous click handler", async () => {
   await listeners.click({ target: button });
   assert.equal(requests, 1);
 });
+
+test("disposing during Paddle initialization cancels the pending checkout", async () => {
+  const { document, listeners, button } = fixture();
+  const initialization = Promise.withResolvers();
+  let requests = 0;
+  const opened = [];
+  const checkout = setupPaddleCheckout({
+    document,
+    window: {
+      fetch: async () => { requests++; },
+    },
+    initializePaddle: () => initialization.promise,
+  });
+  const click = listeners.click({ target: button });
+  checkout.dispose();
+  initialization.resolve({ Checkout: { open: (options) => opened.push(options) } });
+  await click;
+  assert.equal(requests, 0);
+  assert.deepEqual(opened, []);
+});
+
+test("disposing during transaction creation prevents opening checkout on another page", async () => {
+  const { document, listeners, button } = fixture();
+  const transaction = Promise.withResolvers();
+  const requested = Promise.withResolvers();
+  const opened = [];
+  const checkout = setupPaddleCheckout({
+    document,
+    window: {
+      fetch: () => {
+        requested.resolve();
+        return transaction.promise;
+      },
+    },
+    initializePaddle: async () => ({ Checkout: { open: (options) => opened.push(options) } }),
+  });
+  await checkout;
+  const click = listeners.click({ target: button });
+  await requested.promise;
+  checkout.dispose();
+  transaction.resolve({ ok: true, json: async () => ({ transaction_id: "txn_123" }) });
+  await click;
+  assert.deepEqual(opened, []);
+});

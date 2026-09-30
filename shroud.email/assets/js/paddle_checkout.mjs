@@ -59,6 +59,7 @@ export function setupPaddleCheckout({
   }
 
   let checkoutPending = false;
+  let disposed = false;
 
   const paddlePromise = initializePaddle({
     token,
@@ -103,7 +104,7 @@ export function setupPaddleCheckout({
 
     try {
       paddle = await paddlePromise;
-      if (!paddle) return;
+      if (!paddle || disposed) return;
 
       const csrfToken = metaContent(document, "csrf-token");
       const response = await window.fetch(
@@ -118,6 +119,7 @@ export function setupPaddleCheckout({
 
       const { transaction_id: transactionId } = await response.json();
       if (!transactionId) throw new Error("checkout response omitted transaction_id");
+      if (disposed) return;
 
       paddle.Checkout.open({
         transactionId,
@@ -139,6 +141,7 @@ export function setupPaddleCheckout({
   document.addEventListener("click", onClick);
   return Object.assign(paddlePromise, {
     dispose() {
+      disposed = true;
       document.removeEventListener("click", onClick);
     },
   });

@@ -8,6 +8,21 @@ defmodule ShroudWeb.UserSettingsLive do
 
   @impl true
   def mount(_params, _session, socket) do
+    user = socket.assigns.current_user
+
+    socket =
+      assign(socket,
+        email_form: to_form(Accounts.change_user_email(user)),
+        password_form: to_form(Accounts.change_user_password(user)),
+        lifetime_form: to_form(%{"lifetime_code" => ""}),
+        totp_form: to_form(%{"verification_code" => ""}),
+        trigger_password_submit: false,
+        totp_secret: nil,
+        otp_qr_code: nil,
+        totp_backup_codes: nil,
+        show_disable_totp: false
+      )
+
     {:ok, socket, layout: {ShroudWeb.Layouts, :settings}}
   end
 
@@ -31,16 +46,9 @@ defmodule ShroudWeb.UserSettingsLive do
      assign(socket,
        current_user: user,
        page_title: title,
-       email_form: to_form(Accounts.change_user_email(user)),
-       password_form: to_form(Accounts.change_user_password(user)),
        appearance_form: to_form(%{"theme" => to_string(user.theme)}),
-       lifetime_form: to_form(%{"lifetime_code" => ""}),
-       totp_form: to_form(%{"verification_code" => ""}),
-       trigger_password_submit: false,
-       totp_secret: nil,
-       otp_qr_code: nil,
-       totp_backup_codes: nil,
-       show_disable_totp: false,
+       totp_backup_codes:
+         if(socket.assigns.live_action == :security, do: socket.assigns.totp_backup_codes),
        paddle_price_id: price_id,
        paddle_checkout_available?: configured?(price_id) and configured?(client_token)
      )}
@@ -184,6 +192,9 @@ defmodule ShroudWeb.UserSettingsLive do
 
       {:error, :already_redeemed} ->
         {:noreply, put_flash(socket, :error, "This code has already been redeemed.")}
+
+      {:error, :redemption_failed} ->
+        {:noreply, put_flash(socket, :error, "We couldn't redeem this code. Please try again.")}
     end
   end
 
