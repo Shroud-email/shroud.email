@@ -10,6 +10,7 @@ export default defineConfig({
       title: "Shroud.email",
       description: "Product, deployment, and API documentation for Shroud.email.",
       customCss: ["./src/styles/brand.css"],
+      components: { Head: "./src/components/Head.astro" },
       social: [{ icon: "github", label: "GitHub", href: "https://github.com/Shroud-email/shroud.email" }],
       plugins: [
         starlightOpenAPI([

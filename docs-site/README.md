@@ -42,6 +42,18 @@ Keep operation IDs stable: the plugin derives URLs from their lowercase values.
 The existing controller tests check responses against the documented schemas.
 Documentation annotations do not alter runtime request validation.
 
+## Analytics
+
+Both the docs and marketing site use `../shared/components/PostHog.astro`, with
+the same PostHog project, proxy endpoint, and `cookieless_mode: "always"` setting.
+The SDK loads after the page is ready and the browser is idle.
+
+Cookieless mode does not persist visitor IDs in cookies or browser storage.
+PostHog's server-side hash includes the hostname and a daily salt, so anonymous
+IDs are not shared between `shroud.email` and `docs.shroud.email`. Persistent
+cross-subdomain IDs would require a separate cookie/consent or identification
+policy; this integration does not change the existing privacy behavior.
+
 ## Deployment and cutover
 
 `.github/workflows/docs-deploy.yml` automatically generates the spec, builds the

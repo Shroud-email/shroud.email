@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'website/**'
+      - 'shared/components/PostHog.astro'
       - 'scripts/deploy-bunny.mjs'
       - '.github/workflows/website-deploy.yml'
   workflow_dispatch:

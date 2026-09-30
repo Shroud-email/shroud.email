@@ -6,6 +6,7 @@ on:
     paths:
       - 'docs-site/**'
       - 'shroud.email/**'
+      - 'shared/components/PostHog.astro'
       - 'scripts/deploy-bunny.mjs'
       - '.github/workflows/docs-deploy.yml'
   workflow_dispatch:
