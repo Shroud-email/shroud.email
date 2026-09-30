@@ -56,6 +56,7 @@ defmodule Shroud.MixProject do
       {:phoenix_ecto, "~> 4.7"},
       {:ecto_sql, "~> 3.11"},
       {:postgrex, ">= 0.0.0"},
+      {:open_api_spex, "~> 3.22", runtime: false},
       {:phoenix_html, "~> 4.0"},
       {:phoenix_html_helpers, "~> 1.0"},
       {:phoenix_live_reload, "~> 1.6", only: :dev},

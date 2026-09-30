@@ -1,0 +1,1493 @@
+{
+  "components": {
+    "responses": {},
+    "schemas": {
+      "CreateAlias": {
+        "allOf": [
+          {
+            "not": {
+              "oneOf": [
+                {
+                  "required": [
+                    "local_part"
+                  ],
+                  "type": "object",
+                  "x-struct": null,
+                  "x-validate": null
+                },
+                {
+                  "required": [
+                    "domain"
+                  ],
+                  "type": "object",
+                  "x-struct": null,
+                  "x-validate": null
+                }
+              ],
+              "x-struct": null,
+              "x-validate": null
+            },
+            "x-struct": null,
+            "x-validate": null
+          }
+        ],
+        "description": "Omit both local_part and domain for a random alias; otherwise supply both strings.",
+        "example": {
+          "domain": "example.com",
+          "local_part": "myemail",
+          "notes": "Used for shopping receipts",
+          "title": "Acme"
+        },
+        "properties": {
+          "domain": {
+            "description": "A custom domain owned by your account.",
+            "type": "string",
+            "x-struct": null,
+            "x-validate": null
+          },
+          "local_part": {
+            "type": "string",
+            "x-struct": null,
+            "x-validate": null
+          },
+          "notes": {
+            "nullable": true,
+            "type": "string",
+            "x-struct": null,
+            "x-validate": null
+          },
+          "title": {
+            "nullable": true,
+            "type": "string",
+            "x-struct": null,
+            "x-validate": null
+          }
+        },
+        "title": "CreateAlias",
+        "type": "object",
+        "x-struct": null,
+        "x-validate": null
+      },
+      "CreateToken": {
+        "example": {
+          "email": "user@example.com",
+          "password": "correcthorsebatterystaple",
+          "totp": 123456
+        },
+        "properties": {
+          "email": {
+            "format": "email",
+            "type": "string",
+            "x-struct": null,
+            "x-validate": null
+          },
+          "password": {
+            "format": "password",
+            "type": "string",
+            "x-struct": null,
+            "x-validate": null
+          },
+          "totp": {
+            "description": "Required when two-factor authentication is enabled.",
+            "type": "integer",
+            "x-struct": null,
+            "x-validate": null
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "CreateToken",
+        "type": "object",
+        "x-struct": null,
+        "x-validate": null
+      },
+      "EmailAlias": {
+        "example": {
+          "address": "deadbeef@fog.shroud.email",
+          "blocked": 33,
+          "blocked_addresses": [
+            "spammer@example.com"
+          ],
+          "enabled": true,
+          "forwarded": 26,
+          "notes": "Used for webshop newsletters etc.",
+          "title": "Newsletters"
+        },
+        "properties": {
+          "address": {
+            "format": "email",
+            "type": "string",
+            "x-struct": null,
+            "x-validate": null
+          },
+          "blocked": {
+            "minimum": 0,
+            "type": "integer",
+            "x-struct": null,
+            "x-validate": null
+          },
+          "blocked_addresses": {
+            "items": {
+              "type": "string",
+              "x-struct": null,
+              "x-validate": null
+            },
+            "type": "array",
+            "x-struct": null,
+            "x-validate": null
+          },
+          "enabled": {
+            "type": "boolean",
+            "x-struct": null,
+            "x-validate": null
+          },
+          "forwarded": {
+            "minimum": 0,
+            "type": "integer",
+            "x-struct": null,
+            "x-validate": null
+          },
+          "notes": {
+            "nullable": true,
+            "type": "string",
+            "x-struct": null,
+            "x-validate": null
+          },
+          "title": {
+            "nullable": true,
+            "type": "string",
+            "x-struct": null,
+            "x-validate": null
+          }
+        },
+        "required": [
+          "address",
+          "enabled",
+          "title",
+          "notes",
+          "forwarded",
+          "blocked",
+          "blocked_addresses"
+        ],
+        "title": "EmailAlias",
+        "type": "object",
+        "x-struct": null,
+        "x-validate": null
+      },
+      "Error": {
+        "example": {
+          "error": "Invalid token"
+        },
+        "properties": {
+          "error": {
+            "type": "string",
+            "x-struct": null,
+            "x-validate": null
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "title": "Error",
+        "type": "object",
+        "x-struct": null,
+        "x-validate": null
+      },
+      "Token": {
+        "example": {
+          "token": "c2hyb3VkLmVtYWlsIHRva2VuIDotKQ=="
+        },
+        "properties": {
+          "token": {
+            "description": "Base64-encoded session token.",
+            "type": "string",
+            "x-struct": null,
+            "x-validate": null
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "title": "Token",
+        "type": "object",
+        "x-struct": null,
+        "x-validate": null
+      },
+      "UpdateAlias": {
+        "description": "Omitted fields remain unchanged.",
+        "example": {
+          "enabled": false,
+          "notes": "Receipts and order updates",
+          "title": "Acme shopping"
+        },
+        "properties": {
+          "enabled": {
+            "description": "False stops all forwarding, including password-reset emails.",
+            "type": "boolean",
+            "x-struct": null,
+            "x-validate": null
+          },
+          "notes": {
+            "description": "Set to null to clear the notes.",
+            "nullable": true,
+            "type": "string",
+            "x-struct": null,
+            "x-validate": null
+          },
+          "title": {
+            "description": "Set to null to clear the label.",
+            "nullable": true,
+            "type": "string",
+            "x-struct": null,
+            "x-validate": null
+          }
+        },
+        "title": "UpdateAlias",
+        "type": "object",
+        "x-struct": null,
+        "x-validate": null
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "description": "For hosted Shroud.email, use `https://app.shroud.email`. If you're self-hosting,\nreplace this with your own instance's domain.\n\nAll requests except token creation must include a bearer token in the standard\nAuthorization header: `Authorization: Bearer c2hyb3VkLmVtYWlsIHRva2VuIDotKQ==`.\nCreate a token with `/api/v1/token`. Tokens give access to your account: keep them secret!\nAlias and domain operations require a confirmed account.\n",
+    "title": "Shroud.email API",
+    "version": "v1"
+  },
+  "openapi": "3.0.0",
+  "paths": {
+    "/api/v1/aliases": {
+      "get": {
+        "callbacks": {},
+        "description": "Lists your non-deleted email aliases, newest first.",
+        "operationId": "listAliases",
+        "parameters": [
+          {
+            "description": "Page number (default 1).",
+            "example": 1,
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "x-struct": null,
+              "x-validate": null
+            }
+          },
+          {
+            "description": "Entries per page (default 20).",
+            "example": 20,
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "x-struct": null,
+              "x-validate": null
+            }
+          },
+          {
+            "description": "Case-insensitive search across address, title and notes. Space-separated terms match any term; punctuation acts as a wildcard.",
+            "example": "Acme",
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "x-struct": null,
+              "x-validate": null
+            }
+          },
+          {
+            "description": "Filter enabled or disabled aliases.",
+            "example": false,
+            "in": "query",
+            "name": "enabled",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "x-struct": null,
+              "x-validate": null
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "email_aliases": [
+                      {
+                        "address": "deadbeef@fog.shroud.email",
+                        "blocked": 33,
+                        "blocked_addresses": [
+                          "spammer@example.com"
+                        ],
+                        "enabled": true,
+                        "forwarded": 26,
+                        "notes": "Used for webshop newsletters etc.",
+                        "title": "Newsletters"
+                      }
+                    ],
+                    "page_number": 1,
+                    "page_size": 20,
+                    "total_entries": 1,
+                    "total_pages": 1
+                  },
+                  "properties": {
+                    "email_aliases": {
+                      "items": {
+                        "example": {
+                          "address": "deadbeef@fog.shroud.email",
+                          "blocked": 33,
+                          "blocked_addresses": [
+                            "spammer@example.com"
+                          ],
+                          "enabled": true,
+                          "forwarded": 26,
+                          "notes": "Used for webshop newsletters etc.",
+                          "title": "Newsletters"
+                        },
+                        "properties": {
+                          "address": {
+                            "format": "email",
+                            "type": "string",
+                            "x-struct": null,
+                            "x-validate": null
+                          },
+                          "blocked": {
+                            "minimum": 0,
+                            "type": "integer",
+                            "x-struct": null,
+                            "x-validate": null
+                          },
+                          "blocked_addresses": {
+                            "items": {
+                              "type": "string",
+                              "x-struct": null,
+                              "x-validate": null
+                            },
+                            "type": "array",
+                            "x-struct": null,
+                            "x-validate": null
+                          },
+                          "enabled": {
+                            "type": "boolean",
+                            "x-struct": null,
+                            "x-validate": null
+                          },
+                          "forwarded": {
+                            "minimum": 0,
+                            "type": "integer",
+                            "x-struct": null,
+                            "x-validate": null
+                          },
+                          "notes": {
+                            "nullable": true,
+                            "type": "string",
+                            "x-struct": null,
+                            "x-validate": null
+                          },
+                          "title": {
+                            "nullable": true,
+                            "type": "string",
+                            "x-struct": null,
+                            "x-validate": null
+                          }
+                        },
+                        "required": [
+                          "address",
+                          "enabled",
+                          "title",
+                          "notes",
+                          "forwarded",
+                          "blocked",
+                          "blocked_addresses"
+                        ],
+                        "title": "EmailAlias",
+                        "type": "object",
+                        "x-struct": null,
+                        "x-validate": null
+                      },
+                      "type": "array",
+                      "x-struct": null,
+                      "x-validate": null
+                    },
+                    "page_number": {
+                      "type": "integer",
+                      "x-struct": null,
+                      "x-validate": null
+                    },
+                    "page_size": {
+                      "type": "integer",
+                      "x-struct": null,
+                      "x-validate": null
+                    },
+                    "total_entries": {
+                      "type": "integer",
+                      "x-struct": null,
+                      "x-validate": null
+                    },
+                    "total_pages": {
+                      "type": "integer",
+                      "x-struct": null,
+                      "x-validate": null
+                    }
+                  },
+                  "required": [
+                    "email_aliases",
+                    "page_number",
+                    "page_size",
+                    "total_entries",
+                    "total_pages"
+                  ],
+                  "type": "object",
+                  "x-struct": null,
+                  "x-validate": null
+                }
+              }
+            },
+            "description": "Email aliases"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "error": "Invalid token"
+                  },
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "x-struct": null,
+                      "x-validate": null
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "title": "Error",
+                  "type": "object",
+                  "x-struct": null,
+                  "x-validate": null
+                }
+              }
+            },
+            "description": "Invalid token or unconfirmed account"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "Invalid search or enabled filter"
+                },
+                "schema": {
+                  "example": {
+                    "error": "Invalid token"
+                  },
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "x-struct": null,
+                      "x-validate": null
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "title": "Error",
+                  "type": "object",
+                  "x-struct": null,
+                  "x-validate": null
+                }
+              }
+            },
+            "description": "Invalid search or enabled filter"
+          }
+        },
+        "summary": "List email aliases",
+        "tags": [
+          "Aliases"
+        ]
+      },
+      "post": {
+        "callbacks": {},
+        "description": "Creates an enabled alias with a random or custom address. Random addresses use\nthe default shared domain (`@fog.shroud.email` on hosted Shroud.email).\n",
+        "operationId": "createAlias",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "allOf": [
+                  {
+                    "not": {
+                      "oneOf": [
+                        {
+                          "required": [
+                            "local_part"
+                          ],
+                          "type": "object",
+                          "x-struct": null,
+                          "x-validate": null
+                        },
+                        {
+                          "required": [
+                            "domain"
+                          ],
+                          "type": "object",
+                          "x-struct": null,
+                          "x-validate": null
+                        }
+                      ],
+                      "x-struct": null,
+                      "x-validate": null
+                    },
+                    "x-struct": null,
+                    "x-validate": null
+                  }
+                ],
+                "description": "Omit both local_part and domain for a random alias; otherwise supply both strings.",
+                "example": {
+                  "domain": "example.com",
+                  "local_part": "myemail",
+                  "notes": "Used for shopping receipts",
+                  "title": "Acme"
+                },
+                "properties": {
+                  "domain": {
+                    "description": "A custom domain owned by your account.",
+                    "type": "string",
+                    "x-struct": null,
+                    "x-validate": null
+                  },
+                  "local_part": {
+                    "type": "string",
+                    "x-struct": null,
+                    "x-validate": null
+                  },
+                  "notes": {
+                    "nullable": true,
+                    "type": "string",
+                    "x-struct": null,
+                    "x-validate": null
+                  },
+                  "title": {
+                    "nullable": true,
+                    "type": "string",
+                    "x-struct": null,
+                    "x-validate": null
+                  }
+                },
+                "title": "CreateAlias",
+                "type": "object",
+                "x-struct": null,
+                "x-validate": null
+              }
+            }
+          },
+          "description": "Optional alias settings",
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "address": "myemail@example.com",
+                  "blocked": 0,
+                  "blocked_addresses": [],
+                  "enabled": true,
+                  "forwarded": 0,
+                  "notes": "Used for shopping receipts",
+                  "title": "Acme"
+                },
+                "schema": {
+                  "example": {
+                    "address": "deadbeef@fog.shroud.email",
+                    "blocked": 33,
+                    "blocked_addresses": [
+                      "spammer@example.com"
+                    ],
+                    "enabled": true,
+                    "forwarded": 26,
+                    "notes": "Used for webshop newsletters etc.",
+                    "title": "Newsletters"
+                  },
+                  "properties": {
+                    "address": {
+                      "format": "email",
+                      "type": "string",
+                      "x-struct": null,
+                      "x-validate": null
+                    },
+                    "blocked": {
+                      "minimum": 0,
+                      "type": "integer",
+                      "x-struct": null,
+                      "x-validate": null
+                    },
+                    "blocked_addresses": {
+                      "items": {
+                        "type": "string",
+                        "x-struct": null,
+                        "x-validate": null
+                      },
+                      "type": "array",
+                      "x-struct": null,
+                      "x-validate": null
+                    },
+                    "enabled": {
+                      "type": "boolean",
+                      "x-struct": null,
+                      "x-validate": null
+                    },
+                    "forwarded": {
+                      "minimum": 0,
+                      "type": "integer",
+                      "x-struct": null,
+                      "x-validate": null
+                    },
+                    "notes": {
+                      "nullable": true,
+                      "type": "string",
+                      "x-struct": null,
+                      "x-validate": null
+                    },
+                    "title": {
+                      "nullable": true,
+                      "type": "string",
+                      "x-struct": null,
+                      "x-validate": null
+                    }
+                  },
+                  "required": [
+                    "address",
+                    "enabled",
+                    "title",
+                    "notes",
+                    "forwarded",
+                    "blocked",
+                    "blocked_addresses"
+                  ],
+                  "title": "EmailAlias",
+                  "type": "object",
+                  "x-struct": null,
+                  "x-validate": null
+                }
+              }
+            },
+            "description": "Created alias"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "error": "Invalid token"
+                  },
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "x-struct": null,
+                      "x-validate": null
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "title": "Error",
+                  "type": "object",
+                  "x-struct": null,
+                  "x-validate": null
+                }
+              }
+            },
+            "description": "Invalid token, unconfirmed/inactive account, or free plan alias limit reached"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "Domain not found"
+                },
+                "schema": {
+                  "example": {
+                    "error": "Invalid token"
+                  },
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "x-struct": null,
+                      "x-validate": null
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "title": "Error",
+                  "type": "object",
+                  "x-struct": null,
+                  "x-validate": null
+                }
+              }
+            },
+            "description": "Invalid metadata, address, or domain"
+          }
+        },
+        "summary": "Create an alias",
+        "tags": [
+          "Aliases"
+        ]
+      }
+    },
+    "/api/v1/aliases/{address}": {
+      "delete": {
+        "callbacks": {},
+        "description": "Deletes an alias from your account.\nPrefer disabling an alias if you may need it again. Deleted aliases on shared\nShroud domains cannot be recreated; custom-domain addresses can be recreated.\n",
+        "operationId": "deleteAlias",
+        "parameters": [
+          {
+            "description": "Exact alias address. URL-encode it, e.g. deadbeef%40fog.shroud.email.",
+            "example": "deadbeef@fog.shroud.email",
+            "in": "path",
+            "name": "address",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "x-struct": null,
+              "x-validate": null
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Alias deleted"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "error": "Invalid token"
+                  },
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "x-struct": null,
+                      "x-validate": null
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "title": "Error",
+                  "type": "object",
+                  "x-struct": null,
+                  "x-validate": null
+                }
+              }
+            },
+            "description": "Invalid token or unconfirmed account"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "Alias not found"
+                },
+                "schema": {
+                  "example": {
+                    "error": "Invalid token"
+                  },
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "x-struct": null,
+                      "x-validate": null
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "title": "Error",
+                  "type": "object",
+                  "x-struct": null,
+                  "x-validate": null
+                }
+              }
+            },
+            "description": "Alias not found"
+          }
+        },
+        "summary": "Delete an alias",
+        "tags": [
+          "Aliases"
+        ]
+      },
+      "get": {
+        "callbacks": {},
+        "description": "Fetches a single alias.",
+        "operationId": "getAlias",
+        "parameters": [
+          {
+            "description": "Exact alias address. URL-encode it, e.g. deadbeef%40fog.shroud.email.",
+            "example": "deadbeef@fog.shroud.email",
+            "in": "path",
+            "name": "address",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "x-struct": null,
+              "x-validate": null
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "address": "deadbeef@fog.shroud.email",
+                    "blocked": 33,
+                    "blocked_addresses": [
+                      "spammer@example.com"
+                    ],
+                    "enabled": true,
+                    "forwarded": 26,
+                    "notes": "Used for webshop newsletters etc.",
+                    "title": "Newsletters"
+                  },
+                  "properties": {
+                    "address": {
+                      "format": "email",
+                      "type": "string",
+                      "x-struct": null,
+                      "x-validate": null
+                    },
+                    "blocked": {
+                      "minimum": 0,
+                      "type": "integer",
+                      "x-struct": null,
+                      "x-validate": null
+                    },
+                    "blocked_addresses": {
+                      "items": {
+                        "type": "string",
+                        "x-struct": null,
+                        "x-validate": null
+                      },
+                      "type": "array",
+                      "x-struct": null,
+                      "x-validate": null
+                    },
+                    "enabled": {
+                      "type": "boolean",
+                      "x-struct": null,
+                      "x-validate": null
+                    },
+                    "forwarded": {
+                      "minimum": 0,
+                      "type": "integer",
+                      "x-struct": null,
+                      "x-validate": null
+                    },
+                    "notes": {
+                      "nullable": true,
+                      "type": "string",
+                      "x-struct": null,
+                      "x-validate": null
+                    },
+                    "title": {
+                      "nullable": true,
+                      "type": "string",
+                      "x-struct": null,
+                      "x-validate": null
+                    }
+                  },
+                  "required": [
+                    "address",
+                    "enabled",
+                    "title",
+                    "notes",
+                    "forwarded",
+                    "blocked",
+                    "blocked_addresses"
+                  ],
+                  "title": "EmailAlias",
+                  "type": "object",
+                  "x-struct": null,
+                  "x-validate": null
+                }
+              }
+            },
+            "description": "Email alias"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "error": "Invalid token"
+                  },
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "x-struct": null,
+                      "x-validate": null
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "title": "Error",
+                  "type": "object",
+                  "x-struct": null,
+                  "x-validate": null
+                }
+              }
+            },
+            "description": "Invalid token or unconfirmed account"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "Alias not found"
+                },
+                "schema": {
+                  "example": {
+                    "error": "Invalid token"
+                  },
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "x-struct": null,
+                      "x-validate": null
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "title": "Error",
+                  "type": "object",
+                  "x-struct": null,
+                  "x-validate": null
+                }
+              }
+            },
+            "description": "Alias not found"
+          }
+        },
+        "summary": "Get an alias",
+        "tags": [
+          "Aliases"
+        ]
+      },
+      "patch": {
+        "callbacks": {},
+        "description": "Updates an alias's settings.",
+        "operationId": "updateAlias",
+        "parameters": [
+          {
+            "description": "Exact alias address. URL-encode it, e.g. deadbeef%40fog.shroud.email.",
+            "example": "deadbeef@fog.shroud.email",
+            "in": "path",
+            "name": "address",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "x-struct": null,
+              "x-validate": null
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "description": "Omitted fields remain unchanged.",
+                "example": {
+                  "enabled": false,
+                  "notes": "Receipts and order updates",
+                  "title": "Acme shopping"
+                },
+                "properties": {
+                  "enabled": {
+                    "description": "False stops all forwarding, including password-reset emails.",
+                    "type": "boolean",
+                    "x-struct": null,
+                    "x-validate": null
+                  },
+                  "notes": {
+                    "description": "Set to null to clear the notes.",
+                    "nullable": true,
+                    "type": "string",
+                    "x-struct": null,
+                    "x-validate": null
+                  },
+                  "title": {
+                    "description": "Set to null to clear the label.",
+                    "nullable": true,
+                    "type": "string",
+                    "x-struct": null,
+                    "x-validate": null
+                  }
+                },
+                "title": "UpdateAlias",
+                "type": "object",
+                "x-struct": null,
+                "x-validate": null
+              }
+            }
+          },
+          "description": "Fields to update",
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "address": "deadbeef@fog.shroud.email",
+                    "blocked": 33,
+                    "blocked_addresses": [
+                      "spammer@example.com"
+                    ],
+                    "enabled": true,
+                    "forwarded": 26,
+                    "notes": "Used for webshop newsletters etc.",
+                    "title": "Newsletters"
+                  },
+                  "properties": {
+                    "address": {
+                      "format": "email",
+                      "type": "string",
+                      "x-struct": null,
+                      "x-validate": null
+                    },
+                    "blocked": {
+                      "minimum": 0,
+                      "type": "integer",
+                      "x-struct": null,
+                      "x-validate": null
+                    },
+                    "blocked_addresses": {
+                      "items": {
+                        "type": "string",
+                        "x-struct": null,
+                        "x-validate": null
+                      },
+                      "type": "array",
+                      "x-struct": null,
+                      "x-validate": null
+                    },
+                    "enabled": {
+                      "type": "boolean",
+                      "x-struct": null,
+                      "x-validate": null
+                    },
+                    "forwarded": {
+                      "minimum": 0,
+                      "type": "integer",
+                      "x-struct": null,
+                      "x-validate": null
+                    },
+                    "notes": {
+                      "nullable": true,
+                      "type": "string",
+                      "x-struct": null,
+                      "x-validate": null
+                    },
+                    "title": {
+                      "nullable": true,
+                      "type": "string",
+                      "x-struct": null,
+                      "x-validate": null
+                    }
+                  },
+                  "required": [
+                    "address",
+                    "enabled",
+                    "title",
+                    "notes",
+                    "forwarded",
+                    "blocked",
+                    "blocked_addresses"
+                  ],
+                  "title": "EmailAlias",
+                  "type": "object",
+                  "x-struct": null,
+                  "x-validate": null
+                }
+              }
+            },
+            "description": "Updated alias"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "error": "Invalid token"
+                  },
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "x-struct": null,
+                      "x-validate": null
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "title": "Error",
+                  "type": "object",
+                  "x-struct": null,
+                  "x-validate": null
+                }
+              }
+            },
+            "description": "Invalid token or unconfirmed account"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "Alias not found"
+                },
+                "schema": {
+                  "example": {
+                    "error": "Invalid token"
+                  },
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "x-struct": null,
+                      "x-validate": null
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "title": "Error",
+                  "type": "object",
+                  "x-struct": null,
+                  "x-validate": null
+                }
+              }
+            },
+            "description": "Alias not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "is invalid"
+                },
+                "schema": {
+                  "example": {
+                    "error": "Invalid token"
+                  },
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "x-struct": null,
+                      "x-validate": null
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "title": "Error",
+                  "type": "object",
+                  "x-struct": null,
+                  "x-validate": null
+                }
+              }
+            },
+            "description": "Invalid values"
+          }
+        },
+        "summary": "Update an alias",
+        "tags": [
+          "Aliases"
+        ]
+      }
+    },
+    "/api/v1/domains": {
+      "get": {
+        "callbacks": {},
+        "description": "Lists your custom domains with valid DNS records (all verification checks within\nthe last day).\n",
+        "operationId": "listDomains",
+        "parameters": [
+          {
+            "description": "Page number (default 1).",
+            "example": 1,
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "x-struct": null,
+              "x-validate": null
+            }
+          },
+          {
+            "description": "Entries per page (default 20).",
+            "example": 20,
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "x-struct": null,
+              "x-validate": null
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "domains": [
+                      {
+                        "domain": "example.com"
+                      }
+                    ],
+                    "page_number": 1,
+                    "page_size": 20,
+                    "total_entries": 1,
+                    "total_pages": 1
+                  },
+                  "properties": {
+                    "domains": {
+                      "items": {
+                        "properties": {
+                          "domain": {
+                            "type": "string",
+                            "x-struct": null,
+                            "x-validate": null
+                          }
+                        },
+                        "required": [
+                          "domain"
+                        ],
+                        "type": "object",
+                        "x-struct": null,
+                        "x-validate": null
+                      },
+                      "type": "array",
+                      "x-struct": null,
+                      "x-validate": null
+                    },
+                    "page_number": {
+                      "type": "integer",
+                      "x-struct": null,
+                      "x-validate": null
+                    },
+                    "page_size": {
+                      "type": "integer",
+                      "x-struct": null,
+                      "x-validate": null
+                    },
+                    "total_entries": {
+                      "type": "integer",
+                      "x-struct": null,
+                      "x-validate": null
+                    },
+                    "total_pages": {
+                      "type": "integer",
+                      "x-struct": null,
+                      "x-validate": null
+                    }
+                  },
+                  "required": [
+                    "domains",
+                    "page_number",
+                    "page_size",
+                    "total_entries",
+                    "total_pages"
+                  ],
+                  "type": "object",
+                  "x-struct": null,
+                  "x-validate": null
+                }
+              }
+            },
+            "description": "Custom domains"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "error": "Invalid token"
+                  },
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "x-struct": null,
+                      "x-validate": null
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "title": "Error",
+                  "type": "object",
+                  "x-struct": null,
+                  "x-validate": null
+                }
+              }
+            },
+            "description": "Invalid token or unconfirmed account"
+          }
+        },
+        "summary": "List custom domains",
+        "tags": [
+          "Domains"
+        ]
+      }
+    },
+    "/api/v1/token": {
+      "post": {
+        "callbacks": {},
+        "description": "Creates an API token for your account. Keep the returned token secret.\n",
+        "operationId": "createToken",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "example": {
+                  "email": "user@example.com",
+                  "password": "correcthorsebatterystaple",
+                  "totp": 123456
+                },
+                "properties": {
+                  "email": {
+                    "format": "email",
+                    "type": "string",
+                    "x-struct": null,
+                    "x-validate": null
+                  },
+                  "password": {
+                    "format": "password",
+                    "type": "string",
+                    "x-struct": null,
+                    "x-validate": null
+                  },
+                  "totp": {
+                    "description": "Required when two-factor authentication is enabled.",
+                    "type": "integer",
+                    "x-struct": null,
+                    "x-validate": null
+                  }
+                },
+                "required": [
+                  "email",
+                  "password"
+                ],
+                "title": "CreateToken",
+                "type": "object",
+                "x-struct": null,
+                "x-validate": null
+              }
+            }
+          },
+          "description": "Credentials",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "token": "c2hyb3VkLmVtYWlsIHRva2VuIDotKQ=="
+                  },
+                  "properties": {
+                    "token": {
+                      "description": "Base64-encoded session token.",
+                      "type": "string",
+                      "x-struct": null,
+                      "x-validate": null
+                    }
+                  },
+                  "required": [
+                    "token"
+                  ],
+                  "title": "Token",
+                  "type": "object",
+                  "x-struct": null,
+                  "x-validate": null
+                }
+              }
+            },
+            "description": "API token"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "Invalid email, password or TOTP code"
+                },
+                "schema": {
+                  "example": {
+                    "error": "Invalid token"
+                  },
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "x-struct": null,
+                      "x-validate": null
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "title": "Error",
+                  "type": "object",
+                  "x-struct": null,
+                  "x-validate": null
+                }
+              }
+            },
+            "description": "Invalid email, password or TOTP code"
+          }
+        },
+        "security": [],
+        "summary": "Create an API token",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "servers": [
+    {
+      "url": "https://app.shroud.email",
+      "variables": {}
+    }
+  ],
+  "tags": []
+}

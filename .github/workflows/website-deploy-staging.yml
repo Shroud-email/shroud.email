@@ -60,7 +60,7 @@ jobs:
 
       - run: pnpm run build
 
-      - run: node scripts/deploy-bunny.mjs
+      - run: node ../scripts/deploy-bunny.mjs
         env:
           BUNNY_STORAGE_ZONE: shroud-email-website-staging
           BUNNY_STORAGE_PASSWORD: ${{ secrets.WEBSITE_BUNNY_STAGING_STORAGE_PASSWORD }}

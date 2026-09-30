@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - 'website/**'
+      - 'shared/components/PostHog.astro'
+      - 'scripts/deploy-bunny.mjs'
       - '.github/workflows/website-deploy.yml'
   workflow_dispatch:
 
@@ -43,7 +45,7 @@ jobs:
 
       - run: pnpm run build
 
-      - run: node scripts/deploy-bunny.mjs
+      - run: node ../scripts/deploy-bunny.mjs
         env:
           BUNNY_STORAGE_PASSWORD: ${{ secrets.WEBSITE_BUNNY_STORAGE_PASSWORD }}
           BUNNY_PULLZONE_ID: ${{ secrets.WEBSITE_BUNNY_PULLZONE_ID }}

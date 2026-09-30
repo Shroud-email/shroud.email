@@ -1,6 +1,25 @@
 defmodule ShroudWeb.Api.V1.TokenController do
   use ShroudWeb, :controller
+  use OpenApiSpex.ControllerSpecs
   alias Shroud.Accounts
+  alias ShroudWeb.Api.V1.Schemas
+
+  operation(:create,
+    operation_id: "createToken",
+    tags: ["Authentication"],
+    summary: "Create an API token",
+    description: """
+    Creates an API token for your account. Keep the returned token secret.
+    """,
+    security: [],
+    request_body: {"Credentials", "application/json", Schemas.token_request(), required: true},
+    responses: [
+      ok: {"API token", "application/json", Schemas.token()},
+      forbidden:
+        {"Invalid email, password or TOTP code", "application/json", Schemas.error(),
+         example: %{error: "Invalid email, password or TOTP code"}}
+    ]
+  )
 
   def create(conn, %{"email" => email, "password" => password} = params) do
     if user = get_user(email, password, params["totp"]) do

@@ -1,10 +1,44 @@
 defmodule ShroudWeb.Api.V1.EmailAliasController do
   use ShroudWeb, :controller
+  use OpenApiSpex.ControllerSpecs
   import Ecto.Query
-  alias Shroud.Repo
   alias Shroud.Aliases
   alias Shroud.Aliases.EmailAlias
   alias Shroud.Domain.CustomDomain
+  alias Shroud.Repo
+  alias ShroudWeb.Api.V1.Schemas
+
+  tags(["Aliases"])
+
+  operation(:index,
+    operation_id: "listAliases",
+    summary: "List email aliases",
+    description: "Lists your non-deleted email aliases, newest first.",
+    parameters:
+      Schemas.pagination_parameters() ++
+        [
+          search: [
+            in: :query,
+            type: :string,
+            description:
+              "Case-insensitive search across address, title and notes. Space-separated terms match any term; punctuation acts as a wildcard.",
+            example: "Acme"
+          ],
+          enabled: [
+            in: :query,
+            type: :boolean,
+            description: "Filter enabled or disabled aliases.",
+            example: false
+          ]
+        ],
+    responses: [
+      ok: {"Email aliases", "application/json", Schemas.aliases_page()},
+      forbidden: {"Invalid token or unconfirmed account", "application/json", Schemas.error()},
+      unprocessable_entity:
+        {"Invalid search or enabled filter", "application/json", Schemas.error(),
+         example: %{error: "Invalid search or enabled filter"}}
+    ]
+  )
 
   def index(conn, params) do
     filters =
@@ -38,12 +72,44 @@ defmodule ShroudWeb.Api.V1.EmailAliasController do
     end
   end
 
+  operation(:show,
+    operation_id: "getAlias",
+    summary: "Get an alias",
+    description: "Fetches a single alias.",
+    parameters: Schemas.address_parameter(),
+    responses: [
+      ok: {"Email alias", "application/json", Schemas.email_alias()},
+      forbidden: {"Invalid token or unconfirmed account", "application/json", Schemas.error()},
+      not_found:
+        {"Alias not found", "application/json", Schemas.error(),
+         example: %{error: "Alias not found"}}
+    ]
+  )
+
   def show(conn, %{"address" => address}) do
     case find_alias(conn, address) do
       nil -> render_error(conn, 404, "Alias not found")
       email_alias -> render(conn, "email_alias.json", data: email_alias)
     end
   end
+
+  operation(:update,
+    operation_id: "updateAlias",
+    summary: "Update an alias",
+    description: "Updates an alias's settings.",
+    parameters: Schemas.address_parameter(),
+    request_body:
+      {"Fields to update", "application/json", Schemas.update_alias(), required: false},
+    responses: [
+      ok: {"Updated alias", "application/json", Schemas.email_alias()},
+      forbidden: {"Invalid token or unconfirmed account", "application/json", Schemas.error()},
+      not_found:
+        {"Alias not found", "application/json", Schemas.error(),
+         example: %{error: "Alias not found"}},
+      unprocessable_entity:
+        {"Invalid values", "application/json", Schemas.error(), example: %{error: "is invalid"}}
+    ]
+  )
 
   def update(conn, %{"address" => address} = params) do
     case find_alias(conn, address) do
@@ -56,6 +122,36 @@ defmodule ShroudWeb.Api.V1.EmailAliasController do
         |> render_alias_result(conn)
     end
   end
+
+  operation(:create,
+    operation_id: "createAlias",
+    summary: "Create an alias",
+    description: """
+    Creates an enabled alias with a random or custom address. Random addresses use
+    the default shared domain (`@fog.shroud.email` on hosted Shroud.email).
+    """,
+    request_body:
+      {"Optional alias settings", "application/json", Schemas.create_alias(), required: false},
+    responses: [
+      ok:
+        {"Created alias", "application/json", Schemas.email_alias(),
+         example: %{
+           address: "myemail@example.com",
+           blocked: 0,
+           forwarded: 0,
+           title: "Acme",
+           notes: "Used for shopping receipts",
+           blocked_addresses: [],
+           enabled: true
+         }},
+      forbidden:
+        {"Invalid token, unconfirmed/inactive account, or free plan alias limit reached",
+         "application/json", Schemas.error()},
+      unprocessable_entity:
+        {"Invalid metadata, address, or domain", "application/json", Schemas.error(),
+         example: %{error: "Domain not found"}}
+    ]
+  )
 
   def create(conn, %{"local_part" => local_part, "domain" => domain} = params)
       when is_binary(local_part) and is_binary(domain) do
@@ -85,6 +181,24 @@ defmodule ShroudWeb.Api.V1.EmailAliasController do
     |> Aliases.create_random_email_alias(alias_metadata(params))
     |> render_alias_result(conn)
   end
+
+  operation(:delete,
+    operation_id: "deleteAlias",
+    summary: "Delete an alias",
+    description: """
+    Deletes an alias from your account.
+    Prefer disabling an alias if you may need it again. Deleted aliases on shared
+    Shroud domains cannot be recreated; custom-domain addresses can be recreated.
+    """,
+    parameters: Schemas.address_parameter(),
+    responses: [
+      no_content: "Alias deleted",
+      forbidden: {"Invalid token or unconfirmed account", "application/json", Schemas.error()},
+      unprocessable_entity:
+        {"Alias not found", "application/json", Schemas.error(),
+         example: %{error: "Alias not found"}}
+    ]
+  )
 
   def delete(conn, %{"address" => address}) do
     alias = find_alias(conn, address)

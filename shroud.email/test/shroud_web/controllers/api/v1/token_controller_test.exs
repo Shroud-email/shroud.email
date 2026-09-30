@@ -1,8 +1,10 @@
 defmodule ShroudWeb.Api.V1.TokenControllerTest do
   use ShroudWeb.ConnCase, async: true
+  import OpenApiSpex.TestAssertions, only: [assert_raw_schema: 2]
   import Shroud.AccountsFixtures
-  alias Shroud.Accounts.{UserToken, TOTP}
+  alias Shroud.Accounts.{TOTP, UserToken}
   alias Shroud.Repo
+  alias ShroudWeb.Api.V1.Schemas
 
   describe "create/2" do
     test "creates a token with correct email/password" do
@@ -17,6 +19,8 @@ defmodule ShroudWeb.Api.V1.TokenControllerTest do
         })
 
       %{token: token} = Repo.get_by!(UserToken, user_id: user.id)
+
+      assert_raw_schema(json_response(conn, 200), Schemas.token())
 
       assert json_response(conn, 200) == %{
                "token" => Base.encode64(token)

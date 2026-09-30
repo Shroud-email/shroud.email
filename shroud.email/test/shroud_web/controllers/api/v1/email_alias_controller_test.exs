@@ -1,8 +1,10 @@
 defmodule ShroudWeb.Api.V1.EmailAliasControllerTest do
   use ShroudWeb.ConnCase, async: true
+  import OpenApiSpex.TestAssertions, only: [assert_raw_schema: 2]
   alias Shroud.Accounts
   import Shroud.{AccountsFixtures, AliasesFixtures, DomainFixtures}
   alias Shroud.Repo
+  alias ShroudWeb.Api.V1.Schemas
 
   describe "index/2" do
     setup do
@@ -35,6 +37,8 @@ defmodule ShroudWeb.Api.V1.EmailAliasControllerTest do
       email_alias_2: email_alias_2
     } do
       conn = authorized_get(conn, user, ~p"/api/v1/aliases")
+
+      assert_raw_schema(json_response(conn, 200), Schemas.aliases_page())
 
       assert json_response(conn, 200) == %{
                "email_aliases" => [
@@ -197,6 +201,8 @@ defmodule ShroudWeb.Api.V1.EmailAliasControllerTest do
       conn = authorized_post(conn, user, ~p"/api/v1/aliases")
 
       response = json_response(conn, 200)
+
+      assert_raw_schema(response, Schemas.email_alias())
 
       assert %{response | "address" => nil} == %{
                "address" => nil,
@@ -376,6 +382,8 @@ defmodule ShroudWeb.Api.V1.EmailAliasControllerTest do
     test "fetches an exact alias address", %{conn: conn, user: user, email_alias: email_alias} do
       conn = authorized_get(conn, user, ~p"/api/v1/aliases/#{email_alias.address}")
 
+      assert_raw_schema(json_response(conn, 200), Schemas.email_alias())
+
       assert %{
                "address" => address,
                "title" => "Acme",
@@ -426,6 +434,8 @@ defmodule ShroudWeb.Api.V1.EmailAliasControllerTest do
           "notes" => nil
         })
         |> json_response(200)
+
+      assert_raw_schema(response, Schemas.email_alias())
 
       assert response["title"] == nil
       assert response["notes"] == nil
