@@ -20,7 +20,9 @@ exports.load_host_list = function (cb) {
     // Connection configured via environment variables
     const domains = new Set()
     if (process.env.EMAIL_DOMAIN != null) domains.add(process.env.EMAIL_DOMAIN.toLowerCase())
-    pool.query('SELECT domain FROM custom_domains', (err, res) => {
+    // Match the application's 24-hour ownership verification freshness window.
+    pool.query(`SELECT domain FROM custom_domains
+        WHERE ownership_verified_at > (CURRENT_TIMESTAMP AT TIME ZONE 'UTC') - INTERVAL '24 hours'`, (err, res) => {
         if (err) {
             plugin.logerror("Failed to load host list! ", Object.values(err))
         } else {
