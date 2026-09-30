@@ -22,6 +22,8 @@ defmodule ShroudWeb.UserSettingsLive do
         totp_backup_codes: nil,
         show_disable_totp: false,
         passkey_form: to_form(%{"current_password" => ""}, as: :passkey),
+        passkey_password_error: nil,
+        passkey_remove_errors: %{},
         passkey_source_ip: Passkeys.request_ip(socket),
         passkey_supported: false,
         passkey_token: nil,
@@ -126,7 +128,7 @@ defmodule ShroudWeb.UserSettingsLive do
   def handle_event("add_passkey", params, socket) do
     user = Repo.reload!(socket.assigns.current_user)
     password = get_in(params, ["passkey", "current_password"])
-    socket = cancel_passkey(socket)
+    socket = socket |> cancel_passkey() |> assign(:passkey_password_error, nil)
 
     cond do
       not Passkeys.allow_request?(socket.assigns.passkey_source_ip, :options) ->
@@ -158,8 +160,14 @@ defmodule ShroudWeb.UserSettingsLive do
            }
          })}
 
-      true ->
+      is_nil(user.confirmed_at) ->
         {:noreply, passkey_failure(socket, "Could not authorize passkey registration.")}
+
+      true ->
+        {:noreply,
+         socket
+         |> passkey_failure(nil)
+         |> assign(:passkey_password_error, "Incorrect password. Please try again.")}
     end
   end
 
@@ -232,17 +240,37 @@ defmodule ShroudWeb.UserSettingsLive do
 
   def handle_event("remove_passkey", params, socket) do
     user = Repo.reload!(socket.assigns.current_user)
+    credentials = Accounts.list_passkeys(user)
 
-    with true <- user.confirmed_at != nil,
-         true <- User.valid_password?(user, get_in(params, ["passkey", "current_password"])),
-         {:ok, id} <- Passkeys.decode_base64url(params["credential_id"]),
-         :ok <- Accounts.remove_passkey(user, id) do
-      {:noreply,
-       socket
-       |> stream(:passkeys, Accounts.list_passkeys(user), reset: true)
-       |> put_flash(:info, "Passkey removed.")}
+    with {:ok, id} <- Passkeys.decode_base64url(params["credential_id"]),
+         credential when not is_nil(credential) <-
+           Enum.find(credentials, &(&1.credential_id == id)) do
+      cond do
+        is_nil(user.confirmed_at) ->
+          {:noreply,
+           socket
+           |> assign(:passkey_remove_errors, %{credential.id => "Could not remove passkey."})
+           |> stream(:passkeys, credentials, reset: true)}
+
+        not User.valid_password?(user, get_in(params, ["passkey", "current_password"])) ->
+          {:noreply,
+           socket
+           |> assign(:passkey_remove_errors, %{
+             credential.id => "Incorrect password. Please try again."
+           })
+           |> stream(:passkeys, credentials, reset: true)}
+
+        true ->
+          Accounts.remove_passkey(user, id)
+
+          {:noreply,
+           socket
+           |> assign(:passkey_remove_errors, %{})
+           |> stream(:passkeys, Accounts.list_passkeys(user), reset: true)
+           |> put_flash(:info, "Passkey removed.")}
+      end
     else
-      _ -> {:noreply, put_flash(socket, :error, "Could not remove passkey.")}
+      _ -> {:noreply, stream(socket, :passkeys, credentials, reset: true)}
     end
   end
 

@@ -21,11 +21,20 @@ defmodule ShroudWeb.PasskeyRegistrationLiveTest do
     user: user
   } do
     view |> form("#add-passkey-form", passkey: %{current_password: "wrong"}) |> render_submit()
-    assert has_element?(view, "#passkey-status[data-state=error]", "Could not authorize")
+
+    assert has_element?(
+             view,
+             "#add-passkey-form #add-passkey-password-error",
+             "Incorrect password"
+           )
+
+    assert has_element?(view, "#add-passkey-password[aria-invalid=true]")
+    refute has_element?(view, "#settings-error")
     assert has_element?(view, "#add-passkey[open]")
     refute_push_event(view, "passkey-register", _)
 
     options = authorize(view)
+    refute has_element?(view, "#add-passkey-password-error")
 
     assert options.publicKey.authenticatorSelection == %{
              residentKey: "required",
@@ -48,12 +57,24 @@ defmodule ShroudWeb.PasskeyRegistrationLiveTest do
     view |> element("#settings-nav-account") |> render_click()
     view |> element("#settings-nav-security") |> render_click()
     assert has_element?(view, "#remove-passkey-#{credential.id}")
+    refute has_element?(view, "#remove-passkey-prompt-#{credential.id}[open]")
 
     view
     |> form("#remove-passkey-#{credential.id}", passkey: %{current_password: "wrong"})
     |> render_submit()
 
     assert Accounts.get_passkey(credential.credential_id)
+    assert has_element?(view, "#remove-passkey-prompt-#{credential.id}[open]")
+
+    assert has_element?(
+             view,
+             "#remove-passkey-#{credential.id} #remove-passkey-password-error-#{credential.id}",
+             "Incorrect password"
+           )
+
+    assert has_element?(view, "#remove-passkey-password-#{credential.id}[aria-invalid=true]")
+    refute has_element?(view, "#settings-error")
+    refute has_element?(view, "#add-passkey-password-error")
 
     view
     |> form("#remove-passkey-#{credential.id}",
@@ -146,13 +167,42 @@ defmodule ShroudWeb.PasskeyRegistrationLiveTest do
     assert Accounts.list_passkeys(user) == []
   end
 
+  test "removal errors are local to the selected passkey", %{conn: conn, user: user} do
+    first =
+      Repo.insert!(%PasskeyCredential{
+        user_id: user.id,
+        credential_id: :crypto.strong_rand_bytes(32),
+        public_key: <<1>>
+      })
+
+    second =
+      Repo.insert!(%PasskeyCredential{
+        user_id: user.id,
+        credential_id: :crypto.strong_rand_bytes(32),
+        public_key: <<2>>
+      })
+
+    {:ok, view, _} = live(conn, ~p"/settings/security")
+    refute has_element?(view, "#remove-passkey-prompt-#{first.id}[open]")
+    refute has_element?(view, "#remove-passkey-prompt-#{second.id}[open]")
+
+    view
+    |> form("#remove-passkey-#{second.id}", passkey: %{current_password: "wrong"})
+    |> render_submit()
+
+    refute has_element?(view, "#remove-passkey-password-error-#{first.id}")
+    assert has_element?(view, "#remove-passkey-password-error-#{second.id}", "Incorrect password")
+    refute has_element?(view, "#settings-error")
+    assert length(Accounts.list_passkeys(user)) == 2
+  end
+
   test "registration option issuance is rate limited", %{view: view} do
     Application.put_env(:shroud, :passkey_rate_limit_minute, div(System.system_time(:second), 60))
     on_exit(fn -> Application.delete_env(:shroud, :passkey_rate_limit_minute) end)
 
     for _ <- 1..30 do
       render_submit(view, "add_passkey", %{passkey: %{current_password: "wrong"}})
-      assert has_element?(view, "#passkey-status", "Could not authorize")
+      assert has_element?(view, "#add-passkey-password-error", "Incorrect password")
     end
 
     render_submit(view, "add_passkey", %{passkey: %{current_password: valid_user_password()}})

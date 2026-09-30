@@ -187,29 +187,53 @@
       <span class="text-sm text-gray-900 dark:text-gray-100">
         {key.label || "Passkey"} · added {Calendar.strftime(key.inserted_at, "%b %d, %Y")}
       </span>
-      <.form
-        for={@passkey_form}
-        phx-submit="remove_passkey"
-        id={"remove-passkey-#{key.id}"}
-        class="flex flex-wrap items-end gap-2"
+      <details
+        id={"remove-passkey-prompt-#{key.id}"}
+        open={Map.has_key?(@passkey_remove_errors, key.id)}
+        class="ml-auto text-right"
       >
-        <input
-          type="hidden"
-          name="credential_id"
-          value={Base.url_encode64(key.credential_id, padding: false)}
-        />
-        <div>
+        <summary class="btn btn-white cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+          Remove passkey
+        </summary>
+        <.form
+          for={@passkey_form}
+          phx-submit="remove_passkey"
+          id={"remove-passkey-#{key.id}"}
+          class="mt-3 ml-auto max-w-sm space-y-3 text-left"
+        >
+          <input
+            type="hidden"
+            name="credential_id"
+            value={Base.url_encode64(key.credential_id, padding: false)}
+          />
           <.input
             field={@passkey_form[:current_password]}
             label="Current password"
             type="password"
             id={"remove-passkey-password-#{key.id}"}
+            aria-invalid={to_string(Map.has_key?(@passkey_remove_errors, key.id))}
+            aria-describedby={
+              if Map.has_key?(@passkey_remove_errors, key.id),
+                do: "remove-passkey-password-error-#{key.id}"
+            }
             autocomplete="current-password"
             required
           />
-        </div>
-        <button type="submit" class="btn btn-white" phx-disable-with="Removing…">Remove</button>
-      </.form>
+          <p
+            :if={Map.has_key?(@passkey_remove_errors, key.id)}
+            id={"remove-passkey-password-error-#{key.id}"}
+            role="alert"
+            class="text-sm text-red-600 dark:text-red-400"
+          >
+            {@passkey_remove_errors[key.id]}
+          </p>
+          <div class="text-right">
+            <button type="submit" class="btn btn-white" phx-disable-with="Removing…">
+              Remove passkey
+            </button>
+          </div>
+        </.form>
+      </details>
     </div>
   </div>
 
@@ -228,9 +252,19 @@
         label="Current password"
         type="password"
         id="add-passkey-password"
+        aria-invalid={to_string(@passkey_password_error != nil)}
+        aria-describedby={if @passkey_password_error, do: "add-passkey-password-error"}
         autocomplete="current-password"
         required
       />
+      <p
+        :if={@passkey_password_error}
+        id="add-passkey-password-error"
+        role="alert"
+        class="text-sm text-red-600 dark:text-red-400"
+      >
+        {@passkey_password_error}
+      </p>
       <div class="text-right">
         <button
           id="add-passkey-submit"
