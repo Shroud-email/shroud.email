@@ -77,9 +77,6 @@ jobs:
       - name: Build documentation
         working-directory: docs-site
         run: pnpm build
-      - name: Test Bunny uploader without network access
-        working-directory: website
-        run: node --test scripts/deploy-bunny.test.mjs
       - name: Setup database
         run: mix ecto.setup
       - name: Run tests

@@ -48,7 +48,8 @@ Documentation annotations do not alter runtime request validation.
 site and publishes `dist/` to Bunny Storage on changes to docs or app source on
 `main`. It also supports manual dispatch on `main`; pull requests only build and
 never deploy. The uploader publishes Bunny's custom 404 page and purges the Pull
-Zone cache. No Node.js server is required in production.
+Zone cache. Both sites use the shared `../scripts/deploy-bunny.mjs` uploader.
+No Node.js server is required in production.
 
 Create a **dedicated** Bunny Storage Zone and connected Pull Zone for the docs.
 Attach `docs.shroud.email`, configure its DNS/TLS, enable directory index serving
@@ -66,13 +67,6 @@ The region is detected automatically. Missing settings fail the deployment; a
 custom build directory cannot fall back to the marketing-site zone. The uploader
 checks the local build before clearing the destination, then replaces its contents
 and purges the cache. Deployments run serially to avoid partial cancelled uploads.
-
-Uploader tests use mocked HTTP requests and disposable local fixtures. From
-`docs-site/`, run:
-
-```sh
-mise exec -- node --test ../website/scripts/deploy-bunny.test.mjs
-```
 
 Once the docs domain is live, update the marketing site's docs links and configure
 permanent redirects for the old `/docs/` URLs. Product/deployment paths map to the

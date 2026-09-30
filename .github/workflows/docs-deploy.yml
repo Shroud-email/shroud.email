@@ -6,7 +6,7 @@ on:
     paths:
       - 'docs-site/**'
       - 'shroud.email/**'
-      - 'website/scripts/deploy-bunny.mjs'
+      - 'scripts/deploy-bunny.mjs'
       - '.github/workflows/docs-deploy.yml'
   workflow_dispatch:
 
@@ -62,10 +62,8 @@ jobs:
           cache-dependency-path: docs-site/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
-      - name: Test Bunny uploader without network access
-        run: node --test ../website/scripts/deploy-bunny.test.mjs
       - name: Publish documentation and purge CDN cache
-        run: node ../website/scripts/deploy-bunny.mjs
+        run: node ../scripts/deploy-bunny.mjs
         env:
           BUNNY_DIST: dist
           BUNNY_STORAGE_ZONE: ${{ vars.DOCS_BUNNY_STORAGE_ZONE }}

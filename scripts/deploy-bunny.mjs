@@ -11,7 +11,7 @@
 //
 // Optional env vars:
 //   BUNNY_DIST              - build directory, relative to the working directory.
-//                            Defaults to this website's dist/. Custom builds
+//                            Defaults to website/dist/. Custom builds
 //                            require an explicit BUNNY_STORAGE_ZONE.
 //   BUNNY_STORAGE_ZONE      - storage zone name (default: shroud-email-website).
 //                            Set to shroud-email-website-staging for staging deploys.
@@ -39,7 +39,7 @@ const REGION_ENDPOINTS = {
   syd: "syd.storage.bunnycdn.com",
 };
 
-const ROOT = new URL("../", import.meta.url).pathname;
+const ROOT = new URL("../website/", import.meta.url).pathname;
 
 // Preserve the marketing site's default; other sites supply their build path.
 const DIST = process.env.BUNNY_DIST ? resolve(process.env.BUNNY_DIST) : join(ROOT, "dist");
