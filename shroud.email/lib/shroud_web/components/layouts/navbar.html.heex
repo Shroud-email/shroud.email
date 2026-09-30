@@ -28,6 +28,7 @@
                 </.link>
                 <%= if @current_user.is_admin do %>
                   <.link href={~p"/admin"} class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">LiveDashboard</.link>
+                  <.link navigate={~p"/admin/mailserver"} class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Mail health</.link>
                   <.link href={~p"/feature_flags"} class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Flags</.link>
                   <.link href={~p"/debug_emails"} class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Debug</.link>
                 <% end %>
@@ -119,6 +120,7 @@
         </.link>
         <%= if @current_user.is_admin do %>
           <.link href={~p"/admin"} class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">LiveDashboard</.link>
+          <.link navigate={~p"/admin/mailserver"} class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Mail health</.link>
           <.link href={~p"/feature_flags"} class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Flags</.link>
           <.link href={~p"/debug_emails"} class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Debug</.link>
         <% end %>
