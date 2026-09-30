@@ -63,7 +63,9 @@ By sending a POST request with no arguments, this will generate a random email a
 
 `title` and `notes` are optional strings. You can also supply them without
 `local_part` and `domain` to create a labelled random alias. A custom domain must
-belong to your account. New aliases are enabled by default; fields other than
+belong to your account. If either `local_part` or `domain` is supplied, both must
+be strings; an incomplete pair or a non-string value returns `422` without
+creating an alias. New aliases are enabled by default; fields other than
 `local_part`, `domain`, `title`, and `notes` are ignored.
 
 This will return a response like
@@ -117,3 +119,16 @@ receipts and password-reset emails. Set `enabled` to `true` to re-enable it.
 Returns `200` with the updated alias object. Invalid values return `422` with
 an `error` message and leave the alias unchanged. A missing, deleted, or other
 user's alias returns `404` with `{"error": "Alias not found"}`.
+
+## Delete an alias
+
+`DELETE /api/v1/aliases/:address`: Delete an alias from your account.
+
+Returns `204` with no response body on success. For compatibility with existing
+API clients, this endpoint retains its original `422` response with
+`{"error": "Alias not found"}` for a missing, deleted, or other user's alias,
+unlike the new GET and PATCH endpoints, which return `404` in those cases.
+
+Prefer disabling an alias if you may need it again. Deleted aliases on shared
+Shroud domains cannot be recreated; custom-domain aliases are permanently
+removed from your account but their addresses can be recreated.

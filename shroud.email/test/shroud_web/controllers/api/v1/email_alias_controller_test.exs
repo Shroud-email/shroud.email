@@ -259,6 +259,31 @@ defmodule ShroudWeb.Api.V1.EmailAliasControllerTest do
       assert Repo.aggregate(Shroud.Aliases.EmailAlias, :count) == 0
     end
 
+    test "rejects incomplete or wrongly typed custom address parameters without creating aliases",
+         %{
+           conn: conn,
+           user: user
+         } do
+      custom_domain_fixture(%{user_id: user.id, domain: "custom.test"})
+
+      for params <- [
+            %{"local_part" => "acme"},
+            %{"domain" => "custom.test"},
+            %{"local_part" => nil, "domain" => "custom.test"},
+            %{"local_part" => "acme", "domain" => nil},
+            %{"local_part" => ["acme"], "domain" => "custom.test"},
+            %{"local_part" => 123, "domain" => "custom.test"},
+            %{"local_part" => "acme", "domain" => %{"name" => "custom.test"}}
+          ] do
+        response =
+          conn |> authorized_post(user, ~p"/api/v1/aliases", params) |> json_response(422)
+
+        assert response == %{"error" => "local_part and domain must both be strings"}
+      end
+
+      assert Repo.aggregate(Shroud.Aliases.EmailAlias, :count) == 0
+    end
+
     test "cannot create aliases on another user's custom domain", %{conn: conn, user: user} do
       custom_domain_fixture(%{user_id: user_fixture().id, domain: "other.test"})
 
@@ -511,6 +536,21 @@ defmodule ShroudWeb.Api.V1.EmailAliasControllerTest do
     test "deletes an email alias", %{conn: conn, user: user, address: address} do
       conn = authorized_delete(conn, user, ~p"/api/v1/aliases/#{address}")
       assert response(conn, 204)
+    end
+
+    test "preserves the legacy 422 response for missing and deleted aliases", %{
+      conn: conn,
+      user: user,
+      address: address
+    } do
+      conn |> authorized_delete(user, ~p"/api/v1/aliases/#{address}") |> response(204)
+
+      for address <- [address, "missing@email.shroud.test"] do
+        assert conn
+               |> authorized_delete(user, ~p"/api/v1/aliases/#{address}")
+               |> json_response(422) ==
+                 %{"error" => "Alias not found"}
+      end
     end
 
     test "prevents deleting an email alias if user does not own it", %{conn: conn, user: user} do

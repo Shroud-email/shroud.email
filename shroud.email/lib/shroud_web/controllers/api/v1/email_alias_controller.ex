@@ -57,7 +57,8 @@ defmodule ShroudWeb.Api.V1.EmailAliasController do
     end
   end
 
-  def create(conn, %{"local_part" => local_part, "domain" => domain} = params) do
+  def create(conn, %{"local_part" => local_part, "domain" => domain} = params)
+      when is_binary(local_part) and is_binary(domain) do
     domain = Repo.get_by(CustomDomain, domain: domain, user_id: conn.assigns.current_user.id)
 
     if is_nil(domain) do
@@ -72,6 +73,11 @@ defmodule ShroudWeb.Api.V1.EmailAliasController do
       |> Aliases.create_email_alias()
       |> render_alias_result(conn)
     end
+  end
+
+  def create(conn, params)
+      when is_map_key(params, "local_part") or is_map_key(params, "domain") do
+    render_error(conn, 422, "local_part and domain must both be strings")
   end
 
   def create(conn, params) do
