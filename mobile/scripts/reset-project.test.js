@@ -38,6 +38,8 @@ test('deleting source keeps the reset command usable for another reset', (t) => 
   assert.equal(reset(root, 'n\n').status, 0);
   assert.ok(!fs.existsSync(path.join(root, 'example')));
   assert.ok(!fs.existsSync(path.join(root, 'src/original.txt')));
+  assert.match(fs.readFileSync(path.join(root, 'src/app/index.tsx'), 'utf8'), /export default function Index/);
+  assert.match(fs.readFileSync(path.join(root, 'src/app/_layout.tsx'), 'utf8'), /<Stack/);
   assert.equal(reset(root, 'n\n').status, 0);
   assert.ok(fs.existsSync(path.join(root, 'src/app/index.tsx')));
 });
