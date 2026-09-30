@@ -53,6 +53,18 @@ test('all configured plugins load and register on the pinned Haraka', t => {
   assert.equal(cfg.headers.max_received, 100);
 });
 
+test('pooled host lookup preserves the existing unfiltered domain policy', t => {
+  const rcpt = plugins.registered_plugins['rcpt_to.in_host_list_shroud'];
+  const query = t.mock.method(require('pg').Pool.prototype, 'query', (sql, cb) => {
+    assert.equal(sql, 'SELECT domain FROM custom_domains');
+    cb(null, { rows: [{ domain: 'Custom.Example' }] });
+  });
+  let domains;
+  rcpt.load_host_list(result => { domains = result; });
+  assert.equal(query.mock.callCount(), 1);
+  assert.ok(domains.has('custom.example'));
+});
+
 test('environment auth inherits working PLAIN, LOGIN and CRAM-MD5 checks', () => {
   const auth = plugins.registered_plugins['auth/environment_variable'];
   for (const [is_private, enabled, expected] of [[false, false, false], [true, false, true], [false, true, true]]) {
