@@ -15,7 +15,7 @@
     "@astrojs/markdown-remark": "6.3.11",
     "@astrojs/starlight": "0.37.6",
     "astro": "5.18.2",
-    "sharp": "^0.34.5",
+    "sharp": "^0.35.4",
     "starlight-openapi": "0.22.0",
     "typescript": "^5.9.3"
   }
