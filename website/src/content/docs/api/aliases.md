@@ -14,17 +14,11 @@ using the `page_size` and `page` URL parameters, e.g. `/api/v1/aliases?page_size
 
 - `search`: Case-insensitive search across the address, title, and notes, using the
   same matching rules as the dashboard. Space-separated terms match any term;
-  punctuation is treated as a wildcard. Omit this parameter or use a blank value
-  to list all aliases.
+  punctuation is treated as a wildcard.
 - `enabled`: Set to `true` or `false` to return only enabled or disabled aliases.
-  Omit this parameter to include both states.
 
 For example, `/api/v1/aliases?search=Acme&enabled=false&page_size=10` finds disabled
-aliases matching "Acme". Filters are applied before pagination, so `total_entries`
-and `total_pages` describe the filtered results. No matches returns an empty
-`email_aliases` array. Invalid filter values return `422`.
-
-All alias endpoints operate only on the authenticated user's non-deleted aliases.
+aliases matching "Acme". Pagination totals describe the filtered results.
 
 ### Example response
 
@@ -63,10 +57,7 @@ By sending a POST request with no arguments, this will generate a random email a
 
 `title` and `notes` are optional strings. You can also supply them without
 `local_part` and `domain` to create a labelled random alias. A custom domain must
-belong to your account. If either `local_part` or `domain` is supplied, both must
-be strings; an incomplete pair or a non-string value returns `422` without
-creating an alias. New aliases are enabled by default; fields other than
-`local_part`, `domain`, `title`, and `notes` are ignored.
+belong to your account.
 
 This will return a response like
 
@@ -82,19 +73,13 @@ This will return a response like
 }
 ```
 
-Successful creation returns `200` with the alias object. Invalid parameters
-return `422`; an inactive account or an exhausted alias allowance returns `403`.
-
 ## Get an alias
 
 `GET /api/v1/aliases/:address`: Fetch a single alias by its exact email address.
 
-For example, `/api/v1/aliases/deadbeef%40fog.shroud.email`. URL-encode the address
-when constructing the path, especially addresses containing characters such as
-`+` or `?`.
+URL-encode the address, e.g. `/api/v1/aliases/deadbeef%40fog.shroud.email`.
 
-Returns `200` with the same alias object as creation. A missing, deleted, or
-other user's alias returns `404` with `{"error": "Alias not found"}`.
+Returns the alias object shown above, or `404` if the alias is not found.
 
 ## Update an alias
 
@@ -109,26 +94,19 @@ other user's alias returns `404` with `{"error": "Alias not found"}`.
 ```
 
 Only `title`, `notes`, and `enabled` can be updated. Omitted fields remain
-unchanged. Set `title` or `notes` to `null` to clear them. `enabled` must be a
-boolean and cannot be `null`. The email address itself cannot be changed, and
-unsupported fields are ignored.
+unchanged. Set `title` or `notes` to `null` to clear them.
 
-Disabling an alias stops forwarding **all** mail to that address, including
-receipts and password-reset emails. Set `enabled` to `true` to re-enable it.
+Set `enabled` to `false` to stop all forwarding, including password-reset emails,
+or `true` to re-enable it.
 
-Returns `200` with the updated alias object. Invalid values return `422` with
-an `error` message and leave the alias unchanged. A missing, deleted, or other
-user's alias returns `404` with `{"error": "Alias not found"}`.
+Returns the updated alias object, `422` for invalid values, or `404` if the alias
+is not found.
 
 ## Delete an alias
 
 `DELETE /api/v1/aliases/:address`: Delete an alias from your account.
 
-Returns `204` with no response body on success. For compatibility with existing
-API clients, this endpoint retains its original `422` response with
-`{"error": "Alias not found"}` for a missing, deleted, or other user's alias,
-unlike the new GET and PATCH endpoints, which return `404` in those cases.
+Returns `204` on success, or `422` if the alias is not found.
 
 Prefer disabling an alias if you may need it again. Deleted aliases on shared
-Shroud domains cannot be recreated; custom-domain aliases are permanently
-removed from your account but their addresses can be recreated.
+Shroud domains cannot be recreated; custom-domain addresses can be recreated.
