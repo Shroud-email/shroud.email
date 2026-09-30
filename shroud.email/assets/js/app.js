@@ -23,7 +23,7 @@ import { LiveSocket } from "phoenix_live_view";
 import topbar from "../vendor/topbar";
 import "../vendor/components";
 import "@cap.js/widget";
-import { Modal, Notification } from "./hooks";
+import { CopyToClipboard, Modal, Notification } from "./hooks";
 
 import { initTheme, setTheme } from "./theme";
 import Alpine from "alpinejs";
@@ -53,6 +53,7 @@ let csrfToken = document
   .getAttribute("content");
 let liveSocket = new LiveSocket("/live", Socket, {
   hooks: {
+    CopyToClipboard,
     Modal,
     Notification,
     PasskeyRegistration,

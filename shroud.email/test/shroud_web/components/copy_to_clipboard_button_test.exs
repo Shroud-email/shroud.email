@@ -5,7 +5,7 @@ defmodule ShroudWeb.Components.CopyToClipboardButtonTest do
   import ShroudWeb.Components.CopyToClipboardButton
 
   defp render_button(text, attrs \\ %{}) do
-    assigns = Map.merge(%{text: text}, attrs)
+    assigns = Map.merge(%{id: "copy-test", text: text}, attrs)
 
     render_component(&copy_to_clipboard_button/1, assigns)
   end
@@ -14,11 +14,10 @@ defmodule ShroudWeb.Components.CopyToClipboardButtonTest do
     html = render_button("hello@example.com")
 
     assert html =~ ~s(data-clipboard-text="hello@example.com")
-    # The click handler reads from the data attribute, never interpolates the value.
-    assert html =~ "$el.dataset.clipboardText"
+    assert html =~ ~s(phx-hook="CopyToClipboard")
   end
 
-  test "renders an accessible label and optional id" do
+  test "renders an accessible label and id" do
     html = render_button("hello@example.com", %{id: "copy-alias-1"})
 
     assert html =~ ~s(id="copy-alias-1")
