@@ -1,4 +1,4 @@
-// Publish the built site (dist/client) to a bunny.net Storage Zone and purge
+// Publish the built static site to a bunny.net Storage Zone and purge
 // the Pull Zone cache.
 //
 // Performs a clean deploy: the existing zone contents are deleted first so that
@@ -10,6 +10,9 @@
 //   BUNNY_API_KEY           - account API key (for cache purge + region lookup)
 //
 // Optional env vars:
+//   BUNNY_DIST              - build directory, relative to the working directory.
+//                            Defaults to this website's dist/. Custom builds
+//                            require an explicit BUNNY_STORAGE_ZONE.
 //   BUNNY_STORAGE_ZONE      - storage zone name (default: shroud-email-website).
 //                            Set to shroud-email-website-staging for staging deploys.
 //   BUNNY_STORAGE_ENDPOINT  - storage endpoint for the zone's region. If set,
@@ -19,7 +22,7 @@
 //                            (e.g. ny.storage.bunnycdn.com for New York).
 
 import { readFile, readdir } from "node:fs/promises";
-import { join, relative, extname } from "node:path";
+import { join, relative, extname, resolve } from "node:path";
 
 // Map bunny storage region codes to their HTTP API endpoints. The default
 // (Falkenstein / Frankfurt, DE) has no prefix.
@@ -38,8 +41,12 @@ const REGION_ENDPOINTS = {
 
 const ROOT = new URL("../", import.meta.url).pathname;
 
-// Directory (relative to the repo root) holding the static site to publish.
-const DIST = join(ROOT, "dist");
+// Preserve the marketing site's default; other sites supply their build path.
+const DIST = process.env.BUNNY_DIST ? resolve(process.env.BUNNY_DIST) : join(ROOT, "dist");
+
+if (process.env.BUNNY_DIST && !process.env.BUNNY_STORAGE_ZONE) {
+  throw new Error("Custom BUNNY_DIST requires an explicit BUNNY_STORAGE_ZONE");
+}
 
 // Storage zone name. Defaults to the production zone; override with
 // BUNNY_STORAGE_ZONE for staging (e.g. shroud-email-website-staging).
@@ -193,6 +200,11 @@ async function pool(items, limit, fn) {
   await Promise.all(workers);
 }
 
+// Check the local build before deleting anything in the destination zone.
+const files = await walk(DIST);
+if (files.length === 0) throw new Error(`No files to deploy in ${DIST}`);
+const notFoundPage = await readFile(join(DIST, "404.html"));
+
 const endpoint = await resolveStorageEndpoint();
 console.log(`Using storage endpoint ${endpoint} for zone ${ZONE}`);
 const base = `https://${endpoint}/${ZONE}/`;
@@ -203,7 +215,6 @@ await pool(existing, 8, (item) =>
   remove(base, item.IsDirectory ? `${item.ObjectName}/` : item.ObjectName),
 );
 
-const files = await walk(DIST);
 console.log(`Uploading ${files.length} file(s) to ${ZONE}…`);
 let done = 0;
 await pool(files, 10, async (abs) => {
@@ -215,7 +226,7 @@ console.log(`  ↑ ${done} uploaded`);
 // Bunny serves a custom 404 only from bunnycdn_errors/404.html at the zone
 // root, so publish the built 404 page there too.
 console.log("Publishing custom 404 page…");
-await put(base, "bunnycdn_errors/404.html", await readFile(join(DIST, "404.html")));
+await put(base, "bunnycdn_errors/404.html", notFoundPage);
 
 console.log("Purging Pull Zone cache…");
 await purge();

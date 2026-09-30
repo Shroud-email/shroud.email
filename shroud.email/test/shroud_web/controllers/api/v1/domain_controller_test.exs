@@ -1,8 +1,10 @@
 defmodule ShroudWeb.Api.V1.DomainControllerTest do
   use ShroudWeb.ConnCase, async: true
+  import OpenApiSpex.TestAssertions, only: [assert_raw_schema: 2]
   alias Shroud.Accounts
   import Shroud.{AccountsFixtures, DomainFixtures}
   alias Shroud.Repo
+  alias ShroudWeb.Api.V1.Schemas
 
   describe "index/2" do
     setup do
@@ -26,6 +28,8 @@ defmodule ShroudWeb.Api.V1.DomainControllerTest do
       domain_1: domain_1
     } do
       conn = authorized_get(conn, user, ~p"/api/v1/domains")
+
+      assert_raw_schema(json_response(conn, 200), Schemas.domains_page())
 
       assert json_response(conn, 200) == %{
                "domains" => [

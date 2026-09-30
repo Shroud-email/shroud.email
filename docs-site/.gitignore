@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.astro/
+# Generated from Phoenix controller annotations, never edited by hand.
+public/openapi.json
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
