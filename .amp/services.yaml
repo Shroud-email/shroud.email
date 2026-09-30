@@ -3,6 +3,8 @@ services:
     command: cd shroud.email && mise exec -- mix phx.server
     port: 4000
     health: /
+    # Keep passkey testing free of injected review scripts.
+    review: false
     portal:
       title: Shroud.email
       description: Sign in with test@test.com / 123456789012
