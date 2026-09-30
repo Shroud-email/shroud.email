@@ -55,7 +55,7 @@ export function setupPaddleCheckout({
   const token = metaContent(document, "paddle-client-token");
 
   if (!button || button.dataset.paddleCheckout !== "true" || !token) {
-    return Promise.resolve(null);
+    return Object.assign(Promise.resolve(null), { dispose() {} });
   }
 
   let checkoutPending = false;
@@ -89,7 +89,7 @@ export function setupPaddleCheckout({
       return null;
     });
 
-  document.addEventListener("click", async (event) => {
+  const onClick = async (event) => {
     const clickedButton = event.target.closest?.(
       "#upgrade-button[data-paddle-checkout='true']",
     );
@@ -134,7 +134,12 @@ export function setupPaddleCheckout({
       checkoutPending = false;
       if (paddle) clickedButton.disabled = false;
     }
-  });
+  };
 
-  return paddlePromise;
+  document.addEventListener("click", onClick);
+  return Object.assign(paddlePromise, {
+    dispose() {
+      document.removeEventListener("click", onClick);
+    },
+  });
 }

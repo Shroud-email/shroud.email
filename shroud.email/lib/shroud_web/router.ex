@@ -113,17 +113,16 @@ defmodule ShroudWeb.Router do
     pipe_through([:browser, :require_confirmed_user])
 
     get("/settings", UserSettingsController, :redirect_to_account)
-    get("/settings/account", UserSettingsController, :account)
-    get("/settings/security", UserSettingsController, :security)
-    get("/settings/appearance", UserSettingsController, :appearance)
-    get("/settings/billing", UserSettingsController, :billing)
-    get("/settings/billing/lifetime", UserSettingsController, :lifetime)
-    post("/settings/billing/lifetime", UserSettingsController, :lifetime_signup)
-    put("/settings", UserSettingsController, :update)
+    put("/settings/password", UserSettingsController, :update_password)
     # Route for changing email of an already-confirmed account
     get("/settings/confirm_email/:token", UserSettingsController, :confirm_email)
 
     live_session :authenticated, on_mount: ShroudWeb.UserLiveAuth do
+      live("/settings/account", UserSettingsLive, :account)
+      live("/settings/security", UserSettingsLive, :security)
+      live("/settings/appearance", UserSettingsLive, :appearance)
+      live("/settings/billing", UserSettingsLive, :billing)
+      live("/settings/billing/lifetime", UserSettingsLive, :lifetime)
       live("/", EmailAliasLive.Index, :index)
       live("/alias/:address", EmailAliasLive.Show, :show)
       live("/domains", CustomDomainLive.Index, :index)

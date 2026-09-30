@@ -5,8 +5,7 @@
       <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Choose how Shroud.email looks to you.</p>
     </div>
 
-    <.form for={%{}} id="appearance-form" action={~p"/settings"} method="put">
-      <input type="hidden" name="action" value="update_theme" />
+    <.form for={@appearance_form} id="appearance-form" phx-submit="update_theme">
       <fieldset class="space-y-3">
         <label class={[
           "flex items-center gap-3 rounded-lg border p-4 cursor-pointer",

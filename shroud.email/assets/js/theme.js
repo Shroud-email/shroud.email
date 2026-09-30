@@ -31,6 +31,8 @@ function applyTheme(preference) {
 
 export function setTheme(preference) {
   localStorage.setItem(STORAGE_KEY, preference);
+  const meta = document.querySelector('meta[name="theme"]');
+  if (meta) meta.content = preference;
   applyTheme(preference);
 }
 

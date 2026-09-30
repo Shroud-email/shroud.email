@@ -1,0 +1,21 @@
+<.form for={@email_form} phx-submit="update_email" id="update_email">
+  <div class="shadow-sm dark:shadow-gray-900/50 sm:rounded-md sm:overflow-hidden">
+    <div class="bg-white dark:bg-gray-800 py-6 px-4 space-y-6 sm:p-6">
+      <div>
+        <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100">Email</h3>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Update your email. All emails to your aliases will be sent here!</p>
+      </div>
+      <div class="grid grid-cols-3 gap-x-6">
+        <div class="col-span-3">
+          <.input field={@email_form[:email]} label="Email" type="email" required />
+        </div>
+        <div class="col-span-3 mt-6">
+          <.input field={@email_form[:current_password]} label="Current password" type="password" name="current_password" id="current_password_for_email" autocomplete="current-password" required />
+        </div>
+      </div>
+    </div>
+    <div class="px-4 py-3 bg-gray-50 dark:bg-gray-700 text-right sm:px-6">
+      <button type="submit" class="btn btn-primary" phx-disable-with="Sending…">Change email</button>
+    </div>
+  </div>
+</.form>

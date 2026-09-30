@@ -42,6 +42,9 @@ function fixture({ token = "test_token", checkout = true, priceId } = {}) {
     addEventListener(name, listener) {
       listeners[name] = listener;
     },
+    removeEventListener(name, listener) {
+      if (listeners[name] === listener) delete listeners[name];
+    },
   };
 
   return { button, document, listeners, priceAmount, priceCurrency };
@@ -235,4 +238,23 @@ test("failed initialization clears the transient price state", async () => {
   });
 
   assert.equal(priceCurrency.textContent, "Price shown at checkout");
+});
+
+test("remounting checkout removes the previous click handler", async () => {
+  const { document, listeners, button } = fixture();
+  let requests = 0;
+  const window = {
+    fetch: async () => {
+      requests++;
+      return { ok: true, json: async () => ({ transaction_id: "txn_123" }) };
+    },
+  };
+  const initializePaddle = async () => ({ Checkout: { open() {} } });
+  const first = setupPaddleCheckout({ document, window, initializePaddle });
+  await first;
+  first.dispose();
+  assert.equal(listeners.click, undefined);
+  await setupPaddleCheckout({ document, window, initializePaddle });
+  await listeners.click({ target: button });
+  assert.equal(requests, 1);
 });
