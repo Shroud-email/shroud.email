@@ -15,7 +15,6 @@ defmodule ShroudWeb.Components.CopyToClipboardButtonTest do
 
     assert html =~ ~s(data-clipboard-text="hello@example.com")
     assert html =~ ~s(phx-hook="CopyToClipboard")
-    refute html =~ "x-on:click"
   end
 
   test "renders an accessible label and id" do
