@@ -3,7 +3,8 @@
   "tasks": {
     "build": "mkdir -p dist && deno run -A build.mjs",
     "check": "deno check src/main.ts",
-    "dev": "deno run --allow-net --allow-read src/main.ts"
+    "dev": "deno run --allow-net --allow-read src/main.ts",
+    "test": "deno test"
   },
   "lint": {
     "rules": {

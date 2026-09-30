@@ -24,7 +24,7 @@ aliases matching "Acme". Pagination totals describe the filtered results.
 
 ```
 {
-  email_aliases: [{
+  "email_aliases": [{
     "address": "deadbeef@fog.shroud.email",
     "enabled": true,
     "title": "Newsletters",
@@ -44,7 +44,7 @@ aliases matching "Acme". Pagination totals describe the filtered results.
 
 `POST /api/v1/aliases`: Create an email alias.
 
-By sending a POST request with no arguments, this will generate a random email alias on the default, shared domain (`@fog.shroud.email`). Alternatively, you can include a POST body to create a custom alias. For example, to create `myemail@example.com`, send the following arguments:
+By sending a POST request with no arguments, this will generate a random email alias on the instance's configured shared domain (`EMAIL_DOMAIN`; `fog.shroud.email` for the hosted service). Alternatively, you can include a POST body to create a custom alias. The custom domain must first be added to the authenticated user's account. For example, to create `myemail@example.com`, send the following arguments:
 
 ```
 {

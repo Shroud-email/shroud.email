@@ -150,7 +150,7 @@ const navLink =
         aria-controls="mobile-menu"
         class="group inline-flex items-center justify-center rounded-md p-2.5 text-slate-300 transition-colors hover:bg-white/5 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-300 md:hidden"
       >
-        <span class="sr-only">Open main menu</span>
+        <span class="sr-only">Main menu</span>
         <svg
           class="size-6 group-aria-expanded:hidden"
           viewBox="0 0 24 24"
@@ -207,11 +207,16 @@ const navLink =
 </header>
 
 <script>
-  function closeAll(buttons: NodeListOf<HTMLElement>) {
+  function closeAll(
+    buttons: NodeListOf<HTMLElement>,
+    restoreFocus = false,
+  ) {
     for (const b of buttons) {
+      const isOpen = b.getAttribute("aria-expanded") === "true";
       b.setAttribute("aria-expanded", "false");
       const p = document.getElementById(b.getAttribute("aria-controls") || "");
       if (p) p.hidden = true;
+      if (restoreFocus && isOpen) b.focus();
     }
   }
 
@@ -241,6 +246,6 @@ const navLink =
 
   document.addEventListener("click", () => closeAll(buttons));
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") closeAll(buttons);
+    if (event.key === "Escape") closeAll(buttons, true);
   });
 </script>

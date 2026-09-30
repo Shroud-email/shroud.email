@@ -23,7 +23,7 @@ YAMM@@=yamm-track\.appspot
 GetResponse@@=\/open\.html\?x=
 phpList@@=\/ut\.php\?u=
 Close.io@@=close\.io\/email_opened
-Constant Contact@@=\.net\/on\.jsp\?
+Constant Contact@@=\.net\/on\.jsp\?|rs6\.net\/on\.jsp
 Marketo@@=\/trk\?t=
 Return Path@@=returnpath\.net\/pixel\.gif
 Outreach@@=(outrch|whosen|getoutreach)\.com\/api\/mailings\/opened
@@ -33,7 +33,6 @@ Nethunt@@=nethunt\.com\/api\/v1\/track\/email\/
 Superhuman@@=r\.superhuman\.com
 ConvertKit@@=convertkit-mail\.com\/o\/|open\.convertkit\.com
 Apple@@=apple\.com\/report\/2\/its_mail_sf
-Fast Mail@@=list-manage.com/track/open\.php
 Fresh Mail@@=mail\.(great-news|mailnews)\.pl\/o\/.*
 ActiveCampaign@@=/lt\.php(.*)\?l=open
 AWeber@@=openrate\.aweber.com
@@ -69,7 +68,6 @@ FullContact@@=fullcontact\.com\/wf\/open
 Magento@@=magento\.com\/(trk|wf\/open)
 Insightly@@=insgly\.net\/api\/trk
 PipeDrive@@=api\.nylas\.com\/open\/|email\.pipedrive\.com\/wf\/open
-ConstantContact@@=rs6\.net\/on\.jsp
 Oracle Eloqua@@=\/e\/FooterImages\/FooterImage\d+
 Google@@=google\.com\/appserve\/mkt\/img\/.*\.gif
 Adobe@@=.*\.demdex\.net

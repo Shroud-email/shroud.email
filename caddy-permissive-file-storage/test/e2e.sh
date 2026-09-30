@@ -6,7 +6,7 @@
 # (0644/0755 -> 0600/0700), and module wiring breakage.
 #
 # Run locally:  bash test/e2e.sh
-# Run in CI:    see .github/workflows/deploy.yml (test job)
+# Run in CI:    see .github/workflows/caddy-deploy.yml (test job)
 #
 # Exits 0 on success, non-zero on failure. Never self-skips: missing xcaddy
 # or a port collision is a real failure, not a pass.

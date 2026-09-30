@@ -20,14 +20,7 @@
 
 import * as BunnySDK from "https://esm.sh/@bunny.net/edgescript-sdk@0.12.0";
 import "./bunny-globals.d.ts";
-
-// Country codes that should see the UK price. GB + the Crown dependencies
-// (Guernsey, Jersey, Isle of Man) share the UK billing entity in Paddle.
-const UK_COUNTRY_CODES = new Set(["GB", "GG", "JE", "IM"]);
-
-function isUK(country: string | null): boolean {
-  return country !== null && UK_COUNTRY_CODES.has(country.toUpperCase());
-}
+import { usesUKPricing } from "./pricing-country.ts";
 
 // The `url` is only used for local development; in production bunny proxies
 // to the origin configured on the Pull Zone. Point it at the live site so
@@ -48,7 +41,7 @@ BunnySDK.net.http
     // UK visitor (or unknown country): the static default is already in £, so
     // no rewrite needed. Still bypass the cache so a prior worldwide visitor's
     // rewritten copy can't leak to a UK visitor (or vice versa).
-    if (isUK(country)) {
+    if (usesUKPricing(country)) {
       const headers = new Headers(ctx.response.headers);
       headers.set("cache-control", "no-store");
       return Promise.resolve(

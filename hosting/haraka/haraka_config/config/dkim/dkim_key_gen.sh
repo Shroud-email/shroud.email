@@ -19,6 +19,12 @@ fi
 mkdir -p "$DOMAIN"
 cd "$DOMAIN" || exit
 
+if [ -e private ]; then
+    echo "Refusing to overwrite existing DKIM private key: ${DOMAIN}/private" 2>&1
+    echo "Remove it explicitly before generating a replacement key." 2>&1
+    exit 1
+fi
+
 # The selector can be any value that is a valid DNS label
 echo $SELECTOR > selector
 
@@ -35,7 +41,9 @@ DNS_ADDRESS="v=DKIM1;p=$(grep -v '^-' public | tr -d '\n')"
 cat > dns <<EO_DKIM_DNS
 Add this TXT record to the ${DOMAIN} DNS zone.
 
-${DNS_NAME}    IN   TXT   ${DNS_ADDRESS}
+${DNS_NAME}    IN   TXT   (
 EO_DKIM_DNS
+printf '%s' "$DNS_ADDRESS" | fold -w 255 | sed 's/^/    "/; s/$/"/' >> dns
+echo ')' >> dns
 
 cd ..

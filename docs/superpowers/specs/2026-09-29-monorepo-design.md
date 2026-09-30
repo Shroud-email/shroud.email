@@ -143,8 +143,13 @@ Hosting currently builds Caddy by fetching the old plugin module from GitHub.
 Change its build context and Dockerfile to use the sibling plugin source with
 xcaddy's local replacement mechanism. Retain the plugin's current Go module
 identity for compatibility; changing its public module path is not required to
-build the monorepo. Plugin edits must also be included in relevant hosting build
-dependencies. Compose commands remain usable from `hosting/`.
+build the monorepo. External consumers of that module identity continue to use
+source and tags published in the standalone repository; the monorepo's local
+xcaddy build and GHCR image publication do not publish module updates. Future
+module updates therefore require synchronizing source and releases to the old
+repository, or a deliberate breaking module-path migration. Plugin edits must
+also be included in relevant hosting build dependencies. Compose commands remain
+usable from `hosting/`.
 
 ## Verification and acceptance
 

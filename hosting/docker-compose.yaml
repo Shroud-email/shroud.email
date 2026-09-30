@@ -24,14 +24,19 @@ services:
     image: ghcr.io/shroud-email/haraka:main
     restart: unless-stopped
     depends_on:
-      - spamassassin
-      - db
+      spamassassin:
+        condition: service_started
+      db:
+        condition: service_started
+      cron:
+        condition: service_healthy
     ports:
       - "25:25"
     environment:
       - EMAIL_DOMAIN=${EMAIL_DOMAIN}
       - SMTP_USERNAME=${SMTP_USERNAME}
       - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - WITHOUT_CONFIG_CACHE=1
       - PGHOST=db
       - PGUSER=${DB_USER}
       - PGPASSWORD=${DB_PASSWORD}
@@ -91,7 +96,7 @@ services:
       - LOOPS_ACTIVE_USERS_LIST_ID=${LOOPS_ACTIVE_USERS_LIST_ID}
       - CHATWOOT_MAC_TOKEN=${CHATWOOT_MAC_TOKEN}
       - CHATWOOT_BASE_URL=${CHATWOOT_BASE_URL}
-      - CAP_INSTANCE_URL=${CAP_INSTANCE_URL:-https://${CAP_DOMAIN}}
+      - CAP_INSTANCE_URL=${CAP_INSTANCE_URL:-${CAP_DOMAIN:+https://${CAP_DOMAIN}}}
       - CAP_SITE_KEY=${CAP_SITE_KEY}
       - CAP_SECRET_KEY=${CAP_SECRET_KEY}
 
@@ -118,11 +123,14 @@ services:
   cron:
     build: ./cron
     restart: unless-stopped
+    depends_on:
+      - caddy
     environment:
       - EMAIL_DOMAIN=${EMAIL_DOMAIN}
     volumes:
       - caddy_data:/caddy
       - pem_certs:/pem
+      - ./haraka/haraka_config/config/tls.ini:/haraka-config/tls.ini
 
 volumes:
   db_data:

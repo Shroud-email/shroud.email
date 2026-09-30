@@ -32,11 +32,11 @@ const displayDate = (post: CollectionEntry<"blog">) => {
   <div class="flex-1 bg-white dark:bg-slate-900 p-6 flex flex-col justify-between">
     <div>
       <p class="text-sm text-slate-500 dark:text-slate-400">
-        <time datetime="2020-03-16">{displayDate(post)}</time>
+        <time datetime={format(post.data.date, "yyyy-MM-dd")}>{displayDate(post)}</time>
       </p>
-      <p class="text-xl font-semibold text-slate-900 dark:text-slate-50 mt-2 font-display">
+      <h2 class="text-xl font-semibold text-slate-900 dark:text-slate-50 mt-2 font-display">
         {post.data.title}
-      </p>
+      </h2>
     </div>
     <p class="mt-3 text-base text-slate-500 dark:text-slate-400">{post.data.description}</p>
   </div>

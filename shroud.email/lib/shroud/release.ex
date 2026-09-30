@@ -115,7 +115,11 @@ defmodule Shroud.Release do
       })
       |> Repo.update!()
 
-      Repo.delete_all(from m in EmailMetric, where: m.alias_id in ^Enum.map(rest, & &1.id))
+      Repo.delete_all(
+        from m in EmailMetric,
+          where: m.alias_id in ^Enum.map(rest, & &1.id),
+          where: m.date == ^date
+      )
     end)
 
     from(m in EmailMetric,

@@ -22,18 +22,37 @@ import LandingLayout from "../layouts/LandingLayout.astro";
 <script is:inline src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r121/three.min.js"></script>
 <script is:inline src="https://cdn.jsdelivr.net/npm/vanta@0.5.21/dist/vanta.fog.min.js"></script>
 <script is:inline>
-VANTA.FOG({
-  el: "#fog",
-  THREE: THREE,
-  mouseControls: false,
-  touchControls: false,
-  gyroControls: false,
-  minHeight: 200.0,
-  minWidth: 200.0,
-  baseColor: 0x0f172a,
-  lowlightColor: 0x020617,
-  midtoneColor: 0x1e293b,
-  highlightColor: 0x334155,
-  speed: 1.8,
-});
+const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+let fog;
+
+const updateFog = () => {
+  fog?.destroy();
+  fog = undefined;
+
+  if (!reducedMotion.matches) {
+    fog = VANTA.FOG({
+      el: "#fog",
+      THREE: THREE,
+      mouseControls: false,
+      touchControls: false,
+      gyroControls: false,
+      minHeight: 200.0,
+      minWidth: 200.0,
+      baseColor: 0x0f172a,
+      lowlightColor: 0x020617,
+      midtoneColor: 0x1e293b,
+      highlightColor: 0x334155,
+      speed: 1.8,
+    });
+  }
+};
+
+const cleanupFog = () => {
+  reducedMotion.removeEventListener("change", updateFog);
+  fog?.destroy();
+};
+
+reducedMotion.addEventListener("change", updateFog);
+window.addEventListener("pagehide", cleanupFog, { once: true });
+updateFog();
 </script>

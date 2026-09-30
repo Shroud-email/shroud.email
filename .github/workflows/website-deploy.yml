@@ -13,13 +13,14 @@ on:
 # Avoid overlapping deploys racing to upload to the same storage zone.
 concurrency:
   group: website-production
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions: {}
 
 jobs:
   deploy-site:
     name: Deploy site
+    if: github.ref == 'refs/heads/main'
     runs-on: depot-ubuntu-24.04
     defaults:
       run:
@@ -53,6 +54,7 @@ jobs:
 
   deploy-edge-script:
     name: Deploy edge script
+    if: github.ref == 'refs/heads/main'
     runs-on: depot-ubuntu-24.04
     permissions:
       contents: read

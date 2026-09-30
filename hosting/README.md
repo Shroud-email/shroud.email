@@ -12,6 +12,63 @@ If you want to get up and running with Shroud.email quickly, and don't want to m
 
 Copy `haraka/haraka_config/config/me.example` to `haraka/haraka_config/config/me` and set your mail hostname.
 
+## Haraka 3 upgrade
+
+Haraka is pinned to **3.3.4**, the latest stable release checked on 2026-09-30
+against both the [upstream GitHub release](https://github.com/haraka/Haraka/releases/tag/v3.3.4)
+and the [npm `latest` tag](https://www.npmjs.com/package/Haraka). The image uses
+Node 24 LTS; Haraka itself requires Node 20+, but its current build dependencies
+require a newer Node patch release. Haraka, the active external plugins, and
+PostgreSQL client dependencies are locked in `haraka/haraka_config/package-lock.json`.
+They are installed under `/app/node_modules`, outside the Compose configuration
+bind mount.
+
+When upgrading an existing installation, migrate its local configuration too:
+
+- `dnsbl` and `backscatterer` become one `dns-list` plugin. Move custom DNS zones
+  and rejection settings into `dns-list.ini`; the committed configuration keeps
+  the old Spamhaus list and enables the null-sender/postmaster backscatter check.
+- `dkim_sign` becomes `dkim`. Move local `dkim_sign.ini` settings into `[sign]`
+  in `dkim.ini`: `disabled=false` becomes `enabled=true`, and `headers_to_sign`
+  becomes `headers`. The existing `config/dkim/<domain>/private` and `selector`
+  files still work. Signing remains opt-in, as in 2.8.28; verification remains
+  disabled unless deliberately enabled under `[verify]`.
+- Header settings, SMTPUTF8 and strict RFC 1869 settings move from `smtp.ini` to
+  `connection.ini`. Migrate old greeting, UUID, message-size and line-limit files
+  using the [upstream migration table](https://github.com/haraka/Haraka/blob/v3.3.4/CHANGELOG.md#310---2025-01-30).
+  Keep the new `max`, `message` and `uuid` sections: missing sections can break
+  SMTP sessions. The committed message-size limit is 25 MiB.
+- `mail_from.is_resolvable.ini` uses `timeout_ms` and `[reject] no_mx=deny`;
+  the committed configuration retains the 20-second DNS timeout.
+
+To verify without publishing or starting the deployment stack:
+
+```sh
+docker build -t shroud-haraka:local haraka
+docker run --rm shroud-haraka:local --version
+```
+
+The build runs the Node compatibility tests, including SMTP STARTTLS/AUTH,
+recipient/relay decisions, DKIM signing and TLS certificate rotation. To run
+them outside Docker, use Node 24.15+ and OpenSSL, then run `npm ci --omit=optional`
+and `npm test` from `haraka/haraka_config/`.
+
+The Haraka upgrade alone does **not** activate copied certificates. This hosting
+stack includes a separate certificate-sync fix in cron and Compose: it validates
+and publishes a matching pair, sets `WITHOUT_CONFIG_CACHE=1` on Haraka and touches
+its mounted `tls.ini`. This combination is tested on 3.3.4 for SNI and non-SNI
+handshakes. If applying only the Haraka upgrade without that sync fix, validate
+copied certificates and restart Haraka to activate them. Without a reload trigger,
+copying new PEM files leaves the active default TLS context stale. Validate
+complete key/chain pairs before publishing: malformed or mismatched input can
+throw during context creation.
+The SMTP certificate must cover the actual MX hostname, including for clients
+that do not send SNI.
+
+Haraka 3.3.4 does not add outbound MTA-STS enforcement. Inbound MTA-STS also still
+needs its HTTPS policy host, discovery TXT records, and a valid MX certificate;
+these are separate follow-up work, not enabled by this upgrade.
+
 ## TLS via Bunny DNS-01 (optional)
 
 Caddy defaults to HTTP-01 ACME (port 80), which works behind no other reverse
@@ -59,15 +116,21 @@ service.
    openssl rand -hex 32
    ```
 
-2. Start the services:
+2. Choose a public hostname (for example, `cap.example.com`), set it as
+   `CAP_DOMAIN` in `.env`, and create a DNS A/AAAA record pointing that hostname
+   to this server. When `CAP_DOMAIN` is unset, Caddy uses the inert
+   `disabled.localhost` default, so the Cap UI is not publicly accessible.
+
+3. Start Cap and Caddy. Caddy reads `CAP_DOMAIN` when Compose creates the
+   container and automatically provisions HTTPS for the hostname:
    ```bash
-   docker compose up -d cap valkey
+   docker compose up -d cap valkey caddy
    ```
 
-3. Create a site key.  Cap authenticates with a
-   session token issued by logging in with the `ADMIN_KEY. Create a `siteKey` and `secretKey` in the Cap UI.
+4. Open `https://<CAP_DOMAIN>` and create a site key.  Cap authenticates with a
+   session token issued by logging in with the `ADMIN_KEY`. Create a `siteKey` and `secretKey` in the Cap UI.
 
-4. Set `CAP_INSTANCE_URL`, `CAP_SITE_KEY`, and `CAP_SECRET_KEY` in `.env`, then
+5. Set `CAP_INSTANCE_URL`, `CAP_SITE_KEY`, and `CAP_SECRET_KEY` in `.env`, then
    restart `web`:
    ```bash
    docker compose restart web

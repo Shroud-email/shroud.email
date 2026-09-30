@@ -15,7 +15,7 @@ const { onDarkSurface = false } = Astro.props;
   >
     <input
       class="newsletter-form-input"
-      name="newsletter-form-input"
+      name="email"
       type="email"
       aria-label="Email address"
       placeholder="you@example.com"
@@ -41,22 +41,30 @@ const { onDarkSurface = false } = Astro.props;
   </p>
   <div
     class="newsletter-success"
+    role="status"
     style="display: none; align-items: center; justify-content: center; width: 100%;"
   >
     <p
-      class="newsletter-success-message"
-      style="font-family: inherit; color: rgb(0, 0, 0); font-size: 14px;"
+      class:list={[
+        "newsletter-success-message text-sm",
+        onDarkSurface ? "text-slate-200" : "text-slate-900 dark:text-slate-100",
+      ]}
+      style="font-family: inherit;"
     >
       Successfully subscribed!
     </p>
   </div>
   <div
     class="newsletter-error"
+    role="alert"
     style="display: none; align-items: center; justify-content: center; width: 100%;"
   >
     <p
-      class="newsletter-error-message"
-      style="font-family: inherit; color: rgb(185, 28, 28); font-size: 14px;"
+      class:list={[
+        "newsletter-error-message text-sm",
+        onDarkSurface ? "text-red-300" : "text-red-700 dark:text-red-300",
+      ]}
+      style="font-family: inherit;"
     >
       Oops! Something went wrong, please try again
     </p>
@@ -73,6 +81,22 @@ const { onDarkSurface = false } = Astro.props;
 </div>
 
 <script is:inline>
+  function getPreviousSignupTimestamp() {
+    try {
+      return localStorage.getItem("loops-form-timestamp");
+    } catch {
+      return null;
+    }
+  }
+
+  function setPreviousSignupTimestamp(timestamp) {
+    try {
+      localStorage.setItem("loops-form-timestamp", timestamp);
+    } catch {
+      // Storage can be unavailable; it should not prevent newsletter signup.
+    }
+  }
+
   function submitHandler(event) {
     event.preventDefault();
     var container = event.target.parentNode;
@@ -97,7 +121,7 @@ const { onDarkSurface = false } = Astro.props;
     // Compare current time with time of previous sign up
     var time = new Date();
     var timestamp = time.valueOf();
-    var previousTimestamp = localStorage.getItem("loops-form-timestamp");
+    var previousTimestamp = getPreviousSignupTimestamp();
 
     // If last sign up was less than a minute ago
     // display error
@@ -105,7 +129,7 @@ const { onDarkSurface = false } = Astro.props;
       rateLimit();
       return;
     }
-    localStorage.setItem("loops-form-timestamp", timestamp);
+    setPreviousSignupTimestamp(timestamp);
 
     submitButton.style.display = "none";
     loadingButton.style.display = "flex";
@@ -129,7 +153,7 @@ const { onDarkSurface = false } = Astro.props;
         } else {
           // If response unsuccessful
           // display error message or response status
-          dataPromise.then((data) => {
+          return dataPromise.then((data) => {
             errorContainer.style.display = "flex";
             errorMessage.innerText = data.message
               ? data.message
@@ -147,7 +171,7 @@ const { onDarkSurface = false } = Astro.props;
         // display error message if available
         errorContainer.style.display = "flex";
         if (error.message) errorMessage.innerText = error.message;
-        localStorage.setItem("loops-form-timestamp", "");
+        setPreviousSignupTimestamp("");
       })
       .finally(() => {
         formInput.style.display = "none";

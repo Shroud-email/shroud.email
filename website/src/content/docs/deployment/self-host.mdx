@@ -59,12 +59,12 @@ sign messages from your domain, so recipients can be sure that emails were not f
 First, generate your keypair. From the repo you cloned, run the following:
 
 ```bash
-# cd to the dkim directory so keys are created in the right place
-$ cd haraka/haraka_config/config/dkim
-$ ./dkim_key_gen.sh example.com # use your domain
+# Run from the dkim directory so keys are created in the right place,
+# without leaving the hosting directory in your current shell.
+(cd haraka/haraka_config/config/dkim && ./dkim_key_gen.sh example.com) # use your domain
 ```
 
-Now, look in the directory `./example.com/dns`. This file shows the TXT DNS record you need to add.
+Now, look in `haraka/haraka_config/config/dkim/example.com/dns`. This file shows the TXT DNS record you need to add.
 
 ### Step 4: Set up DMARC
 
@@ -83,7 +83,10 @@ This tells recipients to send a message to you if there are any DMARC errors.
 ### Step 1: Configure
 
 - `cp example.env .env` and enter your configuration in `.env`.
-- Update `haraka/haraka_config/config/me` with your `EMAIL_DOMAIN`. It should be a plaintext file with only this value, e.g.
+- Copy the example mail hostname file by running
+  `cp haraka/haraka_config/config/me.example haraka/haraka_config/config/me`,
+  then update `haraka/haraka_config/config/me` with your `EMAIL_DOMAIN`. It
+  should be a plaintext file with only this value, e.g.
 
 ```
 example.com

@@ -9,6 +9,13 @@ const { Pool } = require('pg')
 const pool = new Pool({max: 10})
 let pool_error_logger
 
+const verified_domains_query = `SELECT domain FROM custom_domains
+WHERE ownership_verified_at > (CURRENT_TIMESTAMP AT TIME ZONE 'UTC') - INTERVAL '1 day'
+  AND mx_verified_at > (CURRENT_TIMESTAMP AT TIME ZONE 'UTC') - INTERVAL '1 day'
+  AND spf_verified_at > (CURRENT_TIMESTAMP AT TIME ZONE 'UTC') - INTERVAL '1 day'
+  AND dkim_verified_at > (CURRENT_TIMESTAMP AT TIME ZONE 'UTC') - INTERVAL '1 day'
+  AND dmarc_verified_at > (CURRENT_TIMESTAMP AT TIME ZONE 'UTC') - INTERVAL '1 day'`
+
 pool.on('error', (err) => {
     pool_error_logger?.logerror("Host list database pool error! ", Object.values(err))
 })
@@ -20,7 +27,7 @@ exports.load_host_list = function (cb) {
     // Connection configured via environment variables
     const domains = new Set()
     if (process.env.EMAIL_DOMAIN != null) domains.add(process.env.EMAIL_DOMAIN.toLowerCase())
-    pool.query('SELECT domain FROM custom_domains', (err, res) => {
+    pool.query(verified_domains_query, (err, res) => {
         if (err) {
             plugin.logerror("Failed to load host list! ", Object.values(err))
         } else {

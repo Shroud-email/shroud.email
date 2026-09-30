@@ -1,4 +1,4 @@
-// Auth against a flat file
+// Auth against credentials provided through environment variables
 
 exports.register = function () {
     const plugin = this;

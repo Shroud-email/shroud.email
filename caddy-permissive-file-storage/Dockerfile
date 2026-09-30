@@ -10,4 +10,3 @@ RUN xcaddy build v2.10.0 \
 FROM caddy:2.10-alpine
 
 COPY --from=builder /usr/bin/caddy /usr/bin/caddy
-VOLUME /etc/caddy/Caddyfile

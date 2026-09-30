@@ -1,3 +1,7 @@
+if ! git diff --cached --find-renames --name-only --diff-filter=ACMRD -- shroud.email/ | grep -q .; then
+  exit 0
+fi
+
 cd shroud.email
 mise exec -- mix format --check-formatted
 mise exec -- mix credo

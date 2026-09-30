@@ -3,7 +3,7 @@
 
 # Pretty Feed
 
-Styles an RSS/Atom feed, making it friendly for humans viewers, and adds a link
+Styles an RSS feed, making it friendly for humans viewers, and adds a link
 to aboutfeeds.com for new user onboarding. See it in action:
 
    https://interconnected.org/home/feed
@@ -16,7 +16,7 @@ to aboutfeeds.com for new user onboarding. See it in action:
 
    https://github.com/genmon/aboutfeeds/blob/main/tools/pretty-feed-v3.xsl
 
-2. Include the XSL at the top of the RSS/Atom feed, like:
+2. Include the XSL at the top of the RSS feed, like:
 
 ```
 <?xml version="1.0" encoding="UTF-8"?>

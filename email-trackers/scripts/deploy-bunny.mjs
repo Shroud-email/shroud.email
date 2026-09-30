@@ -7,8 +7,9 @@
 
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = new URL('../', import.meta.url).pathname;
+const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const ZONE = 'shroud-email-trackers';
 const ENDPOINT = 'storage.bunnycdn.com';
 

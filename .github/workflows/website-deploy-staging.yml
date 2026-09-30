@@ -1,8 +1,8 @@
 name: Website staging deployment
 
 # Single workflow that deploys EVERYTHING needed to test the staging site:
-# the static site build AND the bunny.net edge script. Run it pointing at the
-# branch you want to test (e.g. geo-localized-pricing) — nothing touches prod.
+# the static site build AND the bunny.net edge script. It only runs from and
+# deploys the trusted main branch — nothing touches prod.
 #
 # What it deploys:
 #   1. Site build (dist/) → staging storage zone + cache purge
@@ -17,23 +17,18 @@ name: Website staging deployment
 
 on:
   workflow_dispatch:
-    inputs:
-      ref:
-        description: "Branch/tag/SHA to deploy"
-        required: true
-        type: string
-        default: "main"
 
 # Prevent two runs from racing to upload to staging.
 concurrency:
   group: website-staging
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions: {}
 
 jobs:
   deploy-site:
     name: Deploy site
+    if: github.ref == 'refs/heads/main'
     runs-on: depot-ubuntu-24.04
     defaults:
       run:
@@ -43,7 +38,7 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          ref: ${{ inputs.ref }}
+          ref: refs/heads/main
           persist-credentials: false
 
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
@@ -69,13 +64,14 @@ jobs:
 
   deploy-edge-script:
     name: Deploy edge script
+    if: github.ref == 'refs/heads/main'
     runs-on: depot-ubuntu-24.04
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          ref: ${{ inputs.ref }}
+          ref: refs/heads/main
           persist-credentials: false
 
       - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5

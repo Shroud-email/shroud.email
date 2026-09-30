@@ -45,6 +45,8 @@
   --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-sans);
 
+  --container-8xl: 88rem;
+
   /* Brand accent. Semantic aliases over Tailwind's (already-OKLCH) indigo so
      redesigned markup has stable token names and one canonical brand colour. */
   --color-brand: var(--color-indigo-500);

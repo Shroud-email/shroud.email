@@ -10,7 +10,7 @@ description: Take screenshots of web pages using Playwright (via npx), including
 Run the bundled script to capture a URL at multiple widths:
 
 ```bash
-scripts/take_screenshots.sh "https://example.com" ./screenshots "1440,1200,1024,768,375" 900
+website/.codex/skills/playwright-screenshot/scripts/take_screenshots.sh "https://example.com" ./screenshots "1440,1200,1024,768,375" 900
 ```
 
 If Playwright browsers are missing, install once:

@@ -1,8 +1,8 @@
 // Publish the built static site to a bunny.net Storage Zone and purge
 // the Pull Zone cache.
 //
-// Performs a clean deploy: the existing zone contents are deleted first so that
-// removed pages and stale hashed assets don't linger.
+// Uploads the complete new site before removing stale objects, so a failed
+// upload never deletes previously published objects. Updates are not atomic.
 //
 // Required env vars:
 //   BUNNY_STORAGE_PASSWORD  - storage zone read/write password (AccessKey)
@@ -23,6 +23,7 @@
 
 import { readFile, readdir } from "node:fs/promises";
 import { join, relative, extname, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
 // Map bunny storage region codes to their HTTP API endpoints. The default
 // (Falkenstein / Frankfurt, DE) has no prefix.
@@ -57,17 +58,6 @@ const {
   BUNNY_PULLZONE_ID: PULLZONE_ID,
   BUNNY_API_KEY: API_KEY,
 } = process.env;
-
-for (const [name, value] of Object.entries({
-  BUNNY_STORAGE_PASSWORD: PASSWORD,
-  BUNNY_PULLZONE_ID: PULLZONE_ID,
-  BUNNY_API_KEY: API_KEY,
-})) {
-  if (!value) {
-    console.error(`Missing required env var: ${name}`);
-    process.exit(1);
-  }
-}
 
 // Resolve the storage endpoint for the zone's region. If BUNNY_STORAGE_ENDPOINT
 // is set, use it as an override. Otherwise look the zone up via the bunny API
@@ -113,6 +103,7 @@ const MIME = {
   ".mjs": "text/javascript; charset=utf-8",
   ".json": "application/json; charset=utf-8",
   ".xml": "application/xml; charset=utf-8",
+  ".xsl": "application/xslt+xml; charset=utf-8",
   ".txt": "text/plain; charset=utf-8",
   ".svg": "image/svg+xml",
   ".ico": "image/x-icon",
@@ -152,6 +143,19 @@ async function list(base, path = "") {
   if (res.status === 404) return [];
   if (!res.ok) throw new Error(`List ${path} failed: ${res.status} ${await res.text()}`);
   return res.json();
+}
+
+// Bunny listings are shallow, so recurse to build a complete object inventory.
+// ObjectName may be either relative to the listed directory or zone-relative.
+export async function listFiles(base, path = "") {
+  const files = [];
+  for (const item of await list(base, path)) {
+    const name = item.ObjectName.replace(/^\/+/, "");
+    const objectPath = name.startsWith(path) ? name : `${path}${name}`;
+    if (item.IsDirectory) files.push(...(await listFiles(base, `${objectPath.replace(/\/$/, "")}/`)));
+    else files.push(objectPath);
+  }
+  return files;
 }
 
 async function remove(base, path) {
@@ -200,35 +204,59 @@ async function pool(items, limit, fn) {
   await Promise.all(workers);
 }
 
-// Check the local build before deleting anything in the destination zone.
-const files = await walk(DIST);
-if (files.length === 0) throw new Error(`No files to deploy in ${DIST}`);
-const notFoundPage = await readFile(join(DIST, "404.html"));
+export async function publishFiles(existing, files, { uploadFile, upload404, deleteFile }) {
+  const desired = new Set(files);
+  desired.add("bunnycdn_errors/404.html");
 
-const endpoint = await resolveStorageEndpoint();
-console.log(`Using storage endpoint ${endpoint} for zone ${ZONE}`);
-const base = `https://${endpoint}/${ZONE}/`;
+  await pool(files, 10, uploadFile);
+  await upload404();
 
-console.log(`Cleaning storage zone ${ZONE}…`);
-const existing = await list(base, "");
-await pool(existing, 8, (item) =>
-  remove(base, item.IsDirectory ? `${item.ObjectName}/` : item.ObjectName),
-);
+  const stale = existing.filter((path) => !desired.has(path));
+  await pool(stale, 8, deleteFile);
+  return stale;
+}
 
-console.log(`Uploading ${files.length} file(s) to ${ZONE}…`);
-let done = 0;
-await pool(files, 10, async (abs) => {
-  await upload(base, abs);
-  done++;
-});
-console.log(`  ↑ ${done} uploaded`);
+export async function main() {
+  for (const [name, value] of Object.entries({
+    BUNNY_STORAGE_PASSWORD: PASSWORD,
+    BUNNY_PULLZONE_ID: PULLZONE_ID,
+    BUNNY_API_KEY: API_KEY,
+  })) {
+    if (!value) throw new Error(`Missing required env var: ${name}`);
+  }
 
-// Bunny serves a custom 404 only from bunnycdn_errors/404.html at the zone
-// root, so publish the built 404 page there too.
-console.log("Publishing custom 404 page…");
-await put(base, "bunnycdn_errors/404.html", notFoundPage);
+  // Validate the local build before contacting or modifying the destination.
+  const absoluteFiles = await walk(DIST);
+  if (absoluteFiles.length === 0) throw new Error(`No files to deploy in ${DIST}`);
+  const notFoundPage = await readFile(join(DIST, "404.html"));
+  const endpoint = await resolveStorageEndpoint();
+  console.log(`Using storage endpoint ${endpoint} for zone ${ZONE}`);
+  const base = `https://${endpoint}/${ZONE}/`;
+  const existing = await listFiles(base);
+  const files = absoluteFiles.map((abs) => relative(DIST, abs).split(/[/\\]/).join("/"));
+  const absoluteByPath = new Map(files.map((path, index) => [path, absoluteFiles[index]]));
 
-console.log("Purging Pull Zone cache…");
-await purge();
+  console.log(`Uploading ${files.length} file(s) to ${ZONE}…`);
+  let done = 0;
+  const stale = await publishFiles(existing, files, {
+    uploadFile: async (path) => {
+      await upload(base, absoluteByPath.get(path));
+      done++;
+    },
+    upload404: async () => {
+      console.log(`  ↑ ${done} uploaded`);
+      console.log("Publishing custom 404 page…");
+      await put(base, "bunnycdn_errors/404.html", notFoundPage);
+    },
+    deleteFile: (path) => remove(base, path),
+  });
+  console.log(`Removed ${stale.length} stale object(s)`);
 
-console.log("Done.");
+  console.log("Purging Pull Zone cache…");
+  await purge();
+  console.log("Done.");
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  await main();
+}

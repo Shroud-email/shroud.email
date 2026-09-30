@@ -1,6 +1,6 @@
 # For those who want to live on the edge.
 #
-# Tracks the :edge image (rebuilt on every push to main) and uses Watchtower
+# Tracks the :edge image (rebuilt when main pushes match the app build workflow) and uses Watchtower
 # to auto-pull and recreate the web container whenever a new image is published.
 #
 # On the server:

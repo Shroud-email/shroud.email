@@ -1,4 +1,5 @@
 # Commitizen is optional; automation and explicit commit messages need no prompt.
-if [ -z "${2:-}" ] && [ -t 0 ] && [ -x shroud.email/assets/node_modules/.bin/cz ]; then
-  shroud.email/assets/node_modules/.bin/cz --hook || true
+if [ -z "${2:-}" ] && [ -x shroud.email/assets/node_modules/.bin/cz ] &&
+  (: </dev/tty) 2>/dev/null; then
+  shroud.email/assets/node_modules/.bin/cz --hook </dev/tty >/dev/tty || true
 fi

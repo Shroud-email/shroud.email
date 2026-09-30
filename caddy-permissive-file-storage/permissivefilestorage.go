@@ -41,9 +41,45 @@ func (s PermissiveStorage) CertMagicStorage() (certmagic.Storage, error) {
 // Override Store to use globally-readable permissions
 func (fs *CertmagicStorage) Store(_ context.Context, key string, value []byte) error {
 	filename := fs.Filename(key)
-	err := os.MkdirAll(filepath.Dir(filename), 0755)
+	directory := filepath.Dir(filename)
+	if err := os.MkdirAll(directory, 0755); err != nil {
+		return err
+	}
+
+	// MkdirAll and CreateTemp apply the process umask when creating paths and do
+	// not update permissions on paths that already exist. Set the requested
+	// permissions explicitly so storage remains readable in both cases.
+	root := filepath.Clean(fs.Path)
+	for current := directory; ; current = filepath.Dir(current) {
+		if err := os.Chmod(current, 0755); err != nil {
+			return err
+		}
+		if current == root {
+			break
+		}
+		parent := filepath.Dir(current)
+		if parent == current {
+			break
+		}
+	}
+
+	temp, err := os.CreateTemp(directory, "."+filepath.Base(filename)+".tmp-*")
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filename, value, 0644)
+	tempName := temp.Name()
+	defer os.Remove(tempName)
+
+	if err := temp.Chmod(0644); err != nil {
+		temp.Close()
+		return err
+	}
+	if _, err := temp.Write(value); err != nil {
+		temp.Close()
+		return err
+	}
+	if err := temp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tempName, filename)
 }
