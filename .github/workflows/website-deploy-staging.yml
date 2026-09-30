@@ -60,7 +60,13 @@ jobs:
 
       - run: pnpm run build
 
-      - run: node ../scripts/deploy-bunny.mjs
+      # The selected ref may predate the shared uploader's move to the repo root.
+      - run: |
+          if [ -f ../scripts/deploy-bunny.mjs ]; then
+            node ../scripts/deploy-bunny.mjs
+          else
+            node scripts/deploy-bunny.mjs
+          fi
         env:
           BUNNY_STORAGE_ZONE: shroud-email-website-staging
           BUNNY_STORAGE_PASSWORD: ${{ secrets.WEBSITE_BUNNY_STAGING_STORAGE_PASSWORD }}
