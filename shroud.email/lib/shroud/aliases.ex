@@ -14,23 +14,26 @@ defmodule Shroud.Aliases do
 
   @spec list_aliases(User.t()) :: [EmailAlias.t()]
   def list_aliases(%User{} = user, search_query \\ nil) do
+    user
+    |> aliases_query(search_query)
+    |> join(:left, [ea], m in subquery(recent_metrics()), on: m.alias_id == ea.id)
+    |> select_merge([ea, m], %{ea | forwarded_in_last_30_days: coalesce(m.forwarded, 0)})
+    |> Repo.all()
+  end
+
+  @doc "Returns the current user's non-deleted aliases query, optionally searched as in the dashboard."
+  def aliases_query(%User{} = user, search_query \\ nil) do
     query =
       from(ea in EmailAlias,
         where: ea.user_id == ^user.id and is_nil(ea.deleted_at),
-        left_join: m in subquery(recent_metrics()),
-        on: m.alias_id == ea.id,
-        select_merge: %{ea | forwarded_in_last_30_days: coalesce(m.forwarded, 0)},
         order_by: [desc: ea.inserted_at]
       )
 
-    query =
-      if is_nil(search_query) or search_query == "" do
-        query
-      else
-        filter_aliases(search_query, query)
-      end
-
-    Repo.all(query)
+    if is_nil(search_query) or String.trim(search_query) == "" do
+      query
+    else
+      filter_aliases(search_query, query)
+    end
   end
 
   @free_alias_limit 5
