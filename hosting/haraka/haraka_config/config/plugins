@@ -23,9 +23,8 @@
 # geoip
 # asn
 # fcrdns
-# block mails from known bad hosts (see config/dnsbl.zones for the DNS zones queried)
-dnsbl
-backscatterer
+# block mails from known bad hosts (see config/dns-list.ini)
+dns-list
 
 # HELO
 #early_talker
@@ -61,7 +60,7 @@ headers
 #attachment
 #clamd
 spamassassin
-dkim_sign
+dkim
 #limit
 
 # Log (outgoing) bounces as WARN

@@ -2,17 +2,25 @@
 // Base class for plugins that use config/host_list
 // This is a fork of https://github.com/haraka/Haraka/blob/master/plugins/rcpt_to.host_list_base.js
 // that uses a .js file for config, rather than hard-coded domains
-const { Client }= require('pg')
+const { Pool } = require('pg')
+
+// Keep one bounded pool per Haraka worker instead of opening a new connection
+// for every MAIL FROM and RCPT TO hook invocation.
+const pool = new Pool({max: 10})
+let pool_error_logger
+
+pool.on('error', (err) => {
+    pool_error_logger?.logerror("Host list database pool error! ", Object.values(err))
+})
 
 exports.load_host_list = function (cb) {
     const plugin = this;
+    pool_error_logger = plugin;
 
     // Connection configured via environment variables
-    const client = new Client()
-    client.connect()
     const domains = new Set()
     if (process.env.EMAIL_DOMAIN != null) domains.add(process.env.EMAIL_DOMAIN.toLowerCase())
-    client.query('SELECT domain FROM custom_domains', (err, res) => {
+    pool.query('SELECT domain FROM custom_domains', (err, res) => {
         if (err) {
             plugin.logerror("Failed to load host list! ", Object.values(err))
         } else {
@@ -21,7 +29,6 @@ exports.load_host_list = function (cb) {
             })
         }
         cb(domains)
-        client.end()
     })
 }
 
@@ -30,7 +37,7 @@ exports.hook_mail = function (next, connection, params) {
     const txn = connection?.transaction;
     if (!txn) return;
 
-    const email = params[0].address();
+    const email = params[0].address;
     if (!email) {
         txn.results.add(plugin, {skip: 'mail_from.null', emit: true});
         return next();
