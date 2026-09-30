@@ -40,8 +40,17 @@ Do not use `pull_request_target` to run untrusted fork code with secrets.
 4. Verify the secrets below are available to the intended repository/workflows.
    Restrict production publishing credentials to trusted refs. Staging supports
    arbitrary trusted monorepo refs, so retain access for those staging runs.
+   An organization owner must also enable **IPv6** in
+   [Depot CI sandbox settings](https://depot.dev/orgs/_/workflows/settings/sandbox).
+   Depot disables IPv6 by default. The production image binds its HTTP listener
+   to the IPv6 wildcard, so image E2E fails with `:eafnosupport` without it.
+   This is an organization-level setting change, not a production app change.
 5. Run non-publishing Depot jobs against this working tree before cutover, for
    example `depot ci run --workflow .depot/workflows/ci.yml --job test --job image-e2e`.
+   Do not add `--follow` when selecting multiple jobs: CLI 2.102.14 rejects that
+   after creating the run. Follow each job separately using the returned run ID:
+   `depot ci logs <run-id> --job test --follow` and
+   `depot ci logs <run-id> --job image-e2e --follow`.
    Do not run all jobs in a build/deploy/release workflow as a validation shortcut:
    those jobs write to real external systems. Check artifact upload/download,
    caches, Codecov, and GitHub SARIF uploads during the first authorized runs.
@@ -100,6 +109,10 @@ mise exec -- pinact run --fix=false --no-api .depot/workflows/*.yml .github/work
 Pass explicit Depot filenames to these tools: their default discovery targets
 GitHub workflows. The zizmor workflows likewise pass both sets of YAML files
 explicitly. The offline pin check verifies syntax, not remote tag/SHA identity.
+
+The Elixir setup steps explicitly set `ImageOS: ubuntu24`, which setup-beam
+requires to select Ubuntu OTP binaries but Depot does not supply. Their sandbox
+labels are pinned to Ubuntu 24.04 to keep that metadata accurate.
 
 References: [quickstart](https://depot.dev/docs/ci/quickstart),
 [compatibility and GHCR limitation](https://depot.dev/docs/ci/compatibility),

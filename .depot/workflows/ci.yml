@@ -2,7 +2,7 @@
 # Source: .github/workflows/ci.yml
 #
 # Changes made:
-# - Changed runs-on from "blacksmith-2vcpu-ubuntu-2404" to "depot-ubuntu-latest" in job "test"
+# - Pin the test sandbox to Ubuntu 24.04 and supply setup-beam's ImageOS metadata
 # - Kept a 4-CPU sandbox for the production image E2E job
 
 name: CI
@@ -20,7 +20,7 @@ defaults:
 
 jobs:
   test:
-    runs-on: depot-ubuntu-latest # was: blacksmith-2vcpu-ubuntu-2404. Nonstandard GitHub runner label detected, changed to default Depot runner.
+    runs-on: depot-ubuntu-24.04
     env:
       MIX_ENV: test
       LOOPS_API_KEY: secret
@@ -45,6 +45,9 @@ jobs:
           persist-credentials: false
       - name: Set up Elixir
         uses: erlef/setup-beam@fc68ffb90438ef2936bbb3251622353b3dcb2f93 # v1.24.0
+        env:
+          # Depot does not supply GitHub runner-image metadata.
+          ImageOS: ubuntu24
         with:
           elixir-version: "1.20.0"
           otp-version: "28"
