@@ -70,7 +70,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
 
   build-caddy:
-    name: Build Caddy with local storage module
+    name: Build Caddy and smoke-test hosting
     runs-on: depot-ubuntu-24.04
     permissions:
       contents: read
@@ -87,3 +87,7 @@ jobs:
           file: hosting/caddy/Dockerfile
           platforms: linux/amd64
           push: false
+          load: true
+          tags: shroud-caddy:test
+      - name: Test optional integrations and SMTP TLS
+        run: bash hosting/test.sh

@@ -14,12 +14,7 @@
   }
 }
 
-{$CAP_DOMAIN:disabled.localhost} {
-  reverse_proxy cap:3000
-  tls {
-    dns bunny {env.BUNNY_API_KEY}
-  }
-}
+import /etc/caddy/cap/{$CAP_CADDYFILE:disabled.caddy}
 
 {$EMAIL_DOMAIN} {
   tls {

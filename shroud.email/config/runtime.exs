@@ -26,7 +26,10 @@ config :shroud,
 # config/test.exs instead of these env vars.
 if config_env() != :test do
   paddle_environment =
-    case System.get_env("PADDLE_ENVIRONMENT") || "live" do
+    case System.get_env("PADDLE_ENVIRONMENT") do
+      unset when unset in [nil, ""] ->
+        "live"
+
       environment when environment in ["sandbox", "live"] ->
         environment
 

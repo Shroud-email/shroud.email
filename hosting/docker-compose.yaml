@@ -22,6 +22,7 @@ services:
 
   haraka:
     image: ghcr.io/shroud-email/haraka:main
+    build: ./haraka
     restart: unless-stopped
     depends_on:
       - spamassassin
@@ -36,12 +37,14 @@ services:
       - PGUSER=${DB_USER}
       - PGPASSWORD=${DB_PASSWORD}
       - PGDATABASE=${DB_DATABASE}
+      - WITHOUT_CONFIG_CACHE=1
     volumes:
       - ./haraka/haraka_config:/app/haraka_config
       - pem_certs:/app/haraka_config/config/certs
 
   cap:
     image: tiago2/cap:3
+    profiles: [cap]
     restart: unless-stopped
     depends_on:
       - valkey
@@ -52,6 +55,7 @@ services:
 
   valkey:
     image: valkey/valkey:9-alpine
+    profiles: [cap]
     restart: unless-stopped
     command: valkey-server --save 60 1 --loglevel warning --maxmemory 256mb --maxmemory-policy noeviction
     volumes:
@@ -105,12 +109,14 @@ services:
       - EMAIL_DOMAIN=${EMAIL_DOMAIN}
       - BUNNY_API_KEY=${BUNNY_API_KEY}
       - CAP_DOMAIN=${CAP_DOMAIN}
+      - CAP_CADDYFILE=${CAP_CADDYFILE:-disabled.caddy}
     ports:
       - "80:80"
       - "443:443"
     volumes:
       - caddy_data:/data
       - ${CADDYFILE_PATH:-./caddy/Caddyfile}:/etc/caddy/Caddyfile
+      - ./caddy/cap:/etc/caddy/cap:ro
 
   cron:
     build: ./cron
@@ -120,6 +126,7 @@ services:
     volumes:
       - caddy_data:/caddy
       - pem_certs:/pem
+      - ./haraka/haraka_config/config:/haraka-config
 
 volumes:
   db_data:
