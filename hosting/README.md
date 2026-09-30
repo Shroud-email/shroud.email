@@ -12,6 +12,60 @@ If you want to get up and running with Shroud.email quickly, and don't want to m
 
 Copy `haraka/haraka_config/config/me.example` to `haraka/haraka_config/config/me` and set your mail hostname.
 
+## Haraka 3 upgrade
+
+Haraka is pinned to **3.3.4**, the latest stable release checked on 2026-09-30
+against both the [upstream GitHub release](https://github.com/haraka/Haraka/releases/tag/v3.3.4)
+and the [npm `latest` tag](https://www.npmjs.com/package/Haraka). The image uses
+Node 24 LTS; Haraka itself requires Node 20+, but its current build dependencies
+require a newer Node patch release. Haraka, the active external plugins, and
+PostgreSQL client dependencies are locked in `haraka/haraka_config/package-lock.json`.
+They are installed under `/app/node_modules`, outside the Compose configuration
+bind mount.
+
+When upgrading an existing installation, migrate its local configuration too:
+
+- `dnsbl` and `backscatterer` become one `dns-list` plugin. Move custom DNS zones
+  and rejection settings into `dns-list.ini`; the committed configuration keeps
+  the old Spamhaus list and enables the null-sender/postmaster backscatter check.
+- `dkim_sign` becomes `dkim`. Move local `dkim_sign.ini` settings into `[sign]`
+  in `dkim.ini`: `disabled=false` becomes `enabled=true`, and `headers_to_sign`
+  becomes `headers`. The existing `config/dkim/<domain>/private` and `selector`
+  files still work. Signing remains opt-in, as in 2.8.28; verification remains
+  disabled unless deliberately enabled under `[verify]`.
+- Header settings, SMTPUTF8 and strict RFC 1869 settings move from `smtp.ini` to
+  `connection.ini`. Migrate old greeting, UUID, message-size and line-limit files
+  using the [upstream migration table](https://github.com/haraka/Haraka/blob/v3.3.4/CHANGELOG.md#310---2025-01-30).
+  Keep the new `max`, `message` and `uuid` sections: missing sections can break
+  SMTP sessions. The committed message-size limit is 25 MiB.
+- `mail_from.is_resolvable.ini` uses `timeout_ms` and `[reject] no_mx=deny`;
+  the committed configuration retains the 20-second DNS timeout.
+
+To verify without publishing or starting the deployment stack:
+
+```sh
+docker build -t shroud-haraka:local haraka
+docker run --rm shroud-haraka:local --version
+```
+
+The build runs the Node compatibility tests, including SMTP STARTTLS/AUTH,
+recipient/relay decisions, DKIM signing and TLS certificate rotation. To run
+them outside Docker, use Node 24.15+ and OpenSSL, then run `npm ci --omit=optional`
+and `npm test` from `haraka/haraka_config/`.
+
+The upgrade alone does **not** activate copied certificates. The coordinated
+certificate-sync fix uses `WITHOUT_CONFIG_CACHE=1` and touches mounted `tls.ini`
+after publishing a valid pair; this combination is tested on 3.3.4 for SNI and
+non-SNI handshakes. Without a reload trigger, copying new PEM files still leaves
+the active default TLS context stale. Validate complete key/chain pairs before
+publishing: malformed or mismatched input can throw during context creation.
+The SMTP certificate must cover the actual MX hostname, including for clients
+that do not send SNI.
+
+Haraka 3.3.4 does not add outbound MTA-STS enforcement. Inbound MTA-STS also still
+needs its HTTPS policy host, discovery TXT records, and a valid MX certificate;
+these are separate follow-up work, not enabled by this upgrade.
+
 ## TLS via Bunny DNS-01 (optional)
 
 Caddy defaults to HTTP-01 ACME (port 80), which works behind no other reverse

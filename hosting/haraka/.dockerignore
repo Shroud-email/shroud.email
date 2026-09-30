@@ -1,0 +1,5 @@
+haraka_config/node_modules
+haraka_config/config/me
+haraka_config/config/certs
+haraka_config/config/tls
+haraka_config/config/dkim/*/

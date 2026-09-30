@@ -3,5 +3,23 @@
   "description": "An SMTP Server",
   "version": "0.0.1",
   "repository": "",
-  "license": "MIT"
+  "license": "MIT",
+  "private": true,
+  "engines": {
+    "node": ">=24.15.0 <25"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "Haraka": "3.3.4",
+    "haraka-plugin-dkim": "1.3.1",
+    "haraka-plugin-dns-list": "1.3.0",
+    "haraka-plugin-headers": "1.2.0",
+    "haraka-plugin-helo.checks": "1.1.3",
+    "haraka-plugin-mail_from.is_resolvable": "1.3.0",
+    "haraka-plugin-spamassassin": "1.1.2",
+    "haraka-plugin-spf": "1.3.0",
+    "pg": "8.7.3"
+  }
 }

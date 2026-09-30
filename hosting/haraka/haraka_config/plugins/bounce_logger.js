@@ -1,4 +1,4 @@
-exports.hook_bounce = (next, _hmail, error) => {
+exports.hook_bounce = function (next, _hmail, error) {
   this.logwarn(`Bounced message: ${error}`);
   return next()
 }
