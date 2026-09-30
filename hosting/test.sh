@@ -96,6 +96,11 @@ for generation in first renewed; do
   cmp "$certdir/example.com.key" "$scratch/pem/current/tls_key.pem"
   cmp "$certdir/example.com.crt" "$scratch/pem/current/tls_cert.pem"
   check_smtp "$certdir/example.com.crt"
+  if [[ "$generation" == first ]]; then
+    first_pair=$(readlink "$scratch/pem/current")
+    # Grace is measured from retirement, not from the pair's creation date.
+    touch -t 197001010000 "$scratch/pem/$first_pair"
+  fi
 done
 
 # A simultaneous sync must leave the active volume untouched while locked.
@@ -106,12 +111,21 @@ docker run --rm --user "$(id -u):$(id -g)" -e EMAIL_DOMAIN=example.com \
   -c 'set -e; exec 8>/pem/.sync.lock; flock -x 8; /workdir/bundle_certs.sh; [[ ! -e /pem/current ]]'
 
 # Recover publication that completed without its reload trigger.
-touch -d '1970-01-01' "$scratch/haraka/config/tls.ini"
+touch -t 197001010000 "$scratch/haraka/config/tls.ini"
 copy_certs
 [[ "$scratch/haraka/config/tls.ini" -nt "$scratch/pem/current" ]]
 
-# Mismatched or malformed certificates must not overwrite the working pair.
+# Keep recently retired pairs, prune stale/orphaned pairs, and retain current
+# even when its directory is old (a normal certificate can be months old).
+[[ -d "$scratch/pem/$first_pair" ]]
 active_pair=$(readlink "$scratch/pem/current")
+mkdir "$scratch/pem/pair.orphan"
+touch -t 197001010000 "$scratch/pem/$first_pair" "$scratch/pem/pair.orphan" "$scratch/pem/$active_pair"
+copy_certs
+[[ ! -e "$scratch/pem/$first_pair" && ! -e "$scratch/pem/pair.orphan" ]]
+[[ -d "$scratch/pem/$active_pair" ]]
+
+# Mismatched or malformed certificates must not overwrite the working pair.
 cp "$scratch/pem/current/tls_key.pem" "$scratch/good.key"
 cp "$scratch/pem/current/tls_cert.pem" "$scratch/good.crt"
 openssl genrsa -out "$certdir/example.com.key" 2048 2>/dev/null

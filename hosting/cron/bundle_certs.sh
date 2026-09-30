@@ -7,6 +7,11 @@ if [ -z "${EMAIL_DOMAIN:-}" ]; then echo "EMAIL_DOMAIN is not set"; exit 1; fi
 exec 9>/pem/.sync.lock
 flock -n 9 || exit 0
 
+# Retired pairs get a 24-hour reader grace period. Never prune the active pair.
+while IFS= read -r retired_pair; do
+  if [[ ! /pem/current -ef "$retired_pair" ]]; then rm -rf "$retired_pair"; fi
+done < <(find /pem -maxdepth 1 -type d -name 'pair.*' -mmin +1440)
+
 cert_dir="/caddy/certificates/acme-v02.api.letsencrypt.org-directory/$EMAIL_DOMAIN"
 key="$cert_dir/$EMAIL_DOMAIN.key"
 cert="$cert_dir/$EMAIL_DOMAIN.crt"
@@ -40,7 +45,8 @@ fi
 chmod 600 "$pair_dir/tls_key.pem"
 chmod 644 "$pair_dir/tls_cert.pem"
 # A relative symlink works at both /pem and Haraka's config/certs mount.
-# Keep previous versions intact so in-flight readers can finish safely.
+# Start the old pair's grace period before switching, including on interruption.
+if [[ -L /pem/current ]]; then touch /pem/current/; fi
 ln -s "$(basename "$pair_dir")" /pem/current.tmp
 mv -Tf /pem/current.tmp /pem/current
 touch /haraka-config/tls.ini

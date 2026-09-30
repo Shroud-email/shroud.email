@@ -58,6 +58,7 @@ full chain and matching private key, and reloads Haraka after issuance or
 renewal. Syncs are locked and validated pairs are published via an atomic
 `current` symlink. Keep the shipped `tls.ini` paths (`certs/current/tls_key.pem`
 and `certs/current/tls_cert.pem`) when upgrading a local configuration.
+Retired pairs are pruned after a 24-hour reader grace period.
 Until issuance succeeds, Haraka cannot advertise STARTTLS and the
 web app's TLS-required SMTP delivery will retry. Missing certificates are not
 a fatal Haraka error; check Caddy logs if they never appear.
