@@ -1,7 +1,7 @@
 defmodule Shroud.RuntimeConfigTest do
   use ExUnit.Case, async: false
 
-  @optional_variables ~w(SENTRY_DSN PADDLE_ENVIRONMENT PADDLE_API_KEY PADDLE_WEBHOOK_SECRET PADDLE_YEARLY_PRICE_ID PADDLE_CLIENT_TOKEN CAP_INSTANCE_URL CAP_SITE_KEY CAP_SECRET_KEY)
+  @optional_variables ~w(SENTRY_DSN PADDLE_ENVIRONMENT PADDLE_API_KEY PADDLE_WEBHOOK_SECRET PADDLE_YEARLY_PRICE_ID PADDLE_CLIENT_TOKEN)
   @required_variables %{
     "APP_DOMAIN" => "app.example.com",
     "EMAIL_DOMAIN" => "example.com",
@@ -27,22 +27,17 @@ defmodule Shroud.RuntimeConfigTest do
     end)
   end
 
-  test "production accepts absent optional integrations" do
-    assert_integrations_disabled()
+  test "production accepts absent Paddle settings" do
+    assert_paddle_disabled()
   end
 
-  test "production accepts blank optional integrations" do
+  test "production accepts blank Paddle settings" do
     System.put_env(Map.new(@optional_variables, &{&1, ""}))
-    # Without an explicit dsn: nil, Sentry's environment fallback rejects "".
-    assert_raise ArgumentError, ~r/invalid configuration/, fn -> Sentry.Config.validate!([]) end
-    assert_integrations_disabled()
+    assert_paddle_disabled()
   end
 
-  defp assert_integrations_disabled do
+  defp assert_paddle_disabled do
     config = read_config()
-    assert config[:sentry][:dsn] == nil
-    # Validate against Sentry itself: it also reads the blank environment var.
-    assert Sentry.Config.validate!(config[:sentry])[:dsn] == nil
     billing = config[:shroud][:billing]
     assert billing[:paddle_api_key] == nil
     assert billing[:paddle_webhook_secret] == nil
@@ -51,9 +46,8 @@ defmodule Shroud.RuntimeConfigTest do
     assert billing[:paddle_base_url] == "https://api.paddle.com"
   end
 
-  test "configured Sentry and sandbox Paddle retain their settings" do
+  test "configured sandbox Paddle retains its settings" do
     System.put_env(%{
-      "SENTRY_DSN" => "https://public@sentry.example.com/1",
       "PADDLE_ENVIRONMENT" => "sandbox",
       "PADDLE_API_KEY" => "api-key",
       "PADDLE_WEBHOOK_SECRET" => "webhook-secret",
@@ -62,8 +56,6 @@ defmodule Shroud.RuntimeConfigTest do
     })
 
     config = read_config()
-    assert config[:sentry][:dsn] == "https://public@sentry.example.com/1"
-    assert config[:sentry][:integrations][:oban][:capture_errors]
     assert config[:shroud][:billing][:paddle_environment] == "sandbox"
     assert config[:shroud][:billing][:paddle_base_url] == "https://sandbox-api.paddle.com"
     assert config[:shroud][:billing][:paddle_api_key] == "api-key"
