@@ -154,6 +154,14 @@ defmodule Shroud.AccountsTest do
       assert get_change(changeset, :password) == password
       assert is_nil(get_change(changeset, :hashed_password))
     end
+
+    test "does not rotate an existing user's passkey handle" do
+      user = user_fixture()
+      changeset = Accounts.change_user_registration(user, %{})
+
+      refute Map.has_key?(changeset.changes, :passkey_handle)
+      assert Ecto.Changeset.get_field(changeset, :passkey_handle) == user.passkey_handle
+    end
   end
 
   describe "change_user_email/2" do

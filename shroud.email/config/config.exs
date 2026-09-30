@@ -93,6 +93,10 @@ config :phoenix, :json_library, Jason
 
 config :sentry, before_send: {Shroud.ErrorReporter, :before_send}
 
+config :phoenix,
+       :filter_parameters,
+       ~w(password secret token rawId userHandle authenticatorData clientDataJSON attestationObject signature)
+
 config :fun_with_flags, :cache,
   enabled: true,
   # in seconds

@@ -2,6 +2,10 @@ import Config
 
 if Config.config_env() == :dev do
   DotenvParser.load_file(".env")
+
+  if app_domain = System.get_env("APP_DOMAIN") do
+    config :shroud, ShroudWeb.Endpoint, url: [host: app_domain, scheme: "https", port: 443]
+  end
 end
 
 # Optional: Chatwoot support widget. Set CHATWOOT_BASE_URL to the URL of

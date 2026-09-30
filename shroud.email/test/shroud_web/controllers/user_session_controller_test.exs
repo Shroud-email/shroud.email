@@ -18,8 +18,17 @@ defmodule ShroudWeb.UserSessionControllerTest do
       response = html_response(conn, 200)
       assert response =~ "Sign in"
       assert response =~ "sign up for free"
-      assert response =~ "Forgot your password?</a>"
       assert response |> Floki.parse_document!() |> Floki.find("#login-info, #login-error") == []
+
+      assert response
+             |> Floki.parse_document!()
+             |> Floki.find("a[href='/users/reset_password']")
+             |> Floki.text() =~ "Forgot your password?"
+
+      assert response
+             |> Floki.parse_document!()
+             |> Floki.find("#passkey-login-controls[hidden]")
+             |> length() == 1
     end
 
     test "redirects if already logged in", %{conn: conn, user: user} do
