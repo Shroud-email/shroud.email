@@ -4,163 +4,240 @@ function decodeBase64(value) {
 }
 
 function encodeBase64(value) {
-  const bytes = new Uint8Array(value);
+  const bytes = new Uint8Array(value || 0);
   return btoa(Array.from(bytes, byte => String.fromCharCode(byte)).join(""))
     .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-export async function setupPasskeys({ document, window, fetch }) {
-  const login = document.getElementById("login-form");
-  const addForm = document.getElementById("add-passkey-form");
-  if (!login && !addForm) return;
+function registrationOptions(publicKey) {
+  return {
+    ...publicKey,
+    challenge: decodeBase64(publicKey.challenge),
+    user: { ...publicKey.user, id: decodeBase64(publicKey.user.id) },
+    excludeCredentials: (publicKey.excludeCredentials || []).map(credential => ({
+      ...credential,
+      id: decodeBase64(credential.id),
+    })),
+  };
+}
 
-  const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute("content");
-  const supported = !!(window.PublicKeyCredential && window.navigator.credentials);
+function assertionOptions(publicKey) {
+  return {
+    ...publicKey,
+    challenge: decodeBase64(publicKey.challenge),
+    allowCredentials: (publicKey.allowCredentials || []).map(credential => ({
+      ...credential,
+      id: decodeBase64(credential.id),
+    })),
+  };
+}
 
-  async function post(url, body, redirect = "follow", signal) {
-    const response = await fetch(url, {
-      method: "POST",
-      credentials: "same-origin",
-      redirect,
-      signal,
-      headers: { "content-type": "application/json", "x-csrf-token": csrf },
-      body: JSON.stringify(body),
-    });
-    if (!response.ok) throw new Error("Passkey request failed");
-    return response;
-  }
+function supported(window) {
+  return !!(window.PublicKeyCredential && window.navigator.credentials);
+}
 
-  if (login) {
-    const button = document.getElementById("passkey-login-button");
-    const status = document.getElementById("passkey-login-status");
-    if (!supported) return;
-    button.hidden = false;
-    document.getElementById("passkey-login").hidden = false;
-    let pending;
-    let generation = 0;
+function reason(error, timedOut = false) {
+  if (timedOut) return "timeout";
+  if (error?.name === "NotAllowedError" || error?.name === "AbortError") return "canceled";
+  if (error?.name === "NotSupportedError" || error?.name === "SecurityError") return "unsupported";
+  return "failed";
+}
 
-    async function start(conditional, currentGeneration) {
+export function createPasskeyHooks(window, document) {
+  const PasskeyRegistration = {
+    mounted() {
+      this.passkeyGeneration = 0;
+      this.passkeyController = null;
+      this.passkeyTimer = null;
+      this.pushEvent("passkey_supported", { supported: supported(window) });
+      this.handleEvent("passkey-register", payload => this.registerPasskey(payload));
+    },
+
+    async registerPasskey({ token, publicKey }) {
+      const generation = ++this.passkeyGeneration;
+      this.passkeyController?.abort();
+      if (this.passkeyTimer !== null) window.clearTimeout(this.passkeyTimer);
+      const controller = new AbortController();
+      this.passkeyController = controller;
+      this.passkeyTimer = window.setTimeout(() => {
+        if (generation !== this.passkeyGeneration) return;
+        ++this.passkeyGeneration;
+        this.passkeyController = null;
+        this.passkeyTimer = null;
+        this.pushEvent("passkey_error", { token, reason: "timeout" });
+        controller.abort();
+      }, 60_000);
+
       try {
-        const response = await post("/users/passkeys/options", {});
-        const { publicKey, token } = await response.json();
-        if (currentGeneration !== generation) return;
-        const controller = new AbortController();
-        pending = controller;
-
-        const request = {
-          publicKey: { ...publicKey, challenge: decodeBase64(publicKey.challenge) },
+        if (!supported(window) || typeof window.navigator.credentials.create !== "function") {
+          throw new DOMException("Passkeys unsupported", "NotSupportedError");
+        }
+        this.pushEvent("passkey_status", { token, phase: "waiting" });
+        const credential = await window.navigator.credentials.create({
+          publicKey: registrationOptions(publicKey),
           signal: controller.signal,
-        };
-        if (conditional) request.mediation = "conditional";
-
-        const credentialPromise = window.navigator.credentials.get(request);
-        if (conditional) {
-          credentialPromise.then(credential => complete(credential, token, currentGeneration)).catch(error => {
-            if (currentGeneration === generation && error.name !== "NotAllowedError" && error.name !== "AbortError") {
-              status.textContent = "Could not sign in with passkey. You can still use your password.";
-            }
-          });
-        } else {
-          await complete(await credentialPromise, token, currentGeneration);
-        }
+        });
+        if (generation !== this.passkeyGeneration) return;
+        this.pushEvent("passkey_status", { token, phase: "saving" });
+        await new Promise((resolve, reject) => {
+          controller.signal.addEventListener("abort", () =>
+            reject(new DOMException("aborted", "AbortError")), { once: true });
+          this.pushEvent("passkey_registered", {
+            token,
+            rawId: encodeBase64(credential.rawId),
+            attestationObject: encodeBase64(credential.response.attestationObject),
+            clientDataJSON: encodeBase64(credential.response.clientDataJSON),
+          }, reply => reply?.error ? reject(new Error(reply.error)) : resolve(reply));
+        });
       } catch (error) {
-        if (currentGeneration === generation && error.name !== "NotAllowedError" && error.name !== "AbortError") {
-          status.textContent = "Could not sign in with passkey. You can still use your password.";
-        }
-      }
-    }
-
-    async function complete(credential, token, currentGeneration) {
-      if (currentGeneration !== generation) return;
-      const result = await post("/users/passkeys", {
-        token,
-        rawId: encodeBase64(credential.rawId),
-        userHandle: encodeBase64(credential.response.userHandle),
-        authenticatorData: encodeBase64(credential.response.authenticatorData),
-        clientDataJSON: encodeBase64(credential.response.clientDataJSON),
-        signature: encodeBase64(credential.response.signature),
-      });
-      if (currentGeneration === generation) window.location.assign(result.url);
-    }
-
-    button.addEventListener("click", async () => {
-      const currentGeneration = ++generation;
-      pending?.abort();
-      await start(false, currentGeneration);
-    });
-
-    const conditionalGeneration = generation;
-    if (typeof window.PublicKeyCredential.isConditionalMediationAvailable === "function" &&
-        await window.PublicKeyCredential.isConditionalMediationAvailable() &&
-        generation === conditionalGeneration) {
-      await start(true, conditionalGeneration);
-    }
-  }
-
-  if (addForm) {
-    const status = document.getElementById("passkey-status");
-    const submit = document.getElementById("add-passkey-submit");
-
-    addForm.addEventListener("submit", async event => {
-      event.preventDefault();
-      if (submit.disabled) return;
-      if (!supported || !window.navigator.credentials.create) {
-        status.dataset.state = "error";
-        status.textContent = "This browser does not support passkeys. You can still use your password.";
-        return;
-      }
-      submit.disabled = true;
-      status.dataset.state = "pending";
-      status.textContent = "Preparing your passkey…";
-      let timer;
-      let timedOut = false;
-
-      try {
-        const password = document.getElementById("add-passkey-password").value;
-        const response = await post(addForm.action, { current_password: password });
-        const { publicKey, token } = await response.json();
-        const options = {
-          ...publicKey,
-          challenge: decodeBase64(publicKey.challenge),
-          user: { ...publicKey.user, id: decodeBase64(publicKey.user.id) },
-          excludeCredentials: publicKey.excludeCredentials.map(credential => ({
-            ...credential, id: decodeBase64(credential.id),
-          })),
-        };
-
-        const controller = new AbortController();
-        const onTimeout = () => {
-          timedOut = true;
-          status.dataset.state = "error";
-          status.textContent = "Passkey request timed out. Please try again.";
-          controller.abort();
-        };
-        status.textContent = "Waiting for your passkey…";
-        timer = window.setTimeout(onTimeout, 60_000);
-        const credential = await window.navigator.credentials.create({ publicKey: options, signal: controller.signal });
-        if (timedOut) return;
-        window.clearTimeout(timer);
-        status.textContent = "Saving your passkey…";
-        timer = window.setTimeout(onTimeout, 60_000);
-        await post("/settings/passkeys", {
-          token,
-          rawId: encodeBase64(credential.rawId),
-          attestationObject: encodeBase64(credential.response.attestationObject),
-          clientDataJSON: encodeBase64(credential.response.clientDataJSON),
-        }, "follow", controller.signal);
-        if (timedOut) return;
-        window.location.assign("/settings/security");
-      } catch (error) {
-        if (!timedOut) {
-          status.dataset.state = "error";
-          status.textContent = error.name === "NotAllowedError"
-            ? "Passkey creation was canceled. Please try again."
-            : "Could not add passkey. Please check your password and try again.";
+        if (generation === this.passkeyGeneration) {
+          this.pushEvent("passkey_error", { token, reason: reason(error) });
         }
       } finally {
-        if (timer !== undefined) window.clearTimeout(timer);
-        submit.disabled = false;
+        if (generation === this.passkeyGeneration) {
+          window.clearTimeout(this.passkeyTimer);
+          this.passkeyTimer = null;
+          this.passkeyController = null;
+        }
       }
-    });
-  }
+    },
+
+    disconnected() { this.cancelPasskeyRegistration(); },
+    reconnected() {
+      this.pushEvent("passkey_supported", { supported: supported(window) });
+    },
+    destroyed() { this.cancelPasskeyRegistration(); },
+    cancelPasskeyRegistration() {
+      ++this.passkeyGeneration;
+      this.passkeyController?.abort();
+      if (this.passkeyTimer !== null) window.clearTimeout(this.passkeyTimer);
+      this.passkeyController = null;
+      this.passkeyTimer = null;
+    },
+  };
+
+  const PasskeyLogin = {
+    mounted() {
+      this.passkeyGeneration = 0;
+      this.passkeyController = null;
+      this.passkeyTimer = null;
+      this.passkeyButton = document.getElementById("passkey-login-button");
+      this.passkeyClick = () => this.startPasskeyLogin(false);
+      this.passkeyButton?.addEventListener("click", this.passkeyClick);
+      const available = supported(window);
+      this.pushEvent("passkey_supported", { supported: available });
+      if (available) this.startConditionalPasskeyLogin();
+    },
+
+    async startConditionalPasskeyLogin() {
+      const generation = this.passkeyGeneration;
+      try {
+        const check = window.PublicKeyCredential.isConditionalMediationAvailable;
+        if (typeof check === "function" && await check.call(window.PublicKeyCredential) &&
+            generation === this.passkeyGeneration) {
+          this.requestPasskeyOptions(true, generation);
+        }
+      } catch {
+        // Capability detection must never interfere with password login.
+      }
+    },
+
+    startPasskeyLogin(conditional) {
+      const generation = ++this.passkeyGeneration;
+      this.passkeyController?.abort();
+      if (this.passkeyTimer !== null) window.clearTimeout(this.passkeyTimer);
+      this.passkeyController = null;
+      this.passkeyTimer = null;
+      this.requestPasskeyOptions(conditional, generation);
+    },
+
+    requestPasskeyOptions(conditional, generation) {
+      if (!supported(window) || typeof window.navigator.credentials.get !== "function") {
+        if (!conditional) this.pushEvent("passkey_login_error", { reason: "unsupported" });
+        return;
+      }
+      let timedOut = false;
+      if (!conditional) {
+        this.passkeyTimer = window.setTimeout(() => {
+          timedOut = true;
+          this.passkeyController?.abort();
+          this.passkeyController = null;
+          this.passkeyTimer = null;
+          if (generation === this.passkeyGeneration) {
+            ++this.passkeyGeneration;
+            this.pushEvent("passkey_login_error", { reason: "timeout" });
+          }
+        }, 60_000);
+      }
+      this.pushEvent("passkey_options", {}, reply => {
+        if (generation !== this.passkeyGeneration) return;
+        if (reply?.error || !reply?.publicKey) {
+          this.finishPasskeyLogin(generation);
+          if (!conditional) this.pushEvent("passkey_login_error", { reason: "failed" });
+          return;
+        }
+        this.getPasskey(reply, conditional, generation, () => timedOut);
+      });
+    },
+
+    async getPasskey({ token, publicKey }, conditional, generation, didTimeOut) {
+      const controller = new AbortController();
+      this.passkeyController = controller;
+      try {
+        const options = { publicKey: assertionOptions(publicKey), signal: controller.signal };
+        if (conditional) options.mediation = "conditional";
+        const credential = await window.navigator.credentials.get(options);
+        if (generation !== this.passkeyGeneration) return;
+        await new Promise((resolve, reject) => {
+          controller.signal.addEventListener("abort", () =>
+            reject(new DOMException("aborted", "AbortError")), { once: true });
+          this.pushEvent("passkey_assertion", {
+            token,
+            rawId: encodeBase64(credential.rawId),
+            userHandle: encodeBase64(credential.response.userHandle),
+            authenticatorData: encodeBase64(credential.response.authenticatorData),
+            clientDataJSON: encodeBase64(credential.response.clientDataJSON),
+            signature: encodeBase64(credential.response.signature),
+          }, reply => reply?.error ? reject(new Error(reply.error)) : resolve(reply));
+        });
+      } catch (error) {
+        if (generation === this.passkeyGeneration && !(conditional &&
+            (error?.name === "NotAllowedError" || error?.name === "AbortError"))) {
+          this.pushEvent("passkey_login_error", { reason: reason(error, didTimeOut()) });
+        }
+      } finally {
+        this.finishPasskeyLogin(generation);
+      }
+    },
+
+    finishPasskeyLogin(generation) {
+      if (generation !== this.passkeyGeneration) return;
+      if (this.passkeyTimer !== null) window.clearTimeout(this.passkeyTimer);
+      this.passkeyTimer = null;
+      this.passkeyController = null;
+    },
+
+    disconnected() { this.cancelPasskeyLogin(); },
+    reconnected() {
+      const available = supported(window);
+      this.pushEvent("passkey_supported", { supported: available });
+      if (available) this.startConditionalPasskeyLogin();
+    },
+    destroyed() {
+      this.passkeyButton?.removeEventListener("click", this.passkeyClick);
+      this.cancelPasskeyLogin();
+    },
+    cancelPasskeyLogin() {
+      ++this.passkeyGeneration;
+      this.passkeyController?.abort();
+      if (this.passkeyTimer !== null) window.clearTimeout(this.passkeyTimer);
+      this.passkeyController = null;
+      this.passkeyTimer = null;
+    },
+  };
+
+  return { PasskeyRegistration, PasskeyLogin };
 }
+
+export const { PasskeyRegistration, PasskeyLogin } =
+  createPasskeyHooks(globalThis.window, globalThis.document);

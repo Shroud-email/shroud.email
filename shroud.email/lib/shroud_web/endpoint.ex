@@ -11,7 +11,8 @@ defmodule ShroudWeb.Endpoint do
     signing_salt: "QyYPoQ5Q"
   ]
 
-  socket "/live", Phoenix.LiveView.Socket, websocket: [connect_info: [session: @session_options]]
+  socket "/live", Phoenix.LiveView.Socket,
+    websocket: [connect_info: [:peer_data, :x_headers, session: @session_options]]
 
   # Serve at "/" the static files from "priv/static" directory.
   #
@@ -52,7 +53,6 @@ defmodule ShroudWeb.Endpoint do
   plug Sentry.PlugContext, body_scrubber: {__MODULE__, :sentry_body}
 
   def sentry_body(%Plug.Conn{path_info: ["users", "passkeys" | _]}), do: %{}
-  def sentry_body(%Plug.Conn{path_info: ["settings", "passkeys" | _]}), do: %{}
   def sentry_body(conn), do: Sentry.PlugContext.default_body_scrubber(conn)
 
   plug Plug.MethodOverride

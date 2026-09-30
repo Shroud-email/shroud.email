@@ -2,7 +2,7 @@ defmodule ShroudWeb.UserSettingsLive do
   use ShroudWeb, :live_view
 
   alias Shroud.{Accounts, Billing, Repo}
-  alias Shroud.Accounts.{TOTP, User}
+  alias Shroud.Accounts.{Passkeys, TOTP, User}
 
   embed_templates "user_settings_live/*"
 
@@ -20,8 +20,16 @@ defmodule ShroudWeb.UserSettingsLive do
         totp_secret: nil,
         otp_qr_code: nil,
         totp_backup_codes: nil,
-        show_disable_totp: false
+        show_disable_totp: false,
+        passkey_form: to_form(%{"current_password" => ""}, as: :passkey),
+        passkey_source_ip: Passkeys.request_ip(socket),
+        passkey_supported: false,
+        passkey_token: nil,
+        passkey_pending: false,
+        passkey_status: nil,
+        passkey_error: false
       )
+      |> stream(:passkeys, [])
 
     {:ok, socket, layout: {ShroudWeb.Layouts, :settings}}
   end
@@ -29,6 +37,12 @@ defmodule ShroudWeb.UserSettingsLive do
   @impl true
   def handle_params(_params, _uri, socket) do
     user = Repo.reload!(socket.assigns.current_user)
+
+    socket =
+      if socket.assigns.live_action == :security,
+        do: stream(socket, :passkeys, Accounts.list_passkeys(user), reset: true),
+        else: cancel_passkey(socket)
+
     billing_config = Application.get_env(:shroud, :billing, [])
     price_id = billing_config[:paddle_yearly_price_id]
     client_token = billing_config[:paddle_client_token]
@@ -103,6 +117,133 @@ defmodule ShroudWeb.UserSettingsLive do
        password_form: to_form(changeset),
        trigger_password_submit: changeset.valid?
      )}
+  end
+
+  def handle_event("passkey_supported", %{"supported" => supported}, socket) do
+    {:noreply, assign(socket, :passkey_supported, supported == true)}
+  end
+
+  def handle_event("add_passkey", params, socket) do
+    user = Repo.reload!(socket.assigns.current_user)
+    password = get_in(params, ["passkey", "current_password"])
+    socket = cancel_passkey(socket)
+
+    cond do
+      not Passkeys.allow_request?(socket.assigns.passkey_source_ip, :options) ->
+        {:noreply, passkey_failure(socket, "Too many passkey requests. Please try again later.")}
+
+      user.confirmed_at && User.valid_password?(user, password) ->
+        {:ok, options} = Passkeys.begin_registration(user)
+
+        {:noreply,
+         socket
+         |> assign(
+           passkey_token: options.token,
+           passkey_pending: true,
+           passkey_status: "Preparing your passkey…",
+           passkey_error: false
+         )
+         |> push_event("passkey-register", %{
+           token: Base.url_encode64(options.token, padding: false),
+           publicKey: %{
+             challenge: options.challenge,
+             rp: %{id: options.rp_id, name: "Shroud.email"},
+             user: %{id: options.user_handle, name: user.email, displayName: user.email},
+             pubKeyCredParams: [%{type: "public-key", alg: -7}, %{type: "public-key", alg: -257}],
+             authenticatorSelection: %{residentKey: "required", userVerification: "required"},
+             excludeCredentials:
+               Enum.map(options.exclude_credentials, &%{type: "public-key", id: &1}),
+             attestation: "none",
+             timeout: 300_000
+           }
+         })}
+
+      true ->
+        {:noreply, passkey_failure(socket, "Could not authorize passkey registration.")}
+    end
+  end
+
+  def handle_event("passkey_registered", params, socket) do
+    user = Repo.reload!(socket.assigns.current_user)
+    token = socket.assigns.passkey_token
+
+    result =
+      with true <- Passkeys.allow_request?(socket.assigns.passkey_source_ip, :verify),
+           true <- user.confirmed_at != nil,
+           true <- authorized_passkey_token?(socket, params["token"]),
+           {:ok, attestation} <- Passkeys.decode_base64url(params["attestationObject"]),
+           {:ok, client_data} <- Passkeys.decode_base64url(params["clientDataJSON"]),
+           {:ok, raw_id} <- Passkeys.decode_base64url(params["rawId"]) do
+        Passkeys.register(user, token, attestation, client_data, "Passkey", raw_id)
+      else
+        _ -> {:error, :invalid_registration}
+      end
+
+    case result do
+      {:ok, credential} ->
+        {:reply, %{},
+         socket
+         |> assign(passkey_token: nil, passkey_pending: false, passkey_status: "Passkey added.")
+         |> stream_insert(:passkeys, credential)}
+
+      _ ->
+        {:reply, %{error: "invalid_registration"},
+         passkey_failure(socket, "Could not add passkey. Please try again.")}
+    end
+  end
+
+  def handle_event("passkey_status", %{"token" => token, "phase" => phase}, socket) do
+    if authorized_passkey_token?(socket, token) && socket.assigns.passkey_pending do
+      message =
+        case phase do
+          "waiting" -> "Waiting for your passkey…"
+          "saving" -> "Saving your passkey…"
+          _ -> socket.assigns.passkey_status
+        end
+
+      {:noreply, assign(socket, :passkey_status, message)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("passkey_error", %{"token" => token, "reason" => reason}, socket) do
+    if authorized_passkey_token?(socket, token) && socket.assigns.passkey_pending do
+      message =
+        case reason do
+          "timeout" ->
+            "Passkey request timed out. Please try again."
+
+          "canceled" ->
+            "Passkey creation was canceled. Please try again."
+
+          "unsupported" ->
+            "This browser does not support passkeys. You can still use your password."
+
+          _ ->
+            "Could not add passkey. Please try again."
+        end
+
+      {:noreply, passkey_failure(socket, message)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("remove_passkey", params, socket) do
+    user = Repo.reload!(socket.assigns.current_user)
+
+    with true <- user.confirmed_at != nil,
+         true <- User.valid_password?(user, get_in(params, ["passkey", "current_password"])),
+         {:ok, id} <- Passkeys.decode_base64url(params["credential_id"]),
+         :ok <- Accounts.remove_passkey(user, id) do
+      {:noreply,
+       socket
+       |> stream(:passkeys, Accounts.list_passkeys(user), reset: true)
+       |> put_flash(:info, "Passkey removed.")}
+    else
+      _ -> {:noreply, put_flash(socket, :error, "Could not remove passkey.")}
+    end
   end
 
   def handle_event("update_theme", %{"theme" => theme}, socket) do
@@ -223,4 +364,27 @@ defmodule ShroudWeb.UserSettingsLive do
   end
 
   defp configured?(value), do: is_binary(value) and value != ""
+
+  defp authorized_passkey_token?(socket, encoded) do
+    with token when is_binary(token) <- socket.assigns.passkey_token,
+         {:ok, supplied} <- Passkeys.decode_base64url(encoded) do
+      Plug.Crypto.secure_compare(token, supplied)
+    else
+      _ -> false
+    end
+  end
+
+  defp cancel_passkey(socket) do
+    if token = socket.assigns.passkey_token do
+      Passkeys.consume_challenge(token, :registration, socket.assigns.current_user)
+    end
+
+    assign(socket, passkey_token: nil, passkey_pending: false)
+  end
+
+  defp passkey_failure(socket, message) do
+    socket
+    |> cancel_passkey()
+    |> assign(passkey_status: message, passkey_error: true)
+  end
 end

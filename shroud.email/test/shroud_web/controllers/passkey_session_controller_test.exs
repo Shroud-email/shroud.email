@@ -1,15 +1,13 @@
 defmodule ShroudWeb.PasskeySessionControllerTest do
   use ShroudWeb.ConnCase
 
-  alias Shroud.Accounts.PasskeyCredential
-  alias Shroud.Accounts.TOTP
-  alias Shroud.Accounts.User
-  alias Shroud.Repo
+  import Phoenix.LiveViewTest
   import Shroud.AccountsFixtures
+  alias Shroud.Accounts.{PasskeyCredential, TOTP, User}
+  alias Shroud.Repo
 
   setup %{conn: conn} do
-    user = user_fixture()
-    user = user |> User.confirm_changeset() |> Repo.update!()
+    user = user_fixture() |> User.confirm_changeset() |> Repo.update!()
     {public, private} = :crypto.generate_key(:ecdh, :secp256r1)
     <<4, x::binary-size(32), y::binary-size(32)>> = public
     id = :crypto.strong_rand_bytes(32)
@@ -26,167 +24,161 @@ defmodule ShroudWeb.PasskeySessionControllerTest do
         |> CBOR.encode()
     })
 
-    %{conn: get(conn, ~p"/users/log_in"), user: user, credential_id: id, private_key: private}
-  end
-
-  test "signed passkey logs in even with TOTP enabled", context do
-    TOTP.enable_totp!(context.user, TOTP.create_secret())
-    options_conn = post(context.conn, ~p"/users/passkeys/options")
-    options = json_response(options_conn, 200)
-    assert options["publicKey"]["userVerification"] == "required"
-    refute Map.has_key?(options["publicKey"], "allowCredentials")
-
     conn =
-      post(recycle(options_conn), ~p"/users/passkeys", assertion(options, context))
+      conn |> init_test_session(%{user_return_to: "/settings/security"}) |> get(~p"/users/log_in")
 
-    assert get_session(conn, :user_token)
-    assert redirected_to(conn) == "/"
-  end
-
-  test "unconfirmed accounts retain confirmation redirect", context do
-    user = Repo.update!(Ecto.Changeset.change(context.user, confirmed_at: nil))
-    options_conn = post(context.conn, ~p"/users/passkeys/options")
-
-    conn =
-      post(
-        recycle(options_conn),
-        ~p"/users/passkeys",
-        assertion(json_response(options_conn, 200), %{context | user: user})
+    {:ok, view, _} =
+      live_isolated(recycle(conn), ShroudWeb.PasskeyLoginLive,
+        session: %{"csrf" => get_session(conn, :_csrf_token)}
       )
 
+    %{conn: conn, view: view, user: user, credential_id: id, private_key: private}
+  end
+
+  test "LiveView hands a signed assertion to HTTP for session renewal, bypassing TOTP", context do
+    TOTP.enable_totp!(context.user, TOTP.create_secret())
+    options = options(context.view)
+    assert options.publicKey.userVerification == "required"
+    refute Map.has_key?(options.publicKey, :allowCredentials)
+    render_hook(context.view, "passkey_assertion", assertion(options, context))
+    assert has_element?(context.view, "#passkey-login-form[phx-trigger-action]")
+
+    conn = follow_trigger_action(form(context.view, "#passkey-login-form"), context.conn)
+    assert get_session(conn, :user_token)
+    assert get_session(conn, :live_socket_id)
+    refute get_session(conn, :_csrf_token) == get_session(context.conn, :_csrf_token)
+    assert redirected_to(conn) == "/settings/security"
+  end
+
+  test "unconfirmed users retain their confirmation redirect", context do
+    Repo.update!(Ecto.Changeset.change(context.user, confirmed_at: nil))
+    params = assertion(options(context.view), context)
+    conn = post(recycle(context.conn), ~p"/users/passkeys", params)
     assert redirected_to(conn) == "/users/confirm"
   end
 
-  test "an assertion without user verification is rejected", context do
-    options_conn = post(context.conn, ~p"/users/passkeys/options")
-    params = assertion(json_response(options_conn, 200), context, uv: false)
-    conn = post(recycle(options_conn), ~p"/users/passkeys", params)
-    assert json_response(conn, 422)["error"]
+  test "invalid signatures, verification flags, origins, handles, and malformed payloads never log in",
+       context do
+    for mutation <- [
+          fn options -> assertion(options, context, uv: false) end,
+          fn options -> assertion(options, context, origin: "https://attacker.example") end,
+          fn options -> assertion(options, context, rp: "attacker.example") end,
+          fn options -> assertion(options, context) |> Map.put("signature", "AA") end,
+          fn options -> assertion(options, context) |> Map.put("userHandle", "AA") end,
+          fn options -> assertion(options, context) |> Map.put("rawId", "!") end,
+          fn options ->
+            assertion(options, context)
+            |> Map.put("clientDataJSON", String.duplicate("A", 24_004))
+          end
+        ] do
+      conn = post(recycle(context.conn), ~p"/users/passkeys", mutation.(options(context.view)))
+      assert redirected_to(conn) == "/users/log_in"
+      refute get_session(conn, :user_token)
+      assert Phoenix.Flash.get(conn.assigns.flash, :error) =~ "Could not sign in"
+    end
+  end
+
+  test "consumed challenges cannot be replayed", context do
+    params = assertion(options(context.view), context)
+
+    assert redirected_to(post(recycle(context.conn), ~p"/users/passkeys", params)) ==
+             "/settings/security"
+
+    conn = post(recycle(context.conn), ~p"/users/passkeys", params)
+    assert redirected_to(conn) == "/users/log_in"
     refute get_session(conn, :user_token)
   end
 
-  test "a mismatched user handle is rejected", context do
-    options_conn = post(context.conn, ~p"/users/passkeys/options")
-    params = assertion(json_response(options_conn, 200), context)
+  test "challenges are browser-bound and expire", context do
+    issued = options(context.view)
+    params = assertion(issued, context)
+    other = get(build_conn(), ~p"/users/log_in")
+    conn = post(recycle(other), ~p"/users/passkeys", params)
+    assert redirected_to(conn) == "/users/log_in"
+    refute get_session(conn, :user_token)
 
-    conn =
-      post(
-        recycle(options_conn),
-        ~p"/users/passkeys",
-        Map.put(
-          params,
-          "userHandle",
-          Base.url_encode64(:crypto.strong_rand_bytes(32), padding: false)
-        )
+    {:ok, token} = ShroudWeb.PasskeyChallengeToken.verify(context.conn, issued.token)
+
+    expired =
+      Phoenix.Token.sign(
+        ShroudWeb.Endpoint,
+        "passkey-challenge",
+        {token, get_session(context.conn, :_csrf_token)},
+        signed_at: System.system_time(:second) - 301
       )
 
-    assert json_response(conn, 422)["error"]
+    conn = post(recycle(context.conn), ~p"/users/passkeys", Map.put(params, "token", expired))
+    assert redirected_to(conn) == "/users/log_in"
     refute get_session(conn, :user_token)
   end
 
-  test "a signed response for another origin is rejected", context do
-    options_conn = post(context.conn, ~p"/users/passkeys/options")
-
-    conn =
-      post(
-        recycle(options_conn),
-        ~p"/users/passkeys",
-        assertion(json_response(options_conn, 200), context, origin: "https://attacker.example")
-      )
-
-    assert json_response(conn, 422)["error"]
-    refute get_session(conn, :user_token)
+  test "only the most recent options may trigger the login form", context do
+    first = options(context.view)
+    current = options(context.view)
+    render_hook(context.view, "passkey_assertion", assertion(first, context))
+    refute has_element?(context.view, "#passkey-login-form[phx-trigger-action]")
+    render_hook(context.view, "passkey_assertion", assertion(current, context))
+    assert has_element?(context.view, "#passkey-login-form[phx-trigger-action]")
   end
 
-  test "a consumed challenge cannot be replayed", context do
-    options_conn = post(context.conn, ~p"/users/passkeys/options")
-    params = assertion(json_response(options_conn, 200), context)
-    assert redirected_to(post(recycle(options_conn), ~p"/users/passkeys", params)) == "/"
-    conn = post(recycle(options_conn), ~p"/users/passkeys", params)
-    assert json_response(conn, 422)["error"]
-    refute get_session(conn, :user_token)
+  test "unsupported browsers hide passkey controls and errors preserve password fallback",
+       context do
+    assert has_element?(context.view, "#passkey-login-controls[hidden]")
+    render_hook(context.view, "passkey_supported", %{supported: true})
+    refute has_element?(context.view, "#passkey-login-controls[hidden]")
+    render_hook(context.view, "passkey_login_error", %{reason: "timeout"})
+    assert has_element?(context.view, "#passkey-login-status", "timed out")
+    refute has_element?(context.view, "#passkey-login-form[phx-trigger-action]")
+    assert html_response(context.conn, 200) =~ "login-form"
   end
 
-  test "an overlapping options request does not invalidate the first assertion", context do
-    first = post(context.conn, ~p"/users/passkeys/options")
-    options = json_response(first, 200)
-    second = post(recycle(first), ~p"/users/passkeys/options")
-    assert json_response(second, 200)["token"] != options["token"]
-
-    conn = post(recycle(second), ~p"/users/passkeys", assertion(options, context))
-    assert redirected_to(conn) == "/"
-  end
-
-  test "a challenge from another browser session is rejected", context do
-    page = get(context.conn, ~p"/users/log_in")
-    assert is_binary(get_session(page, :_csrf_token))
-    first = post(recycle(page), ~p"/users/passkeys/options")
-    params = assertion(json_response(first, 200), context)
-    other = post(build_conn(), ~p"/users/passkeys", params)
-    assert json_response(other, 422)["error"]
-    refute get_session(other, :user_token)
-  end
-
-  test "a malformed response cannot authenticate", context do
-    options_conn = post(context.conn, ~p"/users/passkeys/options")
-    conn = post(recycle(options_conn), ~p"/users/passkeys", %{"rawId" => "%%%"})
-    assert json_response(conn, 422)["error"]
-    refute get_session(conn, :user_token)
-  end
-
-  test "anonymous challenge issuance is rate limited by source address", context do
-    freeze_rate_limit_minute()
-    source = %{context.conn | remote_ip: {192, 0, 2, 27}}
-
-    for _ <- 1..30 do
-      assert json_response(post(source, ~p"/users/passkeys/options"), 200)
-    end
-
-    assert json_response(post(source, ~p"/users/passkeys/options"), 429)["error"]
-    other = %{context.conn | remote_ip: {192, 0, 2, 28}}
-    assert json_response(post(other, ~p"/users/passkeys/options"), 200)
-  end
-
-  test "untrusted peers cannot evade rate limits with forwarded headers", context do
-    freeze_rate_limit_minute()
-    spoofed = %{recycle(context.conn) | remote_ip: {192, 0, 2, 42}}
-
-    for i <- 1..30 do
-      assert json_response(
-               post(
-                 put_req_header(spoofed, "x-forwarded-for", "198.51.100.#{i}"),
-                 ~p"/users/passkeys/options"
-               ),
-               200
-             )
-    end
-
-    assert json_response(
-             post(
-               put_req_header(spoofed, "x-forwarded-for", "198.51.100.31"),
-               ~p"/users/passkeys/options"
-             ),
-             429
-           )
-  end
-
-  defp freeze_rate_limit_minute do
+  test "LiveView options are limited per source address and verification has a separate limit",
+       context do
     Application.put_env(:shroud, :passkey_rate_limit_minute, div(System.system_time(:second), 60))
     on_exit(fn -> Application.delete_env(:shroud, :passkey_rate_limit_minute) end)
+    issued = options(context.view)
+    for _ <- 1..29, do: options(context.view)
+    render_hook(context.view, "passkey_options")
+    assert_reply(context.view, %{error: "rate_limited"})
+
+    conn = %{build_conn() | remote_ip: {192, 0, 2, 28}} |> get(~p"/users/log_in")
+    csrf = get_session(conn, :_csrf_token)
+
+    conn =
+      conn
+      |> recycle()
+      |> put_private(:live_view_connect_info, %{
+        peer_data: %{address: {192, 0, 2, 28}},
+        x_headers: []
+      })
+
+    {:ok, other, _} =
+      live_isolated(conn, ShroudWeb.PasskeyLoginLive, session: %{"csrf" => csrf})
+
+    assert options(other).token
+
+    for _ <- 1..60, do: post(recycle(context.conn), ~p"/users/passkeys", %{})
+    conn = post(recycle(context.conn), ~p"/users/passkeys", assertion(issued, context))
+    assert redirected_to(conn) == "/users/log_in"
+    refute get_session(conn, :user_token)
+  end
+
+  defp options(view) do
+    render_hook(view, "passkey_options")
+    assert_reply(view, options)
+    options
   end
 
   defp assertion(options, %{user: user, credential_id: id, private_key: private}, opts \\ []) do
-    challenge = options["publicKey"]["challenge"]
-
     client_data =
       Jason.encode!(%{
         type: "webauthn.get",
-        challenge: challenge,
+        challenge: options.publicKey.challenge,
         origin: Keyword.get(opts, :origin, "http://localhost:4002")
       })
 
     flags = if Keyword.get(opts, :uv, true), do: 0x05, else: 0x01
-    auth_data = :crypto.hash(:sha256, "localhost") <> <<flags, 1::32>>
+    auth_data = :crypto.hash(:sha256, Keyword.get(opts, :rp, "localhost")) <> <<flags, 1::32>>
 
     signature =
       :crypto.sign(:ecdsa, :sha256, auth_data <> :crypto.hash(:sha256, client_data), [
@@ -197,7 +189,7 @@ defmodule ShroudWeb.PasskeySessionControllerTest do
     encode = &Base.url_encode64(&1, padding: false)
 
     %{
-      "token" => options["token"],
+      "token" => options.token,
       "rawId" => encode.(id),
       "userHandle" => encode.(user.passkey_handle),
       "authenticatorData" => encode.(auth_data),

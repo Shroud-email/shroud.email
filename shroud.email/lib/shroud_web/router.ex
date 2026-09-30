@@ -87,7 +87,6 @@ defmodule ShroudWeb.Router do
     post("/users/register", UserRegistrationController, :create)
     get("/users/log_in", UserSessionController, :new)
     post("/users/log_in", UserSessionController, :create)
-    post("/users/passkeys/options", PasskeySessionController, :options)
     post("/users/passkeys", PasskeySessionController, :create)
     get("/users/totp", UserSessionController, :new_totp)
     post("/users/totp", UserSessionController, :create_totp)
@@ -118,9 +117,6 @@ defmodule ShroudWeb.Router do
 
     get("/settings", UserSettingsController, :redirect_to_account)
     put("/settings/password", UserSettingsController, :update_password)
-    post("/settings/passkeys/options", PasskeyRegistrationController, :options)
-    post("/settings/passkeys", PasskeyRegistrationController, :create)
-    delete("/settings/passkeys/:id", PasskeyRegistrationController, :delete)
     # Route for changing email of an already-confirmed account
     get("/settings/confirm_email/:token", UserSettingsController, :confirm_email)
 

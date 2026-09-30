@@ -30,7 +30,7 @@ import Alpine from "alpinejs";
 import Tooltip from "@ryangjchandler/alpine-tooltip";
 import { initializePaddle } from "@paddle/paddle-js";
 import { setupPaddleCheckout } from "./paddle_checkout.mjs";
-import { setupPasskeys } from "./passkeys.mjs";
+import { PasskeyRegistration, PasskeyLogin } from "./passkeys.mjs";
 
 Alpine.plugin(Tooltip);
 window.Alpine = Alpine;
@@ -48,8 +48,6 @@ window.addEventListener("shroud:copy", async (event) => {
     window.alert("Could not copy your backup codes. Please select and copy them manually.");
   }
 });
-setupPasskeys({ document, window, fetch: window.fetch.bind(window) });
-
 let csrfToken = document
   .querySelector("meta[name='csrf-token']")
   .getAttribute("content");
@@ -57,6 +55,8 @@ let liveSocket = new LiveSocket("/live", Socket, {
   hooks: {
     Modal,
     Notification,
+    PasskeyRegistration,
+    PasskeyLogin,
     PaddleCheckout: {
       mounted() {
         this.cleanup = setupPaddleCheckout({ document, window, initializePaddle });

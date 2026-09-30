@@ -1,248 +1,198 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { setupPasskeys } from "./passkeys.mjs";
+import { createPasskeyHooks } from "./passkeys.mjs";
 
-function element(properties = {}) {
+const tick = () => new Promise(resolve => setImmediate(resolve));
+const bytes = (...values) => Uint8Array.from(values).buffer;
+
+function setup({ credentials = {}, conditional = true, timers = false } = {}) {
   const handlers = {};
-  return {
-    ...properties,
-    handlers,
-    addEventListener(name, handler) { handlers[name] = handler; },
-  };
-}
-
-function environment({ login = true, supported = true, credentials } = {}) {
-  const elements = {};
-  if (login) {
-    elements["login-form"] = element();
-    elements["passkey-login"] = element({ hidden: true });
-    elements["passkey-login-button"] = element({ hidden: true });
-    elements["passkey-login-status"] = element({ textContent: "" });
-  } else {
-    elements["add-passkey-form"] = element({ action: "/settings/passkeys/options" });
-    elements["add-passkey-password"] = element({ value: "a valid password" });
-    elements["add-passkey-submit"] = element({ disabled: false });
-    elements["passkey-status"] = element({ textContent: "", dataset: {} });
-  }
-
-  const document = {
-    getElementById: id => elements[id] ?? null,
-    querySelector: () => ({ getAttribute: () => "csrf" }),
-  };
+  const buttonHandlers = new Set();
+  const events = [];
+  const timeouts = [];
   const window = {
-    PublicKeyCredential: supported ? { isConditionalMediationAvailable: async () => true } : undefined,
+    PublicKeyCredential: {
+      isConditionalMediationAvailable: async () => conditional,
+    },
     navigator: { credentials },
-    setTimeout,
-    clearTimeout,
-    location: { assign() {} },
+    setTimeout: timers ? callback => (timeouts.push(callback), timeouts.length) : setTimeout,
+    clearTimeout: timers ? () => {} : clearTimeout,
   };
-
-  return { document, window, elements };
+  const document = { getElementById: () => ({
+    addEventListener: (_name, handler) => buttonHandlers.add(handler),
+    removeEventListener: (_name, handler) => buttonHandlers.delete(handler),
+  }) };
+  const hooks = createPasskeyHooks(window, document);
+  function mount(hook) {
+    const instance = Object.assign({}, hook, {
+      handleEvent: (name, handler) => { handlers[name] = handler; },
+      pushEvent(name, payload, callback) {
+        events.push({ name, payload, callback });
+      },
+    });
+    instance.mounted();
+    return instance;
+  }
+  return { hooks, handlers, events, timeouts, buttonHandlers, mount, window };
 }
 
-test("conditional passkey autofill starts without opening a modal", async () => {
-  const calls = [];
-  const env = environment({ credentials: { get: options => { calls.push(options); return new Promise(() => {}); } } });
-  const fetch = async () => ({ ok: true, json: async () => ({ publicKey: { challenge: "AQID", rpId: "localhost", userVerification: "required" } }) });
+function registrationPayload() {
+  return { token: "registration-token", publicKey: {
+    challenge: "AQID", user: { id: "BAUG" },
+    excludeCredentials: [{ type: "public-key", id: "Bwg" }],
+  } };
+}
 
-  await setupPasskeys({ ...env, fetch });
+function assertionReply() {
+  return { token: "login-token", publicKey: {
+    challenge: "AQID", allowCredentials: [{ type: "public-key", id: "BAU" }],
+  } };
+}
 
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0].mediation, "conditional");
-  assert.deepEqual([...calls[0].publicKey.challenge], [1, 2, 3]);
-  assert.equal(env.elements["passkey-login"].hidden, false);
-  assert.equal(env.elements["passkey-login-button"].hidden, false);
-});
-
-test("unsupported browser does not call server or interfere with password form", async () => {
-  const env = environment({ supported: false });
-  await setupPasskeys({ ...env, fetch: () => { throw Error("must not fetch"); } });
-  assert.equal(env.elements["passkey-login"].hidden, true);
-  assert.equal(env.elements["passkey-login-button"].hidden, true);
-  assert.equal(env.elements["login-form"].handlers.submit, undefined);
-});
-
-test("unsupported browser keeps enrollment on settings with an explanation", async () => {
-  const env = environment({ login: false, supported: false });
-  await setupPasskeys({ ...env, fetch: () => { throw Error("must not fetch"); } });
-  let prevented = false;
-  await env.elements["add-passkey-form"].handlers.submit({ preventDefault() { prevented = true; } });
-  assert.equal(prevented, true);
-  assert.match(env.elements["passkey-status"].textContent, /does not support passkeys/);
-});
-
-test("manual picker aborts pending autofill and cancellation keeps password available", async () => {
-  const calls = [];
-  const env = environment({ credentials: { get: options => {
-    calls.push(options);
-    if (options.mediation === "conditional") return new Promise((_, reject) => options.signal.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError"))));
-    return Promise.reject(new DOMException("canceled", "NotAllowedError"));
+test("registration decodes options and sends an encoded assertion without navigation", async () => {
+  let options;
+  const env = setup({ credentials: { create: async value => {
+    options = value;
+    return { rawId: bytes(9), response: { attestationObject: bytes(7), clientDataJSON: bytes(8) } };
   } } });
-  const fetch = async () => ({ ok: true, json: async () => ({ publicKey: { challenge: "AQID", rpId: "localhost" } }) });
+  env.mount(env.hooks.PasskeyRegistration);
+  const work = env.handlers["passkey-register"](registrationPayload());
+  await tick();
+  const saved = env.events.find(event => event.name === "passkey_registered");
+  saved.callback({});
+  await work;
 
-  await setupPasskeys({ ...env, fetch });
-  await env.elements["passkey-login-button"].handlers.click();
-
-  assert.equal(calls[0].signal.aborted, true);
-  assert.equal(calls[1].mediation, undefined);
-  assert.equal(env.elements["login-form"].handlers.submit, undefined);
+  assert.deepEqual([...options.publicKey.challenge], [1, 2, 3]);
+  assert.deepEqual([...options.publicKey.user.id], [4, 5, 6]);
+  assert.deepEqual([...options.publicKey.excludeCredentials[0].id], [7, 8]);
+  assert.deepEqual(saved.payload, {
+    token: "registration-token", rawId: "CQ", attestationObject: "Bw", clientDataJSON: "CA",
+  });
+  assert.deepEqual(env.events.filter(e => e.name === "passkey_status").map(e => e.payload.phase), ["waiting", "saving"]);
 });
 
-test("manual picker wins while conditional capability detection is pending", async () => {
-  let resolveCapability;
-  const calls = [];
-  const env = environment({ credentials: { get: options => {
-    calls.push(options);
-    return Promise.reject(new DOMException("canceled", "NotAllowedError"));
+test("registration reports unsupported, cancellation, and timeout reasons", async () => {
+  const unsupported = setup({ credentials: {} });
+  unsupported.window.PublicKeyCredential = undefined;
+  unsupported.mount(unsupported.hooks.PasskeyRegistration);
+  await unsupported.handlers["passkey-register"](registrationPayload());
+  assert.equal(unsupported.events.at(-1).payload.reason, "unsupported");
+
+  const canceled = setup({ credentials: { create: async () => { throw new DOMException("no", "NotAllowedError"); } } });
+  canceled.mount(canceled.hooks.PasskeyRegistration);
+  await canceled.handlers["passkey-register"](registrationPayload());
+  assert.equal(canceled.events.at(-1).payload.reason, "canceled");
+
+  const timeout = setup({ timers: true, credentials: { create: ({ signal }) => new Promise((_, reject) =>
+    signal.addEventListener("abort", () => reject(new DOMException("abort", "AbortError")))) } });
+  timeout.mount(timeout.hooks.PasskeyRegistration);
+  const work = timeout.handlers["passkey-register"](registrationPayload());
+  timeout.timeouts[0]();
+  await work;
+  assert.equal(timeout.events.at(-1).payload.reason, "timeout");
+});
+
+test("manual login invalidates late conditional options and sends assertion", async () => {
+  const gets = [];
+  const env = setup({ credentials: { get: async options => {
+    gets.push(options);
+    return { rawId: bytes(1), response: {
+      userHandle: bytes(2), authenticatorData: bytes(3), clientDataJSON: bytes(4), signature: bytes(5),
+    } };
   } } });
-  env.window.PublicKeyCredential.isConditionalMediationAvailable = () =>
-    new Promise(resolve => { resolveCapability = resolve; });
-  const fetch = async () => ({ ok: true, json: async () => ({ publicKey: { challenge: "AQID" } }) });
+  env.mount(env.hooks.PasskeyLogin);
+  await tick();
+  const conditionalOptions = env.events.find(e => e.name === "passkey_options");
+  [...env.buttonHandlers][0]();
+  const optionsEvents = env.events.filter(e => e.name === "passkey_options");
+  conditionalOptions.callback(assertionReply());
+  optionsEvents[1].callback(assertionReply());
+  await tick();
 
-  const setup = setupPasskeys({ ...env, fetch });
-  await env.elements["passkey-login-button"].handlers.click();
-  resolveCapability(true);
-  await setup;
-
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0].mediation, undefined);
+  assert.equal(gets.length, 1);
+  assert.equal(gets[0].mediation, undefined);
+  assert.deepEqual([...gets[0].publicKey.allowCredentials[0].id], [4, 5]);
+  const assertion = env.events.find(e => e.name === "passkey_assertion");
+  assert.equal(assertion.payload.signature, "BQ");
+  assertion.callback({});
 });
 
-test("manual picker wins when conditional options finish late", async () => {
-  let resolveConditionalOptions;
-  let requests = 0;
-  const calls = [];
-  const env = environment({ credentials: { get: options => {
-    calls.push(options);
-    return Promise.reject(new DOMException("canceled", "NotAllowedError"));
+test("registration times out even if the authenticator ignores abort and discards its late result", async () => {
+  let finish;
+  const env = setup({ timers: true, credentials: { create: () => new Promise(resolve => { finish = resolve; }) } });
+  env.mount(env.hooks.PasskeyRegistration);
+  const work = env.handlers["passkey-register"](registrationPayload());
+  env.timeouts[0]();
+  assert.equal(env.events.at(-1).payload.reason, "timeout");
+  finish({ rawId: bytes(9), response: { attestationObject: bytes(7), clientDataJSON: bytes(8) } });
+  await work;
+  assert.equal(env.events.some(event => event.name === "passkey_registered"), false);
+});
+
+test("conditional cancellation is quiet while modal cancellation is reported", async () => {
+  const env = setup({ credentials: { get: async () => { throw new DOMException("no", "NotAllowedError"); } } });
+  env.mount(env.hooks.PasskeyLogin);
+  await tick();
+  env.events.find(e => e.name === "passkey_options").callback(assertionReply());
+  await tick();
+  assert.equal(env.events.some(e => e.name === "passkey_login_error"), false);
+
+  [...env.buttonHandlers][0]();
+  env.events.filter(e => e.name === "passkey_options").at(-1).callback(assertionReply());
+  await tick();
+  assert.equal(env.events.at(-1).payload.reason, "canceled");
+});
+
+test("modal timeout invalidates late options", async () => {
+  const env = setup({ timers: true, credentials: { get: () => { throw Error("must not run"); } } });
+  env.mount(env.hooks.PasskeyLogin);
+  await tick();
+  [...env.buttonHandlers][0]();
+  const manual = env.events.filter(e => e.name === "passkey_options").at(-1);
+  env.timeouts[0]();
+  manual.callback(assertionReply());
+  assert.equal(env.events.at(-1).payload.reason, "timeout");
+});
+
+test("reconnection restores capability and conditional login without duplicating click handlers", async () => {
+  const env = setup({ credentials: { get: () => new Promise(() => {}) } });
+  const registration = env.mount(env.hooks.PasskeyRegistration);
+  registration.disconnected();
+  registration.reconnected();
+  assert.deepEqual(env.events.at(-1).payload, { supported: true });
+
+  const login = env.mount(env.hooks.PasskeyLogin);
+  await tick();
+  const before = env.events.filter(event => event.name === "passkey_options").length;
+  login.disconnected();
+  login.reconnected();
+  await tick();
+  assert.equal(env.events.filter(event => event.name === "passkey_options").length, before + 1);
+  assert.equal(env.buttonHandlers.size, 1);
+});
+
+test("destruction aborts and suppresses late registration and login responses", async () => {
+  let registrationSignal;
+  const registration = setup({ credentials: { create: ({ signal }) => {
+    registrationSignal = signal;
+    return new Promise(() => {});
   } } });
-  const fetch = () => ++requests === 1
-    ? new Promise(resolve => { resolveConditionalOptions = resolve; })
-    : Promise.resolve({ ok: true, json: async () => ({ publicKey: { challenge: "AQID" } }) });
+  const registrationHook = registration.mount(registration.hooks.PasskeyRegistration);
+  registration.handlers["passkey-register"](registrationPayload());
+  registrationHook.destroyed();
+  assert.equal(registrationSignal.aborted, true);
+  assert.equal(registration.events.some(e => e.name === "passkey_error"), false);
 
-  const setup = setupPasskeys({ ...env, fetch });
-  await Promise.resolve();
-  await env.elements["passkey-login-button"].handlers.click();
-  resolveConditionalOptions({ ok: true, json: async () => ({ publicKey: { challenge: "AQID" } }) });
-  await setup;
+  const login = setup({ credentials: { get: () => { throw Error("must not run"); } } });
+  const loginHook = login.mount(login.hooks.PasskeyLogin);
+  await tick();
+  const options = login.events.find(e => e.name === "passkey_options");
+  loginHook.destroyed();
+  options.callback(assertionReply());
+  assert.equal(login.buttonHandlers.size, 0);
+  assert.equal(login.events.some(e => e.name === "passkey_assertion"), false);
 
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0].mediation, undefined);
-});
-
-test("enrollment sends binary attestation after requesting discoverable user-verified options", async () => {
-  const requests = [];
-  let receivedOptions;
-  const env = environment({ login: false, credentials: { create: async options => {
-    receivedOptions = options.publicKey;
-    return { rawId: Uint8Array.from([9]).buffer, response: { attestationObject: Uint8Array.from([7]).buffer, clientDataJSON: Uint8Array.from([8]).buffer } };
-  } } });
-  const fetch = async (url, options) => {
-    requests.push({ url, options });
-    return url.endsWith("/options")
-      ? { ok: true, json: async () => ({ token: "signed-token", publicKey: { challenge: "AQID", user: { id: "BAUG", name: "user@example.com", displayName: "user@example.com" }, excludeCredentials: [], authenticatorSelection: { residentKey: "required", userVerification: "required" } } }) }
-      : { ok: true };
-  };
-
-  await setupPasskeys({ ...env, fetch });
-  await env.elements["add-passkey-form"].handlers.submit({ preventDefault() {} });
-
-  assert.equal(receivedOptions.authenticatorSelection.residentKey, "required");
-  assert.equal(receivedOptions.authenticatorSelection.userVerification, "required");
-  assert.deepEqual([...receivedOptions.user.id], [4, 5, 6]);
-  assert.equal(JSON.parse(requests[1].options.body).attestationObject, "Bw");
-  assert.equal(JSON.parse(requests[1].options.body).token, "signed-token");
-  assert.equal(requests[0].options.headers["x-csrf-token"], "csrf");
-});
-
-test("enrollment remains disabled while saving and restores the button on failure", async () => {
-  let rejectSave;
-  let saving;
-  const savingStarted = new Promise(resolve => { saving = resolve; });
-  const env = environment({ login: false, credentials: { create: async () => ({
-    rawId: Uint8Array.from([9]).buffer,
-    response: { attestationObject: Uint8Array.from([7]).buffer, clientDataJSON: Uint8Array.from([8]).buffer },
-  }) } });
-  const fetch = async url => url.endsWith("/options")
-    ? { ok: true, json: async () => ({ token: "signed-token", publicKey: {
-      challenge: "AQID", user: { id: "BAUG" }, excludeCredentials: [],
-    } }) }
-    : new Promise((_, reject) => { rejectSave = reject; saving(); });
-
-  await setupPasskeys({ ...env, fetch });
-  const submission = env.elements["add-passkey-form"].handlers.submit({ preventDefault() {} });
-  await savingStarted;
-  assert.equal(env.elements["add-passkey-submit"].disabled, true);
-  assert.match(env.elements["passkey-status"].textContent, /Saving your passkey/);
-  rejectSave(new Error("network unavailable"));
-  await submission;
-  assert.equal(env.elements["add-passkey-submit"].disabled, false);
-  assert.equal(env.elements["passkey-status"].dataset.state, "error");
-});
-
-test("saving an enrolled passkey times out and becomes retryable", async () => {
-  let timeout;
-  let saving;
-  const savingStarted = new Promise(resolve => { saving = resolve; });
-  const env = environment({ login: false, credentials: { create: async () => ({
-    rawId: Uint8Array.from([9]).buffer,
-    response: { attestationObject: Uint8Array.from([7]).buffer, clientDataJSON: Uint8Array.from([8]).buffer },
-  }) } });
-  env.window.setTimeout = callback => { timeout = callback; return 1; };
-  env.window.clearTimeout = () => {};
-  const fetch = async (url, options) => url.endsWith("/options")
-    ? { ok: true, json: async () => ({ token: "signed-token", publicKey: {
-      challenge: "AQID", user: { id: "BAUG" }, excludeCredentials: [],
-    } }) }
-    : new Promise((_, reject) => {
-      saving();
-      options.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
-    });
-
-  await setupPasskeys({ ...env, fetch });
-  const submission = env.elements["add-passkey-form"].handlers.submit({ preventDefault() {} });
-  await savingStarted;
-  assert.match(env.elements["passkey-status"].textContent, /Saving your passkey/);
-  timeout();
-  await submission;
-  assert.match(env.elements["passkey-status"].textContent, /timed out.*try again/i);
-  assert.equal(env.elements["add-passkey-submit"].disabled, false);
-});
-
-test("stalled enrollment reports a timeout and allows another attempt", async () => {
-  let timeout;
-  let credentialStarted;
-  const started = new Promise(resolve => { credentialStarted = resolve; });
-  let calls = 0;
-  let attempts = 0;
-  const env = environment({ login: false, credentials: { create: ({ signal }) => {
-    if (++attempts === 2) return Promise.reject(new DOMException("canceled", "NotAllowedError"));
-    credentialStarted();
-    return new Promise((_, reject) => signal.addEventListener("abort", () =>
-      reject(new DOMException("aborted", "AbortError"))));
-  } } });
-  env.window.setTimeout = (callback, delay) => { timeout = callback; assert.equal(delay, 60_000); return 1; };
-  env.window.clearTimeout = () => {};
-  const fetch = async () => {
-    calls++;
-    return { ok: true, json: async () => ({ token: "signed-token", publicKey: {
-      challenge: "AQID", user: { id: "BAUG" }, excludeCredentials: [],
-    } }) };
-  };
-
-  await setupPasskeys({ ...env, fetch });
-  const submission = env.elements["add-passkey-form"].handlers.submit({ preventDefault() {} });
-  await started;
-  assert.match(env.elements["passkey-status"].textContent, /Waiting/);
-  assert.equal(env.elements["add-passkey-submit"].disabled, true);
-  timeout();
-  await submission;
-
-  assert.match(env.elements["passkey-status"].textContent, /timed out.*try again/i);
-  assert.equal(env.elements["add-passkey-submit"].disabled, false);
-  assert.equal(env.elements["passkey-status"].dataset.state, "error");
-  assert.equal(calls, 1);
-  await env.elements["add-passkey-form"].handlers.submit({ preventDefault() {} });
-  assert.equal(calls, 2);
-  assert.equal(attempts, 2);
+  const remounted = login.mount(login.hooks.PasskeyLogin);
+  assert.equal(login.buttonHandlers.size, 1);
+  remounted.disconnected();
 });

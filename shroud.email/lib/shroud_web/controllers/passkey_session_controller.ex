@@ -4,24 +4,6 @@ defmodule ShroudWeb.PasskeySessionController do
   alias Shroud.Accounts.Passkeys
   alias ShroudWeb.{PasskeyChallengeToken, UserAuth}
 
-  def options(conn, _params) do
-    if Passkeys.allow_request?(Passkeys.request_ip(conn), :options) do
-      {:ok, options} = Passkeys.begin_authentication()
-
-      json(conn, %{
-        token: PasskeyChallengeToken.sign(conn, options.token),
-        publicKey: %{
-          challenge: options.challenge,
-          rpId: options.rp_id,
-          userVerification: "required",
-          timeout: 300_000
-        }
-      })
-    else
-      conn |> put_status(:too_many_requests) |> json(%{error: "Too many passkey requests"})
-    end
-  end
-
   def create(conn, params) do
     token =
       case PasskeyChallengeToken.verify(conn, params["token"]) do
@@ -50,8 +32,8 @@ defmodule ShroudWeb.PasskeySessionController do
 
       _ ->
         conn
-        |> put_status(:unprocessable_entity)
-        |> json(%{error: "Could not sign in with passkey"})
+        |> put_flash(:error, "Could not sign in with passkey. Please try again.")
+        |> redirect(to: ~p"/users/log_in")
     end
   end
 end

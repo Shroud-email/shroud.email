@@ -7,7 +7,14 @@ defmodule ShroudWeb.UserSessionController do
   plug ShroudWeb.Plugs.VerifyCaptcha when action in [:create]
 
   def new(conn, _params) do
-    render(conn, "new.html", error_message: nil, page_title: "Log in")
+    _masked_token = Plug.CSRFProtection.get_csrf_token()
+    passkey_csrf = Plug.CSRFProtection.dump_state()
+
+    render(conn, "new.html",
+      error_message: nil,
+      page_title: "Log in",
+      passkey_csrf: passkey_csrf
+    )
   end
 
   def new_totp(conn, _params) do
@@ -27,7 +34,12 @@ defmodule ShroudWeb.UserSessionController do
       end
     else
       # In order to prevent user enumeration attacks, don't disclose whether the email is registered.
-      render(conn, "new.html", error_message: "Invalid email or password")
+      _masked_token = Plug.CSRFProtection.get_csrf_token()
+
+      render(conn, "new.html",
+        error_message: "Invalid email or password",
+        passkey_csrf: Plug.CSRFProtection.dump_state()
+      )
     end
   end
 

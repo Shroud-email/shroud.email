@@ -13,7 +13,21 @@ defmodule Shroud.Accounts.Passkeys do
 
   def decode_base64url(_), do: :error
 
-  def request_ip(conn, proxy_table \\ PasskeyProxyResolver) do
+  def request_ip(source, proxy_table \\ PasskeyProxyResolver)
+
+  def request_ip(%Phoenix.LiveView.Socket{} = socket, proxy_table) do
+    %{address: address} = Phoenix.LiveView.get_connect_info(socket, :peer_data)
+
+    request_ip(
+      %Plug.Conn{
+        remote_ip: address,
+        req_headers: Phoenix.LiveView.get_connect_info(socket, :x_headers) || []
+      },
+      proxy_table
+    )
+  end
+
+  def request_ip(%Plug.Conn{} = conn, proxy_table) do
     peer = conn.remote_ip
 
     if PasskeyProxyResolver.trusted?(peer, proxy_table) do

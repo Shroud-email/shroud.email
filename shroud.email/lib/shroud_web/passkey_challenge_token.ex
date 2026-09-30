@@ -3,9 +3,10 @@ defmodule ShroudWeb.PasskeyChallengeToken do
 
   @salt "passkey-challenge"
 
-  def sign(conn, token) do
-    Phoenix.Token.sign(ShroudWeb.Endpoint, @salt, {token, get_session(conn, :_csrf_token)})
-  end
+  def sign(csrf, token) when is_binary(csrf) or is_nil(csrf),
+    do: Phoenix.Token.sign(ShroudWeb.Endpoint, @salt, {token, csrf})
+
+  def sign(%Plug.Conn{} = conn, token), do: sign(get_session(conn, :_csrf_token), token)
 
   def verify(conn, signed) when is_binary(signed) do
     case Phoenix.Token.verify(ShroudWeb.Endpoint, @salt, signed, max_age: 300) do
