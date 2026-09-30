@@ -692,7 +692,9 @@ defmodule Shroud.Accounts do
     })
   end
 
-  defp stale_paddle_event?(incoming, last) when not is_nil(last), do: incoming <= last
+  defp stale_paddle_event?(incoming, last) when not is_nil(last),
+    do: NaiveDateTime.compare(incoming, last) in [:lt, :eq]
+
   defp stale_paddle_event?(_incoming, nil), do: false
 
   def active?(%User{} = user) do
