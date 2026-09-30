@@ -41,6 +41,22 @@ defmodule ShroudWeb.ConnCase do
   end
 
   @doc """
+  Follows a redirect and asserts that the page renders only the expected alert.
+  """
+  def assert_redirected_alert(conn, selector, message) do
+    document =
+      conn
+      |> Phoenix.ConnTest.recycle()
+      |> Phoenix.ConnTest.dispatch(ShroudWeb.Endpoint, :get, Phoenix.ConnTest.redirected_to(conn))
+      |> Phoenix.ConnTest.html_response(200)
+      |> Floki.parse_document!()
+
+    assert [alert] = Floki.find(document, selector)
+    assert Floki.find(document, "[role=alert]") == [alert]
+    assert Floki.text(alert) =~ message
+  end
+
+  @doc """
   Setup helper that registers and logs in users.
 
       setup :register_and_log_in_user

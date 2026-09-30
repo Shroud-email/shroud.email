@@ -19,6 +19,7 @@ defmodule ShroudWeb.UserSessionControllerTest do
       assert response =~ "Sign in"
       assert response =~ "sign up for free"
       assert response =~ "Forgot your password?</a>"
+      assert response |> Floki.parse_document!() |> Floki.find("#login-info, #login-error") == []
     end
 
     test "redirects if already logged in", %{conn: conn, user: user} do
@@ -114,6 +115,12 @@ defmodule ShroudWeb.UserSessionControllerTest do
 
       assert redirected_to(conn) == "/users/log_in"
       assert Flash.get(conn.assigns.flash, :error) =~ "verification"
+
+      assert_redirected_alert(
+        conn,
+        "#login-error[role=alert]",
+        "CAPTCHA verification failed. Please try again."
+      )
     after
       disable_cap()
     end
