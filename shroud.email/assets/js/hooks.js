@@ -13,8 +13,12 @@ export function createCopyToClipboardHook({
 
       this.copy = async () => {
         clearTimeout(this.resetTimer);
-        await writeText(this.el.dataset.clipboardText);
-        this.tooltip.setContent("Copied!");
+        try {
+          await writeText(this.el.dataset.clipboardText);
+          this.tooltip.setContent("Copied!");
+        } catch {
+          this.tooltip.setContent("Copy failed — please copy manually");
+        }
         this.resetTimer = setTimeout(
           () => this.tooltip.setContent("Copy to clipboard"),
           2000,
