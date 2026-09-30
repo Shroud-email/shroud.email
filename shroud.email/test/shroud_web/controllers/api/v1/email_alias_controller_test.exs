@@ -579,7 +579,8 @@ defmodule ShroudWeb.Api.V1.EmailAliasControllerTest do
 
     conn
     |> put_req_header("authorization", "Bearer #{Base.encode64(token)}")
-    |> post(path, params)
+    |> put_req_header("content-type", "application/json")
+    |> post(path, Jason.encode!(params || %{}))
   end
 
   defp authorized_patch(conn, user, path, params) do
@@ -587,7 +588,8 @@ defmodule ShroudWeb.Api.V1.EmailAliasControllerTest do
 
     conn
     |> put_req_header("authorization", "Bearer #{Base.encode64(token)}")
-    |> patch(path, params)
+    |> put_req_header("content-type", "application/json")
+    |> patch(path, Jason.encode!(params))
   end
 
   defp authorized_delete(conn, user, path, params \\ nil) do
