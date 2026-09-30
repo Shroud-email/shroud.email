@@ -13,6 +13,27 @@ permissions:
 
 jobs:
   build-haraka:
+    if: github.event_name == 'pull_request'
+    runs-on: depot-ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Set up Depot
+        uses: depot/setup-action@91bc8495a33ebfc504ffc89e5674379ccf23c29c # v1.7.2
+      - name: Build container
+        uses: depot/build-push-action@98e78adca7817480b8185f474a400b451d74e287 # v1.18.0
+        with:
+          project: 40gdpbrdf7
+          context: hosting/haraka
+          platforms: linux/amd64
+          push: false
+
+  publish-haraka:
+    if: github.event_name == 'push'
     runs-on: depot-ubuntu-24.04
     env:
       REGISTRY: ghcr.io
@@ -26,7 +47,6 @@ jobs:
         with:
           persist-credentials: false
       - name: Log in to the container registry
-        if: github.event_name == 'push'
         uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
         with:
           registry: ${{ env.REGISTRY }}
@@ -45,7 +65,7 @@ jobs:
           project: 40gdpbrdf7
           context: hosting/haraka
           platforms: linux/amd64
-          push: ${{ github.event_name == 'push' }}
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
