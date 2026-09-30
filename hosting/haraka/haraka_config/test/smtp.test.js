@@ -2,6 +2,7 @@
 
 const assert = require('node:assert/strict');
 const { execFileSync, spawn } = require('node:child_process');
+const crypto = require('node:crypto');
 const { once } = require('node:events');
 const fs = require('node:fs');
 const net = require('node:net');
@@ -13,6 +14,18 @@ const { test } = require('node:test');
 // An isolated instance without node_modules exercises the Compose mount layout.
 test('Haraka CLI starts with the full plugin list and handles STARTTLS and AUTH', { timeout: 20000 }, async t => {
   const instance = fs.mkdtempSync(path.join(os.tmpdir(), 'shroud-haraka-smtp-'));
+  let child;
+  let exited;
+  t.after(async () => {
+    try {
+      if (child) {
+        child.kill('SIGTERM');
+        await exited;
+      }
+    } finally {
+      fs.rmSync(instance, { recursive: true, force: true });
+    }
+  });
   fs.cpSync(path.join(__dirname, '../config'), path.join(instance, 'config'), { recursive: true });
   fs.symlinkSync(path.join(__dirname, '../plugins'), path.join(instance, 'plugins'));
   const config = path.join(instance, 'config');
@@ -27,16 +40,11 @@ test('Haraka CLI starts with the full plugin list and handles STARTTLS and AUTH'
     '-keyout', path.join(config, 'certs/tls_key.pem'), '-out', path.join(config, 'certs/tls_cert.pem')], { stdio: 'ignore' });
   execFileSync('openssl', ['genpkey', '-genparam', '-algorithm', 'DH', '-pkeyopt', 'group:ffdhe2048', '-out', path.join(config, 'dhparams.pem')]);
 
-  const child = spawn(process.execPath, [require.resolve('Haraka/bin/haraka'), '-c', instance], {
+  child = spawn(process.execPath, [require.resolve('Haraka/bin/haraka'), '-c', instance], {
     env: { ...process.env, SMTP_USERNAME: 'relay-user', SMTP_PASSWORD: 'test-only-password' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
-  const exited = once(child, 'exit');
-  t.after(async () => {
-    child.kill('SIGTERM');
-    await exited;
-    fs.rmSync(instance, { recursive: true, force: true });
-  });
+  exited = once(child, 'exit');
   let output = '';
   let completed = false;
   t.after(() => { if (!completed) t.diagnostic(output); });
@@ -79,6 +87,12 @@ test('Haraka CLI starts with the full plugin list and handles STARTTLS and AUTH'
   const capabilities = await reply(secure, 'EHLO client.example');
   assert.match(capabilities, /AUTH CRAM-MD5 PLAIN LOGIN/);
   assert.doesNotMatch(capabilities, /STARTTLS/);
+  const challengeReply = await reply(secure, 'AUTH CRAM-MD5');
+  assert.match(challengeReply, /^334 /);
+  const challenge = Buffer.from(challengeReply.slice(4).trim(), 'base64');
+  const digest = crypto.createHmac('md5', 'test-only-password').update(challenge).digest('hex');
+  const cramResponse = Buffer.from(`relay-user ${digest}`).toString('base64');
+  assert.match(await reply(secure, cramResponse), /^235 /);
   const credentials = Buffer.from('\0relay-user\0test-only-password').toString('base64');
   assert.match(await reply(secure, `AUTH PLAIN ${credentials}`), /^235 /);
   assert.match(await reply(secure, 'QUIT'), /^221 /);

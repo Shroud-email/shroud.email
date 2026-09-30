@@ -53,10 +53,13 @@ recipient/relay decisions, DKIM signing and TLS certificate rotation. To run
 them outside Docker, use Node 24.15+ and OpenSSL, then run `npm ci --omit=optional`
 and `npm test` from `haraka/haraka_config/`.
 
-The upgrade alone does **not** activate copied certificates. The coordinated
-certificate-sync fix uses `WITHOUT_CONFIG_CACHE=1` and touches mounted `tls.ini`
-after publishing a valid pair; this combination is tested on 3.3.4 for SNI and
-non-SNI handshakes. Without a reload trigger, copying new PEM files still leaves
+The upgrade alone does **not** activate copied certificates. The shipped cron
+and Compose configuration still only copies PEM files; the reload trigger is
+separate follow-up work, not implemented by this upgrade. That follow-up can
+set `WITHOUT_CONFIG_CACHE=1` on Haraka and touch its mounted `tls.ini` after
+publishing a valid pair; this combination is tested on 3.3.4 for SNI and non-SNI
+handshakes. Until that fix is applied, validate copied certificates and restart
+Haraka to activate them. Without a reload trigger, copying new PEM files leaves
 the active default TLS context stale. Validate complete key/chain pairs before
 publishing: malformed or mismatched input can throw during context creation.
 The SMTP certificate must cover the actual MX hostname, including for clients

@@ -65,6 +65,36 @@ test('pooled host lookup preserves the existing unfiltered domain policy', t => 
   assert.ok(domains.has('custom.example'));
 });
 
+test('backscatter configuration checks only null/postmaster senders and denies listings', async t => {
+  const dns = plugins.registered_plugins['dns-list'];
+  assert.equal(dns.cfg['ips.backscatterer.org'].enable, true);
+  let listed = true;
+  const lookup = t.mock.method(dns, 'lookup', async (ip, zone) => {
+    assert.equal(ip, '192.0.2.18');
+    assert.equal(zone, 'ips.backscatterer.org');
+    return listed ? ['127.0.0.2'] : null;
+  });
+  const connection = { remote: { ip: '192.0.2.18', host: 'sender.example' }, logerror() {} };
+  async function check(address, expected) {
+    let calls = 0;
+    await dns.check_backscatterer(code => {
+      calls++;
+      assert.equal(code, expected);
+    }, connection, [new Address(address)]);
+    assert.equal(calls, 1);
+  }
+  await check('<>', DENY);
+  await check('POSTMASTER@sender.example', DENY);
+  await check('user@sender.example', undefined);
+  assert.equal(lookup.mock.callCount(), 2);
+  listed = false;
+  await check('<>', undefined);
+  assert.equal(lookup.mock.callCount(), 3);
+  t.mock.property(dns.cfg['ips.backscatterer.org'], 'enable', false);
+  await check('<>', undefined);
+  assert.equal(lookup.mock.callCount(), 3);
+});
+
 test('environment auth inherits working PLAIN, LOGIN and CRAM-MD5 checks', () => {
   const auth = plugins.registered_plugins['auth/environment_variable'];
   for (const [is_private, enabled, expected] of [[false, false, false], [true, false, true], [false, true, true]]) {

@@ -20,6 +20,6 @@
     "haraka-plugin-mail_from.is_resolvable": "1.3.0",
     "haraka-plugin-spamassassin": "1.1.2",
     "haraka-plugin-spf": "1.3.0",
-    "pg": "8.7.3"
+    "pg": "8.23.0"
   }
 }
