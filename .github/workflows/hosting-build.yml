@@ -1,6 +1,10 @@
 name: Hosting images
 on:
   pull_request:
+    paths:
+      - 'hosting/**'
+      - 'caddy-permissive-file-storage/**'
+      - '.github/workflows/hosting-build.yml'
   push:
     branches: [ "main" ]
     paths:
@@ -90,4 +94,4 @@ jobs:
           load: true
           tags: shroud-caddy:test
       - name: Test optional integrations and SMTP TLS
-        run: bash hosting/test.sh
+        run: CADDY_PREBUILT=1 bash hosting/test.sh

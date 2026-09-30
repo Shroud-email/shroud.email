@@ -1,7 +1,7 @@
 FROM alpine:3.15
 
 RUN apk update && \
-    apk add --no-cache bash openssl
+    apk add --no-cache bash openssl util-linux
 
 WORKDIR /workdir
 

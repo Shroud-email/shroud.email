@@ -6,14 +6,20 @@ scratch=$(mktemp -d)
 container="shroud-hosting-test-$$"
 cleanup() {
   if [[ "$?" != 0 ]]; then docker logs "$container" >&2 2>/dev/null || true; fi
-  docker rm -f "$container" >/dev/null 2>&1 || true
+  # The real cron container writes root-owned files only in this fixture volume.
+  docker exec "$container-cron" chown -R "$(id -u):$(id -g)" /pem >/dev/null 2>&1 || true
+  docker rm -f "$container" "$container-cron" >/dev/null 2>&1 || true
   rm -rf "$scratch"
 }
 trap cleanup EXIT
 
 docker build -t shroud-haraka:test "$hosting/haraka"
 docker build -t shroud-cron:test "$hosting/cron"
-docker build -t shroud-caddy:test -f "$hosting/caddy/Dockerfile" "$hosting/.."
+if [[ "${CADDY_PREBUILT:-0}" == 1 ]]; then
+  docker image inspect shroud-caddy:test >/dev/null
+else
+  docker build -t shroud-caddy:test -f "$hosting/caddy/Dockerfile" "$hosting/.."
+fi
 
 docker compose --project-directory "$hosting" --env-file "$hosting/example.env" config --services > "$scratch/services"
 if grep -Ex 'cap|valkey' "$scratch/services"; then
@@ -52,7 +58,7 @@ copy_certs() {
     shroud-cron:test /workdir/bundle_certs.sh
 }
 copy_certs
-[[ ! -e "$scratch/pem/tls_key.pem" ]]
+[[ ! -e "$scratch/pem/current" ]]
 
 docker run -d --name "$container" -p 127.0.0.1::25 \
   -e EMAIL_DOMAIN=example.com -e SMTP_USERNAME=test -e SMTP_PASSWORD=test \
@@ -86,19 +92,61 @@ for generation in first renewed; do
   openssl req -x509 -newkey rsa:2048 -nodes -days 2 -subj "/CN=example.com" \
     -keyout "$certdir/example.com.key" -out "$certdir/example.com.crt" 2>/dev/null
   copy_certs
-  cmp "$certdir/example.com.key" "$scratch/pem/tls_key.pem"
-  cmp "$certdir/example.com.crt" "$scratch/pem/tls_cert.pem"
+  [[ -L "$scratch/pem/current" ]]
+  cmp "$certdir/example.com.key" "$scratch/pem/current/tls_key.pem"
+  cmp "$certdir/example.com.crt" "$scratch/pem/current/tls_cert.pem"
   check_smtp "$certdir/example.com.crt"
 done
 
+# A simultaneous sync must leave the active volume untouched while locked.
+mkdir "$scratch/locked"
+docker run --rm --user "$(id -u):$(id -g)" -e EMAIL_DOMAIN=example.com \
+  -v "$scratch/caddy:/caddy:ro" -v "$scratch/locked:/pem" \
+  -v "$scratch/haraka/config:/haraka-config" --entrypoint bash shroud-cron:test \
+  -c 'set -e; exec 8>/pem/.sync.lock; flock -x 8; /workdir/bundle_certs.sh; [[ ! -e /pem/current ]]'
+
+# Recover publication that completed without its reload trigger.
+touch -d '1970-01-01' "$scratch/haraka/config/tls.ini"
+copy_certs
+[[ "$scratch/haraka/config/tls.ini" -nt "$scratch/pem/current" ]]
+
 # Mismatched or malformed certificates must not overwrite the working pair.
-cp "$scratch/pem/tls_key.pem" "$scratch/good.key"
-cp "$scratch/pem/tls_cert.pem" "$scratch/good.crt"
+active_pair=$(readlink "$scratch/pem/current")
+cp "$scratch/pem/current/tls_key.pem" "$scratch/good.key"
+cp "$scratch/pem/current/tls_cert.pem" "$scratch/good.crt"
 openssl genrsa -out "$certdir/example.com.key" 2048 2>/dev/null
 if copy_certs; then echo "Accepted a mismatched key!"; exit 1; fi
 printf 'not a certificate\n' > "$certdir/example.com.crt"
 if copy_certs; then echo "Accepted a malformed certificate!"; exit 1; fi
-cmp "$scratch/good.key" "$scratch/pem/tls_key.pem"
-cmp "$scratch/good.crt" "$scratch/pem/tls_cert.pem"
+[[ $(readlink "$scratch/pem/current") == "$active_pair" ]]
+cmp "$scratch/good.key" "$scratch/pem/current/tls_key.pem"
+cmp "$scratch/good.crt" "$scratch/pem/current/tls_cert.pem"
 check_smtp "$scratch/good.crt"
+
+# Exercise the actual BusyBox crond job after startup with no certificates.
+# This also verifies that EMAIL_DOMAIN reaches scheduled jobs, not just CMD.
+scheduled="$scratch/scheduled"
+scheduled_certdir="$scheduled/caddy/certificates/acme-v02.api.letsencrypt.org-directory/example.com"
+mkdir -p "$scheduled_certdir" "$scheduled/pem" "$scheduled/config"
+touch "$scheduled/config/tls.ini"
+docker run -d --name "$container-cron" -e EMAIL_DOMAIN=example.com \
+  -v "$scheduled/caddy:/caddy:ro" -v "$scheduled/pem:/pem" \
+  -v "$scheduled/config:/haraka-config" shroud-cron:test
+# Wait until the startup sync has completed before simulating ACME issuance.
+for attempt in $(seq 1 30); do
+  if docker logs "$container-cron" 2>&1 | grep -q 'Waiting for Caddy'; then break; fi
+  sleep 1
+done
+docker logs "$container-cron" 2>&1 | grep -q 'Waiting for Caddy'
+openssl req -x509 -newkey rsa:2048 -nodes -days 2 -subj /CN=example.com \
+  -keyout "$scheduled_certdir/example.com.key" -out "$scheduled_certdir/example.com.crt" 2>/dev/null
+for attempt in $(seq 1 75); do
+  if [[ -L "$scheduled/pem/current" ]]; then break; fi
+  sleep 1
+done
+[[ -L "$scheduled/pem/current" ]]
+docker exec "$container-cron" cmp /pem/current/tls_key.pem "/caddy/certificates/acme-v02.api.letsencrypt.org-directory/example.com/example.com.key"
+docker exec "$container-cron" cmp /pem/current/tls_cert.pem "/caddy/certificates/acme-v02.api.letsencrypt.org-directory/example.com/example.com.crt"
+# Confirm that this was the scheduled job rather than an initial startup copy.
+docker logs "$container-cron" 2>&1 | grep -q 'Copied Caddy certs'
 echo "Hosting smoke tests passed (profiles, Caddy, headers plugin, TLS issuance/renewal/rejection)."

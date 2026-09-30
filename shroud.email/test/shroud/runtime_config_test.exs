@@ -33,6 +33,8 @@ defmodule Shroud.RuntimeConfigTest do
 
   test "production accepts blank optional integrations" do
     System.put_env(Map.new(@optional_variables, &{&1, ""}))
+    # Without an explicit dsn: nil, Sentry's environment fallback rejects "".
+    assert_raise ArgumentError, ~r/invalid configuration/, fn -> Sentry.Config.validate!([]) end
     assert_integrations_disabled()
   end
 
