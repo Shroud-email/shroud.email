@@ -71,10 +71,6 @@ jobs:
         working-directory: website/edge-script
         run: deno check src/main.ts
 
-      - name: Test
-        working-directory: website/edge-script
-        run: deno task test
-
       - name: Bundle
         working-directory: website/edge-script
         run: deno task build

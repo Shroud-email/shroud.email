@@ -22,8 +22,7 @@ The middleware:
 
 1. Reads the country on `onOriginResponse`.
 2. For **non-UK** visitors, runs the response through `HTMLRewriter`, replacing
-   the inner content of every `[data-price-world]` element with that element's
-   `data-price-world` value (such as `$0` or `$35/year`).
+   the inner content of every `[data-price]` element with `$35/year`.
 3. For **UK** visitors (or when the header is missing), passes the response
    through unchanged — they already see £25/year in the static HTML.
 4. Sets `Cache-Control: no-store` on HTML responses in **both** cases so the
@@ -67,9 +66,8 @@ curl http://127.0.0.1:8080/pricing/ | grep data-price
 
 ## Deploy (staging)
 
-Deployment is part of the **Website staging deployment** workflow:
-`.github/workflows/website-deploy-staging.yml`. Run it manually from the
-Actions tab on `main`; it deploys both the site and edge script from `main`.
+Deployment is via a **manual** GitHub workflow:
+`.github/workflows/deploy-edge-script.yml` (run it from the Actions tab).
 
 ### One-time setup in bunny
 
@@ -82,15 +80,15 @@ Actions tab on `main`; it deploys both the site and edge script from `main`.
 
 Add two repository secrets (Settings → Secrets and variables → Actions):
 
-| Secret name                             | Value                   |
-| --------------------------------------- | ----------------------- |
-| `WEBSITE_BUNNY_STAGING_SCRIPT_ID`       | The edge script id      |
-| `WEBSITE_BUNNY_STAGING_DEPLOY_KEY`      | The script's deploy key |
+| Secret name                  | Value                          |
+| ---------------------------- | ------------------------------ |
+| `BUNNY_STAGING_SCRIPT_ID`    | The edge script id             |
+| `BUNNY_STAGING_DEPLOY_KEY`   | The script's deploy key        |
 
 ### Deploy
 
-Run **Website staging deployment** from the Actions tab. Its edge-script job
-type-checks, bundles, and uploads `website/edge-script/dist/index.ts` to bunny.
+Run the **"Deploy edge script (staging)"** workflow from the Actions tab. It
+type-checks, bundles, and uploads `edge-script/dist/index.ts` to bunny.
 
 ### Verify
 
@@ -98,7 +96,7 @@ With the script attached to the staging pull zone, check the rewritten price:
 
 ```bash
 # Non-UK (e.g. US) — bunny routes through a non-UK PoP, expect $35/year
-curl -s https://staging.shroud.email/pricing/ | grep -o 'data-price[^>]*>[^<]*'
+curl -s https://staging.shroud.email/pricing/ | grep -o 'data-price="">[^<]*'
 
 # Force a UK egress isn't trivial from curl; verify from a UK network/VPN,
 # or check the bunny dashboard → Script → Logs.
@@ -106,18 +104,15 @@ curl -s https://staging.shroud.email/pricing/ | grep -o 'data-price[^>]*>[^<]*'
 
 ## Production
 
-Production deployment is handled by `.github/workflows/website-deploy.yml`.
-The **Website production deployment** workflow runs for website changes pushed
-to `main` and can also be started manually. It deploys both the site and edge
-script.
+Once validated on staging:
 
-For the production edge script, create and attach a production Edge Script to
-the production Pull Zone, then configure the `WEBSITE_BUNNY_SCRIPT_ID` and
-`WEBSITE_BUNNY_DEPLOY_KEY` repository secrets.
+1. Create a production Edge Script + attach to the production Pull Zone.
+2. Add `BUNNY_SCRIPT_ID` / `BUNNY_DEPLOY_KEY` secrets and copy this workflow
+   to `deploy-edge-script-prod.yml` (or extend the existing one with an
+   environment selector).
 
 ## Changing the prices
 
-Edit the `data-price-world` values and static UK prices in
-`src/components/organisms/Pricing.vue`, and edit `UK_COUNTRY_CODES` in
-`edge-script/src/pricing-country.ts`. The UK price must stay the static default
-so the no-script fallback stays correct.
+Edit `WORLDWIDE_PRICE` and `UK_COUNTRY_CODES` in `src/pricing.ts`, **and** the
+default price baked into `src/components/organisms/Pricing.vue` (the UK price
+must stay the static default so the no-script fallback stays correct).

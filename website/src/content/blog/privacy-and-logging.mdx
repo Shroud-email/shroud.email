@@ -15,7 +15,7 @@ Now, such logs are the last thing we want to store. We don't want to know who's 
 
 When a bug comes up, we always try to reproduce the problem ourselves first. If we can do that, then it's easy to resolve. However, sometimes we need more information. But with no logs, what do we do?
 
-Our solution is to add a switch that can be used to temporarily and transparently turn on logging for a given user. If a customer notices a problem, we can flip this switch and ask them to re-send the problematic email. Complete messages received while this logging is enabled are uploaded to S3. Turning the switch off stops future messages from being uploaded, but it does not automatically delete existing uploads; those remain until they are deleted separately.
+Our solution is to add a switch that can be used to temporarily and transparently turn on logging for a given user. If a customer notices a problem, we can flip this switch and ask them to re-send the problematic email. Once we have the logs we need, we can immediately un-flip the switch.
 
 Of course, it'd be pretty creepy if this functionality could be toggled in secret. While logging is enabled, we show an alert to the user on every page:
 

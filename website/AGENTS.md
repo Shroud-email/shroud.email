@@ -4,23 +4,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-Marketing/docs website for [Shroud.email](https://shroud.email), an email privacy service. Built with Astro 7, Vue 3, and Tailwind CSS v4, and deployed to bunny.net.
+Marketing/docs website for [Shroud.email](https://shroud.email), an email privacy service. Built with Astro 6, Vue 3, Tailwind CSS v4, and deployed to Cloudflare Workers/Pages.
 
 ## Commands
 
-- `mise exec -- pnpm install --frozen-lockfile` — install dependencies from `pnpm-lock.yaml`
-- `mise exec -- pnpm run dev` — local dev server
-- `mise exec -- pnpm run build` — type-check (`astro check` + `vue-tsc --noEmit`) then build
-- `mise exec -- pnpm test` — run the Node.js tests in `scripts/*.test.mjs`
-- `mise exec -- pnpm run preview` — serve production build locally
-- `mise exec -- pnpm run lint` — format + lint with Biome (auto-fixes)
-- From `edge-script/`, `mise exec -- deno task test` — run the Deno edge-script tests
+- `npm run dev` — local dev server
+- `npm run build` — type-check (`astro check` + `vue-tsc --noEmit`) then build
+- `npm run preview` — serve production build locally
+- `npm run lint` — format + lint with Biome (auto-fixes)
 
-Verify website and deployment-script changes from this directory with `mise exec -- pnpm test` and `mise exec -- pnpm run build`. For changes under `edge-script/`, also run `mise exec -- deno task test` from `edge-script/`.
+No test framework is configured. Verify changes with `npm run build`.
 
 ## Architecture
 
-**Rendering:** Static — Astro builds the site to `dist/`; there is no server adapter or SSR output. All URLs use trailing slashes (`trailingSlash: "always"` in astro config).
+**Rendering:** Hybrid — Astro defaults to static prerendering, with Cloudflare adapter for SSR-capable routes. All URLs use trailing slashes (`trailingSlash: "always"` in astro config).
 
 **Component model:** Pages are `.astro` files; interactive components use Vue (`.vue`). Components follow atomic design:
 - `src/components/atoms/` — small primitives (Alert, FadeIn, Prose, ScrollingText)
@@ -53,4 +50,4 @@ Verify website and deployment-script changes from this directory with `mise exec
 
 ## Deployment
 
-bunny.net via the production and staging website deployment workflows. The repository-root `scripts/deploy-bunny.mjs` uploads the static `dist/` output to a bunny.net Storage Zone, publishes `404.html` as `bunnycdn_errors/404.html`, removes stale objects, and purges the Pull Zone cache. The workflows separately deploy the middleware in `edge-script/` to bunny.net Edge Scripting.
+Cloudflare Workers/Pages via `wrangler.jsonc`. Assets served from `dist/` with 404-page handling.

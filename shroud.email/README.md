@@ -23,8 +23,6 @@ so that Claude Code reads `AGENTS.md` files (it does not pick them up natively).
 To start the server:
 
   * Install dependencies with `mix deps.get`
-  * Make sure Docker with Docker Compose is installed and running
-  * Start the bundled PostgreSQL service with `docker compose up -d db`
   * Create and migrate your database with `mix ecto.setup`
   * Create seed data (if you want) using `mix ecto.seed`
   * Start Phoenix endpoint with `mix phx.server` or inside IEx with `iex -S mix phx.server`
@@ -51,7 +49,4 @@ swaks --to test@example.com --server 127.0.0.1 --port 2525
 
 # Deploying
 
-For production self-hosting, follow the
-[deployment guide](https://shroud.email/docs/deployment/self-host). From the
-monorepo's `hosting/` directory, copy `example.env` to `.env` and enter your
-configuration in `.env` before starting the Docker Compose stack.
+Set the environment variables in `example.env`.

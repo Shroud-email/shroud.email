@@ -16,7 +16,7 @@ Shroud.email uses several techniques to block this creepy behaviour so you can r
 
 Firstly, **disposable email aliases let you hide your identity online**. When a website asks for your email for any reason, you can give it a unique email address that you don't use anywhere else. This way, it can't be cross-referenced with your behaviour across the Internet, and the website owner doesn't know anything about your identity.
 
-Secondly, **we block spy pixels**. Whenever you receive an email via a Shroud.email alias, we strip out the trackers so you only receive the actual email content. For every email, we'll show you exactly which trackers we removed. We don't store this report data server-side; it's encoded in the privacy report link, so anyone with the link can access it.
+Secondly, **we block spy pixels**. Whenever you receive an email via a Shroud.email alias, we strip out the trackers so you only receive the actual email content. For every email, we'll show you exactly which trackers we removed. Of course, we don't save this information anywhere -- we store this information in the link to the privacy report, so it's only ever accessible to you.
 
 <Image
   src={emailReport}
@@ -30,7 +30,7 @@ Secondly, **we block spy pixels**. Whenever you receive an email via a Shroud.em
   decoding="async"
 />
 
-Thirdly, **Shroud.email proxies remote image URLs in `img` `src` attributes**. We're pretty proud of our defences against spy pixels, but we believe in defence in depth. Even if a spy pixel were to sneak through in one of these URLs, then we'll proxy it through our servers, which means that the sender never sees your real IP, and thus they don't know where you were when you read the email.
+Thirdly, **Shroud.email proxies all images**. We're pretty proud of our defences against spy pixels, but we believe in defense in depth. Even if a spy pixel were to sneak through, then we'll proxy it through our servers, which means that the sender never sees your real IP, and thus they don't know where you were when you read the email.
 
 Finally, privacy is not just about access to your information -- it's also about access to yourself. If one of your aliases starts receiving spam or other unwanted emails, you can easily **block the sender** and any emails from them will silently disappear into the void. Or, if that's not enough, you can just delete the alias entirely, never to worry about it again.
 

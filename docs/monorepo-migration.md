@@ -62,10 +62,8 @@ dependency/build/chore commits remain in that history.
    and `Caddy module`; update required-check rules if those are required. PR build
    workflows deliberately run without path filters to avoid pending checks.
 6. Validate production/staging deployments and image publishing in GitHub after
-   authorization. The first monorepo merge changes every project, so its push can
-   trigger path-filtered production deployments and image publishing. Staging is
-   manual-only; after the merge, dispatch its workflow separately against `main`.
-   Prepare secrets and package access first.
+   authorization. The first monorepo merge changes every project, so its push
+   can trigger all project deployments. Prepare secrets and package access first.
 
 | Source repository | Old secret | Destination secret |
 | --- | --- | --- |

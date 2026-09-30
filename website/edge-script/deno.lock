@@ -2,10 +2,8 @@
   "version": "5",
   "specifiers": {
     "jsr:@luca/esbuild-deno-loader@*": "0.11.1",
-    "jsr:@std/assert@^1.0.14": "1.0.19",
     "jsr:@std/bytes@^1.0.2": "1.0.6",
     "jsr:@std/encoding@^1.0.5": "1.0.11",
-    "jsr:@std/internal@^1.0.12": "1.0.14",
     "jsr:@std/internal@^1.0.14": "1.0.14",
     "jsr:@std/path@^1.0.6": "1.1.6",
     "npm:esbuild@*": "0.28.1"
@@ -17,12 +15,6 @@
         "jsr:@std/bytes",
         "jsr:@std/encoding",
         "jsr:@std/path"
-      ]
-    },
-    "@std/assert@1.0.19": {
-      "integrity": "eaada96ee120cb980bc47e040f82814d786fe8162ecc53c91d8df60b8755991e",
-      "dependencies": [
-        "jsr:@std/internal@^1.0.12"
       ]
     },
     "@std/bytes@1.0.6": {
@@ -37,7 +29,7 @@
     "@std/path@1.1.6": {
       "integrity": "c68485c2a4dfbb5ae3cc74fae4e8c4e5d874cf8a8ed12927917235c758b46cbe",
       "dependencies": [
-        "jsr:@std/internal@^1.0.14"
+        "jsr:@std/internal"
       ]
     }
   },

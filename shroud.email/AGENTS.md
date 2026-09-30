@@ -101,7 +101,7 @@ docker-compose up        # start development environment
   **Always** maintain this import/`@source` syntax in `app.css`; add new template directories as `@source` entries so their classes are scanned.
 - **Never** use `@apply` when writing raw CSS—compose with utility classes instead.
 - Only the `app.js` and `app.css` bundles are built (esbuild + tailwind). You **cannot** reference an external vendored `src`/`href` in layouts—import vendor deps into `app.js`/`app.css` (as done for `tippy.css`).
-- **Never** write raw embedded `<script>` tags in LiveView templates; use colocated hooks or `assets/js/` instead. The synchronous pre-paint theme bootstrap in `lib/shroud_web/components/layouts/root.html.heex` is an explicit exception and must remain in the root layout so it can set the theme before CSS renders.
+- **Never** write inline `<script>` tags in templates.
 
 ## Testing Guidelines
 
