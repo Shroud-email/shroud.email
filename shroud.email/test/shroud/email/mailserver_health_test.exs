@@ -5,7 +5,7 @@ defmodule Shroud.Email.MailserverHealthTest do
 
   @public_key "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC6df2FKTlPQDg3O4eoccdfQx61gHlHTI9N//jzXzEZshXhdRkiZL4gUWduxZb7Rk8++31cYgPCJXJrlHeFnnGlBIdc9nGvi6APS3ZjXkxLo6RaaxmmfFliR1XhvvhqzD5MqbA8pKwsvD93FsyLfmlKesZRouevRhpMuyWzgqQiswIDAQAB"
 
-  test "reports each MX address and rejects malformed authentication records" do
+  test "reports each MX address and passes well-formed authentication records" do
     dns = fn
       "email.shroud.test", :mx ->
         {:ok, [{10, ~c"mx1.example"}, {20, ~c"mx2.example"}]}
@@ -80,6 +80,51 @@ defmodule Shroud.Email.MailserverHealthTest do
     {results, _targets} = MailserverHealth.dns_checks("email.shroud.test", dns)
 
     assert Enum.find(results, &(&1.name == "SPF")).status == :fail
+  end
+
+  test "SPF requires valid operands even when another mechanism authorizes senders" do
+    for term <- [
+          "include:",
+          "exists:",
+          "redirect=",
+          "ip4:",
+          "ip6:",
+          "a:",
+          "mx:",
+          "ip4:999.0.0.1",
+          "ip4:2001:db8::1",
+          "ip6:192.0.2.1",
+          "ip4:192.0.2.1/33",
+          "ip6:2001:db8::1/129",
+          "a/33",
+          "mx//129"
+        ] do
+      assert spf_status("v=spf1 mx #{term} -all") == :fail, term
+    end
+
+    for term <- [
+          "include:sender.example",
+          "exists:%{i}.sender.example",
+          "redirect=sender.example",
+          "ip4:192.0.2.1/32",
+          "ip6:2001:db8::1/128",
+          "a",
+          "mx",
+          "a:sender.example/24//64",
+          "mx//128"
+        ] do
+      assert spf_status("v=spf1 #{term} -all") == :pass, term
+    end
+  end
+
+  defp spf_status(policy) do
+    dns = fn
+      "email.shroud.test", :txt -> {:ok, [[to_charlist(policy)]]}
+      _, _ -> {:ok, []}
+    end
+
+    {results, _} = MailserverHealth.dns_checks("email.shroud.test", dns)
+    Enum.find(results, &(&1.name == "SPF")).status
   end
 
   test "reports MX targets omitted by the probe limit instead of claiming complete success" do
@@ -252,5 +297,79 @@ defmodule Shroud.Email.MailserverHealthTest do
 
     assert Enum.find(results, &String.starts_with?(&1.name, "SMTP")).status == :fail
     assert Enum.find(results, &String.starts_with?(&1.name, "Certificate")).status == :unknown
+  end
+
+  test "optional TLS reports unavailable encryption without failing permitted plaintext fallback" do
+    for {reply, upgrade_reply} <- [
+          {"250 SIZE 10000\r\n", nil},
+          {"250 STARTTLS\r\n", "454 TLS unavailable\r\n"},
+          {"250 STARTTLS\r\n", "220 Ready\r\n"}
+        ] do
+      {:ok, listener} = :gen_tcp.listen(0, [:binary, active: false, reuseaddr: true])
+      {:ok, port} = :inet.port(listener)
+      on_exit(fn -> :gen_tcp.close(listener) end)
+
+      start_supervised!(
+        Supervisor.child_spec(
+          {Task,
+           fn ->
+             {:ok, socket} = :gen_tcp.accept(listener)
+             :ok = :gen_tcp.send(socket, "220 relay.example ESMTP\r\n")
+             {:ok, _ehlo} = :gen_tcp.recv(socket, 0, 2000)
+             :ok = :gen_tcp.send(socket, reply)
+
+             if upgrade_reply do
+               {:ok, _starttls} = :gen_tcp.recv(socket, 0, 2000)
+               :ok = :gen_tcp.send(socket, upgrade_reply)
+             end
+
+             :gen_tcp.close(socket)
+           end},
+          id: make_ref()
+        )
+      )
+
+      results = MailserverHealth.smtp_checks("localhost", port, :optional_starttls)
+      assert Enum.find(results, &String.starts_with?(&1.name, "SMTP")).status == :pass
+      tls = Enum.find(results, &String.starts_with?(&1.name, "STARTTLS"))
+      assert tls.status == :unknown
+      assert tls.detail =~ "plaintext fallback"
+    end
+  end
+
+  test "greeting and multiline EHLO share one SMTP session deadline" do
+    {:ok, listener} = :gen_tcp.listen(0, [:binary, active: false, reuseaddr: true])
+    {:ok, port} = :inet.port(listener)
+    on_exit(fn -> :gen_tcp.close(listener) end)
+
+    start_supervised!({Task,
+     fn ->
+       {:ok, socket} = :gen_tcp.accept(listener)
+
+       # Deliberately slow protocol responses, rather than sleeps for synchronization.
+       receive do
+       after
+         900 -> :gen_tcp.send(socket, "220 relay.example ESMTP\r\n")
+       end
+
+       {:ok, _ehlo} = :gen_tcp.recv(socket, 0, 2000)
+
+       for line <- ["250-relay.example\r\n", "250 SIZE 10000\r\n"] do
+         receive do
+         after
+           900 -> :gen_tcp.send(socket, line)
+         end
+       end
+
+       :gen_tcp.close(socket)
+     end})
+
+    started = System.monotonic_time(:millisecond)
+    results = MailserverHealth.smtp_checks("localhost", port, :starttls)
+    elapsed = System.monotonic_time(:millisecond) - started
+    tls = Enum.find(results, &String.starts_with?(&1.name, "STARTTLS"))
+
+    assert tls.detail =~ "timeout"
+    assert elapsed < 3300
   end
 end

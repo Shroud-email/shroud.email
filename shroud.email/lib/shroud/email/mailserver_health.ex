@@ -33,7 +33,13 @@ defmodule Shroud.Email.MailserverHealth do
       smtp_checks("localhost", inbound_port, :greeting) ++
         case relay[:adapter] do
           Swoosh.Adapters.SMTP ->
-            mode = if relay[:tls] in [:always, :if_available], do: :starttls, else: :greeting
+            mode =
+              case relay[:tls] do
+                :always -> :starttls
+                :if_available -> :optional_starttls
+                _ -> :greeting
+              end
+
             smtp_checks(relay[:relay], relay[:port], mode)
 
           _ ->
@@ -46,6 +52,7 @@ defmodule Shroud.Email.MailserverHealth do
   @doc "Probe a configured SMTP endpoint without submitting mail or credentials."
   def smtp_checks(host, port, mode) do
     label = "#{host}:#{port}"
+    deadline = System.monotonic_time(:millisecond) + @timeout
 
     case :gen_tcp.connect(
            to_charlist(host),
@@ -55,7 +62,7 @@ defmodule Shroud.Email.MailserverHealth do
          ) do
       {:ok, socket} ->
         try do
-          smtp_session(socket, label, host, mode)
+          smtp_session(socket, label, host, mode, deadline)
         after
           :gen_tcp.close(socket)
         end
@@ -68,15 +75,15 @@ defmodule Shroud.Email.MailserverHealth do
     end
   end
 
-  defp smtp_session(socket, label, host, mode) do
-    case response(socket, "220") do
+  defp smtp_session(socket, label, host, mode, deadline) do
+    case response(socket, "220", deadline) do
       {:ok, greeting} ->
         smtp_result = row("SMTP #{label}", :pass, String.trim(greeting))
 
         if mode == :greeting do
           [smtp_result]
         else
-          [smtp_result | starttls_checks(socket, label, host, mode)]
+          [smtp_result | starttls_checks(socket, label, host, mode, deadline)]
         end
 
       {:error, reason} ->
@@ -87,15 +94,15 @@ defmodule Shroud.Email.MailserverHealth do
     end
   end
 
-  defp starttls_checks(socket, label, host, mode) do
+  defp starttls_checks(socket, label, host, mode, deadline) do
     with :ok <- :gen_tcp.send(socket, "EHLO shroud.email\r\n"),
-         {:ok, lines} <- response(socket, "250"),
+         {:ok, lines} <- response(socket, "250", deadline),
          true <- Regex.match?(~r/(?:^|\n)250[ -]STARTTLS\b/i, lines) do
-      starttls(socket, label, host, mode)
+      starttls(socket, label, host, mode, deadline)
     else
       false ->
         [
-          row("STARTTLS #{label}", :fail, "Not advertised by EHLO")
+          tls_unavailable(label, mode, "Not advertised by EHLO")
           | skipped_certificate(label, mode)
         ]
 
@@ -107,9 +114,9 @@ defmodule Shroud.Email.MailserverHealth do
     end
   end
 
-  defp starttls(socket, label, host, mode) do
+  defp starttls(socket, label, host, mode, deadline) do
     with :ok <- :gen_tcp.send(socket, "STARTTLS\r\n"),
-         {:ok, _} <- response(socket, "220") do
+         {:ok, _} <- response(socket, "220", deadline) do
       tls_options =
         if mode == :verified do
           [
@@ -122,31 +129,35 @@ defmodule Shroud.Email.MailserverHealth do
         end
 
       # A line-oriented TCP socket must become raw before TLS takes ownership.
-      :ok = :inet.setopts(socket, packet: :raw)
+      with :ok <- :inet.setopts(socket, packet: :raw),
+           {:ok, tls_socket} <-
+             :ssl.connect(socket, [active: false] ++ tls_options, remaining(deadline)) do
+        :ssl.close(tls_socket)
 
-      case :ssl.connect(socket, [active: false] ++ tls_options, @timeout) do
-        {:ok, tls_socket} ->
-          :ssl.close(tls_socket)
-
-          [
-            row("STARTTLS #{label}", :pass, "TLS handshake succeeded")
-            | certificate_success(label, mode)
-          ]
-
+        [
+          row("STARTTLS #{label}", :pass, "TLS handshake succeeded")
+          | certificate_success(label, mode)
+        ]
+      else
         {:error, reason} ->
           [
-            row("STARTTLS #{label}", :fail, "TLS handshake failed: #{inspect(reason)}")
+            tls_unavailable(label, mode, "TLS handshake failed: #{inspect(reason)}")
             | certificate_failure(label, mode, reason)
           ]
       end
     else
       {:error, reason} ->
         [
-          row("STARTTLS #{label}", :fail, "Upgrade rejected: #{inspect(reason)}")
+          tls_unavailable(label, mode, "Upgrade rejected: #{inspect(reason)}")
           | skipped_certificate(label, mode)
         ]
     end
   end
+
+  defp tls_unavailable(label, :optional_starttls, detail),
+    do: row("STARTTLS #{label}", :unknown, "#{detail}; configured to permit plaintext fallback")
+
+  defp tls_unavailable(label, _mode, detail), do: row("STARTTLS #{label}", :fail, detail)
 
   defp certificate_success(label, :verified),
     do: [row("Certificate #{label}", :pass, "Trusted chain, hostname and validity verified")]
@@ -171,14 +182,16 @@ defmodule Shroud.Email.MailserverHealth do
 
   defp skipped_certificate(_label, _mode), do: []
 
-  defp response(socket, expected), do: response(socket, expected, [], 0)
+  defp remaining(deadline), do: max(deadline - System.monotonic_time(:millisecond), 0)
 
-  defp response(_socket, _expected, _lines, 30), do: {:error, :too_many_lines}
+  defp response(socket, expected, deadline), do: response(socket, expected, deadline, [], 0)
 
-  defp response(socket, expected, lines, count) do
-    case :gen_tcp.recv(socket, 0, @timeout) do
+  defp response(_socket, _expected, _deadline, _lines, 30), do: {:error, :too_many_lines}
+
+  defp response(socket, expected, deadline, lines, count) do
+    case :gen_tcp.recv(socket, 0, remaining(deadline)) do
       {:ok, <<code::binary-size(3), ?-, _::binary>> = line} when code == expected ->
-        response(socket, expected, [String.trim(line) | lines], count + 1)
+        response(socket, expected, deadline, [String.trim(line) | lines], count + 1)
 
       {:ok, <<code::binary-size(3), ?\s, _::binary>> = line} when code == expected ->
         {:ok, Enum.reverse([String.trim(line) | lines]) |> Enum.join("\n")}
@@ -285,7 +298,7 @@ defmodule Shroud.Email.MailserverHealth do
     else
       detail =
         if name == "SPF",
-          do: "No sender authorization found in SPF policy at #{domain}: #{policy}",
+          do: "Invalid SPF policy or no sender authorization at #{domain}: #{policy}",
           else: "Invalid #{name} record at #{domain}"
 
       row(name, :fail, detail)
@@ -298,7 +311,9 @@ defmodule Shroud.Email.MailserverHealth do
     do: row(name, :fail, "Multiple #{name} records at #{domain}")
 
   defp valid_policy?("SPF", value) do
-    Regex.match?(~r/^v=spf1\s/i, value) and
+    [version | terms] = String.split(value)
+
+    String.downcase(version) == "v=spf1" and Enum.all?(terms, &valid_spf_term?/1) and
       Regex.match?(
         ~r/(?:^|\s)(?:[+?~\-]?(?:mx|a)(?![a-z])|[+?~\-]?(?:ip4:|ip6:|include:|exists:)|redirect=)/i,
         value
@@ -323,6 +338,52 @@ defmodule Shroud.Email.MailserverHealth do
       _ -> false
     end
   end
+
+  defp valid_spf_term?(term) do
+    mechanism = term |> String.replace(~r/^[+?~\-]/, "") |> String.downcase()
+
+    cond do
+      mechanism in ["all", "a", "mx", "ptr"] ->
+        true
+
+      String.starts_with?(mechanism, ["ip4:", "ip6:"]) ->
+        [kind, address] = String.split(mechanism, ":", parts: 2)
+        valid_spf_address?(kind, address)
+
+      String.starts_with?(mechanism, ["a:", "a/", "mx:", "mx/"]) ->
+        Regex.match?(
+          ~r/^(?:a|mx)(?::[^\s\/]+)?(?:\/(?:[0-9]|[12][0-9]|3[0-2]))?(?:\/\/(?:[0-9]|[1-9][0-9]|1[01][0-9]|12[0-8]))?$/,
+          mechanism
+        )
+
+      true ->
+        Regex.match?(~r/^(?:include:|exists:|ptr:|redirect=|exp=)[^\s\/]+$/, mechanism) or
+          (Regex.match?(~r/^[a-z][a-z0-9_.-]*=[^\s]+$/, mechanism) and
+             not String.starts_with?(mechanism, ["redirect=", "exp="]))
+    end
+  end
+
+  defp valid_spf_address?(kind, address) do
+    [ip | cidr] = String.split(address, "/")
+    size = if kind == "ip4", do: 4, else: 8
+    max_prefix = if kind == "ip4", do: 32, else: 128
+
+    case :inet.parse_strict_address(to_charlist(ip)) do
+      {:ok, tuple} -> tuple_size(tuple) == size and valid_spf_prefix?(cidr, max_prefix)
+      _ -> false
+    end
+  end
+
+  defp valid_spf_prefix?([], _max), do: true
+
+  defp valid_spf_prefix?([prefix], max) do
+    case Integer.parse(prefix) do
+      {number, ""} -> number >= 0 and number <= max
+      _ -> false
+    end
+  end
+
+  defp valid_spf_prefix?(_prefixes, _max), do: false
 
   defp resolve(domain, type) do
     case :inet_res.resolve(to_charlist(domain), :in, type, timeout: @timeout, retry: 1) do
