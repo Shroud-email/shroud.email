@@ -13,23 +13,15 @@ defmodule ShroudWeb.Api.V1.EmailAliasController do
   operation(:index,
     operation_id: "listAliases",
     summary: "List email aliases",
-    description: """
-    Lists your non-deleted email aliases, newest first, in pages of 20. Customize
-    pagination using `page_size` and `page`, e.g. `/api/v1/aliases?page_size=10&page=3`.
-
-    `search` matches address, title and notes case-insensitively, using the dashboard's
-    matching rules: space-separated terms match any term; punctuation is a wildcard.
-    `enabled=true` or `enabled=false` filters by enabled state. For example,
-    `/api/v1/aliases?search=Acme&enabled=false&page_size=10` finds disabled aliases
-    matching Acme. Pagination totals describe filtered results.
-    """,
+    description: "Lists your non-deleted email aliases, newest first.",
     parameters:
       Schemas.pagination_parameters() ++
         [
           search: [
             in: :query,
             type: :string,
-            description: "Search address, title and notes.",
+            description:
+              "Case-insensitive search across address, title and notes. Space-separated terms match any term; punctuation acts as a wildcard.",
             example: "Acme"
           ],
           enabled: [
@@ -83,8 +75,7 @@ defmodule ShroudWeb.Api.V1.EmailAliasController do
   operation(:show,
     operation_id: "getAlias",
     summary: "Get an alias",
-    description:
-      "Fetch a single alias by its exact email address. URL-encode the address, e.g. `/api/v1/aliases/deadbeef%40fog.shroud.email`. Returns 404 if not found.",
+    description: "Fetches a single alias.",
     parameters: Schemas.address_parameter(),
     responses: [
       ok: {"Email alias", "application/json", Schemas.email_alias()},
@@ -105,13 +96,7 @@ defmodule ShroudWeb.Api.V1.EmailAliasController do
   operation(:update,
     operation_id: "updateAlias",
     summary: "Update an alias",
-    description: """
-    Update an alias's label, notes or enabled state. Only `title`, `notes` and `enabled`
-    can be updated. Omitted fields remain unchanged; set `title` or `notes` to `null`
-    to clear them. Set `enabled` to `false` to stop all forwarding, including
-    password-reset emails, or `true` to re-enable it.
-    Returns the updated alias, 422 for invalid values, or 404 if not found.
-    """,
+    description: "Updates an alias's settings.",
     parameters: Schemas.address_parameter(),
     request_body:
       {"Fields to update", "application/json", Schemas.update_alias(), required: false},
@@ -142,11 +127,8 @@ defmodule ShroudWeb.Api.V1.EmailAliasController do
     operation_id: "createAlias",
     summary: "Create an alias",
     description: """
-    Send a POST with no arguments to generate a random alias on the default shared
-    domain (`@fog.shroud.email` on hosted Shroud.email). Supply both `local_part` and
-    `domain` to create a custom address, e.g. `myemail@example.com`. The custom domain
-    must belong to your account. `title` and `notes` are optional nullable strings;
-    supply them alone for a labelled random alias. New aliases are enabled.
+    Creates an enabled alias with a random or custom address. Random addresses use
+    the default shared domain (`@fog.shroud.email` on hosted Shroud.email).
     """,
     request_body:
       {"Optional alias settings", "application/json", Schemas.create_alias(), required: false},
@@ -204,7 +186,7 @@ defmodule ShroudWeb.Api.V1.EmailAliasController do
     operation_id: "deleteAlias",
     summary: "Delete an alias",
     description: """
-    Delete an alias from your account. Returns 204 on success, or 422 if not found.
+    Deletes an alias from your account.
     Prefer disabling an alias if you may need it again. Deleted aliases on shared
     Shroud domains cannot be recreated; custom-domain addresses can be recreated.
     """,

@@ -9,9 +9,7 @@ defmodule ShroudWeb.Api.V1.TokenController do
     tags: ["Authentication"],
     summary: "Create an API token",
     description: """
-    Post your Shroud.email email and password to get an API token.
-    If your account has two-factor authentication enabled, include a valid integer
-    TOTP code. Otherwise, omit `totp`. Keep the returned token secret!
+    Creates an API token for your account. Keep the returned token secret.
     """,
     security: [],
     request_body: {"Credentials", "application/json", Schemas.token_request(), required: true},

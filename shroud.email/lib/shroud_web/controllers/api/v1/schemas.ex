@@ -36,7 +36,7 @@ defmodule ShroudWeb.Api.V1.Schemas do
         "Omit both local_part and domain for a random alias; otherwise supply both strings.",
       properties: %{
         local_part: %Schema{type: :string},
-        domain: %Schema{type: :string},
+        domain: %Schema{type: :string, description: "A custom domain owned by your account."},
         title: metadata(),
         notes: metadata()
       },
@@ -63,7 +63,15 @@ defmodule ShroudWeb.Api.V1.Schemas do
     %Schema{
       title: "UpdateAlias",
       type: :object,
-      properties: %{title: metadata(), notes: metadata(), enabled: %Schema{type: :boolean}},
+      description: "Omitted fields remain unchanged.",
+      properties: %{
+        title: %{metadata() | description: "Set to null to clear the label."},
+        notes: %{metadata() | description: "Set to null to clear the notes."},
+        enabled: %Schema{
+          type: :boolean,
+          description: "False stops all forwarding, including password-reset emails."
+        }
+      },
       example: %{title: "Acme shopping", notes: "Receipts and order updates", enabled: false}
     }
   end

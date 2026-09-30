@@ -12,8 +12,7 @@ defmodule ShroudWeb.Api.V1.DomainController do
     summary: "List custom domains",
     description: """
     Lists your custom domains with valid DNS records (all verification checks within
-    the last day). Domains are returned in pages of 20, newest first. Customize
-    pagination with `page_size` and `page`, e.g. `/api/v1/domains?page_size=10&page=3`.
+    the last day).
     """,
     parameters: Schemas.pagination_parameters(),
     responses: [
