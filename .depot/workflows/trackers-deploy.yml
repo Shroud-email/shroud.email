@@ -1,3 +1,10 @@
+# Depot CI Migration
+# Source: .github/workflows/trackers-deploy.yml
+#
+# Changes made:
+# - Rewrote .github/ path references to .depot/
+# - Changed GitHub runs-on labels to their Depot equivalents
+
 name: Tracker list deployment
 
 on:
@@ -5,7 +12,7 @@ on:
     branches: [main]
     paths:
       - 'email-trackers/**'
-      - '.github/workflows/trackers-deploy.yml'
+      - '.depot/workflows/trackers-deploy.yml'
   workflow_dispatch:
 
 # Avoid overlapping deploys racing to upload to the same storage zone.
@@ -21,7 +28,7 @@ defaults:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-latest # was: ubuntu-latest. Mapped standard GitHub runner to Depot equivalent.
     permissions:
       contents: read
     steps:

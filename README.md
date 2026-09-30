@@ -23,8 +23,11 @@ guidance starts in [AGENTS.md](AGENTS.md).
 
 ## Automation and development orbs
 
-All GitHub Actions live in `.github/workflows/`. Deployments are separated by
-project; shared zizmor, commitlint, and filesystem security checks run once.
+CI, releases, and deployments run on Depot CI from `.depot/workflows/`.
+Deployments are separated by project; shared zizmor, commitlint, and filesystem
+security checks run once. `.github/workflows/` retains validation only for fork
+PRs, which Depot CI does not yet support. See [Depot CI setup and cutover](docs/depot-ci.md)
+before merging workflow changes or enabling publishing.
 
 `.agents/setup` prepares the app, website, and Go toolchains in an Amp orb.
 `amp orb services ensure` starts the Phoenix preview and returns its portal URL.

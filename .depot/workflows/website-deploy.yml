@@ -1,3 +1,10 @@
+# Depot CI Migration
+# Source: .github/workflows/website-deploy.yml
+#
+# Changes made:
+# - Rewrote .github/ path references to .depot/
+# - Changed GitHub runs-on labels to their Depot equivalents
+
 name: Website production deployment
 
 on:
@@ -5,7 +12,7 @@ on:
     branches: [main]
     paths:
       - 'website/**'
-      - '.github/workflows/website-deploy.yml'
+      - '.depot/workflows/website-deploy.yml'
   workflow_dispatch:
 
 # Avoid overlapping deploys racing to upload to the same storage zone.
@@ -18,7 +25,7 @@ permissions: {}
 jobs:
   deploy-site:
     name: Deploy site
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-latest # was: ubuntu-latest. Mapped standard GitHub runner to Depot equivalent.
     defaults:
       run:
         working-directory: website
@@ -51,7 +58,7 @@ jobs:
 
   deploy-edge-script:
     name: Deploy edge script
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-latest # was: ubuntu-latest. Mapped standard GitHub runner to Depot equivalent.
     permissions:
       contents: read
     steps:

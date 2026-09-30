@@ -1,10 +1,6 @@
+# Fork PR fallback: Depot CI does not yet support fork pull requests.
 name: Caddy module
 on:
-  push:
-    branches: [ "main" ]
-    paths:
-      - 'caddy-permissive-file-storage/**'
-      - '.github/workflows/caddy-deploy.yml'
   pull_request:
     branches: [ "**" ]
 
@@ -17,7 +13,9 @@ defaults:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    name: Fork PR / test
+    if: github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -29,36 +27,3 @@ jobs:
           cache-dependency-path: caddy-permissive-file-storage/go.sum
       - run: go install github.com/caddyserver/xcaddy/cmd/xcaddy@v0.4.6
       - run: bash test/e2e.sh
-
-  deploy:
-    needs: [test]
-    if: github.event_name == 'push'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    env:
-      REGISTRY: ghcr.io
-      IMAGE_NAME: shroud-email/caddy-permissive-file-storage
-    steps:
-      - uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3
-        with:
-          persist-credentials: false
-      - name: Log in to the container registry
-        uses: docker/login-action@465a07811f14bebb1938fbed4728c6a1ff8901fc # v2
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@818d4b7b91585d195f67373fd9cb0332e31a7175 # v4
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-      - name: Build container
-        uses: docker/build-push-action@1104d471370f9806843c095c1db02b5a90c5f8b6 # v3
-        with:
-          context: caddy-permissive-file-storage
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}

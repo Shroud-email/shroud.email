@@ -1,5 +1,10 @@
 # Monorepo migration
 
+The GitHub Actions cutover and validation below describe the original monorepo
+migration. Primary automation has since moved to Depot CI; use
+[Depot CI setup and cutover](depot-ci.md) for current workflow locations,
+credentials, required checks, and deployment activation.
+
 ## Source provenance
 
 All imports preserve original commits through unsquashed subtree merges. Each

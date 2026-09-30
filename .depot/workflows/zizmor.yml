@@ -1,7 +1,14 @@
-# Fork PR fallback: Depot CI does not yet support fork pull requests.
+# Depot CI Migration
+# Source: .github/workflows/zizmor.yml
+#
+# Changes made:
+# - Changed runs-on from "blacksmith-2vcpu-ubuntu-2404" to "depot-ubuntu-latest" in job "zizmor"
+
 name: GitHub Actions Security Analysis with zizmor 🌈
 
 on:
+  push:
+    branches: ["main"]
   pull_request:
     branches: ["**"]
 
@@ -9,9 +16,7 @@ permissions: {}
 
 jobs:
   zizmor:
-    name: Fork PR / zizmor
-    if: github.event.pull_request.head.repo.full_name != github.repository
-    runs-on: ubuntu-24.04
+    runs-on: depot-ubuntu-latest # was: blacksmith-2vcpu-ubuntu-2404. Nonstandard GitHub runner label detected, changed to default Depot runner.
     permissions:
       contents: read
       actions: read
@@ -24,6 +29,7 @@ jobs:
       - name: Run zizmor 🌈
         uses: zizmorcore/zizmor-action@5f14fd08f7cf1cb1609c1e344975f152c7ee938d # v0.5.6
         with:
+          # Directory discovery only recognizes .github; list Depot YAML explicitly.
           inputs: .depot/workflows/*.yml .github/workflows/*.yml
           advanced-security: false
           annotations: true

@@ -1,10 +1,17 @@
+# Depot CI Migration
+# Source: .github/workflows/release-please.yml
+#
+# Changes made:
+# - Rewrote .github/ path references to .depot/
+# - Changed runs-on from "blacksmith-2vcpu-ubuntu-2404" to "depot-ubuntu-latest" in job "release-please"
+
 on:
   push:
     branches:
       - main
     paths:
       - 'shroud.email/**'
-      - '.github/workflows/release-please.yml'
+      - '.depot/workflows/release-please.yml'
       - 'release-please-config.json'
       - '.release-please-manifest.json'
 
@@ -16,7 +23,7 @@ permissions:
 
 jobs:
   release-please:
-    runs-on: blacksmith-2vcpu-ubuntu-2404
+    runs-on: depot-ubuntu-latest # was: blacksmith-2vcpu-ubuntu-2404. Nonstandard GitHub runner label detected, changed to default Depot runner.
     steps:
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         with:

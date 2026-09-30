@@ -1,0 +1,70 @@
+# Depot CI Migration
+# Source: .github/workflows/caddy-deploy.yml
+#
+# Changes made:
+# - Rewrote .github/ path references to .depot/
+# - Changed GitHub runs-on labels to their Depot equivalents
+
+name: Caddy module
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'caddy-permissive-file-storage/**'
+      - '.depot/workflows/caddy-deploy.yml'
+  pull_request:
+    branches: [ "**" ]
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: caddy-permissive-file-storage
+
+jobs:
+  test:
+    runs-on: depot-ubuntu-latest # was: ubuntu-latest. Mapped standard GitHub runner to Depot equivalent.
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: '1.24'
+          cache: true
+          cache-dependency-path: caddy-permissive-file-storage/go.sum
+      - run: go install github.com/caddyserver/xcaddy/cmd/xcaddy@v0.4.6
+      - run: bash test/e2e.sh
+
+  deploy:
+    needs: [test]
+    if: github.event_name == 'push'
+    runs-on: depot-ubuntu-latest # was: ubuntu-latest. Mapped standard GitHub runner to Depot equivalent.
+    permissions:
+      contents: read
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_NAME: shroud-email/caddy-permissive-file-storage
+    steps:
+      - uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3
+        with:
+          persist-credentials: false
+      - name: Log in to the container registry
+        uses: docker/login-action@465a07811f14bebb1938fbed4728c6a1ff8901fc # v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ vars.GHCR_USERNAME }}
+          password: ${{ secrets.GHCR_TOKEN }}
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@818d4b7b91585d195f67373fd9cb0332e31a7175 # v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+      - name: Build container
+        uses: docker/build-push-action@1104d471370f9806843c095c1db02b5a90c5f8b6 # v3
+        with:
+          context: caddy-permissive-file-storage
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}

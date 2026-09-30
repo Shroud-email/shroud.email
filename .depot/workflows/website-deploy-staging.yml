@@ -1,3 +1,9 @@
+# Depot CI Migration
+# Source: .github/workflows/website-deploy-staging.yml
+#
+# Changes made:
+# - Changed GitHub runs-on labels to their Depot equivalents
+
 name: Website staging deployment
 
 # Single workflow that deploys EVERYTHING needed to test the staging site:
@@ -34,7 +40,7 @@ permissions: {}
 jobs:
   deploy-site:
     name: Deploy site
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-latest # was: ubuntu-latest. Mapped standard GitHub runner to Depot equivalent.
     defaults:
       run:
         working-directory: website
@@ -69,7 +75,7 @@ jobs:
 
   deploy-edge-script:
     name: Deploy edge script
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-latest # was: ubuntu-latest. Mapped standard GitHub runner to Depot equivalent.
     permissions:
       contents: read
     steps:

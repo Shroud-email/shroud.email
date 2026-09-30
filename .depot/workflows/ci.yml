@@ -1,7 +1,15 @@
-# Fork PR fallback: Depot CI does not yet support fork pull requests.
+# Depot CI Migration
+# Source: .github/workflows/ci.yml
+#
+# Changes made:
+# - Changed runs-on from "blacksmith-2vcpu-ubuntu-2404" to "depot-ubuntu-latest" in job "test"
+# - Kept a 4-CPU sandbox for the production image E2E job
+
 name: CI
 on:
   pull_request:
+  push:
+    branches: ["main"]
 
 permissions:
   contents: read
@@ -12,9 +20,7 @@ defaults:
 
 jobs:
   test:
-    name: Fork PR / test
-    if: github.event.pull_request.head.repo.full_name != github.repository
-    runs-on: ubuntu-24.04
+    runs-on: depot-ubuntu-latest # was: blacksmith-2vcpu-ubuntu-2404. Nonstandard GitHub runner label detected, changed to default Depot runner.
     env:
       MIX_ENV: test
       LOOPS_API_KEY: secret
@@ -72,9 +78,8 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
 
   image-e2e:
-    name: Fork PR / Production image E2E
-    if: github.event.pull_request.head.repo.full_name != github.repository
-    runs-on: ubuntu-24.04
+    name: Production image E2E
+    runs-on: depot-ubuntu-24.04-4
     permissions:
       contents: read
     steps:

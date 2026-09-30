@@ -1,16 +1,26 @@
-# Fork PR fallback: Depot CI does not yet support fork pull requests.
+# Depot CI Migration
+# Source: .github/workflows/hosting-build.yml
+#
+# Changes made:
+# - Rewrote .github/ path references to .depot/
+# - Changed GitHub runs-on labels to their Depot equivalents
+
 name: Hosting images
 on:
   pull_request:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'hosting/**'
+      - 'caddy-permissive-file-storage/**'
+      - '.depot/workflows/hosting-build.yml'
 
 permissions:
   contents: read
 
 jobs:
   build-haraka:
-    name: Fork PR / build-haraka
-    if: github.event.pull_request.head.repo.full_name != github.repository
-    runs-on: ubuntu-24.04
+    runs-on: depot-ubuntu-latest # was: ubuntu-latest. Mapped standard GitHub runner to Depot equivalent.
     env:
       REGISTRY: ghcr.io
       IMAGE_NAME: shroud-email/haraka
@@ -20,6 +30,13 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+      - name: Log in to the container registry
+        if: github.event_name == 'push'
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ vars.GHCR_USERNAME }}
+          password: ${{ secrets.GHCR_TOKEN }}
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf # v6.0.0
@@ -31,16 +48,15 @@ jobs:
         uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
         with:
           context: hosting/haraka
-          push: false
+          push: ${{ github.event_name == 'push' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=hosting-haraka
           cache-to: type=gha,mode=max,scope=hosting-haraka
 
   build-caddy:
-    name: Fork PR / Build Caddy with local storage module
-    if: github.event.pull_request.head.repo.full_name != github.repository
-    runs-on: ubuntu-24.04
+    name: Build Caddy with local storage module
+    runs-on: depot-ubuntu-latest # was: ubuntu-latest. Mapped standard GitHub runner to Depot equivalent.
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:

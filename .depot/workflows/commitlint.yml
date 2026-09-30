@@ -1,4 +1,9 @@
-# Fork PR fallback: Depot CI does not yet support fork pull requests.
+# Depot CI Migration
+# Source: .github/workflows/commitlint.yml
+#
+# Changes made:
+# - Changed runs-on from "blacksmith-2vcpu-ubuntu-2404" to "depot-ubuntu-latest" in job "commitlint"
+
 name: Commitlint
 on:
   pull_request:
@@ -9,9 +14,7 @@ permissions:
 
 jobs:
   commitlint:
-    name: Fork PR / commitlint
-    if: github.event.pull_request.head.repo.full_name != github.repository
-    runs-on: ubuntu-24.04
+    runs-on: depot-ubuntu-latest # was: blacksmith-2vcpu-ubuntu-2404. Nonstandard GitHub runner label detected, changed to default Depot runner.
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
