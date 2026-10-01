@@ -92,6 +92,7 @@ export async function protectStagingPricing(apiKey, fetch = globalThis.fetch) {
   }
   const description = "shroud: do not cache geo-localized pricing";
   const existing = (pull.EdgeRules ?? []).find((r) => r.Description === description);
+  if (existing && !existing.Guid) throw new Error("Existing pricing rule has no GUID; refusing to create a duplicate");
   const rule = {
     ...(existing?.Guid ? { Guid: existing.Guid } : {}),
     Description: description,

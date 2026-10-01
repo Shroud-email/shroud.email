@@ -113,7 +113,12 @@ in place. Before deployment, the workflow upserts a staging-only rule to disable
 edge and browser caching for `/pricing`, `/pricing/`, and `/pricing/index.html`
 (including query strings), with a `Cache-Control: no-store` response header.
 The deployment then purges existing cached pricing. Other paths and asset caching
-are unchanged. Replacing that script is separately opt-in and only happens after site
+are unchanged. The named pricing rule is workflow-owned: subsequent runs restore
+its policy by GUID and refuse to duplicate an existing rule without a GUID.
+After publication, the workflow polls pricing for `no-store` before reporting
+success. This verifies the runner's CDN location, not every POP or country.
+If the check fails, publication has already happened; no automatic rollback occurs.
+Replacing that script is separately opt-in and only happens after site
 deployment succeeds. Old deploys/root files are not pruned by this workflow.
 `deployments: false` disables GitHub deployment records only; it does not disable
 Bunny's versioned uploads, publication, or rollback support.

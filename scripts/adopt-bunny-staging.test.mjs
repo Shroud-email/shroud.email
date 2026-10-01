@@ -139,6 +139,14 @@ test("pricing rule is updated by GUID without replacing unrelated rules", async 
   assert.equal(calls.length, 2);
 });
 
+test("pricing protection refuses an existing rule without a GUID before any writes", async () => {
+  const { fetch, calls } = mockBunny({ edgeRules: [
+    { Description: "shroud: do not cache geo-localized pricing" },
+  ] });
+  await assert.rejects(protectStagingPricing("fake-key", fetch), /no GUID/);
+  assert.ok(calls.every((c) => c.method === "GET"));
+});
+
 test("pricing protection refuses a production storage ID before any writes", async () => {
   const { fetch, calls } = mockBunny({ storageId: 1604565 });
   await assert.rejects(protectStagingPricing("fake-key", fetch), /refusing pricing configuration/);

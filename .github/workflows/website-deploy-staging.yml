@@ -83,6 +83,19 @@ jobs:
           deployments: "false"
           environment: staging
 
+      - name: Verify pricing cache protection after publication
+        run: |
+          for attempt in {1..12}; do
+            if headers="$(curl --fail --silent --show-error --head --max-time 15 https://shroud-email-website-staging.b-cdn.net/pricing/)" &&
+              printf '%s\n' "$headers" | grep -Eiq '^cache-control:.*no-store'; then
+              echo "Pricing returns no-store at the workflow runner's CDN location."
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Pricing cache protection not confirmed; publication already occurred. Check staging before retrying."
+          exit 1
+
   deploy-edge-script:
     name: Deploy edge script
     needs: deploy-site
