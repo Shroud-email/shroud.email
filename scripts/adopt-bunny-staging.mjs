@@ -103,9 +103,9 @@ export async function protectStagingPricing(apiKey, fetch = globalThis.fetch) {
       { ActionType: 5, ActionParameter1: "Cache-Control", ActionParameter2: "no-store" },
     ],
     TriggerMatchingType: 0,
+    // Bunny URL matching ignores query strings; each trigger allows five patterns.
     Triggers: [{ Type: 0, PatternMatchingType: 0, PatternMatches: [
       "*/pricing", "*/pricing/", "*/pricing/index.html",
-      "*/pricing?*", "*/pricing/?*", "*/pricing/index.html?*",
     ] }],
   };
   const saved = await fetch(`https://api.bunny.net/pullzone/${PULL_ID}/edgerules/addOrUpdate`, {

@@ -20,6 +20,10 @@ function mockBunny({ metadata, storageId = 1687847, protectionFails = false, con
       return Response.json({ Id: 6214167, Name: state.name, StorageZoneId: storageId, OriginType: 2, EdgeRules: edgeRules });
     }
     if (url === "https://api.bunny.net/pullzone/6214167/edgerules/addOrUpdate" && method === "POST") {
+      const rule = JSON.parse(options.body);
+      if (rule.Triggers.some((trigger) => trigger.PatternMatches.length > 5)) {
+        return new Response("Too many patterns per trigger", { status: 400 });
+      }
       return new Response("");
     }
     if (url.startsWith("https://shroud-email-website-staging.b-cdn.net/_bunny/site.json?") && method === "GET") {
@@ -119,7 +123,6 @@ test("pricing protection bypasses edge and browser cache only on pricing page UR
   ]);
   assert.deepEqual(rule.Triggers[0].PatternMatches, [
     "*/pricing", "*/pricing/", "*/pricing/index.html",
-    "*/pricing?*", "*/pricing/?*", "*/pricing/index.html?*",
   ]);
   assert.equal(rule.Triggers[0].PatternMatchingType, 0);
   assert.equal(rule.Triggers[0].Type, 0);
