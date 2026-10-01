@@ -23,7 +23,7 @@ defmodule ShroudWeb.Plugs.RateLimit do
 
       {:deny, retry_after} ->
         conn
-        |> put_resp_header("retry-after", Integer.to_string(div(retry_after + 999, 1000)))
+        |> put_resp_header("retry-after", Integer.to_string(Integer.ceil_div(retry_after, 1000)))
         |> put_resp_content_type("text/plain")
         |> send_resp(429, "Too many requests. Please try again later.")
         |> halt()
