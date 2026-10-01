@@ -84,9 +84,10 @@ the official `BunnyWay/actions/deploy-site` action (0.1.1, SHA-pinned) with CLI
 This is an experimental adoption of existing zones, not an officially documented
 import procedure. The small `scripts/adopt-bunny-staging.mjs` bootstrap validates
 the pair, adds the CLI's state-protection rule, verifies a public 403, and writes
-version-2 `_bunny/site.json` only when it is absent and initialization is explicitly
-requested. It never overwrites existing metadata or changes cache settings,
-middleware attachment, domains, or existing root files.
+version-2 `_bunny/site.json` only when initialization is explicitly requested and
+both reads find it absent. This is not an atomic create-if-absent operation:
+do not run another metadata writer concurrently. Initialization does not change
+middleware attachment, domains, root files, or zone-wide cache overrides.
 
 To test before merging, dispatch the workflow **from this PR branch**, not `main`:
 
@@ -108,14 +109,24 @@ the protection rule may remain and the same workflow can be retried.
 **Running it changes staging:** the official action uploads under `deploys/<id>/`,
 switches staging routing, configures its custom 404, adds asset caching rules, and
 purges its CDN cache. Existing cache overrides and the attached Edge script remain
-in place. Replacing that script is separately opt-in and only happens after site
+in place. Before deployment, the workflow upserts a staging-only rule to disable
+edge and browser caching for `/pricing`, `/pricing/`, and `/pricing/index.html`
+(including query strings), with a `Cache-Control: no-store` response header.
+The deployment then purges existing cached pricing. Other paths and asset caching
+are unchanged. Replacing that script is separately opt-in and only happens after site
 deployment succeeds. Old deploys/root files are not pruned by this workflow.
+`deployments: false` disables GitHub deployment records only; it does not disable
+Bunny's versioned uploads, publication, or rollback support.
 
 Check the [staging site](https://shroud-email-website-staging.b-cdn.net/), docs,
 assets, missing-page behavior, `X-Bunny-Deploy`, and pricing from actual UK and
-non-UK requests. HTML should retain `Cache-Control: no-store` and prices must not
+non-UK requests. Pricing should return `Cache-Control: no-store` and prices must not
 leak across countries. A client-supplied country header alone is not proof of geo
 isolation. Do not migrate production until these checks pass.
+After the first cache-protection deployment, test in a fresh private window or
+clear the browser's staging-site cache; a new response header cannot invalidate
+an old browser entry cached for 30 days. Subsequent deployments should continue
+to bypass pricing caches.
 
 After adoption, **do not run an older staging workflow using the clean-delete
 uploader**: it would delete Sites metadata and versioned deployments. The first

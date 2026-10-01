@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { adoptStaging } from "./adopt-bunny-staging.mjs";
+import { adoptStaging, protectStagingPricing } from "./adopt-bunny-staging.mjs";
 
 const state = {
   version: 2, name: "shroud-email-website-staging", storageZoneId: 1687847,
   pullZoneId: 6214167, deploys: [],
 };
 
-function mockBunny({ metadata, storageId = 1687847, protectionFails = false, concurrentState = false } = {}) {
+function mockBunny({ metadata, storageId = 1687847, protectionFails = false, concurrentState = false, edgeRules = [] } = {}) {
   const calls = [];
   let reads = 0;
   const fetch = async (url, options = {}) => {
@@ -17,7 +17,7 @@ function mockBunny({ metadata, storageId = 1687847, protectionFails = false, con
       return Response.json({ Id: 1687847, Name: state.name, Region: "UK", Password: "fake-storage-password" });
     }
     if (url === "https://api.bunny.net/pullzone/6214167" && method === "GET") {
-      return Response.json({ Id: 6214167, Name: state.name, StorageZoneId: storageId, OriginType: 2, EdgeRules: [] });
+      return Response.json({ Id: 6214167, Name: state.name, StorageZoneId: storageId, OriginType: 2, EdgeRules: edgeRules });
     }
     if (url === "https://api.bunny.net/pullzone/6214167/edgerules/addOrUpdate" && method === "POST") {
       return new Response("");
@@ -85,4 +85,59 @@ test("metadata appearing during initialization is not overwritten", async () => 
   const { fetch, calls } = mockBunny({ concurrentState: true });
   await assert.rejects(adoptStaging("fake-key", true, fetch), /changed during initialization/);
   assert.ok(!calls.some((c) => c.method === "PUT"));
+});
+
+const protection = {
+  Description: "bunny sites: block site state access", Enabled: true,
+  ActionType: 4, TriggerMatchingType: 0,
+  Triggers: [{ Type: 0, PatternMatches: ["*/_bunny/*"], PatternMatchingType: 0 }],
+};
+
+test("conflicting state-protection rule is never overwritten", async () => {
+  const { fetch, calls } = mockBunny({ edgeRules: [{ ...protection, ActionType: 5 }] });
+  await assert.rejects(adoptStaging("fake-key", true, fetch), /state-protection rule differs/);
+  assert.ok(calls.every((c) => c.method === "GET"));
+});
+
+test("matching protection rule is reused without a rule write", async () => {
+  const { fetch, calls } = mockBunny({ edgeRules: [protection] });
+  await adoptStaging("fake-key", true, fetch);
+  assert.ok(!calls.some((c) => c.method === "POST"));
+  assert.deepEqual(calls.find((c) => c.method === "PUT").body, state);
+});
+
+test("pricing protection bypasses edge and browser cache only on pricing page URLs", async () => {
+  const { fetch, calls } = mockBunny();
+  await protectStagingPricing("fake-key", fetch);
+  assert.deepEqual(calls.map((c) => c.method), ["GET", "POST"]);
+  const rule = calls[1].body;
+  assert.equal(rule.ActionType, 3);
+  assert.equal(rule.ActionParameter1, "0");
+  assert.deepEqual(rule.ExtraActions, [
+    { ActionType: 16, ActionParameter1: "0" },
+    { ActionType: 5, ActionParameter1: "Cache-Control", ActionParameter2: "no-store" },
+  ]);
+  assert.deepEqual(rule.Triggers[0].PatternMatches, [
+    "*/pricing", "*/pricing/", "*/pricing/index.html",
+    "*/pricing?*", "*/pricing/?*", "*/pricing/index.html?*",
+  ]);
+  assert.equal(rule.Triggers[0].PatternMatchingType, 0);
+  assert.equal(rule.Triggers[0].Type, 0);
+  assert.equal(rule.Enabled, true);
+});
+
+test("pricing rule is updated by GUID without replacing unrelated rules", async () => {
+  const { fetch, calls } = mockBunny({ edgeRules: [
+    { Description: "bunny sites: serve the published deploy", Guid: "routing-guid" },
+    { Description: "shroud: do not cache geo-localized pricing", Guid: "pricing-guid" },
+  ] });
+  await protectStagingPricing("fake-key", fetch);
+  assert.equal(calls[1].body.Guid, "pricing-guid");
+  assert.equal(calls.length, 2);
+});
+
+test("pricing protection refuses a production storage ID before any writes", async () => {
+  const { fetch, calls } = mockBunny({ storageId: 1604565 });
+  await assert.rejects(protectStagingPricing("fake-key", fetch), /refusing pricing configuration/);
+  assert.ok(calls.every((c) => c.method === "GET"));
 });

@@ -1,5 +1,6 @@
 // One-time bootstrap for the existing staging pair, not a site uploader.
-// Never creates/deletes zones, changes cache settings, or detaches middleware.
+// Never creates/deletes zones or detaches middleware. Pricing protection is
+// separately invoked by the workflow before deployment and cache purge.
 import { pathToFileURL } from "node:url";
 import { setTimeout } from "node:timers/promises";
 
@@ -78,6 +79,43 @@ export async function adoptStaging(apiKey, initialize, fetch = globalThis.fetch)
   console.log("Initialized existing staging pair; cache settings, middleware, and root files unchanged.");
 }
 
+// Origin middleware only runs on cache misses. Never share a localized pricing
+// response across countries; match the page, not its JS/CSS/image assets.
+export async function protectStagingPricing(apiKey, fetch = globalThis.fetch) {
+  if (!apiKey) throw new Error("Missing BUNNY_API_KEY");
+  const headers = { AccessKey: apiKey, "Content-Type": "application/json" };
+  const response = await fetch(`https://api.bunny.net/pullzone/${PULL_ID}`, { headers });
+  if (!response.ok) throw new Error(`Pricing zone read: HTTP ${response.status}`);
+  const pull = await response.json();
+  if (pull.Id !== PULL_ID || pull.Name !== NAME || pull.StorageZoneId !== STORAGE_ID || pull.OriginType !== 2) {
+    throw new Error("Existing staging resource pair does not match; refusing pricing configuration");
+  }
+  const description = "shroud: do not cache geo-localized pricing";
+  const existing = (pull.EdgeRules ?? []).find((r) => r.Description === description);
+  const rule = {
+    ...(existing?.Guid ? { Guid: existing.Guid } : {}),
+    Description: description,
+    Enabled: true,
+    ActionType: 3,
+    ActionParameter1: "0",
+    ExtraActions: [
+      { ActionType: 16, ActionParameter1: "0" },
+      { ActionType: 5, ActionParameter1: "Cache-Control", ActionParameter2: "no-store" },
+    ],
+    TriggerMatchingType: 0,
+    Triggers: [{ Type: 0, PatternMatchingType: 0, PatternMatches: [
+      "*/pricing", "*/pricing/", "*/pricing/index.html",
+      "*/pricing?*", "*/pricing/?*", "*/pricing/index.html?*",
+    ] }],
+  };
+  const saved = await fetch(`https://api.bunny.net/pullzone/${PULL_ID}/edgerules/addOrUpdate`, {
+    method: "POST", headers, body: JSON.stringify(rule),
+  });
+  if (!saved.ok) throw new Error(`Pricing rule save: HTTP ${saved.status}`);
+  console.log("Staging pricing cache protection configured; deployment must follow to purge old CDN entries.");
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   await adoptStaging(process.env.BUNNY_API_KEY, process.env.INITIALIZE_SITES === "true");
+  if (process.env.PROTECT_PRICING === "true") await protectStagingPricing(process.env.BUNNY_API_KEY);
 }
