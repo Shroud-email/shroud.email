@@ -56,11 +56,15 @@ jobs:
           cache: pnpm
           cache-dependency-path: website/pnpm-lock.yaml
 
+      - name: Install deployment tooling
+        working-directory: .
+        run: npm ci --ignore-scripts
+
       - run: pnpm install --frozen-lockfile
 
       - run: pnpm run build
 
-      - run: node ../scripts/deploy-bunny.mjs
+      - run: ../node_modules/.bin/tsx ../scripts/deploy-bunny.ts
         env:
           BUNNY_STORAGE_ZONE: shroud-email-website-staging
           BUNNY_STORAGE_PASSWORD: ${{ secrets.WEBSITE_BUNNY_STAGING_STORAGE_PASSWORD }}

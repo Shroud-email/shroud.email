@@ -18,9 +18,16 @@ own runtime configuration and dependencies; this is not a shared npm workspace.
 Install [mise](https://mise.jdx.dev/), trust the root and project `mise.toml` files,
 and run `mise install` in the project you are working on.
 
-Run `npm ci` at the root to install commitlint and Git hooks. App development
-instructions are in [shroud.email/README.md](shroud.email/README.md), and agent
-guidance starts in [AGENTS.md](AGENTS.md).
+Run `npm ci` at the root to install commitlint, Git hooks, and the shared static
+site deployment tooling. Run `npm run typecheck:scripts` and `npm run test:scripts`
+to check the TypeScript publisher; `npm test` also runs the app's JavaScript tests.
+The website workflows execute `scripts/deploy-bunny.ts` with `tsx`, publishing
+the marketing site and integrated docs together. From the root,
+`npm run deploy:bunny` publishes `website/dist`. See the script header for
+required credentials and staging-zone configuration.
+
+App development instructions are in [shroud.email/README.md](shroud.email/README.md),
+and agent guidance starts in [AGENTS.md](AGENTS.md).
 
 ## Automation and development orbs
 
