@@ -10,9 +10,6 @@
 //   BUNNY_API_KEY           - account API key (for cache purge + region lookup)
 //
 // Optional env vars:
-//   BUNNY_DIST              - build directory, relative to the working directory.
-//                            Defaults to website/dist/. Custom builds
-//                            require an explicit BUNNY_STORAGE_ZONE.
 //   BUNNY_STORAGE_ZONE      - storage zone name (default: shroud-email-website).
 //                            Set to shroud-email-website-staging for staging deploys.
 //   BUNNY_STORAGE_ENDPOINT  - storage endpoint for the zone's region. If set,
@@ -22,7 +19,7 @@
 //                            (e.g. ny.storage.bunnycdn.com for New York).
 
 import { readFile, readdir } from "node:fs/promises";
-import { join, relative, extname, resolve } from "node:path";
+import { join, relative, extname } from "node:path";
 
 // Map bunny storage region codes to their HTTP API endpoints. The default
 // (Falkenstein / Frankfurt, DE) has no prefix.
@@ -40,13 +37,7 @@ const REGION_ENDPOINTS = {
 };
 
 const ROOT = new URL("../website/", import.meta.url).pathname;
-
-// Preserve the marketing site's default; other sites supply their build path.
-const DIST = process.env.BUNNY_DIST ? resolve(process.env.BUNNY_DIST) : join(ROOT, "dist");
-
-if (process.env.BUNNY_DIST && !process.env.BUNNY_STORAGE_ZONE) {
-  throw new Error("Custom BUNNY_DIST requires an explicit BUNNY_STORAGE_ZONE");
-}
+const DIST = join(ROOT, "dist");
 
 // Storage zone name. Defaults to the production zone; override with
 // BUNNY_STORAGE_ZONE for staging (e.g. shroud-email-website-staging).

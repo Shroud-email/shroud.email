@@ -1,5 +1,5 @@
 import type { APIRoute } from "astro";
-import spec from "../../../shroud.email/openapi.json?raw";
+import spec from "../../../../shroud.email/openapi.json?raw";
 
 export const GET: APIRoute = () =>
   new Response(spec, {

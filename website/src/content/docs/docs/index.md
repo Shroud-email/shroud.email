@@ -5,7 +5,7 @@ description: Product and technical documentation for Shroud.email.
 
 Welcome to the documentation for Shroud.email.
 
-Shroud.email is a libre, open-source solution for email privacy. We recommend
+Shroud.email is a libre, open-source solution for email privacy. We recommend 
 [signing up for the free plan](https://app.shroud.email/users/register) to try it out!
 
 If you'd like to build something using our API, or if you'd like to self-host, this is the place for you.

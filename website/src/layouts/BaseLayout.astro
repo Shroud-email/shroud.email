@@ -3,6 +3,7 @@ import "../styles/tailwind.css";
 import { SEO } from "astro-seo";
 import { OPEN_GRAPH, SITE } from "../config";
 import PostHog from "../../../shared/components/PostHog.astro";
+import Chatwoot from "../components/Chatwoot.astro";
 
 export interface Props {
     title?: string;
@@ -81,47 +82,7 @@ const imageAlt = OPEN_GRAPH.image.alt;
         </div>
 
         <PostHog />
-
-        <script is:inline>
-            function loadChatwoot() {
-                if (document.querySelector("script[data-chatwoot-sdk]")) return;
-
-                window.chatwootSettings = {
-                    availableMessage: "Send us a message.",
-                    unavailableMessage: "Send us a message.",
-                };
-
-                var baseUrl = "https://support.shroud.email";
-                var sdk = document.createElement("script");
-                var firstScript = document.getElementsByTagName("script")[0];
-                sdk.src = baseUrl + "/packs/js/sdk.js";
-                sdk.async = true;
-                sdk.dataset.chatwootSdk = "";
-                firstScript.parentNode.insertBefore(sdk, firstScript);
-                sdk.onload = function () {
-                    window.chatwootSDK.run({
-                        websiteToken: "7j9ZdJCJR5ZGaYkCMN2EvAhp",
-                        baseUrl: baseUrl,
-                    });
-                };
-            }
-
-            function scheduleWhenIdle() {
-                if ("requestIdleCallback" in window) {
-                    window.requestIdleCallback(loadChatwoot);
-                } else {
-                    window.setTimeout(loadChatwoot, 0);
-                }
-            }
-
-            if (document.readyState === "complete") {
-                scheduleWhenIdle();
-            } else {
-                window.addEventListener("load", scheduleWhenIdle, {
-                    once: true,
-                });
-            }
-        </script>
+        <Chatwoot />
 
         <script>
             // Scroll-reveal: toggle `is-visible` on .fade-in elements as they enter

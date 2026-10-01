@@ -3,7 +3,7 @@ title: Authentication
 description: Authenticate API requests and protect your account credentials.
 ---
 
-The API uses bearer tokens to authorize access to your Shroud.email account. Obtain a token using the [token-creation operation](/api/operations/createtoken/) in the API reference, then include it in the `Authorization` header when calling authenticated operations:
+The API uses bearer tokens to authorize access to your Shroud.email account. Obtain a token using the [token-creation operation](/docs/api/operations/createtoken/) in the API reference, then include it in the `Authorization` header when calling authenticated operations:
 
 ```http
 Authorization: Bearer YOUR_API_TOKEN
