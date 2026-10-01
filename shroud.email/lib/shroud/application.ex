@@ -15,7 +15,7 @@ defmodule Shroud.Application do
       # Start the PubSub system
       {Phoenix.PubSub, name: Shroud.PubSub},
       # Start rate limiting before the Endpoint can accept requests.
-      {Shroud.RateLimit, key_older_than: :timer.minutes(1)},
+      {Shroud.RateLimit, key_older_than: :timer.minutes(15)},
       # Start the Endpoint (http/https)
       ShroudWeb.Endpoint,
       {Oban, Application.fetch_env!(:shroud, Oban)},
