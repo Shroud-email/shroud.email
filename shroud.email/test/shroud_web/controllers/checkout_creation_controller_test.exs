@@ -47,9 +47,16 @@ defmodule ShroudWeb.CheckoutCreationControllerTest do
       |> Plug.Conn.send_resp(201, Jason.encode!(%{"data" => %{"id" => "txn_123"}}))
     end)
 
-    conn = conn |> log_in_user(user) |> post(~p"/checkout/paddle")
+    conn =
+      conn
+      |> log_in_user(user)
+      |> post(~p"/checkout/paddle", %{"email" => "someone-else@example.com"})
 
-    assert json_response(conn, 201) == %{"transaction_id" => "txn_123"}
+    assert json_response(conn, 201) == %{
+             "transaction_id" => "txn_123",
+             "customer" => %{"email" => user.email}
+           }
+
     assert Repo.reload!(user).paddle_checkout_transaction_id == "txn_123"
   end
 
@@ -80,7 +87,10 @@ defmodule ShroudWeb.CheckoutCreationControllerTest do
 
     conn = conn |> log_in_user(user) |> post(~p"/checkout/paddle")
 
-    assert json_response(conn, 201) == %{"transaction_id" => "txn_returning"}
+    assert json_response(conn, 201) == %{
+             "transaction_id" => "txn_returning",
+             "customer" => %{"id" => "ctm_returning"}
+           }
   end
 
   test "does not let an active user create another subscription", %{conn: conn} do
@@ -116,8 +126,9 @@ defmodule ShroudWeb.CheckoutCreationControllerTest do
 
     second_conn = build_conn() |> log_in_user(user) |> post(~p"/checkout/paddle")
 
-    assert json_response(first_conn, 201) == %{"transaction_id" => "txn_pending"}
-    assert json_response(second_conn, 201) == %{"transaction_id" => "txn_pending"}
+    expected = %{"transaction_id" => "txn_pending", "customer" => %{"email" => user.email}}
+    assert json_response(first_conn, 201) == expected
+    assert json_response(second_conn, 201) == expected
   end
 
   test "replaces a canceled pending checkout", %{conn: conn, bypass: bypass} do
@@ -149,7 +160,11 @@ defmodule ShroudWeb.CheckoutCreationControllerTest do
 
     conn = conn |> log_in_user(user) |> post(~p"/checkout/paddle")
 
-    assert json_response(conn, 201) == %{"transaction_id" => "txn_new"}
+    assert json_response(conn, 201) == %{
+             "transaction_id" => "txn_new",
+             "customer" => %{"email" => user.email}
+           }
+
     assert Repo.reload!(user).paddle_checkout_transaction_id == "txn_new"
     assert Repo.reload!(user).paddle_checkout_price_id == "pri_test_yearly"
   end

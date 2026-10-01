@@ -46,9 +46,16 @@ defmodule ShroudWeb.CheckoutController do
                Paddle.get_transaction(transaction_id)
              end
            ) do
+      user = conn.assigns.current_user
+
+      customer =
+        if user.paddle_customer_id,
+          do: %{id: user.paddle_customer_id},
+          else: %{email: user.email}
+
       conn
       |> put_status(:created)
-      |> json(%{transaction_id: transaction_id})
+      |> json(%{transaction_id: transaction_id, customer: customer})
     else
       {:error, :subscription_exists} ->
         conn

@@ -117,13 +117,14 @@ export function setupPaddleCheckout({
 
       if (!response.ok) throw new Error(`checkout request failed: ${response.status}`);
 
-      const { transaction_id: transactionId } = await response.json();
+      const { transaction_id: transactionId, customer } = await response.json();
       if (!transactionId) throw new Error("checkout response omitted transaction_id");
       if (disposed) return;
 
       paddle.Checkout.open({
         transactionId,
-        settings: { displayMode: "overlay", theme: "light", locale: "en" },
+        customer,
+        settings: { displayMode: "overlay", theme: "light", locale: "en", allowLogout: false },
       });
 
       clickedButton.textContent = "Upgrade";
