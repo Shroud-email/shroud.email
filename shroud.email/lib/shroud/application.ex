@@ -14,6 +14,8 @@ defmodule Shroud.Application do
       ShroudWeb.Telemetry,
       # Start the PubSub system
       {Phoenix.PubSub, name: Shroud.PubSub},
+      # Start rate limiting before the Endpoint can accept requests.
+      Shroud.RateLimit,
       # Start the Endpoint (http/https)
       ShroudWeb.Endpoint,
       {Oban, Application.fetch_env!(:shroud, Oban)},
