@@ -171,7 +171,13 @@ test("an early checkout request waits for Paddle initialization", async () => {
       resolvePaddle = resolve;
     });
   const window = {
-    fetch: async () => ({ ok: true, json: async () => ({ transaction_id: "txn_123" }) }),
+    fetch: async () => ({
+      ok: true,
+      json: async () => ({
+        transaction_id: "txn_123",
+        customer: { email: "account@example.com" },
+      }),
+    }),
     location: { href: "" },
   };
 
@@ -187,9 +193,36 @@ test("an early checkout request waits for Paddle initialization", async () => {
   assert.deepEqual(opened, [
     {
       transactionId: "txn_123",
-      settings: { displayMode: "overlay", theme: "light", locale: "en" },
+      customer: { email: "account@example.com" },
+      settings: { displayMode: "overlay", theme: "light", locale: "en", allowLogout: false },
     },
   ]);
+});
+
+test("prefills returning customers by ID instead of passing an email", async () => {
+  const { button, document, listeners } = fixture();
+  const opened = [];
+
+  await setupPaddleCheckout({
+    document,
+    window: {
+      fetch: async () => ({
+        ok: true,
+        json: async () => ({
+          transaction_id: "txn_returning",
+          customer: { id: "ctm_returning" },
+        }),
+      }),
+    },
+    initializePaddle: async () => ({ Checkout: { open: (options) => opened.push(options) } }),
+  });
+  await listeners.click({ target: button });
+
+  assert.deepEqual(opened, [{
+    transactionId: "txn_returning",
+    customer: { id: "ctm_returning" },
+    settings: { displayMode: "overlay", theme: "light", locale: "en", allowLogout: false },
+  }]);
 });
 
 test("missing configuration leaves checkout unavailable", async () => {
