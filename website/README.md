@@ -74,6 +74,56 @@ Keep operation IDs stable: the plugin derives URLs from their lowercase values.
 The existing controller tests check responses against the documented schemas.
 Documentation annotations do not alter runtime request validation.
 
+## Official Bunny action: staging trial
+
+Production is unchanged. The manual **Website staging deployment** workflow uses
+the official `BunnyWay/actions/deploy-site` action (0.1.1, SHA-pinned) with CLI
+0.18.0. It reuses Storage Zone **1687847** and Pull Zone **6214167**, both named
+`shroud-email-website-staging`; it does not create replacement zones.
+
+This is an experimental adoption of existing zones, not an officially documented
+import procedure. The small `scripts/adopt-bunny-staging.mjs` bootstrap validates
+the pair, adds the CLI's state-protection rule, verifies a public 403, and writes
+version-2 `_bunny/site.json` only when it is absent and initialization is explicitly
+requested. It never overwrites existing metadata or changes cache settings,
+middleware attachment, domains, or existing root files.
+
+To test before merging, dispatch the workflow **from this PR branch**, not `main`:
+
+```sh
+gh workflow run website-deploy-staging.yml \
+  --ref feat/official-bunny-staging \
+  -f ref=feat/official-bunny-staging \
+  -f initialize_sites=true \
+  -f deploy_edge_script=false
+```
+
+Both refs matter: the first selects the workflow definition, the second selects
+the code to build. This command is for you to run; opening the PR does not deploy.
+The existing repository `BUNNY_API_KEY` secret must permit storage and Pull Zone
+API access. No new secrets or npm tooling are needed. Subsequent runs can leave
+`initialize_sites=false`. If rule propagation times out, no metadata is written;
+the protection rule may remain and the same workflow can be retried.
+
+**Running it changes staging:** the official action uploads under `deploys/<id>/`,
+switches staging routing, configures its custom 404, adds asset caching rules, and
+purges its CDN cache. Existing cache overrides and the attached Edge script remain
+in place. Replacing that script is separately opt-in and only happens after site
+deployment succeeds. Old deploys/root files are not pruned by this workflow.
+
+Check the [staging site](https://shroud-email-website-staging.b-cdn.net/), docs,
+assets, missing-page behavior, `X-Bunny-Deploy`, and pricing from actual UK and
+non-UK requests. HTML should retain `Cache-Control: no-store` and prices must not
+leak across countries. A client-supplied country header alone is not proof of geo
+isolation. Do not migrate production until these checks pass.
+
+After adoption, **do not run an older staging workflow using the clean-delete
+uploader**: it would delete Sites metadata and versioned deployments. The first
+adopted deployment has no CLI `--previous` rollback target; existing root files
+remain, but returning to root serving requires a deliberate routing/404 rollback.
+Later deployments can use the CLI's published-deployment rollback. No automatic
+rollback or destructive pruning is configured here.
+
 ## Want to learn more?
 
 Feel free to check [the Astro documentation](https://github.com/withastro/astro).
