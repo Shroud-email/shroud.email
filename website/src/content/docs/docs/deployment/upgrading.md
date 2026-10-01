@@ -3,7 +3,7 @@ title: Upgrading
 description: How to update your Shroud.email deployment.
 ---
 
-## SMTP certificate renewal migration
+## Version 1.4.0: SMTP certificate renewal migration
 
 Existing installations need a one-time migration to the new `tls.pem` bundle.
 Run from `hosting/` during a maintenance window. **Stop Haraka before pulling**
