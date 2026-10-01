@@ -97,7 +97,12 @@ const { onDarkSurface = false } = Astro.props;
     // Compare current time with time of previous sign up
     var time = new Date();
     var timestamp = time.valueOf();
-    var previousTimestamp = localStorage.getItem("loops-form-timestamp");
+    var previousTimestamp;
+    try {
+      previousTimestamp = localStorage.getItem("loops-form-timestamp");
+    } catch {
+      // Storage is optional; signup should still work when it is unavailable.
+    }
 
     // If last sign up was less than a minute ago
     // display error
@@ -105,7 +110,11 @@ const { onDarkSurface = false } = Astro.props;
       rateLimit();
       return;
     }
-    localStorage.setItem("loops-form-timestamp", timestamp);
+    try {
+      localStorage.setItem("loops-form-timestamp", timestamp);
+    } catch {
+      // Storage may be blocked or full.
+    }
 
     submitButton.style.display = "none";
     loadingButton.style.display = "flex";
@@ -147,7 +156,11 @@ const { onDarkSurface = false } = Astro.props;
         // display error message if available
         errorContainer.style.display = "flex";
         if (error.message) errorMessage.innerText = error.message;
-        localStorage.setItem("loops-form-timestamp", "");
+        try {
+          localStorage.setItem("loops-form-timestamp", "");
+        } catch {
+          // Storage failure must not interrupt error handling.
+        }
       })
       .finally(() => {
         formInput.style.display = "none";
