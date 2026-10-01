@@ -12,7 +12,6 @@ config :shroud,
 
 config :boruta, Boruta.Oauth,
   repo: Shroud.Repo,
-  cache_backend: Shroud.Mcp.Cache,
   contexts: [
     access_tokens: Boruta.Ecto.AccessTokens,
     codes: Boruta.Ecto.Codes,
@@ -20,6 +19,8 @@ config :boruta, Boruta.Oauth,
     resource_owners: Shroud.Mcp.ResourceOwners,
     scopes: Boruta.Ecto.Scopes
   ]
+
+config :boruta, Boruta.Cache, bypass_mode: true
 
 # Configures the endpoint
 config :shroud, ShroudWeb.Endpoint,

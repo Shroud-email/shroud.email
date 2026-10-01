@@ -49,10 +49,8 @@ defmodule Shroud.Mcp do
   def authorize(user, params) do
     with {:ok, _} <- validate_authorization(params),
          true <- not is_nil(user.confirmed_at) do
-      transact(fn ->
-        conn = oauth_conn(params) |> Plug.Conn.assign(:mcp_user, user)
-        Boruta.Oauth.authorize(conn, owner(to_string(user.id)), __MODULE__)
-      end)
+      conn = oauth_conn(params) |> Plug.Conn.assign(:mcp_user, user)
+      Boruta.Oauth.authorize(conn, owner(to_string(user.id)), __MODULE__)
     else
       _ -> {:error, :invalid_request}
     end
@@ -94,6 +92,8 @@ defmodule Shroud.Mcp do
   def exchange(_params), do: {:error, :invalid_request}
 
   defp exchange_credential(grant, credential, params) do
+    # Boruta creates the successor before revoking its predecessor. Serialize
+    # exchanges for this connection and commit both operations with their link.
     transact(fn ->
       query =
         if grant == "authorization_code" do

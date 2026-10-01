@@ -12,3 +12,5 @@ Application.put_env(:shroud, :datetime_module, Shroud.MockDateTime)
 
 Mox.defmock(Shroud.MockDnsClient, for: Shroud.DnsClientBehaviour)
 Application.put_env(:shroud, :dns_client, Shroud.MockDnsClient)
+
+Mox.defmock(Shroud.MockBorutaAccessTokens, for: Boruta.Oauth.AccessTokens)
