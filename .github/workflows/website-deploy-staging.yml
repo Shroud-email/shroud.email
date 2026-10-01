@@ -67,11 +67,11 @@ jobs:
       - run: pnpm run build
 
       - name: Validate staging and protect geo-localized pricing
-        run: node ../scripts/adopt-bunny-staging.mjs
+        run: node ../scripts/adopt-bunny-site.mjs
         env:
           BUNNY_API_KEY: ${{ secrets.BUNNY_API_KEY }}
           INITIALIZE_SITES: ${{ inputs.initialize_sites }}
-          PROTECT_PRICING: "true"
+          BUNNY_SITE_ENVIRONMENT: staging
 
       - name: Deploy staging with the official Bunny action
         uses: BunnyWay/actions/deploy-site@4b22fe0b319386b3913117daf97729409dd0a6ef # deploy-site_0.1.1

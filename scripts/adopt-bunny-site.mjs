@@ -1,14 +1,18 @@
-// One-time bootstrap for the existing staging pair, not a site uploader.
+// One-time bootstrap for the existing website pairs, not a site uploader.
 // Never creates/deletes zones or detaches middleware. Pricing protection is
 // separately invoked by the workflow before deployment and cache purge.
 import { pathToFileURL } from "node:url";
 import { setTimeout } from "node:timers/promises";
 
-const STORAGE_ID = 1687847;
-const PULL_ID = 6214167;
-const NAME = "shroud-email-website-staging";
-const STORAGE = `https://uk.storage.bunnycdn.com/${NAME}/_bunny/site.json`;
-const PUBLIC = "https://shroud-email-website-staging.b-cdn.net/_bunny/site.json";
+const sites = {
+  staging: { STORAGE_ID: 1687847, PULL_ID: 6214167, NAME: "shroud-email-website-staging", REGION: "uk", ENDPOINT: "uk.storage.bunnycdn.com" },
+  production: { STORAGE_ID: 1604565, PULL_ID: 6040372, NAME: "shroud-email-website", REGION: "de", ENDPOINT: "storage.bunnycdn.com" },
+};
+
+function siteFor(environment) {
+  if (!Object.hasOwn(sites, environment)) throw new Error("BUNNY_SITE_ENVIRONMENT must be staging or production");
+  return sites[environment];
+}
 const blockRule = {
   Description: "bunny sites: block site state access",
   Enabled: true,
@@ -17,7 +21,10 @@ const blockRule = {
   Triggers: [{ Type: 0, PatternMatches: ["*/_bunny/*"], PatternMatchingType: 0 }],
 };
 
-export async function adoptStaging(apiKey, initialize, fetch = globalThis.fetch) {
+export async function adoptSite(environment, apiKey, initialize, fetch = globalThis.fetch) {
+  const { STORAGE_ID, PULL_ID, NAME, REGION, ENDPOINT } = siteFor(environment);
+  const STORAGE = `https://${ENDPOINT}/${NAME}/_bunny/site.json`;
+  const PUBLIC = `https://${NAME}.b-cdn.net/_bunny/site.json`;
   if (!apiKey) throw new Error("Missing BUNNY_API_KEY");
   async function core(path, method = "GET", body) {
     const response = await fetch(`https://api.bunny.net/${path}`, {
@@ -30,9 +37,9 @@ export async function adoptStaging(apiKey, initialize, fetch = globalThis.fetch)
   }
   const zone = await core(`storagezone/${STORAGE_ID}`);
   const pull = await core(`pullzone/${PULL_ID}`);
-  if (zone.Id !== STORAGE_ID || zone.Name !== NAME || zone.Region?.toLowerCase() !== "uk" ||
+  if (zone.Id !== STORAGE_ID || zone.Name !== NAME || zone.Region?.toLowerCase() !== REGION ||
       pull.Id !== PULL_ID || pull.Name !== NAME || pull.StorageZoneId !== STORAGE_ID || pull.OriginType !== 2) {
-    throw new Error("Existing staging resource pair does not match; refusing adoption");
+    throw new Error(`Existing ${environment} resource pair does not match; refusing adoption`);
   }
   if (!zone.Password) throw new Error("Storage credential missing from zone response");
   const stateResponse = await fetch(STORAGE, { headers: { AccessKey: zone.Password } });
@@ -42,11 +49,11 @@ export async function adoptStaging(apiKey, initialize, fetch = globalThis.fetch)
         state.pullZoneId !== PULL_ID || !Array.isArray(state.deploys)) {
       throw new Error("Existing Sites metadata differs; refusing to overwrite it");
     }
-    console.log("Staging is already initialized; metadata left unchanged.");
+    console.log(`${environment} is already initialized; metadata left unchanged.`);
     return;
   }
   if (stateResponse.status !== 404) throw new Error(`Metadata read: HTTP ${stateResponse.status}`);
-  if (!initialize) throw new Error("Staging needs initialization. Re-run with initialize_sites=true after reviewing the README.");
+  if (!initialize) throw new Error(`${environment} needs initialization. Re-run with initialize_sites=true after reviewing the README.`);
 
   // Protect the state before writing it. Fail closed if propagation isn't confirmed.
   const existing = (pull.EdgeRules ?? []).find((r) => r.Description === blockRule.Description);
@@ -76,19 +83,20 @@ export async function adoptStaging(apiKey, initialize, fetch = globalThis.fetch)
     body: JSON.stringify({ version: 2, name: NAME, storageZoneId: STORAGE_ID, pullZoneId: PULL_ID, deploys: [] }),
   });
   if (!response.ok) throw new Error(`Metadata initialization: HTTP ${response.status}`);
-  console.log("Initialized existing staging pair; cache settings, middleware, and root files unchanged.");
+  console.log(`Initialized existing ${environment} pair; cache settings, middleware, and root files unchanged.`);
 }
 
 // Origin middleware only runs on cache misses. Never share a localized pricing
 // response across countries; match the page, not its JS/CSS/image assets.
-export async function protectStagingPricing(apiKey, fetch = globalThis.fetch) {
+export async function protectPricing(environment, apiKey, fetch = globalThis.fetch) {
+  const { STORAGE_ID, PULL_ID, NAME } = siteFor(environment);
   if (!apiKey) throw new Error("Missing BUNNY_API_KEY");
   const headers = { AccessKey: apiKey, "Content-Type": "application/json" };
   const response = await fetch(`https://api.bunny.net/pullzone/${PULL_ID}`, { headers });
   if (!response.ok) throw new Error(`Pricing zone read: HTTP ${response.status}`);
   const pull = await response.json();
   if (pull.Id !== PULL_ID || pull.Name !== NAME || pull.StorageZoneId !== STORAGE_ID || pull.OriginType !== 2) {
-    throw new Error("Existing staging resource pair does not match; refusing pricing configuration");
+    throw new Error(`Existing ${environment} resource pair does not match; refusing pricing configuration`);
   }
   const description = "shroud: do not cache geo-localized pricing";
   const existing = (pull.EdgeRules ?? []).find((r) => r.Description === description);
@@ -113,10 +121,11 @@ export async function protectStagingPricing(apiKey, fetch = globalThis.fetch) {
     method: "POST", headers, body: JSON.stringify(rule),
   });
   if (!saved.ok) throw new Error(`Pricing rule save: HTTP ${saved.status}`);
-  console.log("Staging pricing cache protection configured; deployment must follow to purge old CDN entries.");
+  console.log(`${environment} pricing cache protection configured; deployment must follow to purge old CDN entries.`);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  await adoptStaging(process.env.BUNNY_API_KEY, process.env.INITIALIZE_SITES === "true");
-  if (process.env.PROTECT_PRICING === "true") await protectStagingPricing(process.env.BUNNY_API_KEY);
+  const environment = process.env.BUNNY_SITE_ENVIRONMENT;
+  await adoptSite(environment, process.env.BUNNY_API_KEY, process.env.INITIALIZE_SITES === "true");
+  await protectPricing(environment, process.env.BUNNY_API_KEY);
 }
