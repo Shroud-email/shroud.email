@@ -32,6 +32,8 @@ dns-list
 helo.checks
 # see 'haraka -h tls' for config instructions before enabling!
 tls
+# Activate the complete PEM bundle published by the certificate cron job.
+tls_cert_reload
 #
 # AUTH plugins require TLS before AUTH is advertised, see
 #     https://github.com/haraka/Haraka/wiki/Require-SSL-TLS

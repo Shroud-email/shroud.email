@@ -12,6 +12,38 @@ If you want to get up and running with Shroud.email quickly, and don't want to m
 
 Copy `haraka/haraka_config/config/me.example` to `haraka/haraka_config/config/me` and set your mail hostname.
 
+## SMTP certificate renewal
+
+The daily cron job publishes Caddy's certificate and matching private key as one
+validated, atomically replaced `tls.pem` bundle. Haraka's `tls_cert_reload` plugin
+checks Haraka's cached bundle every second and activates changes for new STARTTLS
+connections after the file watcher's five-second debounce. It does not restart
+the SMTP server or interrupt existing connections.
+
+When upgrading from the old separate PEM files, use a maintenance window. Stop
+Haraka **before updating the checkout**: its bind-mounted `tls.ini` is watched
+live and will otherwise switch to the new bundle before that file exists.
+After updating the checkout, rebuild cron, publish the first bundle, and recreate
+Haraka once to load the new plugin and TLS configuration. Only start Haraka if
+publication succeeds:
+
+```sh
+# Before updating the checkout:
+docker compose stop haraka
+# Update the checkout, then:
+docker compose up -d --build cron &&
+docker compose exec cron /etc/periodic/daily/bundle_certs &&
+docker compose up -d --force-recreate haraka
+```
+
+Regression test (requires Node.js and OpenSSL):
+
+```sh
+cd haraka/haraka_config
+npm ci --omit=dev --omit=optional
+node --test test/tls_cert_reload.test.js
+```
+
 ## TLS via Bunny DNS-01 (optional)
 
 Caddy defaults to HTTP-01 ACME (port 80), which works behind no other reverse
