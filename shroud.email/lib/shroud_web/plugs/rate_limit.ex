@@ -91,6 +91,9 @@ defmodule ShroudWeb.Plugs.RateLimit do
        when path in [["users", "register"], ["users", "reset_password"], ["users", "confirm"]],
        do: [ip_policy(conn, :account_email) | account_policy(conn, :account_email)]
 
+  defp policies(%{method: "POST", path_info: ["users", "confirm", _]} = conn),
+    do: [ip_policy(conn, :account_email) | account_policy(conn, :account_email)]
+
   defp policies(%{method: "PUT", path_info: ["users", "reset_password", _]} = conn),
     do: [ip_policy(conn, :credentials)]
 

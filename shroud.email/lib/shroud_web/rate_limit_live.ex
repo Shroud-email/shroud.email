@@ -11,7 +11,9 @@ defmodule ShroudWeb.RateLimitLive do
       ip = ClientIP.resolve(peer, get_connect_info(socket, :x_headers) || [])
       socket = assign(socket, :rate_limit_ip, ip)
 
-      case RateLimit.check(:http, {:ip, ip}) do
+      # Upgrades consume HTTP quota in LiveSocket. Mounts have a separate
+      # allowance because a single socket can repeatedly join different views.
+      case RateLimit.check(:live_mount, {:ip, ip}) do
         {:allow, _} ->
           {:cont, attach_hook(socket, :rate_limit, :handle_event, &handle_event/3)}
 
@@ -62,6 +64,9 @@ defmodule ShroudWeb.RateLimitLive do
 
   defp event_policies("lifetime_signup"), do: [{:security, :lifetime}]
   defp event_policies("passkey_options"), do: [:passkey_challenge]
+  # All root events consume :events. Add sensitive mutations above when
+  # introducing or renaming their handlers; ordinary events use only that cap.
+  # Component-targeted events and live patches do not run this root event hook.
   defp event_policies(_event), do: []
 
   defp reject(socket, seconds) do

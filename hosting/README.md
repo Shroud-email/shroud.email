@@ -53,8 +53,9 @@ Static assets, `GET /_health`, and `POST /api/webhooks/paddle` are exempt; webho
 signatures are still required.
 
 Compose assigns Caddy `172.30.0.2` on the `172.30.0.0/24` network and passes that
-exact address to the app as `TRUSTED_PROXY_IPS`. Change `SHROUD_NETWORK_SUBNET`
-and `CADDY_PROXY_IP` together if the subnet overlaps an existing network. Existing
+exact address to the app as `TRUSTED_PROXY_IPS`. If the subnet overlaps an existing
+network, change `SHROUD_NETWORK_PREFIX` (the first three IPv4 octets, for example
+`172.31.42`); the /24 subnet and Caddy address are derived together. Existing
 stacks must recreate the Compose network during a planned maintenance window
 (stop the stack without deleting volumes, then start it with the new network).
 
@@ -73,6 +74,10 @@ account; 5 password mutations/15 minutes; 120 API requests/minute/account;
 120 image fetches/minute/IP; 10 billing sessions/minute/account; 120 LiveView
 events/minute/account, with 5 sensitive security events/minute per action group.
 Unauthenticated passkey challenges are limited to 10/minute/IP.
+WebSocket upgrades count as HTTP requests; connected LiveView mounts have a
+separate 600/minute/IP allowance to prevent repeated joins on a single socket.
+The event allowance covers application root handlers, not component-targeted
+events, live patches, or third-party admin LiveViews.
 
 ## TLS via Bunny DNS-01 (optional)
 

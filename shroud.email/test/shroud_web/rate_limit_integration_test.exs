@@ -86,6 +86,7 @@ defmodule ShroudWeb.RateLimitIntegrationTest do
           {:account_email, {:ip, conn.remote_ip}, :post, "/users/register"},
           {:account_email, {:ip, conn.remote_ip}, :post, "/users/reset_password"},
           {:account_email, {:ip, conn.remote_ip}, :post, "/users/confirm"},
+          {:account_email, {:ip, conn.remote_ip}, :post, "/users/confirm/arbitrary"},
           {:credentials, {:ip, conn.remote_ip}, :put, "/users/reset_password/arbitrary"},
           {:credentials, {:account, user.id}, :put, "/settings/password"},
           {:image_proxy, {:ip, conn.remote_ip}, :get, "/proxy?url=https://example.com/image.png"},
@@ -173,6 +174,17 @@ defmodule ShroudWeb.RateLimitIntegrationTest do
     assert has_element?(security, "#update_password")
   end
 
+  test "LiveView mounts use their own allowance rather than counting HTTP twice", %{conn: conn} do
+    %{conn: conn} = register_and_log_in_user(%{conn: conn})
+    seed(:http, {:ip, conn.remote_ip}, 599)
+    {:ok, view, _} = live(conn, "/settings/security")
+    assert has_element?(view, "#update_password")
+
+    seed(:http, {:ip, conn.remote_ip}, 0)
+    seed(:live_mount, {:ip, conn.remote_ip}, 600)
+    assert {:error, {:redirect, %{to: "/users/log_in"}}} = live(conn, "/settings/security")
+  end
+
   test "general event limit prevents alias creation, not just its page load", %{conn: conn} do
     %{conn: conn, user: user} = register_and_log_in_user(%{conn: conn})
     {:ok, view, _} = live(conn, "/")
@@ -252,6 +264,9 @@ defmodule ShroudWeb.RateLimitIntegrationTest do
 
     # Seed current and next windows so real-route tests cannot flake at a
     # wall-clock boundary. Exercise the actual atomic backend, not a mock plug.
+    # This helper alone depends on Hammer 7.5's FixWindow ETS/atomics layout:
+    # set/3 cannot target a future window. Recheck the layout on Hammer upgrades.
+    # Route rejection assertions ensure an incompatible seed cannot pass silently.
     for w <- [window, window + 1] do
       key = {{policy, actor}, w}
       counter = :atomics.new(2, signed: false)

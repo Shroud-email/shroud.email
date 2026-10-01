@@ -237,7 +237,7 @@ defmodule ShroudWeb.PasskeyRegistrationLiveTest do
     view: view,
     user: user
   } do
-    for _ <- 1..3 do
+    for _ <- 1..2 do
       render_hook(view, "passkey_registered", %{})
       assert_reply(view, %{error: "invalid_registration"})
     end

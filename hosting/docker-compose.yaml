@@ -94,7 +94,7 @@ services:
       - CAP_INSTANCE_URL=${CAP_INSTANCE_URL:-https://${CAP_DOMAIN}}
       - CAP_SITE_KEY=${CAP_SITE_KEY}
       - CAP_SECRET_KEY=${CAP_SECRET_KEY}
-      - TRUSTED_PROXY_IPS=${CADDY_PROXY_IP:-172.30.0.2}
+      - TRUSTED_PROXY_IPS=${SHROUD_NETWORK_PREFIX:-172.30.0}.2
 
   caddy:
     build:
@@ -103,7 +103,7 @@ services:
     restart: unless-stopped
     networks:
       default:
-        ipv4_address: ${CADDY_PROXY_IP:-172.30.0.2}
+        ipv4_address: ${SHROUD_NETWORK_PREFIX:-172.30.0}.2
     environment:
       - ADMIN_EMAIL=${ADMIN_EMAIL}
       - APP_DOMAIN=${APP_DOMAIN}
@@ -132,7 +132,7 @@ networks:
   default:
     ipam:
       config:
-        - subnet: ${SHROUD_NETWORK_SUBNET:-172.30.0.0/24}
+        - subnet: ${SHROUD_NETWORK_PREFIX:-172.30.0}.0/24
 
 volumes:
   db_data:
