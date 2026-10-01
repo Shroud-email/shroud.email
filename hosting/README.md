@@ -71,12 +71,13 @@ Initial limits: 600 HTTP requests/minute/IP; 10 sign-ins/minute/IP shared across
 password, passkey and API-token entry points; 5 second-factor attempts/minute/IP
 and account; 5 account-email requests/15 minutes/IP and, where authenticated,
 account; 5 password mutations/15 minutes; 120 API requests/minute/account;
-120 image fetches/minute/IP; 10 billing sessions/minute/account; 120 LiveView
-events/minute/account, with 5 sensitive security events/minute per action group.
+120 image fetches/minute/IP; 10 billing sessions/minute/account; 5 sensitive
+LiveView security events/minute/account per action group. Ordinary LiveView
+events have no blanket cap; email changes share the account-email allowance.
 Unauthenticated passkey challenges are limited to 10/minute/IP.
 WebSocket upgrades count as HTTP requests; connected LiveView mounts have a
 separate 600/minute/IP allowance to prevent repeated joins on a single socket.
-The event allowance covers application root handlers, not component-targeted
+The targeted event limits cover application root handlers, not component-targeted
 events, live patches, or third-party admin LiveViews.
 
 ## TLS via Bunny DNS-01 (optional)

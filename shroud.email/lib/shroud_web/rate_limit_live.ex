@@ -1,5 +1,5 @@
 defmodule ShroudWeb.RateLimitLive do
-  @moduledoc "Rate limits connected LiveView events before their handlers run."
+  @moduledoc "Rate limits sensitive connected LiveView events before their handlers run."
   import Phoenix.Component
   import Phoenix.LiveView
   alias Shroud.RateLimit
@@ -36,7 +36,7 @@ defmodule ShroudWeb.RateLimitLive do
       end
 
     result =
-      [:events | event_policies(event)]
+      event_policies(event)
       |> Enum.reduce_while(:ok, fn policy, :ok ->
         case RateLimit.check(policy, actor) do
           {:allow, _} -> {:cont, :ok}
@@ -64,8 +64,8 @@ defmodule ShroudWeb.RateLimitLive do
 
   defp event_policies("lifetime_signup"), do: [{:security, :lifetime}]
   defp event_policies("passkey_options"), do: [:passkey_challenge]
-  # All root events consume :events. Add sensitive mutations above when
-  # introducing or renaming their handlers; ordinary events use only that cap.
+  # Add sensitive mutations above when introducing or renaming their handlers.
+  # Ordinary events are not rate limited.
   # Component-targeted events and live patches do not run this root event hook.
   defp event_policies(_event), do: []
 

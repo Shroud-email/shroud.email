@@ -21,7 +21,6 @@ defmodule Shroud.RateLimit do
   def policy(:api), do: {:timer.minutes(1), 120}
   def policy(:image_proxy), do: {:timer.minutes(1), 120}
   def policy(:billing), do: {:timer.minutes(1), 10}
-  def policy(:events), do: {:timer.minutes(1), 120}
   def policy(:passkey_challenge), do: {:timer.minutes(1), 10}
   def policy({:security, _group}), do: {:timer.minutes(1), 5}
 end

@@ -2,7 +2,7 @@ defmodule ShroudWeb.RateLimitIntegrationTest do
   use ShroudWeb.ConnCase, async: false
   import Phoenix.LiveViewTest
   import Shroud.AccountsFixtures
-  alias Shroud.{Accounts, Aliases, RateLimit, Repo}
+  alias Shroud.{Accounts, RateLimit, Repo}
   alias Shroud.Accounts.{TOTP, User}
   alias ShroudWeb.Plugs.ClientIP
 
@@ -185,13 +185,26 @@ defmodule ShroudWeb.RateLimitIntegrationTest do
     assert {:error, {:redirect, %{to: "/users/log_in"}}} = live(conn, "/settings/security")
   end
 
-  test "general event limit prevents alias creation, not just its page load", %{conn: conn} do
+  test "ordinary events remain usable beyond the former cap without spending security quota", %{
+    conn: conn
+  } do
     %{conn: conn, user: user} = register_and_log_in_user(%{conn: conn})
-    {:ok, view, _} = live(conn, "/")
-    seed(:events, {:account, user.id}, 120)
-    render_click(view, "add_alias")
-    assert Aliases.list_aliases(user) == []
-    assert render(view) =~ "Too many requests"
+    {:ok, view, _} = live(conn, "/settings/security")
+    view |> element("#add-passkey-button") |> render_click()
+
+    for _ <- 1..120, do: render_hook(view, "passkey_supported", %{supported: false})
+    assert has_element?(view, "#passkey-confirm[disabled]")
+    render_hook(view, "passkey_supported", %{supported: true})
+    assert has_element?(view, "#passkey-confirm:not([disabled])")
+
+    render_click(view, "generate_totp_secret")
+    assert has_element?(view, "#totp-qr-code")
+
+    seed({:security, :second_factor}, {:account, user.id}, 5)
+    {:ok, view, _} = live(conn, "/settings/security")
+    render_click(view, "generate_totp_secret")
+    assert has_element?(view, "#settings-error", "Too many requests")
+    refute has_element?(view, "#totp-qr-code")
   end
 
   test "public passkey challenge quota uses the connection peer", %{conn: conn} do
