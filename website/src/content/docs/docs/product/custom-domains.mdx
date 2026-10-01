@@ -4,9 +4,9 @@ description: Bring your own domain to Shroud.email
 ---
 
 import { Image } from "astro:assets";
-import createCustomDomain from "../../../assets/content/create-custom-domain.gif";
-import createCustomAlias from "../../../assets/content/create-custom-alias.gif";
-import domainCatchall from "../../../assets/content/domain-catchall.png";
+import createCustomDomain from "../../../../assets/content/create-custom-domain.gif";
+import createCustomAlias from "../../../../assets/content/create-custom-alias.gif";
+import domainCatchall from "../../../../assets/content/domain-catchall.png";
 
 Custom domains allow you to bring your own domains to Shroud.email. They let you create aliases that you're fully in control of, and you can set the address to be anything you like -- no more random bits of text!
 
@@ -52,13 +52,13 @@ That's it! Now you can send and receive emails with your custom email alias.
 
 ## Catch-all
 
-Once you've set up your domain, you can choose to enable catch-all. If you do this, you don't need to create aliases manually: emails sent to any address on your domain with automatically create the alias if it doesn't already exist.
+Once you've set up your domain, you can choose to enable catch-all. If you do this, you don't need to create aliases manually: emails sent to any address on your domain will automatically create the alias if it doesn't already exist.
 
 With catchall, you no longer need to visit Shroud.email to use aliases. Instead, you can just make up an alias on the spot whenever a website asks for one!
 
 <Image
   src={domainCatchall}
-  alt="GIF showing how to create an alias on a custom domain"
+  alt="Screenshot of custom-domain settings with catch-all enabled"
   layout="constrained"
   width={672}
   loading="lazy"

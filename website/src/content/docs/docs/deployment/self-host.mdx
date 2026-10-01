@@ -3,16 +3,13 @@ title: Self-host Shroud.email
 description: How to self-host Shroud.email
 ---
 
-import Alert from "~/components/atoms/Alert.astro";
-
 Shroud.email is fully libre and open-source, and can be deployed on your own infrastructure. We provide a Docker Compose file for easy deployment.
 
 You'll need a server running on the public Internet, with ports 25, 80, and 443 open. In addition, you'll need access keys for an S3-compatible object storage service.
 
-<Alert
-  intent="warning"
-  text="Support for self-hosting setup is still new. Please open an issue on GitHub if you run into problems!"
-/>
+:::caution
+Support for self-hosting setup is still new. Please open an issue on GitHub if you run into problems!
+:::
 
 ## Clone our repo
 
@@ -83,7 +80,13 @@ This tells recipients to send a message to you if there are any DMARC errors.
 ### Step 1: Configure
 
 - `cp example.env .env` and enter your configuration in `.env`.
-- Update `haraka/haraka_config/config/me` with your `EMAIL_DOMAIN`. It should be a plaintext file with only this value, e.g.
+- Create Haraka's hostname configuration file:
+
+```bash
+cp haraka/haraka_config/config/me.example haraka/haraka_config/config/me
+```
+
+- Edit the newly created `haraka/haraka_config/config/me` with your `EMAIL_DOMAIN`. It should be a plaintext file with only this value, e.g.
 
 ```
 example.com

@@ -81,26 +81,27 @@ jobs:
           files: shroud.email/cover/excoveralls.json
           token: ${{ secrets.CODECOV_TOKEN }}
 
-  docs:
-    name: Build documentation
+  website:
+    name: Build website and integrated documentation
     runs-on: depot-ubuntu-24.04
     defaults:
       run:
-        working-directory: docs-site
+        working-directory: website
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
         with:
-          version: 11.0.9
+          version: 11
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: 22
           cache: pnpm
-          cache-dependency-path: docs-site/pnpm-lock.yaml
+          cache-dependency-path: website/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+      - run: pnpm check:content-images
 
   image-e2e:
     name: Production image E2E

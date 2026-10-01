@@ -1,0 +1,40 @@
+<script is:inline>
+    function loadChatwoot() {
+        if (document.querySelector("script[data-chatwoot-sdk]")) return;
+
+        window.chatwootSettings = {
+            availableMessage: "Send us a message.",
+            unavailableMessage: "Send us a message.",
+        };
+
+        var baseUrl = "https://support.shroud.email";
+        var sdk = document.createElement("script");
+        var firstScript = document.getElementsByTagName("script")[0];
+        sdk.src = baseUrl + "/packs/js/sdk.js";
+        sdk.async = true;
+        sdk.dataset.chatwootSdk = "";
+        firstScript.parentNode.insertBefore(sdk, firstScript);
+        sdk.onload = function () {
+            window.chatwootSDK.run({
+                websiteToken: "7j9ZdJCJR5ZGaYkCMN2EvAhp",
+                baseUrl: baseUrl,
+            });
+        };
+    }
+
+    function scheduleWhenIdle() {
+        if ("requestIdleCallback" in window) {
+            window.requestIdleCallback(loadChatwoot);
+        } else {
+            window.setTimeout(loadChatwoot, 0);
+        }
+    }
+
+    if (document.readyState === "complete") {
+        scheduleWhenIdle();
+    } else {
+        window.addEventListener("load", scheduleWhenIdle, {
+            once: true,
+        });
+    }
+</script>

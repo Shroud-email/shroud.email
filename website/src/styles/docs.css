@@ -1,0 +1,41 @@
+@font-face {
+  font-family: "Manrope";
+  src: url("../assets/fonts/manrope-latin-400-normal.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Manrope";
+  src: url("../assets/fonts/manrope-latin-600-normal.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Manrope";
+  src: url("../assets/fonts/manrope-latin-700-normal.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+}
+
+:root {
+  --sl-font: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --sl-color-accent-low: #27245c;
+  --sl-color-accent: #818cf8;
+  --sl-color-accent-high: #e0e7ff;
+}
+
+:root[data-theme="light"] {
+  --sl-color-accent-low: #e0e7ff;
+  --sl-color-accent: #4f46e5;
+  --sl-color-accent-high: #312e81;
+}
+
+/* Keep complete endpoint paths visible beside the sample picker on narrow screens. */
+.sl-openapi-operation-method-path {
+  overflow-wrap: anywhere;
+}

@@ -7,9 +7,8 @@ projects.
 | Project | Contents | Local verification |
 | --- | --- | --- |
 | [shroud.email](shroud.email/) | Elixir/Phoenix application | `mise exec -- mix test` |
-| [website](website/) | Astro site and Bunny edge script | `mise exec -- pnpm run build` |
+| [website](website/) | Astro marketing site, Starlight docs and OpenAPI reference, and Bunny edge script | `mise exec -- pnpm run build` |
 | [mobile](mobile/) | React Native/Expo app | `npx tsc --noEmit` and `npm run lint` |
-| [docs-site](docs-site/) | Starlight guides and generated OpenAPI reference | Generate spec, then `mise exec -- pnpm build` ([instructions](docs-site/README.md)) |
 | [hosting](hosting/) | Self-hosting Docker Compose stack | `docker compose config --quiet` |
 | [email-trackers](email-trackers/) | Tracker list and publishing script | `node --check scripts/deploy-bunny.mjs` |
 | [caddy-permissive-file-storage](caddy-permissive-file-storage/) | Caddy storage module | `bash test/e2e.sh` (requires xcaddy) |

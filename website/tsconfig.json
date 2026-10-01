@@ -9,5 +9,6 @@
     "exactOptionalPropertyTypes": false,
     "jsx": "preserve"
   },
-  "exclude": ["edge-script", "dist", ".astro"]
+  "include": [".astro/types.d.ts", "src/**/*"],
+  "exclude": ["edge-script", "dist"]
 }
