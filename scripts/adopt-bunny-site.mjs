@@ -43,19 +43,19 @@ export async function adoptSite(environment, apiKey, initialize, fetch = globalT
   }
   if (!zone.Password) throw new Error("Storage credential missing from zone response");
   const stateResponse = await fetch(STORAGE, { headers: { AccessKey: zone.Password } });
+  const initialized = stateResponse.ok;
   if (stateResponse.ok) {
     const state = await stateResponse.json();
     if (state.version !== 2 || state.name !== NAME || state.storageZoneId !== STORAGE_ID ||
         state.pullZoneId !== PULL_ID || !Array.isArray(state.deploys)) {
       throw new Error("Existing Sites metadata differs; refusing to overwrite it");
     }
-    console.log(`${environment} is already initialized; metadata left unchanged.`);
-    return;
+  } else {
+    if (stateResponse.status !== 404) throw new Error(`Metadata read: HTTP ${stateResponse.status}`);
+    if (!initialize) throw new Error(`${environment} needs initialization. Re-run with initialize_sites=true after reviewing the README.`);
   }
-  if (stateResponse.status !== 404) throw new Error(`Metadata read: HTTP ${stateResponse.status}`);
-  if (!initialize) throw new Error(`${environment} needs initialization. Re-run with initialize_sites=true after reviewing the README.`);
 
-  // Protect the state before writing it. Fail closed if propagation isn't confirmed.
+  // Check protection on every run, even when metadata already exists.
   const existing = (pull.EdgeRules ?? []).find((r) => r.Description === blockRule.Description);
   if (existing) {
     if (!existing.Enabled || existing.ActionType !== 4 || existing.TriggerMatchingType !== 0 ||
@@ -74,6 +74,10 @@ export async function adoptSite(environment, apiKey, initialize, fetch = globalT
     await setTimeout(5000);
   }
   if (!protectedState) throw new Error("State protection not confirmed; no metadata written. Retry after rule propagation.");
+  if (initialized) {
+    console.log(`${environment} is already initialized; protection confirmed, metadata left unchanged.`);
+    return;
+  }
   // Recheck rather than overwrite metadata created by another operator.
   const recheck = await fetch(STORAGE, { headers: { AccessKey: zone.Password } });
   if (recheck.status !== 404) throw new Error("Metadata changed during initialization; refusing to overwrite it");

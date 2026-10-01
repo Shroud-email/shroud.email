@@ -14,6 +14,7 @@ for (const [environment, name, storageZoneId, pullZoneId, region, endpoint, othe
     const fetch = async (url, options = {}) => {
       const method = options.method ?? "GET";
       calls.push({ url, method, body: options.body && JSON.parse(options.body) });
+      if (url.startsWith("https://api.bunny.net/")) assert.equal(options.headers?.AccessKey, "fake-key");
       if (url === `https://api.bunny.net/storagezone/${storageZoneId}` && method === "GET") {
         return Response.json({ Id: storageZoneId, Name: name, Region: region, Password: "fake-storage-password" });
       }
@@ -32,6 +33,7 @@ for (const [environment, name, storageZoneId, pullZoneId, region, endpoint, othe
         return new Response("", { status: 403 });
       }
       if (url === `https://${endpoint}/${name}/_bunny/site.json`) {
+        assert.equal(options.headers?.AccessKey, "fake-storage-password");
         if (method === "GET") {
           reads++;
           return metadata || (concurrentState && reads > 1)
@@ -62,8 +64,22 @@ for (const [environment, name, storageZoneId, pullZoneId, region, endpoint, othe
   });
 
   test(`${environment}: existing metadata is never rewritten`, async () => {
-    const { fetch, calls } = mockBunny({ metadata: { ...state, current: "abc", deploys: [{ id: "abc" }] } });
+    const { fetch, calls } = mockBunny({ metadata: { ...state, current: "abc", deploys: [{ id: "abc" }] }, edgeRules: [protection] });
     await adoptSite(environment, "fake-key", true, fetch);
+    assert.equal(calls.length, 4);
+    assert.ok(calls.every((c) => c.method === "GET"));
+  });
+
+  test(`${environment}: existing metadata with missing protection restores the rule without rewriting state`, async () => {
+    const { fetch, calls } = mockBunny({ metadata: state });
+    await adoptSite(environment, "fake-key", false, fetch);
+    assert.deepEqual(calls.map((c) => c.method), ["GET", "GET", "GET", "POST", "GET"]);
+    assert.equal(calls[3].body.ActionType, 4);
+  });
+
+  test(`${environment}: existing metadata with disabled protection fails closed`, async () => {
+    const { fetch, calls } = mockBunny({ metadata: state, edgeRules: [{ ...protection, Enabled: false }] });
+    await assert.rejects(adoptSite(environment, "fake-key", false, fetch), /state-protection rule differs/);
     assert.ok(calls.every((c) => c.method === "GET"));
   });
 

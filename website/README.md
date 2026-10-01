@@ -95,6 +95,8 @@ version-2 `_bunny/site.json` only when initialization is explicitly requested an
 both reads find it absent. This is not an atomic create-if-absent operation:
 do not run another metadata writer concurrently. Initialization does not change
 middleware attachment, domains, root files, or zone-wide cache overrides.
+Every run checks state protection, restores a missing rule, and refuses a
+conflicting or disabled rule before proceeding, without rewriting existing state.
 
 To test before merging, dispatch the workflow **from this PR branch**, not `main`:
 
@@ -113,6 +115,9 @@ API access. No new secrets or npm tooling are needed. Subsequent runs can leave
 `initialize_sites=false` (staging is already adopted). A new pair requires an
 explicit first run with `initialize_sites=true`. If rule propagation times out, no metadata is written;
 the protection rule may remain and the same workflow can be retried.
+Concurrency preserves the running deployment and keeps only the newest pending
+request per environment. For distinct staging trials, wait for each run to finish
+before dispatching the next; this workflow does not promise a FIFO deployment queue.
 
 ### First production cutover, before merging
 
