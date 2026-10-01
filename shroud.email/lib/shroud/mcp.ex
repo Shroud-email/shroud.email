@@ -174,7 +174,8 @@ defmodule Shroud.Mcp do
     count == 1
   end
 
-  def revoke_token(token, client_id) when is_binary(token) and is_binary(client_id) do
+  def revoke_token(token, client_id)
+      when is_binary(token) and byte_size(token) in 1..1024 and is_binary(client_id) do
     connection =
       Repo.one(token_connections(:value, token)) ||
         Repo.one(token_connections(:refresh_token, token))

@@ -16,6 +16,7 @@ defmodule Shroud.Repo.Migrations.AddMcpConnections do
     end
 
     create index(:mcp_connections, [:user_id])
+    create index(:mcp_connections, [:code_id])
 
     create table(:mcp_connection_tokens, primary_key: false) do
       add :connection_id, references(:mcp_connections, on_delete: :delete_all), null: false

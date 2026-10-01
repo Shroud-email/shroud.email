@@ -40,7 +40,6 @@ defmodule ShroudWeb.McpOAuthController do
           )
 
         conn
-        |> put_root_layout(html: {ShroudWeb.Layouts, :connection})
         |> render(:consent, details: details, approval: approval, page_title: "Connect account")
 
       {:error, _} ->
@@ -90,12 +89,18 @@ defmodule ShroudWeb.McpOAuthController do
   defp callback(conn, params, result) do
     uri = URI.parse(params["redirect_uri"])
 
-    query =
-      URI.decode_query(uri.query || "")
-      |> Map.merge(Map.new(result, fn {key, value} -> {Atom.to_string(key), value} end))
+    response_query =
+      result
+      |> Map.merge(%{state: params["state"], iss: Mcp.issuer()})
+      |> URI.encode_query()
 
-    query = Map.merge(query, %{"state" => params["state"], "iss" => Mcp.issuer()})
-    redirect(conn, external: URI.to_string(%{uri | query: URI.encode_query(query)}))
+    query =
+      case uri.query do
+        query when query in [nil, ""] -> response_query
+        query -> query <> "&" <> response_query
+      end
+
+    redirect(conn, external: URI.to_string(%{uri | query: query}))
   end
 
   defp invalid(conn),

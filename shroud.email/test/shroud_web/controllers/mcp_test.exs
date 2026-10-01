@@ -45,7 +45,7 @@ defmodule ShroudWeb.McpTest do
     assert LazyHTML.text(document) =~ "Access expires after 90 days."
     refute LazyHTML.text(document) =~ "delete aliases"
     assert LazyHTML.query(document, "#connection-permissions li") |> Enum.count() == 2
-    assert LazyHTML.query(document, "script") |> Enum.count() == 0
+    assert LazyHTML.query(document, "script") |> LazyHTML.attribute("src") == ["/assets/app.js"]
     assert get_resp_header(conn, "cache-control") == ["no-store"]
     assert get_resp_header(conn, "referrer-policy") == ["no-referrer"]
     approval = hidden(html, "approval")
@@ -191,6 +191,79 @@ defmodule ShroudWeb.McpTest do
       |> get("/api/v1/aliases")
 
     assert json_response(conn, 403) == %{"error" => "Invalid token"}
+  end
+
+  test "bearer scheme accepts case variants and multiple spaces but not malformed credentials" do
+    %{tokens: tokens} = connection_fixture()
+
+    for scheme <- ["bearer ", "bEaReR ", "Bearer    "] do
+      conn =
+        build_conn()
+        |> put_req_header("authorization", scheme <> tokens.access_token)
+        |> get(Mcp.resource())
+
+      assert response(conn, 405)
+    end
+
+    for header <- [
+          "Basic " <> tokens.access_token,
+          "Bearer" <> tokens.access_token,
+          "Bearer " <> tokens.access_token <> " extra",
+          "Bearer " <> String.duplicate("x", 1025)
+        ] do
+      assert build_conn()
+             |> put_req_header("authorization", header)
+             |> get(Mcp.resource())
+             |> response(401)
+    end
+  end
+
+  test "allowed browser origins receive preflight, challenge and MCP response CORS headers" do
+    %{tokens: tokens} = connection_fixture()
+
+    for origin <- [Mcp.issuer(), "https://chatgpt.com", "https://chat.openai.com"] do
+      preflight =
+        build_conn()
+        |> put_req_header("origin", origin)
+        |> put_req_header("access-control-request-method", "POST")
+        |> put_req_header("access-control-request-headers", "authorization, mcp-protocol-version")
+        |> options(Mcp.resource())
+
+      assert response(preflight, 204) == ""
+      assert get_resp_header(preflight, "access-control-allow-origin") == [origin]
+      assert get_resp_header(preflight, "access-control-allow-methods") |> hd() =~ "POST"
+      assert get_resp_header(preflight, "access-control-allow-headers") |> hd() =~ "Authorization"
+      assert get_resp_header(preflight, "access-control-allow-credentials") == []
+
+      challenge = rpc(nil, "tools/list", %{}, [{"origin", origin}])
+      assert response(challenge, 401)
+      assert get_resp_header(challenge, "access-control-allow-origin") == [origin]
+
+      assert get_resp_header(challenge, "access-control-expose-headers") |> hd() =~
+               "WWW-Authenticate"
+
+      success = rpc(tokens.access_token, "tools/list", %{}, [{"origin", origin}])
+      assert json_response(success, 200)["result"]["tools"] != []
+      assert get_resp_header(success, "access-control-allow-origin") == [origin]
+      assert get_resp_header(success, "vary") == ["Origin"]
+    end
+
+    for path <- ["/mcp", "/mcp/nested"] do
+      rejected =
+        build_conn()
+        |> put_req_header("origin", "https://evil.example")
+        |> options(Mcp.issuer() <> path)
+
+      assert response(rejected, 403)
+      assert get_resp_header(rejected, "access-control-allow-origin") == []
+    end
+
+    bad_host = %{build_conn() | host: "evil.example"}
+
+    assert bad_host
+           |> put_req_header("origin", "https://chatgpt.com")
+           |> options("/mcp")
+           |> response(403)
   end
 
   test "initialization, notifications, tool listing and metadata survive the SDK transport" do

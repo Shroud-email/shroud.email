@@ -13,8 +13,16 @@ defmodule ShroudWeb.Plugs.McpAuth do
   defp check_origin(conn) do
     token =
       case get_req_header(conn, "authorization") do
-        ["Bearer " <> token] when byte_size(token) in 1..1024 -> token
-        _ -> nil
+        [authorization] ->
+          case Regex.run(~r/\ABearer +([A-Za-z0-9._~+\/-]+=*)\z/i, authorization,
+                 capture: :all_but_first
+               ) do
+            [token] when byte_size(token) in 1..1024 -> token
+            _ -> nil
+          end
+
+        _ ->
+          nil
       end
 
     origins = [Mcp.issuer(), "https://chatgpt.com", "https://chat.openai.com"]
@@ -25,13 +33,36 @@ defmodule ShroudWeb.Plugs.McpAuth do
 
       [origin] ->
         if origin in origins,
-          do: authenticate(conn, token),
+          do: conn |> cors(origin) |> authenticate_or_preflight(token),
           else: conn |> send_resp(403, "Forbidden origin") |> halt()
 
       _ ->
         conn |> send_resp(403, "Forbidden origin") |> halt()
     end
   end
+
+  defp cors(conn, origin) do
+    conn
+    |> put_resp_header("vary", "Origin")
+    |> put_resp_header("access-control-allow-origin", origin)
+    |> put_resp_header(
+      "access-control-expose-headers",
+      "WWW-Authenticate, MCP-Session-Id, MCP-Protocol-Version"
+    )
+  end
+
+  defp authenticate_or_preflight(%{method: "OPTIONS"} = conn, _token) do
+    conn
+    |> put_resp_header("access-control-allow-methods", "GET, POST, DELETE, OPTIONS")
+    |> put_resp_header(
+      "access-control-allow-headers",
+      "Authorization, Content-Type, Accept, MCP-Protocol-Version, MCP-Session-Id, Last-Event-ID"
+    )
+    |> send_resp(204, "")
+    |> halt()
+  end
+
+  defp authenticate_or_preflight(conn, token), do: authenticate(conn, token)
 
   def handler_opts(conn, _request), do: [token: conn.assigns.mcp_token]
 

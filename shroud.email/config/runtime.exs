@@ -29,8 +29,10 @@ if clients_json = System.get_env("MCP_OAUTH_CLIENTS") do
   valid_uri? = fn value ->
     is_binary(value) and
       match?(
-        %URI{scheme: "https", host: host, userinfo: nil, fragment: nil}
-        when is_binary(host) and host != "",
+        %URI{scheme: scheme, host: host, userinfo: nil, fragment: nil}
+        when is_binary(host) and host != "" and
+               (scheme == "https" or
+                  (scheme == "http" and host in ["localhost", "127.0.0.1", "::1"])),
         URI.parse(value)
       ) and
       not String.match?(value, ~r/[\x00-\x20\x7f]/)
@@ -46,7 +48,7 @@ if clients_json = System.get_env("MCP_OAUTH_CLIENTS") do
              _ ->
                false
            end) do
-    raise "MCP_OAUTH_CLIENTS must map client IDs to names and exact HTTPS redirect_uris"
+    raise "MCP_OAUTH_CLIENTS must map client IDs to names and exact redirect_uris (HTTPS or loopback HTTP)"
   end
 
   config :shroud, :mcp_clients, clients

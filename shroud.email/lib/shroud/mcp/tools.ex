@@ -193,14 +193,22 @@ defmodule Shroud.Mcp.Tools do
         {domain, local} when is_binary(domain) and is_binary(local) ->
           verified =
             Domain.list_custom_domains(connection.user)
-            |> Enum.find(&(&1.domain == domain and Domain.fully_verified?(&1)))
+            |> Enum.find(
+              &(String.downcase(&1.domain) == String.downcase(domain) and
+                  Domain.fully_verified?(&1))
+            )
 
-          if verified && Regex.match?(~r/^[A-Za-z0-9.!#$%&'*+\/=?^`{|}~-]+$/, local) do
+          # Keep the stored domain spelling for the context's exact domain lookup;
+          # the alias changeset normalizes the address only after association.
+          with %{domain: stored_domain} <- verified,
+               true <- Regex.match?(~r/^[A-Za-z0-9.!#$%&'*+\/=?^`{|}~-]+$/, local),
+               address = local <> "@" <> stored_domain,
+               {:ok, [{:undefined, _}]} <- :smtp_util.parse_rfc5322_addresses(address) do
             Aliases.create_email_alias(
-              Map.merge(metadata, %{user_id: connection.user_id, address: local <> "@" <> domain})
+              Map.merge(metadata, %{user_id: connection.user_id, address: address})
             )
           else
-            {:error, :invalid_domain}
+            _ -> {:error, :invalid_domain}
           end
 
         _ ->

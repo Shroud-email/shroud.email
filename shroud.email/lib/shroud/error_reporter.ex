@@ -7,7 +7,7 @@ defmodule Shroud.ErrorReporter do
       ),
       do: %{event | msg: {:string, "MCP handler failed (details redacted)"}}
 
-  def filter_mcp_logs(_event, _config), do: :ignore
+  def filter_mcp_logs(event, _config), do: event
 
   def before_send(%Sentry.Event{
         original_exception: %Plug.CSRFProtection.InvalidCSRFTokenError{}

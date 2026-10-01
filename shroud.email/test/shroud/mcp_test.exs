@@ -133,6 +133,45 @@ defmodule Shroud.McpTest do
              end)
   end
 
+  test "matching client lookups are read-only but configured redirects are synchronized" do
+    client = Clients.get_client("test-client")
+    ref = trace_queries()
+    assert Clients.get_client("test-client").id == client.id
+    assert Clients.get_client(client.id).id == client.id
+    assert_receive {^ref, "SELECT" <> _}
+    refute_received {^ref, "INSERT" <> _}
+    refute_received {^ref, "UPDATE" <> _}
+
+    clients = Application.fetch_env!(:shroud, :mcp_clients)
+    redirects = ["https://client.example/new-callback"]
+
+    Application.put_env(
+      :shroud,
+      :mcp_clients,
+      put_in(clients, ["test-client", "redirect_uris"], redirects)
+    )
+
+    assert Clients.get_client("test-client").redirect_uris == redirects
+    assert Repo.get_by!(Boruta.Ecto.Client, name: "test-client").redirect_uris == redirects
+  end
+
+  test "invalid revocation credentials do not reach the database" do
+    ref = trace_queries()
+
+    for token <- [nil, "", String.duplicate("x", 1025)] do
+      assert :ok = Mcp.revoke_token(token, "test-client")
+    end
+
+    refute_received {^ref, _}
+    assert :ok = Mcp.revoke_token(String.duplicate("x", 1024), "test-client")
+    assert_receive {^ref, "SELECT" <> _}
+  end
+
+  test "ordinary log events pass through unchanged" do
+    event = %{level: :info, msg: {:string, "Ordinary event"}, meta: %{}}
+    assert Shroud.ErrorReporter.filter_mcp_logs(event, []) == event
+  end
+
   test "expired tokens, changed resources, unconfirmed accounts and removed clients reject access" do
     %{tokens: tokens} = connection_fixture()
 
@@ -309,4 +348,22 @@ defmodule Shroud.McpTest do
   end
 
   defp past, do: DateTime.utc_now() |> DateTime.truncate(:second) |> DateTime.add(-1)
+
+  defp trace_queries do
+    ref = make_ref()
+    owner = self()
+
+    :ok =
+      :telemetry.attach(
+        ref,
+        [:shroud, :repo, :query],
+        fn _event, _measurements, metadata, _config ->
+          if self() == owner, do: send(owner, {ref, metadata.query})
+        end,
+        nil
+      )
+
+    on_exit(fn -> :telemetry.detach(ref) end)
+    ref
+  end
 end

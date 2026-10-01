@@ -22,7 +22,6 @@ defmodule ShroudWeb.ConnectionController do
 
   defp private_page(conn, _opts) do
     conn
-    |> put_root_layout(html: {ShroudWeb.Layouts, :connection})
     |> put_resp_header("cache-control", "no-store")
     |> put_resp_header("referrer-policy", "no-referrer")
   end
