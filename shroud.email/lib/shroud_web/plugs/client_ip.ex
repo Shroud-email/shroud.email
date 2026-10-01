@@ -1,6 +1,6 @@
 defmodule ShroudWeb.Plugs.ClientIP do
   @moduledoc """
-  Trusts X-Forwarded-For only from explicitly configured proxy IP addresses.
+  Trusts X-Forwarded-For only from resolved, configured proxy hostnames.
   The first untrusted hop, walking from the peer backwards, is the client.
   Private and loopback addresses are not implicitly trusted.
   """
@@ -14,15 +14,25 @@ defmodule ShroudWeb.Plugs.ClientIP do
 
   def resolve(peer, headers) do
     peer = normalize(peer)
-    proxies = Application.get_env(:shroud, :trusted_proxy_ips, [])
 
-    with true <- peer in proxies,
-         [header] <- for({"x-forwarded-for", value} <- headers, do: value),
+    with [header] <- for({"x-forwarded-for", value} <- headers, do: value),
+         proxies = trusted_proxies(),
+         true <- peer in proxies,
          {:ok, addresses} <- parse_chain(header) do
       Enum.find(addresses, peer, &(&1 not in proxies))
     else
       _ -> peer
     end
+  end
+
+  defp trusted_proxies do
+    # Resolve on each forwarded request so container replacement does not leave
+    # a stale trusted IP. DNS errors grant no trust; never resolve client input.
+    for host <- Application.get_env(:shroud, :trusted_proxy_hosts, []),
+        family <- [:inet, :inet6],
+        {:ok, addresses} <- [:inet.getaddrs(String.to_charlist(host), family)],
+        address <- addresses,
+        do: normalize(address)
   end
 
   defp parse_chain(header) do

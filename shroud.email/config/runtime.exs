@@ -10,23 +10,11 @@ end
 
 # Only these connection peers may supply X-Forwarded-For. No implicit trust of
 # loopback/private networks; direct deployments leave this empty.
-trusted_proxy_ips =
-  System.get_env("TRUSTED_PROXY_IPS", "")
-  |> String.split(",", trim: true)
-  |> Enum.map(fn value ->
-    case :inet.parse_strict_address(value |> String.trim() |> String.to_charlist()) do
-      {:ok, {0, 0, 0, 0, 0, 65_535, high, low}} ->
-        {div(high, 256), rem(high, 256), div(low, 256), rem(low, 256)}
-
-      {:ok, ip} ->
-        ip
-
-      {:error, _} ->
-        raise "TRUSTED_PROXY_IPS must contain comma-separated IP addresses"
-    end
-  end)
-
-config :shroud, trusted_proxy_ips: trusted_proxy_ips
+config :shroud,
+  trusted_proxy_hosts:
+    System.get_env("TRUSTED_PROXY_HOSTS", "")
+    |> String.split(",", trim: true)
+    |> Enum.map(&String.trim/1)
 
 # Optional: Chatwoot support widget. Set CHATWOOT_BASE_URL to the URL of
 # your Chatwoot server to enable the widget. When unset (e.g. for

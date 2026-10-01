@@ -7,9 +7,13 @@ defmodule ShroudWeb.RateLimitIntegrationTest do
   alias ShroudWeb.Plugs.ClientIP
 
   setup do
-    proxies = Application.get_env(:shroud, :trusted_proxy_ips)
-    Application.put_env(:shroud, :trusted_proxy_ips, [])
-    on_exit(fn -> Application.put_env(:shroud, :trusted_proxy_ips, proxies || []) end)
+    hosts = Application.get_env(:shroud, :trusted_proxy_hosts)
+    Application.put_env(:shroud, :trusted_proxy_hosts, [])
+
+    on_exit(fn ->
+      Application.put_env(:shroud, :trusted_proxy_hosts, hosts || [])
+    end)
+
     :ok
   end
 
@@ -140,6 +144,15 @@ defmodule ShroudWeb.RateLimitIntegrationTest do
     response =
       post(build_conn(), "/api/v1/token", %{
         email: user.email,
+        password: "wrong-password",
+        totp: 123_456
+      })
+
+    assert response.status == 403
+
+    response =
+      post(build_conn(), "/api/v1/token", %{
+        email: user.email,
         password: valid_user_password(),
         totp: 123_456
       })
@@ -226,8 +239,8 @@ defmodule ShroudWeb.RateLimitIntegrationTest do
   test "trusted proxy clients are independent and untrusted forged headers are ignored", %{
     conn: conn
   } do
-    proxy = {172, 30, 0, 2}
-    Application.put_env(:shroud, :trusted_proxy_ips, [proxy])
+    proxy = {127, 0, 0, 1}
+    Application.put_env(:shroud, :trusted_proxy_hosts, ["localhost"])
     seed(:http, {:ip, {192, 0, 2, 10}}, 600)
 
     proxy_conn = %{conn | remote_ip: proxy}
@@ -250,14 +263,34 @@ defmodule ShroudWeb.RateLimitIntegrationTest do
            |> Map.fetch!(:status) == 429
   end
 
-  test "proxy parsing rejects malformed chains, duplicate headers and implicit private trust" do
-    proxy = {172, 30, 0, 2}
-    Application.put_env(:shroud, :trusted_proxy_ips, [proxy, {10, 0, 0, 2}])
+  test "proxy hostnames resolve for requests, and DNS failures grant no trust", %{conn: conn} do
+    peer = {127, 0, 0, 1}
+    headers = [{"x-forwarded-for", "192.0.2.10"}]
+    Application.put_env(:shroud, :trusted_proxy_hosts, ["localhost"])
+    assert ClientIP.resolve(peer, headers) == {192, 0, 2, 10}
+    assert ClientIP.resolve({127, 0, 0, 2}, headers) == {127, 0, 0, 2}
 
-    assert ClientIP.resolve(proxy, [{"x-forwarded-for", "198.51.100.9, 10.0.0.3, 10.0.0.2"}]) ==
+    seed(:http, {:ip, {192, 0, 2, 10}}, 600)
+
+    assert %{conn | remote_ip: peer}
+           |> put_req_header("x-forwarded-for", "192.0.2.10")
+           |> get("/users/log_in")
+           |> Map.fetch!(:status) == 429
+
+    Application.put_env(:shroud, :trusted_proxy_hosts, ["proxy.invalid"])
+    assert ClientIP.resolve(peer, headers) == peer
+    Application.put_env(:shroud, :trusted_proxy_hosts, [])
+    assert ClientIP.resolve(peer, headers) == peer
+  end
+
+  test "proxy parsing rejects malformed chains, duplicate headers and implicit private trust" do
+    proxy = {127, 0, 0, 1}
+    Application.put_env(:shroud, :trusted_proxy_hosts, ["localhost"])
+
+    assert ClientIP.resolve(proxy, [{"x-forwarded-for", "198.51.100.9, 10.0.0.3, 127.0.0.1"}]) ==
              {10, 0, 0, 3}
 
-    assert ClientIP.resolve({127, 0, 0, 1}, [{"x-forwarded-for", "192.0.2.1"}]) == {127, 0, 0, 1}
+    assert ClientIP.resolve({127, 0, 0, 2}, [{"x-forwarded-for", "192.0.2.1"}]) == {127, 0, 0, 2}
     assert ClientIP.resolve(proxy, [{"x-forwarded-for", "bad, 192.0.2.1"}]) == proxy
 
     assert ClientIP.resolve(proxy, [

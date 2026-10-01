@@ -23,26 +23,15 @@ defmodule ShroudWeb.Api.V1.TokenController do
   )
 
   def create(conn, %{"email" => email, "password" => password} = params) do
-    user = Accounts.get_user_by_email_and_password(email, password)
-
-    conn =
-      if user && user.totp_enabled do
-        conn
-        |> RateLimit.enforce(:second_factor, {:ip, conn.remote_ip})
-        |> RateLimit.enforce(:second_factor, {:account, user.id})
-      else
-        conn
-      end
-
-    cond do
-      conn.halted ->
+    case get_user(conn, email, password, params["totp"]) do
+      {:rate_limited, conn} ->
         conn
 
-      user && valid_totp?(user, params["totp"]) ->
+      %Accounts.User{} = user ->
         token = Accounts.generate_user_session_token(user)
         render(conn, "token.json", token: Base.encode64(token))
 
-      true ->
+      nil ->
         conn
         |> put_status(403)
         |> put_view(ShroudWeb.ErrorJSON)
@@ -50,12 +39,31 @@ defmodule ShroudWeb.Api.V1.TokenController do
     end
   end
 
-  defp valid_totp?(%{totp_enabled: false}, _totp), do: true
+  defp get_user(conn, email, password, totp) do
+    if user = Accounts.get_user_by_email_and_password(email, password) do
+      if user.totp_enabled do
+        conn =
+          conn
+          |> RateLimit.enforce(:second_factor, {:ip, conn.remote_ip})
+          |> RateLimit.enforce(:second_factor, {:account, user.id})
 
-  defp valid_totp?(user, totp) do
-    totp =
-      if is_nil(totp), do: "", else: totp |> Integer.to_string() |> String.pad_leading(6, "0")
+        totp =
+          if is_nil(totp) || conn.halted,
+            do: "",
+            else: totp |> Integer.to_string() |> String.pad_leading(6, "0")
 
-    Accounts.TOTP.valid_code?(user, user.totp_secret, totp)
+        with %{halted: false} <- conn,
+             true <- Accounts.TOTP.valid_code?(user, user.totp_secret, totp) do
+          user
+        else
+          false -> nil
+          conn -> {:rate_limited, conn}
+        end
+      else
+        user
+      end
+    else
+      nil
+    end
   end
 end

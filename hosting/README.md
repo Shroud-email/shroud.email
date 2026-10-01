@@ -52,15 +52,14 @@ rejections return 429 with `Retry-After`; connected pages show retry guidance.
 Static assets, `GET /_health`, and `POST /api/webhooks/paddle` are exempt; webhook
 signatures are still required.
 
-Compose assigns Caddy `172.30.0.2` on the `172.30.0.0/24` network and passes that
-exact address to the app as `TRUSTED_PROXY_IPS`. If the subnet overlaps an existing
-network, change `SHROUD_NETWORK_PREFIX` (the first three IPv4 octets, for example
-`172.31.42`); the /24 subnet and Caddy address are derived together. Existing
-stacks must recreate the Compose network during a planned maintenance window
-(stop the stack without deleting volumes, then start it with the new network).
+Compose sets `TRUSTED_PROXY_HOSTS=caddy`. The app resolves the service name using
+Docker's internal DNS on each forwarded request, so replacing Caddy can change
+its IP without leaving a stale trusted address. DNS failures grant no trust.
+No fixed container IP or custom subnet is required.
 
-For other deployments, set `TRUSTED_PROXY_IPS` to comma-separated exact IPv4/IPv6
-addresses of trusted proxies, or leave it empty for direct connections. The app
+For other deployments, set `TRUSTED_PROXY_HOSTS` to comma-separated proxy names
+in a DNS system you control, or leave it empty for direct connections.
+These are deployment settings, never names supplied by clients. The app
 ignores forwarded headers from every other peer, including private/loopback
 addresses. It walks `X-Forwarded-For` right-to-left, stopping at the first
 untrusted address. Your proxy must sanitize/append the actual client's address.
