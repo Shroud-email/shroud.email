@@ -233,11 +233,11 @@ defmodule ShroudWeb.PasskeyRegistrationLiveTest do
     refute has_element?(view, "#passkey-password-error")
   end
 
-  test "invalid responses do not block subsequent authorized enrollment", %{
+  test "invalid responses below the limit do not block subsequent authorized enrollment", %{
     view: view,
     user: user
   } do
-    for _ <- 1..61 do
+    for _ <- 1..3 do
       render_hook(view, "passkey_registered", %{})
       assert_reply(view, %{error: "invalid_registration"})
     end
@@ -278,11 +278,14 @@ defmodule ShroudWeb.PasskeyRegistrationLiveTest do
           %{"current_password" => []},
           %{"current_password" => String.duplicate("x", 73)}
         ] do
+      # Each malformed-input case tests validation, independently of throttling.
+      Shroud.RateLimit.set({{:security, :passkey}, {:account, user.id}}, 60_000, 0)
       render_submit(view, "add_passkey", %{"passkey" => value})
       assert has_element?(view, "#passkey-password-error", "Incorrect password")
       refute_push_event(view, "passkey-register", _)
     end
 
+    Shroud.RateLimit.set({{:security, :passkey}, {:account, user.id}}, 60_000, 0)
     render_hook(view, "passkey_registered", response(authorize(view)))
     assert_reply(view, %{})
     [credential] = Accounts.list_passkeys(user)

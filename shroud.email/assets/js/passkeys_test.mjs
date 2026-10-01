@@ -213,3 +213,18 @@ test("destruction aborts and suppresses late registration and login responses", 
   assert.equal(login.buttonHandlers.size, 1);
   remounted.disconnected();
 });
+
+test("manual rate-limit replies preserve server retry guidance without invoking WebAuthn", () => {
+  const env = setup({
+    conditional: false,
+    timers: true,
+    credentials: { get: () => { throw Error("must not run"); } },
+  });
+  const hook = env.mount(env.hooks.PasskeyLogin);
+  hook.startPasskeyLogin(false);
+  const request = env.events.find(e => e.name === "passkey_options");
+  request.callback({ error: "Too many requests", retry_after: 30 });
+  assert.equal(env.events.some(e => e.name === "passkey_login_error"), false);
+  assert.equal(hook.passkeyTimer, null);
+  assert.equal(hook.passkeyController, null);
+});

@@ -11,7 +11,11 @@ defmodule ShroudWeb.Endpoint do
     signing_salt: "QyYPoQ5Q"
   ]
 
-  socket "/live", Phoenix.LiveView.Socket, websocket: [connect_info: [session: @session_options]]
+  socket "/live", ShroudWeb.LiveSocket,
+    websocket: [
+      connect_info: [:peer_data, :x_headers, session: @session_options],
+      error_handler: {ShroudWeb.LiveSocket, :handle_error, []}
+    ]
 
   # Serve at "/" the static files from "priv/static" directory.
   #
@@ -42,6 +46,9 @@ defmodule ShroudWeb.Endpoint do
 
   plug Plug.RequestId
   plug ShroudWeb.Plug.Telemetry, event_prefix: [:phoenix, :endpoint]
+
+  plug ShroudWeb.Plugs.ClientIP
+  plug ShroudWeb.Plugs.RateLimit, :global
 
   plug ShroudWeb.Plugs.RequestParsers,
     parsers: [:urlencoded, :multipart, :json],

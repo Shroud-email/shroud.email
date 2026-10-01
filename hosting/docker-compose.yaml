@@ -94,12 +94,16 @@ services:
       - CAP_INSTANCE_URL=${CAP_INSTANCE_URL:-https://${CAP_DOMAIN}}
       - CAP_SITE_KEY=${CAP_SITE_KEY}
       - CAP_SECRET_KEY=${CAP_SECRET_KEY}
+      - TRUSTED_PROXY_IPS=${CADDY_PROXY_IP:-172.30.0.2}
 
   caddy:
     build:
       context: ..
       dockerfile: hosting/caddy/Dockerfile
     restart: unless-stopped
+    networks:
+      default:
+        ipv4_address: ${CADDY_PROXY_IP:-172.30.0.2}
     environment:
       - ADMIN_EMAIL=${ADMIN_EMAIL}
       - APP_DOMAIN=${APP_DOMAIN}
@@ -123,6 +127,12 @@ services:
     volumes:
       - caddy_data:/caddy
       - pem_certs:/pem
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: ${SHROUD_NETWORK_SUBNET:-172.30.0.0/24}
 
 volumes:
   db_data:

@@ -44,6 +44,36 @@ npm ci --omit=dev --omit=optional
 node --test test/tls_cert_reload.test.js
 ```
 
+## Rate limiting and trusted proxies
+
+The app enforces single-node, in-memory rate limits on dynamic HTTP requests and
+LiveView events. Limits reset when the application or limiter restarts. HTTP
+rejections return 429 with `Retry-After`; connected pages show retry guidance.
+Static assets, `GET /_health`, and `POST /api/webhooks/paddle` are exempt; webhook
+signatures are still required.
+
+Compose assigns Caddy `172.30.0.2` on the `172.30.0.0/24` network and passes that
+exact address to the app as `TRUSTED_PROXY_IPS`. Change `SHROUD_NETWORK_SUBNET`
+and `CADDY_PROXY_IP` together if the subnet overlaps an existing network. Existing
+stacks must recreate the Compose network during a planned maintenance window
+(stop the stack without deleting volumes, then start it with the new network).
+
+For other deployments, set `TRUSTED_PROXY_IPS` to comma-separated exact IPv4/IPv6
+addresses of trusted proxies, or leave it empty for direct connections. The app
+ignores forwarded headers from every other peer, including private/loopback
+addresses. It walks `X-Forwarded-For` right-to-left, stopping at the first
+untrusted address. Your proxy must sanitize/append the actual client's address.
+If Caddy itself is behind another proxy/CDN, configure Caddy's upstream trusted
+proxies explicitly; do not blindly pass client-supplied forwarding headers.
+
+Initial limits: 600 HTTP requests/minute/IP; 10 sign-ins/minute/IP shared across
+password, passkey and API-token entry points; 5 second-factor attempts/minute/IP
+and account; 5 account-email requests/15 minutes/IP and, where authenticated,
+account; 5 password mutations/15 minutes; 120 API requests/minute/account;
+120 image fetches/minute/IP; 10 billing sessions/minute/account; 120 LiveView
+events/minute/account, with 5 sensitive security events/minute per action group.
+Unauthenticated passkey challenges are limited to 10/minute/IP.
+
 ## TLS via Bunny DNS-01 (optional)
 
 Caddy defaults to HTTP-01 ACME (port 80), which works behind no other reverse

@@ -23,7 +23,7 @@ defmodule ShroudWeb.ConnCase do
     quote do
       # Import conveniences for testing with connections
       import Plug.Conn
-      import Phoenix.ConnTest
+      import Phoenix.ConnTest, except: [build_conn: 0]
       import ShroudWeb.ConnCase
       alias Phoenix.Flash
 
@@ -37,7 +37,17 @@ defmodule ShroudWeb.ConnCase do
   setup tags do
     pid = Ecto.Adapters.SQL.Sandbox.start_owner!(Shroud.Repo, shared: not tags[:async])
     on_exit(fn -> Ecto.Adapters.SQL.Sandbox.stop_owner(pid) end)
-    {:ok, conn: Phoenix.ConnTest.build_conn()}
+    {:ok, conn: build_conn()}
+  end
+
+  # Keep real rate limiting enabled, but give independently built test clients
+  # distinct IPs instead of sharing every test's allowance on 127.0.0.1.
+  def build_conn do
+    n = System.unique_integer([:positive, :monotonic])
+    ip = {198, 19, div(n, 256), rem(n, 256)}
+
+    conn = Phoenix.ConnTest.build_conn()
+    %{conn | remote_ip: ip} |> Plug.Test.put_peer_data(%{address: ip, port: 1234, ssl_cert: nil})
   end
 
   @doc """
