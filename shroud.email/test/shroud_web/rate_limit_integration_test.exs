@@ -7,11 +7,19 @@ defmodule ShroudWeb.RateLimitIntegrationTest do
   alias ShroudWeb.Plugs.ClientIP
 
   setup do
-    hosts = Application.get_env(:shroud, :trusted_proxy_hosts)
-    Application.put_env(:shroud, :trusted_proxy_hosts, [])
+    # Freeze refreshes while exercising controlled snapshots. Requests must
+    # still complete: they may not call the suspended cache process or DNS.
+    :sys.suspend(ShroudWeb.TrustedProxies)
+    [snapshot] = :ets.lookup(ShroudWeb.TrustedProxies, :snapshot)
+    cache_proxy_addresses([])
 
     on_exit(fn ->
-      Application.put_env(:shroud, :trusted_proxy_hosts, hosts || [])
+      :sys.replace_state(ShroudWeb.TrustedProxies, fn state ->
+        :ets.insert(ShroudWeb.TrustedProxies, snapshot)
+        state
+      end)
+
+      :sys.resume(ShroudWeb.TrustedProxies)
     end)
 
     :ok
@@ -240,7 +248,7 @@ defmodule ShroudWeb.RateLimitIntegrationTest do
     conn: conn
   } do
     proxy = {127, 0, 0, 1}
-    Application.put_env(:shroud, :trusted_proxy_hosts, ["localhost"])
+    cache_proxy_addresses([proxy])
     seed(:http, {:ip, {192, 0, 2, 10}}, 600)
 
     proxy_conn = %{conn | remote_ip: proxy}
@@ -263,10 +271,10 @@ defmodule ShroudWeb.RateLimitIntegrationTest do
            |> Map.fetch!(:status) == 429
   end
 
-  test "proxy hostnames resolve for requests, and DNS failures grant no trust", %{conn: conn} do
+  test "requests ignore stale or missing proxy snapshots", %{conn: conn} do
     peer = {127, 0, 0, 1}
     headers = [{"x-forwarded-for", "192.0.2.10"}]
-    Application.put_env(:shroud, :trusted_proxy_hosts, ["localhost"])
+    cache_proxy_addresses([peer])
     assert ClientIP.resolve(peer, headers) == {192, 0, 2, 10}
     assert ClientIP.resolve({127, 0, 0, 2}, headers) == {127, 0, 0, 2}
 
@@ -277,15 +285,23 @@ defmodule ShroudWeb.RateLimitIntegrationTest do
            |> get("/users/log_in")
            |> Map.fetch!(:status) == 429
 
-    Application.put_env(:shroud, :trusted_proxy_hosts, ["proxy.invalid"])
+    cache_proxy_addresses([peer], System.monotonic_time(:millisecond) - 1)
     assert ClientIP.resolve(peer, headers) == peer
-    Application.put_env(:shroud, :trusted_proxy_hosts, [])
+
+    seed(:http, {:ip, peer}, 600)
+
+    assert %{conn | remote_ip: peer}
+           |> put_req_header("x-forwarded-for", "192.0.2.11")
+           |> get("/users/log_in")
+           |> Map.fetch!(:status) == 429
+
+    cache_proxy_addresses([])
     assert ClientIP.resolve(peer, headers) == peer
   end
 
   test "proxy parsing rejects malformed chains, duplicate headers and implicit private trust" do
     proxy = {127, 0, 0, 1}
-    Application.put_env(:shroud, :trusted_proxy_hosts, ["localhost"])
+    cache_proxy_addresses([proxy])
 
     assert ClientIP.resolve(proxy, [{"x-forwarded-for", "198.51.100.9, 10.0.0.3, 127.0.0.1"}]) ==
              {10, 0, 0, 3}
@@ -302,6 +318,16 @@ defmodule ShroudWeb.RateLimitIntegrationTest do
 
     assert ClientIP.resolve(proxy, [{"x-forwarded-for", "2001:db8::a"}]) ==
              {8193, 3512, 0, 0, 0, 0, 0, 10}
+  end
+
+  defp cache_proxy_addresses(
+         addresses,
+         expires_at \\ System.monotonic_time(:millisecond) + 60_000
+       ) do
+    :sys.replace_state(ShroudWeb.TrustedProxies, fn state ->
+      :ets.insert(ShroudWeb.TrustedProxies, {:snapshot, expires_at, addresses})
+      state
+    end)
   end
 
   defp seed(policy, actor, count) do

@@ -16,6 +16,8 @@ defmodule Shroud.Application do
       {Phoenix.PubSub, name: Shroud.PubSub},
       # Start rate limiting before the Endpoint can accept requests.
       {Shroud.RateLimit, key_older_than: :timer.minutes(15)},
+      {Task.Supervisor, name: ShroudWeb.ProxyResolverTasks},
+      ShroudWeb.TrustedProxies,
       # Start the Endpoint (http/https)
       ShroudWeb.Endpoint,
       {Oban, Application.fetch_env!(:shroud, Oban)},

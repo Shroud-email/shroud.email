@@ -16,23 +16,13 @@ defmodule ShroudWeb.Plugs.ClientIP do
     peer = normalize(peer)
 
     with [header] <- for({"x-forwarded-for", value} <- headers, do: value),
-         proxies = trusted_proxies(),
+         proxies = Enum.map(ShroudWeb.TrustedProxies.addresses(), &normalize/1),
          true <- peer in proxies,
          {:ok, addresses} <- parse_chain(header) do
       Enum.find(addresses, peer, &(&1 not in proxies))
     else
       _ -> peer
     end
-  end
-
-  defp trusted_proxies do
-    # Resolve on each forwarded request so container replacement does not leave
-    # a stale trusted IP. DNS errors grant no trust; never resolve client input.
-    for host <- Application.get_env(:shroud, :trusted_proxy_hosts, []),
-        family <- [:inet, :inet6],
-        {:ok, addresses} <- [:inet.getaddrs(String.to_charlist(host), family)],
-        address <- addresses,
-        do: normalize(address)
   end
 
   defp parse_chain(header) do

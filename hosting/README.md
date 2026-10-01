@@ -52,9 +52,11 @@ rejections return 429 with `Retry-After`; connected pages show retry guidance.
 Static assets, `GET /_health`, and `POST /api/webhooks/paddle` are exempt; webhook
 signatures are still required.
 
-Compose sets `TRUSTED_PROXY_HOSTS=caddy`. The app resolves the service name using
-Docker's internal DNS on each forwarded request, so replacing Caddy can change
-its IP without leaving a stale trusted address. DNS failures grant no trust.
+Compose sets `TRUSTED_PROXY_HOSTS=caddy`. A supervised background worker refreshes
+proxy addresses through Docker's internal DNS every 30 seconds, with a five-second
+lookup timeout. Requests only read a cached snapshot (at most 256 addresses),
+which expires after one minute. Missing, failed, or stale snapshots grant no trust;
+DNS never blocks a request. Replacing Caddy is picked up on the next refresh.
 No fixed container IP or custom subnet is required.
 
 For other deployments, set `TRUSTED_PROXY_HOSTS` to comma-separated proxy names
