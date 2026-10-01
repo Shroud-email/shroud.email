@@ -10,5 +10,5 @@
     "jsx": "preserve"
   },
   "include": [".astro/types.d.ts", "src/**/*"],
-  "exclude": ["edge-script", "dist", ".astro"]
+  "exclude": ["edge-script", "dist"]
 }
