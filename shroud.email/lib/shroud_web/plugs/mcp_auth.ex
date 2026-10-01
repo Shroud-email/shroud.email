@@ -1,0 +1,66 @@
+defmodule ShroudWeb.Plugs.McpAuth do
+  import Plug.Conn
+  alias Shroud.Mcp
+
+  def init(opts), do: opts
+
+  def call(conn, _opts) do
+    if conn.host == URI.parse(Mcp.issuer()).host,
+      do: check_origin(conn),
+      else: conn |> send_resp(403, "Forbidden host") |> halt()
+  end
+
+  defp check_origin(conn) do
+    token =
+      case get_req_header(conn, "authorization") do
+        ["Bearer " <> token] when byte_size(token) in 1..1024 -> token
+        _ -> nil
+      end
+
+    origins = [Mcp.issuer(), "https://chatgpt.com", "https://chat.openai.com"]
+
+    case get_req_header(conn, "origin") do
+      [] ->
+        authenticate(conn, token)
+
+      [origin] ->
+        if origin in origins,
+          do: authenticate(conn, token),
+          else: conn |> send_resp(403, "Forbidden origin") |> halt()
+
+      _ ->
+        conn |> send_resp(403, "Forbidden origin") |> halt()
+    end
+  end
+
+  def handler_opts(conn, _request), do: [token: conn.assigns.mcp_token]
+
+  def challenge(reason \\ :invalid_token, scope \\ nil) do
+    error = if reason == :insufficient_scope, do: "insufficient_scope", else: "invalid_token"
+    scope = if scope, do: Enum.join(Mcp.required_scopes(scope), " ")
+    scope_part = if scope, do: ", scope=\"#{scope}\"", else: ""
+
+    ~s(Bearer resource_metadata="#{Mcp.issuer()}/.well-known/oauth-protected-resource", error="#{error}", error_description="Connect your Shroud account") <>
+      scope_part
+  end
+
+  defp authenticate(conn, token) do
+    case Mcp.with_access(token, nil, fn _connection -> :ok end) do
+      :ok ->
+        if conn.method == "GET" and conn.request_path == "/mcp" do
+          conn
+          |> put_resp_header("allow", "POST, DELETE")
+          |> send_resp(405, "Streaming not supported")
+          |> halt()
+        else
+          assign(conn, :mcp_token, token)
+        end
+
+      _ ->
+        conn
+        |> put_resp_header("www-authenticate", challenge())
+        |> send_resp(401, "Authentication required")
+        |> halt()
+    end
+  end
+end

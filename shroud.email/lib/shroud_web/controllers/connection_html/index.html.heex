@@ -1,0 +1,16 @@
+<main class="max-w-xl mx-auto px-4 py-10 space-y-5">
+  <h1 class="text-2xl font-semibold">Connected apps</h1>
+  <p>Disconnecting stops the app's access immediately. Your aliases stay unchanged.</p>
+  <p :if={@connections == []} id="no-connections">No active connections.</p>
+  <section :for={connection <- @connections} id={"connection-#{connection.id}"} class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 space-y-4">
+    <h2 class="text-lg font-semibold">{Shroud.Mcp.client_name(connection.client_id)}</h2>
+    <ul class="list-disc pl-5 text-sm space-y-1">
+      <li :for={permission <- Enum.map(connection.scopes, &Shroud.Mcp.permissions()[&1]) |> Enum.uniq()}>{permission}</li>
+    </ul>
+    <p class="text-sm text-gray-600 dark:text-gray-300">Expires {Calendar.strftime(connection.expires_at, "%d %b %Y")}</p>
+    <.form for={to_form(%{})} action={~p"/settings/connections/#{connection.id}"} method="delete" id={"revoke-#{connection.id}"}>
+      <button class="btn btn-white">Revoke connection</button>
+    </.form>
+  </section>
+  <.link href={~p"/settings/security"} class="underline">Back to security settings</.link>
+</main>

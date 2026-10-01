@@ -37,6 +37,52 @@ defmodule ShroudWeb.Router do
     plug(ShroudWeb.Plugs.SentryContext)
   end
 
+  pipeline :connection_browser do
+    plug(:accepts, ["html"])
+    plug(:fetch_session)
+    plug(:fetch_live_flash)
+    plug(:put_root_layout, html: {ShroudWeb.Layouts, :connection})
+    plug(:protect_from_forgery)
+    plug(:put_secure_browser_headers)
+    plug(:fetch_current_user)
+    plug(:require_confirmed_user)
+  end
+
+  pipeline :mcp do
+    plug(ShroudWeb.Plugs.McpAuth)
+  end
+
+  scope "/", ShroudWeb do
+    get("/.well-known/oauth-authorization-server", McpOAuthController, :metadata)
+    get("/.well-known/oauth-protected-resource", McpOAuthController, :resource_metadata)
+    get("/.well-known/oauth-protected-resource/mcp", McpOAuthController, :resource_metadata)
+    post("/oauth/token", McpOAuthController, :token)
+    post("/oauth/revoke", McpOAuthController, :revoke)
+  end
+
+  scope "/", ShroudWeb do
+    pipe_through(:connection_browser)
+    get("/oauth/authorize", McpOAuthController, :authorize)
+    post("/oauth/authorize", McpOAuthController, :consent)
+    get("/settings/connections", ConnectionController, :index)
+    delete("/settings/connections/:id", ConnectionController, :delete)
+  end
+
+  scope "/" do
+    pipe_through(:mcp)
+
+    forward("/mcp", ExMCP.HttpPlug,
+      handler: ShroudWeb.McpHandler,
+      handler_opts: {ShroudWeb.Plugs.McpAuth, :handler_opts, []},
+      protocol_mode: :prefer_modern,
+      validate_origin: false,
+      body_limit: 65_536,
+      handler_call_timeout: 5_000,
+      server_info: %{name: "shroud-email", version: "1.0.0"},
+      server_capabilities: %{tools: %{listChanged: false}}
+    )
+  end
+
   scope "/api", ShroudWeb do
     pipe_through(:api)
 

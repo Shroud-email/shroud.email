@@ -7,6 +7,14 @@ defmodule Shroud.Application do
 
   @impl true
   def start(_type, _args) do
+    :logger.remove_primary_filter(:mcp_private_inputs)
+
+    :ok =
+      :logger.add_primary_filter(
+        :mcp_private_inputs,
+        {&Shroud.ErrorReporter.filter_mcp_logs/2, nil}
+      )
+
     children = [
       # Start the Ecto repository
       Shroud.Repo,

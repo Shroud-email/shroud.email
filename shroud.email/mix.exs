@@ -77,6 +77,8 @@ defmodule Shroud.MixProject do
       {:jason, "~> 1.2"},
       {:plug_cowboy, "~> 2.7"},
       {:hammer, "~> 7.5"},
+      {:ex_mcp, "~> 1.5"},
+      {:boruta, "~> 2.3.8"},
       {:gen_smtp, "~> 1.3"},
       {:iconv, "~> 1.0"},
       {:oban, "~> 2.9"},

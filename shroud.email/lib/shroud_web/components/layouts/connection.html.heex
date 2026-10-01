@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="referrer" content="no-referrer" />
+    <title>{@page_title} · Shroud.email</title>
+    <link rel="stylesheet" href={~p"/fonts/inter/inter.css"} />
+    <link rel="stylesheet" href={~p"/assets/app.css"} />
+    <link rel="icon" href={~p"/favicon.ico"} />
+  </head>
+  <body class="min-h-screen bg-gray-100 text-gray-900">
+    <header class="bg-white border-b border-gray-200 px-4 py-4">
+      <div class="max-w-xl mx-auto flex justify-between gap-4">
+        <.link href={~p"/"} class="font-semibold">Shroud.email</.link>
+        <.link href={~p"/settings/connections"} class="text-sm underline">Connected apps</.link>
+      </div>
+    </header>
+    {@inner_content}
+  </body>
+</html>

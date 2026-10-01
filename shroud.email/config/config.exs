@@ -10,6 +10,17 @@ import Config
 config :shroud,
   ecto_repos: [Shroud.Repo]
 
+config :boruta, Boruta.Oauth,
+  repo: Shroud.Repo,
+  cache_backend: Shroud.Mcp.Cache,
+  contexts: [
+    access_tokens: Boruta.Ecto.AccessTokens,
+    codes: Boruta.Ecto.Codes,
+    clients: Shroud.Mcp.Clients,
+    resource_owners: Shroud.Mcp.ResourceOwners,
+    scopes: Boruta.Ecto.Scopes
+  ]
+
 # Configures the endpoint
 config :shroud, ShroudWeb.Endpoint,
   url: [host: "localhost"],
@@ -49,6 +60,7 @@ config :shroud, Shroud.Scheduler,
   jobs: [
     # Daily at midnight
     {"@daily", {Shroud.Scheduler, :update_trackers, []}},
+    {"@daily", {Shroud.Mcp, :prune, []}},
     {"@hourly", {Shroud.Scheduler, :delete_spam_emails, []}},
     {"@hourly", {Shroud.Scheduler, :verify_custom_domains, []}}
   ]
@@ -90,6 +102,15 @@ config :logger, :console,
 
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
+
+config :phoenix, :filter_parameters, [
+  "password",
+  "token",
+  "code",
+  "code_verifier",
+  "approval",
+  "arguments"
+]
 
 config :sentry, before_send: {Shroud.ErrorReporter, :before_send}
 

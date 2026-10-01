@@ -21,6 +21,37 @@ config :shroud,
     |> String.split(",", trim: true)
     |> Enum.map(&String.trim/1)
 
+# Explicit public OAuth clients; no dynamic registration or remote metadata fetch.
+# Copy exact client IDs and callback URLs from the MCP client configuration.
+if clients_json = System.get_env("MCP_OAUTH_CLIENTS") do
+  clients = Jason.decode!(clients_json)
+
+  valid_uri? = fn value ->
+    is_binary(value) and
+      match?(
+        %URI{scheme: "https", host: host, userinfo: nil, fragment: nil}
+        when is_binary(host) and host != "",
+        URI.parse(value)
+      ) and
+      not String.match?(value, ~r/[\x00-\x20\x7f]/)
+  end
+
+  unless is_map(clients) and
+           Enum.all?(clients, fn
+             {id, %{"name" => name, "redirect_uris" => uris}}
+             when is_binary(id) and byte_size(id) > 0 and is_binary(name) and byte_size(name) > 0 and
+                    is_list(uris) and uris != [] ->
+               Enum.all?(uris, valid_uri?)
+
+             _ ->
+               false
+           end) do
+    raise "MCP_OAUTH_CLIENTS must map client IDs to names and exact HTTPS redirect_uris"
+  end
+
+  config :shroud, :mcp_clients, clients
+end
+
 # Optional: Chatwoot support widget. Set CHATWOOT_BASE_URL to the URL of
 # your Chatwoot server to enable the widget. When unset (e.g. for
 # self-hosted deployments), the widget is not loaded at all.

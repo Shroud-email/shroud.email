@@ -19,5 +19,18 @@ defmodule ShroudWeb.Plugs.RequestParsers do
     end
   end
 
+  def call(%Plug.Conn{path_info: ["mcp" | _]} = conn, _opts) do
+    # Let the SDK parse the raw JSON-RPC envelope and enforce its byte limit.
+    conn
+  end
+
+  def call(%Plug.Conn{path_info: ["oauth", action]} = conn, _opts)
+      when action in ["token", "revoke"] do
+    Plug.Parsers.call(
+      conn,
+      Plug.Parsers.init(parsers: [:urlencoded, :json], length: 65_536, json_decoder: Jason)
+    )
+  end
+
   def call(conn, opts), do: Plug.Parsers.call(conn, opts)
 end
