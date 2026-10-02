@@ -24,7 +24,6 @@ defmodule ShroudWeb.UserRegistrationController do
 
         conn
         |> put_flash(:info, "User created successfully.")
-        |> put_flash(:analytics_event, "Signup")
         |> UserAuth.log_in_user(user)
 
       {:error, %Ecto.Changeset{} = changeset} ->

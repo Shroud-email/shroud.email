@@ -2,7 +2,7 @@
 import "../styles/tailwind.css";
 import { SEO } from "astro-seo";
 import { OPEN_GRAPH, SITE } from "../config";
-import Plausible from "../components/Plausible.astro";
+import PostHog from "../components/PostHog.astro";
 import Chatwoot from "../components/Chatwoot.astro";
 
 export interface Props {
@@ -74,7 +74,6 @@ const imageAlt = OPEN_GRAPH.image.alt;
         />
 
         <slot name="head" />
-        <Plausible />
     </head>
 
     <body class="h-full bg-white dark:bg-slate-950">
@@ -82,6 +81,7 @@ const imageAlt = OPEN_GRAPH.image.alt;
             <slot />
         </div>
 
+        <PostHog />
         <Chatwoot />
 
         <script>
