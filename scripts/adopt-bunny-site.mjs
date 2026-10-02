@@ -1,0 +1,135 @@
+// One-time bootstrap for the existing website pairs, not a site uploader.
+// Never creates/deletes zones or detaches middleware. Pricing protection is
+// separately invoked by the workflow before deployment and cache purge.
+import { pathToFileURL } from "node:url";
+import { setTimeout } from "node:timers/promises";
+
+const sites = {
+  staging: { STORAGE_ID: 1687847, PULL_ID: 6214167, NAME: "shroud-email-website-staging", REGION: "uk", ENDPOINT: "uk.storage.bunnycdn.com" },
+  production: { STORAGE_ID: 1604565, PULL_ID: 6040372, NAME: "shroud-email-website", REGION: "de", ENDPOINT: "storage.bunnycdn.com" },
+};
+
+function siteFor(environment) {
+  if (!Object.hasOwn(sites, environment)) throw new Error("BUNNY_SITE_ENVIRONMENT must be staging or production");
+  return sites[environment];
+}
+const blockRule = {
+  Description: "bunny sites: block site state access",
+  Enabled: true,
+  ActionType: 4,
+  TriggerMatchingType: 0,
+  Triggers: [{ Type: 0, PatternMatches: ["*/_bunny/*"], PatternMatchingType: 0 }],
+};
+
+export async function adoptSite(environment, apiKey, initialize, fetch = globalThis.fetch) {
+  const { STORAGE_ID, PULL_ID, NAME, REGION, ENDPOINT } = siteFor(environment);
+  const STORAGE = `https://${ENDPOINT}/${NAME}/_bunny/site.json`;
+  const PUBLIC = `https://${NAME}.b-cdn.net/_bunny/site.json`;
+  if (!apiKey) throw new Error("Missing BUNNY_API_KEY");
+  async function core(path, method = "GET", body) {
+    const response = await fetch(`https://api.bunny.net/${path}`, {
+      method,
+      headers: { AccessKey: apiKey, "Content-Type": "application/json" },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+    if (!response.ok) throw new Error(`Bunny ${method} ${path}: HTTP ${response.status}`);
+    return method === "GET" ? response.json() : undefined;
+  }
+  const zone = await core(`storagezone/${STORAGE_ID}`);
+  const pull = await core(`pullzone/${PULL_ID}`);
+  if (zone.Id !== STORAGE_ID || zone.Name !== NAME || zone.Region?.toLowerCase() !== REGION ||
+      pull.Id !== PULL_ID || pull.Name !== NAME || pull.StorageZoneId !== STORAGE_ID || pull.OriginType !== 2) {
+    throw new Error(`Existing ${environment} resource pair does not match; refusing adoption`);
+  }
+  if (!zone.Password) throw new Error("Storage credential missing from zone response");
+  const stateResponse = await fetch(STORAGE, { headers: { AccessKey: zone.Password } });
+  const initialized = stateResponse.ok;
+  if (stateResponse.ok) {
+    const state = await stateResponse.json();
+    if (state.version !== 2 || state.name !== NAME || state.storageZoneId !== STORAGE_ID ||
+        state.pullZoneId !== PULL_ID || !Array.isArray(state.deploys)) {
+      throw new Error("Existing Sites metadata differs; refusing to overwrite it");
+    }
+  } else {
+    if (stateResponse.status !== 404) throw new Error(`Metadata read: HTTP ${stateResponse.status}`);
+    if (!initialize) throw new Error(`${environment} needs initialization. Re-run with initialize_sites=true after reviewing the README.`);
+  }
+
+  // Check protection on every run, even when metadata already exists.
+  const existing = (pull.EdgeRules ?? []).find((r) => r.Description === blockRule.Description);
+  if (existing) {
+    if (!existing.Enabled || existing.ActionType !== 4 || existing.TriggerMatchingType !== 0 ||
+        existing.Triggers?.length !== 1 || existing.Triggers[0].Type !== 0 ||
+        existing.Triggers[0].PatternMatchingType !== 0 ||
+        JSON.stringify(existing.Triggers[0].PatternMatches) !== JSON.stringify(["*/_bunny/*"])) {
+      throw new Error("Existing state-protection rule differs; refusing to replace it");
+    }
+  } else {
+    await core(`pullzone/${PULL_ID}/edgerules/addOrUpdate`, "POST", blockRule);
+  }
+  let protectedState = false;
+  for (let attempt = 0; attempt < 12; attempt++) {
+    const response = await fetch(`${PUBLIC}?adoption_check=${Date.now()}-${attempt}`, { redirect: "manual" });
+    if (response.status === 403) { protectedState = true; break; }
+    await setTimeout(5000);
+  }
+  if (!protectedState) throw new Error("State protection not confirmed; no metadata written. Retry after rule propagation.");
+  if (initialized) {
+    console.log(`${environment} is already initialized; protection confirmed, metadata left unchanged.`);
+    return;
+  }
+  // Recheck rather than overwrite metadata created by another operator.
+  const recheck = await fetch(STORAGE, { headers: { AccessKey: zone.Password } });
+  if (recheck.status !== 404) throw new Error("Metadata changed during initialization; refusing to overwrite it");
+  const response = await fetch(STORAGE, {
+    method: "PUT",
+    headers: { AccessKey: zone.Password, "Content-Type": "application/json" },
+    body: JSON.stringify({ version: 2, name: NAME, storageZoneId: STORAGE_ID, pullZoneId: PULL_ID, deploys: [] }),
+  });
+  if (!response.ok) throw new Error(`Metadata initialization: HTTP ${response.status}`);
+  console.log(`Initialized existing ${environment} pair; cache settings, middleware, and root files unchanged.`);
+}
+
+// Origin middleware only runs on cache misses. Never share a localized pricing
+// response across countries; match the page, not its JS/CSS/image assets.
+export async function protectPricing(environment, apiKey, fetch = globalThis.fetch) {
+  const { STORAGE_ID, PULL_ID, NAME } = siteFor(environment);
+  if (!apiKey) throw new Error("Missing BUNNY_API_KEY");
+  const headers = { AccessKey: apiKey, "Content-Type": "application/json" };
+  const response = await fetch(`https://api.bunny.net/pullzone/${PULL_ID}`, { headers });
+  if (!response.ok) throw new Error(`Pricing zone read: HTTP ${response.status}`);
+  const pull = await response.json();
+  if (pull.Id !== PULL_ID || pull.Name !== NAME || pull.StorageZoneId !== STORAGE_ID || pull.OriginType !== 2) {
+    throw new Error(`Existing ${environment} resource pair does not match; refusing pricing configuration`);
+  }
+  const description = "shroud: do not cache geo-localized pricing";
+  const existing = (pull.EdgeRules ?? []).find((r) => r.Description === description);
+  if (existing && !existing.Guid) throw new Error("Existing pricing rule has no GUID; refusing to create a duplicate");
+  const rule = {
+    ...(existing?.Guid ? { Guid: existing.Guid } : {}),
+    Description: description,
+    Enabled: true,
+    ActionType: 3,
+    ActionParameter1: "0",
+    ExtraActions: [
+      { ActionType: 16, ActionParameter1: "0" },
+      { ActionType: 5, ActionParameter1: "Cache-Control", ActionParameter2: "no-store" },
+    ],
+    TriggerMatchingType: 0,
+    // Bunny URL matching ignores query strings; each trigger allows five patterns.
+    Triggers: [{ Type: 0, PatternMatchingType: 0, PatternMatches: [
+      "*/pricing", "*/pricing/", "*/pricing/index.html",
+    ] }],
+  };
+  const saved = await fetch(`https://api.bunny.net/pullzone/${PULL_ID}/edgerules/addOrUpdate`, {
+    method: "POST", headers, body: JSON.stringify(rule),
+  });
+  if (!saved.ok) throw new Error(`Pricing rule save: HTTP ${saved.status}`);
+  console.log(`${environment} pricing cache protection configured; deployment must follow to purge old CDN entries.`);
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const environment = process.env.BUNNY_SITE_ENVIRONMENT;
+  await adoptSite(environment, process.env.BUNNY_API_KEY, process.env.INITIALIZE_SITES === "true");
+  await protectPricing(environment, process.env.BUNNY_API_KEY);
+}

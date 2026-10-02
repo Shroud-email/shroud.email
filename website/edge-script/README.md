@@ -1,118 +1,83 @@
 # Edge script: geo-localized pricing
 
-A bunny.net **middleware** edge script that rewrites the displayed price on the
-pricing page based on the visitor's country, using bunny's `CDN-RequestCountryCode`
-header and `HTMLRewriter` (streaming, no buffering).
+Bunny middleware rewrites elements with `data-price-world` using `HTMLRewriter`.
+The static website contains UK prices. Visitors in GB, GG, JE, and IM keep those
+prices; other country codes receive the worldwide values from the HTML attributes.
 
-| Visitor         | Price shown   |
-| --------------- | ------------- |
-| UK (GB, GG, JE, IM) | £25/year  |
-| Everywhere else | $35/year      |
+| Visitor | Price |
+| --- | --- |
+| UK and Crown dependencies | £25/year |
+| Worldwide | $35/year |
 
-## How it works
+## Middleware behavior
 
-The static site (`/pricing/`) ships with the **UK price as the default**
-(`£25/year`). The price is marked in HTML with
-`data-price=""` attributes (on the hero heading and the price table cell), and
-the Pricing Vue component is rendered with **no `client:load`** — so the price
-is plain static HTML with no hydration that could snap it back.
+- `onOriginRequest` removes Range and If-Range for GET/HEAD URLs ending in `/`
+  or `.html`. Bunny injects origin ranges even for full client requests; those
+  partial responses caused stale byte lengths after rewriting. Asset ranges,
+  URLs, queries, authentication, and other methods remain unchanged.
+- `onOriginResponse` rewrites HTML prices and sets `Cache-Control: no-store`
+  for both UK and worldwide responses. Worldwide HTML is buffered to measure
+  the exact UTF-8 byte length: replacing £ with $ shortens each price by one byte.
+  UK HTML and non-HTML assets retain their streamed bodies. HEAD and null-body
+  responses stay bodyless.
+- `onClientResponse` repairs native empty 400 responses for missing directory
+  URLs. For GET/HEAD only, it probes the same-origin explicit `index.html` without
+  ranges or redirects. Only an actual 404 replaces the original response, using
+  the site's custom error page with `no-store`. The 10-second timeout includes
+  reading the error body. Other statuses, asset errors, and probe failures keep
+  their original response.
 
-On every request, bunny injects `CDN-RequestCountryCode` (ISO-3166-1 alpha-2).
-The middleware:
+The client-response hook requires **Pull Zone → General → Origin → Run script
+before cache**. Enable it separately for staging and production. It executes the
+script for cached requests too, increasing execution volume. Workflows do not
+change this setting.
 
-1. Reads the country on `onOriginResponse`.
-2. For **non-UK** visitors, runs the response through `HTMLRewriter`, replacing
-   the inner content of every `[data-price]` element with `$35/year`.
-3. For **UK** visitors (or when the header is missing), passes the response
-   through unchanged — they already see £25/year in the static HTML.
-4. Sets `Cache-Control: no-store` on HTML responses in **both** cases so the
-   rewritten (or default) HTML is never cached and served to a visitor in the
-   other region. (Static assets keep their original cache headers.)
-
-This means the script degrades safely: if the script is disabled or the header
-is absent, visitors see the UK default.
-
-## Files
-
-- `src/main.ts` — entry point (imports `pricing.ts`).
-- `src/pricing.ts` — the middleware.
-- `src/bunny-globals.d.ts` — ambient types for bunny runtime globals
-  (`HTMLRewriter`) not shipped with the SDK.
-- `build.mjs` — esbuild + `@luca/esbuild-deno-loader` bundler, inlines the
-  `https://esm.sh/...` SDK import into a single `dist/index.ts`.
-- `deno.json` — Deno tasks (`build`, `check`, `dev`).
+Staging verified complete pricing responses and custom 404 responses for missing
+URLs with and without trailing slashes, including HEAD. The fallback body matched
+the explicit-index error page byte-for-byte. Temporary per-request diagnostics
+and the revision response header have been removed; regression tests retain the
+framing, immutable-header, range, bodyless, and failure-handling checks.
 
 ## Local development
 
-```bash
-cd edge-script
+Run from `website/edge-script`:
 
-# Type-check
-deno check src/main.ts
-
-# Bundle to dist/index.ts
+```sh
+deno task test
+deno task check
 deno task build
-
-# Run locally (proxies to https://shroud.email/ as the origin)
-deno task dev
 ```
 
-Then test with curl (simulating a non-UK visitor — the default origin HTML
-already has £25, so the script rewrites to $35):
+`deno task build` bundles the SDK and middleware into ignored `dist/index.ts`.
+`deno task dev` proxies `https://shroud.email/` locally. The configured origin URL
+is local-only; native Bunny execution uses the attached Pull Zone's origin.
 
-```bash
-curl http://127.0.0.1:8080/pricing/ | grep data-price
-```
+## Deployment
 
-## Deploy (staging)
+The root workflows deploy the website first, then optionally its middleware:
 
-Deployment is via a **manual** GitHub workflow:
-`.github/workflows/deploy-edge-script.yml` (run it from the Actions tab).
+| Environment | Workflow | Script ID secret | Deploy key secret |
+| --- | --- | --- | --- |
+| Staging | `.github/workflows/website-deploy-staging.yml` | `WEBSITE_BUNNY_STAGING_SCRIPT_ID` | `WEBSITE_BUNNY_STAGING_DEPLOY_KEY` |
+| Production | `.github/workflows/website-deploy.yml` | `WEBSITE_BUNNY_SCRIPT_ID` | `WEBSITE_BUNNY_DEPLOY_KEY` |
 
-### One-time setup in bunny
+Each secret pair must identify a Middleware script attached to the corresponding
+Pull Zone. Existing working scripts can be reused; no new script or zone is
+required. Website deployment also requires `BUNNY_API_KEY`.
 
-1. In the bunny dashboard, create an **Edge Script** of type **Middleware**.
-2. Attach it to your **staging Pull Zone** (the one fronting the static site).
-3. Under **Script → Deployments → Settings**, copy the **Script ID** and
-   **Deploy Key**.
+Manual runs replace the script only with `deploy_edge_script=true`. Production
+pushes to `main` deploy the script automatically after the site job succeeds.
+Staging remains manual after merging. See [website deployment instructions](../README.md#official-bunny-website-deployments)
+for initialization, production cutover, and the old-uploader warning.
 
-### One-time setup in GitHub
+When the edge-script job runs, it checks pricing with a complete GET. Site-only
+runs check `no-store` with HEAD. Also check
+missing-directory GET/HEAD, home, docs, and assets. Verify £25/year from a UK
+network and $35/year from a non-UK network, using fresh browser caches. A supplied
+country header alone does not prove geographic isolation.
 
-Add two repository secrets (Settings → Secrets and variables → Actions):
+## Changing prices
 
-| Secret name                  | Value                          |
-| ---------------------------- | ------------------------------ |
-| `BUNNY_STAGING_SCRIPT_ID`    | The edge script id             |
-| `BUNNY_STAGING_DEPLOY_KEY`   | The script's deploy key        |
-
-### Deploy
-
-Run the **"Deploy edge script (staging)"** workflow from the Actions tab. It
-type-checks, bundles, and uploads `edge-script/dist/index.ts` to bunny.
-
-### Verify
-
-With the script attached to the staging pull zone, check the rewritten price:
-
-```bash
-# Non-UK (e.g. US) — bunny routes through a non-UK PoP, expect $35/year
-curl -s https://staging.shroud.email/pricing/ | grep -o 'data-price="">[^<]*'
-
-# Force a UK egress isn't trivial from curl; verify from a UK network/VPN,
-# or check the bunny dashboard → Script → Logs.
-```
-
-## Production
-
-Once validated on staging:
-
-1. Create a production Edge Script + attach to the production Pull Zone.
-2. Add `BUNNY_SCRIPT_ID` / `BUNNY_DEPLOY_KEY` secrets and copy this workflow
-   to `deploy-edge-script-prod.yml` (or extend the existing one with an
-   environment selector).
-
-## Changing the prices
-
-Edit `WORLDWIDE_PRICE` and `UK_COUNTRY_CODES` in `src/pricing.ts`, **and** the
-default price baked into `src/components/organisms/Pricing.vue` (the UK price
-must stay the static default so the no-script fallback stays correct).
+Update the UK defaults and `data-price-world` values in
+`website/src/components/organisms/Pricing.vue`. Update `UK_COUNTRY_CODES` in
+`src/pricing.ts` only when the billing-country grouping changes.

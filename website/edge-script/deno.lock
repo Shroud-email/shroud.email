@@ -200,6 +200,8 @@
   },
   "remote": {
     "https://esm.sh/@bunny.net/edgescript-sdk@0.12.0": "2b6ef65794a748f842dfe40d7ad9414ca3c2670efc1c396a0fc22ec6c8e74318",
-    "https://esm.sh/@bunny.net/edgescript-sdk@0.12.0/denonext/edgescript-sdk.mjs": "ad02b8b1feab2af1e8743c51079363029f4b267358a61319c78f7448ea575b19"
+    "https://esm.sh/@bunny.net/edgescript-sdk@0.12.0/denonext/edgescript-sdk.mjs": "ad02b8b1feab2af1e8743c51079363029f4b267358a61319c78f7448ea575b19",
+    "https://esm.sh/@bunny.net/edgescript-sdk@0.13.0": "c34f1937f588eb07c012f5bee827c75415309e51d0f8fde1917b7273da751104",
+    "https://esm.sh/@bunny.net/edgescript-sdk@0.13.0/denonext/edgescript-sdk.mjs": "bc0b074b7346f9508b3cc2d572c0f1847f51792907af2f4fff0beb16eadc4ef7"
   }
 }

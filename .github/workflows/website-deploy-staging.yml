@@ -1,16 +1,14 @@
 name: Website staging deployment
 
-# Single workflow that deploys EVERYTHING needed to test the staging site:
-# the static site build AND the bunny.net edge script. Run it pointing at the
-# branch you want to test (e.g. geo-localized-pricing) — nothing touches prod.
+# Manual staging trial for the official Bunny site action. The attached Edge
+# script is preserved unless its deployment is explicitly requested.
+# Run it pointing at the branch you want to test — nothing touches prod.
 #
 # What it deploys:
 #   1. Site build (dist/) → staging storage zone + cache purge
-#   2. Edge script (edge-script/dist/index.ts) → bunny edge scripting
+#   2. Optionally: Edge script (edge-script/dist/index.ts) → bunny edge scripting
 #
 # Required repo secrets:
-#   WEBSITE_BUNNY_STAGING_STORAGE_PASSWORD - staging storage zone password
-#   WEBSITE_BUNNY_STAGING_PULLZONE_ID      - staging pull zone id
 #   WEBSITE_BUNNY_STAGING_SCRIPT_ID        - edge script id
 #   WEBSITE_BUNNY_STAGING_DEPLOY_KEY       - edge script deploy key
 #   BUNNY_API_KEY                          - shared account API key
@@ -23,11 +21,19 @@ on:
         required: true
         type: string
         default: "main"
+      initialize_sites:
+        description: "Initialize official CLI metadata on the existing staging pair (first run only)"
+        type: boolean
+        default: false
+      deploy_edge_script:
+        description: "Also replace the staging Edge script (otherwise preserve the attached script)"
+        type: boolean
+        default: false
 
 # Prevent two runs from racing to upload to staging.
 concurrency:
   group: website-staging
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions: {}
 
@@ -60,15 +66,40 @@ jobs:
 
       - run: pnpm run build
 
-      - run: node ../scripts/deploy-bunny.mjs
+      - name: Validate staging and protect geo-localized pricing
+        run: node ../scripts/adopt-bunny-site.mjs
         env:
-          BUNNY_STORAGE_ZONE: shroud-email-website-staging
-          BUNNY_STORAGE_PASSWORD: ${{ secrets.WEBSITE_BUNNY_STAGING_STORAGE_PASSWORD }}
-          BUNNY_PULLZONE_ID: ${{ secrets.WEBSITE_BUNNY_STAGING_PULLZONE_ID }}
           BUNNY_API_KEY: ${{ secrets.BUNNY_API_KEY }}
+          INITIALIZE_SITES: ${{ inputs.initialize_sites }}
+          BUNNY_SITE_ENVIRONMENT: staging
+
+      - name: Deploy staging with the official Bunny action
+        uses: BunnyWay/actions/deploy-site@4b22fe0b319386b3913117daf97729409dd0a6ef # deploy-site_0.1.1
+        with:
+          site: "1687847"
+          directory: website/dist
+          api_key: ${{ secrets.BUNNY_API_KEY }}
+          cli_version: "0.18.0"
+          deployments: "false"
+          environment: staging
+
+      - name: Verify pricing cache protection after publication
+        run: |
+          for attempt in {1..12}; do
+            if headers="$(curl --fail --silent --show-error --head --max-time 15 https://shroud-email-website-staging.b-cdn.net/pricing/)" &&
+              printf '%s\n' "$headers" | grep -Eiq '^cache-control:.*no-store'; then
+              echo "Pricing returns no-store at the workflow runner's CDN location."
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Pricing cache protection not confirmed; publication already occurred. Check staging before retrying."
+          exit 1
 
   deploy-edge-script:
     name: Deploy edge script
+    needs: deploy-site
+    if: inputs.deploy_edge_script
     runs-on: depot-ubuntu-24.04
     permissions:
       contents: read
@@ -96,3 +127,15 @@ jobs:
           script_id: ${{ secrets.WEBSITE_BUNNY_STAGING_SCRIPT_ID }}
           deploy_key: ${{ secrets.WEBSITE_BUNNY_STAGING_DEPLOY_KEY }}
           file: website/edge-script/dist/index.ts
+
+      - name: Verify complete pricing response after middleware publication
+        run: |
+          response="$(mktemp)"
+          headers="$(mktemp)"
+          trap 'rm -f "$response" "$headers"' EXIT
+          result=0
+          curl --fail --silent --show-error --max-time 20 --retry 5 --retry-delay 5 --retry-all-errors --dump-header "$headers" --output "$response" https://shroud-email-website-staging.b-cdn.net/pricing/ || result=$?
+          grep -Ei '^(HTTP/|content-length:|content-encoding:|cache-control:|cdn-cache:)' "$headers" || true
+          printf 'Received bytes: '
+          wc -c < "$response"
+          exit "$result"
