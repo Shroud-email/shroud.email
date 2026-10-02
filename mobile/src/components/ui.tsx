@@ -1,7 +1,13 @@
 import * as Clipboard from 'expo-clipboard';
 import { router } from 'expo-router';
 import { CaretLeftIcon, CopyIcon, CheckIcon } from 'phosphor-react-native';
-import { useState, type PropsWithChildren, type ReactNode } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type PropsWithChildren,
+  type ReactNode,
+} from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -111,6 +117,7 @@ export function Button({
   disabled = false,
   selected,
   accessibilityLabel,
+  accessibilityRole = 'button',
 }: {
   label: string;
   onPress: () => void;
@@ -118,13 +125,18 @@ export function Button({
   disabled?: boolean;
   selected?: boolean;
   accessibilityLabel?: string;
+  accessibilityRole?: 'button' | 'radio';
 }) {
   const c = useTheme();
   return (
     <Pressable
-      accessibilityRole="button"
+      accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel}
-      accessibilityState={{ disabled, selected }}
+      aria-checked={accessibilityRole === 'radio' ? selected : undefined}
+      accessibilityState={{
+        disabled,
+        selected: accessibilityRole === 'radio' ? undefined : selected,
+      }}
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => ({
@@ -216,13 +228,22 @@ export function CopyButton({
 }) {
   const c = useTheme();
   const [feedback, setFeedback] = useState<'idle' | 'copied' | 'error'>('idle');
+  const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (resetTimer.current !== null) clearTimeout(resetTimer.current);
+    },
+    [],
+  );
   async function copy() {
     try {
-      await Clipboard.setStringAsync(address);
-      setFeedback('copied');
+      const copied = await Clipboard.setStringAsync(address);
+      setFeedback(copied ? 'copied' : 'error');
     } catch {
       setFeedback('error');
     }
+    if (resetTimer.current !== null) clearTimeout(resetTimer.current);
+    resetTimer.current = setTimeout(() => setFeedback('idle'), 2000);
   }
   return (
     <View>
@@ -263,11 +284,7 @@ export function CopyButton({
           accessibilityLiveRegion="polite"
           type="small"
           themeColor={feedback === 'error' ? 'danger' : 'success'}
-          style={
-            compact
-              ? { position: 'absolute', right: 0, top: 42, fontSize: 10 }
-              : { textAlign: 'center' }
-          }
+          style={{ textAlign: 'center', ...(compact && { fontSize: 10 }) }}
         >
           {feedback === 'error' ? 'Copy failed' : compact ? 'Copied' : ''}
         </ThemedText>

@@ -18,11 +18,16 @@ export default function SettingsScreen() {
       </Section>
       <Section>
         <ThemedText type="subtitle">Appearance</ThemedText>
-        <View style={[row, { gap: 4 }]}>
+        <View
+          accessibilityRole="radiogroup"
+          accessibilityLabel="Appearance"
+          style={[row, { gap: 4 }]}
+        >
           {(['system', 'light', 'dark'] as Appearance[]).map((value) => (
             <View key={value} style={{ flex: 1 }}>
               <Button
                 label={`${value[0].toUpperCase()}${value.slice(1)}`}
+                accessibilityRole="radio"
                 kind={appearance === value ? 'primary' : 'outline'}
                 selected={appearance === value}
                 onPress={() => setAppearance(value)}

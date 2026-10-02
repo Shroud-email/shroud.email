@@ -14,6 +14,7 @@ const domains = [
 
 test('search matches address, title or notes case-insensitively and intersects the status filter', () => {
   assert.deepEqual(filterAliases(aliases, ' WORK ', 'enabled').map(a => a.id), ['one']);
+  assert.deepEqual(filterAliases(aliases, 'LINEAR', 'enabled').map(a => a.id), ['one']);
   assert.deepEqual(filterAliases(aliases, 'SHOP', 'enabled'), []);
   assert.deepEqual(filterAliases(aliases, 'MAIL.EXAMPLE', 'disabled').map(a => a.id), ['two']);
   assert.deepEqual(filterAliases(aliases, '', 'enabled').map(a => a.id), ['one', 'three']);

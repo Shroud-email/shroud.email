@@ -28,6 +28,7 @@ export default function RootLayout() {
     Manrope_700Bold,
   });
   useEffect(() => {
+    if (error) console.error('Could not load Manrope fonts.', error);
     if (loaded || error) SplashScreen.hideAsync();
   }, [loaded, error]);
   if (!loaded && !error) return null;

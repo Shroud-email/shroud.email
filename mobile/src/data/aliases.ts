@@ -112,6 +112,16 @@ export function filterAliases(
   );
 }
 
+export function isValidAliasName(input: string) {
+  const name = input.trim().toLowerCase();
+  return (
+    /^[a-z0-9.!#$%&'*+\-=^`{|}~]+$/.test(name) &&
+    !name.startsWith('.') &&
+    !name.endsWith('.') &&
+    !name.includes('..')
+  );
+}
+
 export function createAlias(
   aliases: EmailAlias[],
   domains: Domain[],
@@ -123,13 +133,7 @@ export function createAlias(
     address = `${id.replaceAll('-', '').slice(0, 14)}@fog.shroud.email`;
   } else {
     const name = input.name.trim().toLowerCase();
-    if (
-      !name ||
-      !/^[a-z0-9.!#$%&'*+\-=^`{|}~]+$/.test(name) ||
-      name.startsWith('.') ||
-      name.endsWith('.') ||
-      name.includes('..')
-    ) {
+    if (!isValidAliasName(name)) {
       throw new Error(
         'Enter a valid alias name without spaces, underscores, or @.',
       );

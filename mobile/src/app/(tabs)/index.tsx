@@ -47,15 +47,19 @@ export default function AliasesScreen() {
           value={query}
           onChangeText={setQuery}
           autoCapitalize="none"
-          style={{ flex: 1, borderWidth: 0, fontSize: 14 }}
+          style={{ flex: 1, borderWidth: 0, fontSize: 14, paddingLeft: 6 }}
         />
       </View>
-      <View style={[row, { gap: 6, marginBottom: 12 }]}>
+      <View
+        accessibilityRole="radiogroup"
+        accessibilityLabel="Alias status"
+        style={[row, { gap: 6, marginBottom: 12 }]}
+      >
         {(['all', 'enabled', 'disabled'] as const).map((value) => (
           <Pressable
             key={value}
-            accessibilityRole="button"
-            accessibilityState={{ selected: filter === value }}
+            accessibilityRole="radio"
+            aria-checked={filter === value}
             onPress={() => setFilter(value)}
             style={{
               minHeight: 44,
@@ -112,7 +116,7 @@ export default function AliasesScreen() {
           >
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={`Open ${alias.address}, ${alias.enabled ? 'enabled' : 'disabled'}`}
+              accessibilityLabel={`Open ${alias.title ? `${alias.title}, ` : ''}${alias.address}, ${alias.enabled ? 'enabled' : 'disabled'}`}
               onPress={() =>
                 router.push({
                   pathname: '/aliases/[id]',

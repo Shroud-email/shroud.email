@@ -7,6 +7,7 @@ import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { useApp } from '@/providers/app-provider';
 import { useAuth } from '@/providers/auth-stub';
+import { isValidAliasName } from '@/data/aliases';
 
 export default function CreateScreen() {
   const { domains, addAlias } = useApp();
@@ -46,6 +47,8 @@ export default function CreateScreen() {
       <View style={{ gap: 8, paddingTop: 12, marginBottom: 20 }}>
         <ThemedText themeColor="textSecondary">Address type</ThemedText>
         <View
+          accessibilityRole="radiogroup"
+          accessibilityLabel="Address type"
           style={[
             row,
             {
@@ -59,8 +62,8 @@ export default function CreateScreen() {
           {(['random', 'custom'] as const).map((value) => (
             <Pressable
               key={value}
-              accessibilityRole="button"
-              accessibilityState={{ selected: type === value }}
+              accessibilityRole="radio"
+              aria-checked={type === value}
               onPress={() => {
                 setType(value);
                 setError(null);
@@ -201,7 +204,7 @@ export default function CreateScreen() {
         </View>
       )}
       <Section>
-        {type === 'custom' && name.trim().length > 0 && (
+        {type === 'custom' && isValidAliasName(name) && domain.length > 0 && (
           <>
             <ThemedText type="small" themeColor="textMuted">
               Your new alias

@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useReducer,
+  useRef,
   useState,
   type PropsWithChildren,
 } from 'react';
@@ -42,6 +43,7 @@ export function AppProvider({ children }: PropsWithChildren) {
   const [aliases, dispatch] = useReducer(aliasesReducer, demoAliases);
   const [appearance, setPreference] = useState<Appearance>('system');
   const [preferenceError, setPreferenceError] = useState<string | null>(null);
+  const preferenceChanged = useRef(false);
   const systemScheme = useColorScheme();
 
   useEffect(() => {
@@ -50,12 +52,13 @@ export function AppProvider({ children }: PropsWithChildren) {
       .then((value) => {
         if (
           mounted &&
+          !preferenceChanged.current &&
           (value === 'system' || value === 'light' || value === 'dark')
         )
           setPreference(value);
       })
       .catch(() => {
-        if (mounted)
+        if (mounted && !preferenceChanged.current)
           setPreferenceError(
             'Appearance could not be restored on this device.',
           );
@@ -66,6 +69,7 @@ export function AppProvider({ children }: PropsWithChildren) {
   }, []);
 
   function setAppearance(value: Appearance) {
+    preferenceChanged.current = true;
     setPreference(value);
     setPreferenceError(null);
     AsyncStorage.setItem(themeKey, value).catch(() =>
