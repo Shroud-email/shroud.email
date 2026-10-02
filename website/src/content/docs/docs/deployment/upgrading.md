@@ -32,9 +32,7 @@ Test a forwarded message and an alias reply from a custom domain at an external
 inbox. Check for `d=<custom-domain>; s=shroudemail` in `DKIM-Signature` and
 `dkim=pass` in `Authentication-Results`. Existing DKIM CNAMEs need no changes.
 
-No database migrations, new environment variables, or per-domain keys are needed
-for these Haraka changes. Certificate renewals and custom-domain signing are
-automatic after this upgrade.
+Certificate renewals and custom-domain signing are automatic after this upgrade.
 
 ## Version 1.0 breaking changes
 
