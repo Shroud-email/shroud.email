@@ -53,10 +53,11 @@ count and headers just before returning. They exclude URLs, query strings,
 cookies, credentials, and response contents. Worldwide rewritten pricing also
 returns `X-Shroud-Pricing-Revision: framing-diagnostics-v1`. The workflow prints
 only framing/cache/revision headers and the received byte count, preserving
-curl's failure status. Compare those headers with Bunny's script logs: a missing
-`return-response` event points to incomplete execution; a correct logged length
-but incorrect wire length points to subsequent response handling. Remove these
-temporary diagnostics once the native framing issue is resolved.
+curl's failure status. Compare those headers with Bunny's script logs: if
+`before-buffer` appears without `return-response` for the same invocation,
+execution did not complete. UK and HEAD/bodyless responses skip both events.
+A correct logged length but incorrect wire length points to subsequent response
+handling. Remove these temporary diagnostics once the native framing issue is resolved.
 
 ## Files
 
