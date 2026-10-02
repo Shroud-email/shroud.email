@@ -220,5 +220,89 @@
         </div>
       </div>
     </div>
+    <nav
+      :if={@total_pages > 1}
+      id="alias-pagination"
+      aria-label="Alias pagination"
+      class="mt-4 flex items-center justify-between gap-3 text-sm"
+    >
+      <p
+        id="alias-page-range"
+        aria-live="polite"
+        aria-atomic="true"
+        class="hidden sm:block text-gray-600 dark:text-gray-400"
+      >
+        Showing {(@page_number - 1) * @page_size + 1}–{min(
+          @page_number * @page_size,
+          @filtered_alias_count
+        )} of {@filtered_alias_count} aliases
+      </p>
+      <div class="flex w-full sm:w-auto items-center justify-between gap-1">
+        <.link
+          :if={@page_number > 1}
+          id="alias-page-previous"
+          patch={aliases_path(@page_number - 1, @filter_query)}
+          class="px-3 py-2 rounded-md text-indigo-600 dark:text-indigo-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+        >
+          Previous
+        </.link>
+        <span
+          :if={@page_number == 1}
+          aria-disabled="true"
+          class="px-3 py-2 text-gray-400 dark:text-gray-500"
+        >
+          Previous
+        </span>
+        <p
+          id="alias-page-summary"
+          aria-live="polite"
+          aria-atomic="true"
+          class="sm:hidden text-gray-600 dark:text-gray-400"
+        >
+          Page {@page_number} of {@total_pages}
+        </p>
+        <div class="hidden sm:flex items-center gap-1">
+          <%= for number <- @pagination_pages do %>
+            <%= cond do %>
+              <% number == :ellipsis -> %>
+                <span aria-hidden="true" class="px-2 text-gray-500 dark:text-gray-400">…</span>
+              <% number == @page_number -> %>
+                <span
+                  id={"alias-page-#{number}"}
+                  aria-current="page"
+                  aria-label={"Page #{number}"}
+                  class="px-3 py-2 rounded-md bg-indigo-600 text-white"
+                >
+                  {number}
+                </span>
+              <% true -> %>
+                <.link
+                  id={"alias-page-#{number}"}
+                  patch={aliases_path(number, @filter_query)}
+                  aria-label={"Go to page #{number}"}
+                  class="px-3 py-2 rounded-md text-indigo-600 dark:text-indigo-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  {number}
+                </.link>
+            <% end %>
+          <% end %>
+        </div>
+        <.link
+          :if={@page_number < @total_pages}
+          id="alias-page-next"
+          patch={aliases_path(@page_number + 1, @filter_query)}
+          class="px-3 py-2 rounded-md text-indigo-600 dark:text-indigo-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+        >
+          Next
+        </.link>
+        <span
+          :if={@page_number == @total_pages}
+          aria-disabled="true"
+          class="px-3 py-2 text-gray-400 dark:text-gray-500"
+        >
+          Next
+        </span>
+      </div>
+    </nav>
   </div>
 <% end %>
