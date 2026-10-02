@@ -39,8 +39,10 @@ defmodule Shroud.Email.OutgoingEmailHandler do
           "Discarding outgoing email from #{sender} to #{recipient} because the alias belongs to someone else"
         )
     end
-
-    :ok
+    |> case do
+      {:error, reason} -> {:error, reason}
+      _ -> :ok
+    end
   end
 
   @spec forward_outgoing_email(User.t(), String.t(), String.t(), String.t()) ::
