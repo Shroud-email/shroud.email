@@ -32,19 +32,23 @@ using Bunny's HTTP SDK and CDN caching instead of Cloudflare Workers APIs.
    to avoid relying on its precedence over `no-store`. Do not add rules that
    force caching of the event route or errors. Purge the script URL after
    changing the upstream personalized script URL.
-6. Add the GitHub repository secrets listed below. Commit the configured proxy
-   and workflow, then run **Plausible proxy CI and deployment** from GitHub's
+6. Add the GitHub repository secrets listed below before merging. Commit the
+   configured proxy and workflow, then merge to `main` to deploy automatically.
+   To deploy manually, run **Plausible proxy CI and deployment** from GitHub's
    Actions tab. Use **Use workflow from** to select the branch or tag to deploy.
 
 ### GitHub Actions deployment
 
 The root `.github/workflows/plausible-proxy.yml` workflow checks formatting,
 lints, type-checks, tests, and bundles the proxy on relevant pull requests and
-pushes to `main`. Publication is **manual only** (`workflow_dispatch`); it uses
-the official, SHA-pinned `BunnyWay/actions/deploy-script` action to upload
-`plausible-proxy/dist/index.ts` after those checks pass. The workflow refuses to
-publish the placeholder personalized script URL. Deployments are serialized
-across branches so two runs cannot replace the same script concurrently.
+pushes to `main`. Changes under `plausible-proxy/` or to the workflow deploy
+automatically on `main` after those checks pass. Pull requests only validate;
+they do not deploy. Manual deployment (`workflow_dispatch`) is also available.
+Publication uses the official, SHA-pinned `BunnyWay/actions/deploy-script`
+action to upload `plausible-proxy/dist/index.ts`. The workflow refuses to
+publish the placeholder personalized script URL. Automatic and manual
+deployments share a concurrency group so they cannot replace the same script
+concurrently.
 
 Required GitHub repository secrets:
 
