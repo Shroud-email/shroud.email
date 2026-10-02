@@ -24,8 +24,8 @@ using Bunny's HTTP SDK and CDN caching instead of Cloudflare Workers APIs.
 
 4. In Bunny's dashboard, create an **Edge Script → Standalone** script (not
    middleware). Under **Deployments → Settings**, copy the script ID and deploy
-   key. Use the script's connected Pull Zone and add a custom hostname such as
-   `metrics.example.com`, configure its DNS, and enable SSL.
+   key. Use the script's connected Pull Zone and add the custom hostname
+   `p.shroud.email`, configure its DNS, and enable SSL.
 5. On that Pull Zone, set **Caching → Cache expiration time** to **Respect
    origin Cache-Control**. Successful script responses cache for one hour;
    events and all errors use `no-store`. Also disable **Cache Error Responses**
@@ -80,7 +80,7 @@ Keep the initialization snippet from Plausible's site settings, changing both
 the script URL **and** the event endpoint:
 
 ```html
-<script async src="https://metrics.example.com/qwerty/script.js"></script>
+<script async src="https://p.shroud.email/qwerty/script.js"></script>
 <script>
 window.plausible = window.plausible || function () {
   (plausible.q = plausible.q || []).push(arguments);
@@ -88,7 +88,7 @@ window.plausible = window.plausible || function () {
 plausible.init = plausible.init || function (i) {
   plausible.o = i || {};
 };
-plausible.init({ endpoint: "https://metrics.example.com/qwerty/event" });
+plausible.init({ endpoint: "https://p.shroud.email/qwerty/event" });
 </script>
 ```
 
