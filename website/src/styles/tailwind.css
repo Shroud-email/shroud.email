@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
+@source "../../node_modules/.nuxt-ui/ui/accordion.ts";
 
 @layer base {
   @font-face {

@@ -4,6 +4,30 @@ import HeroSection from "../components/organisms/HeroSection.astro";
 import HowItWorksSection from "../components/organisms/HowItWorksSection.astro";
 import FeatureSection from "../components/organisms/FeatureSection.astro";
 import SignupCta from "~/components/organisms/SignupCta.astro";
+import FaqAccordion from "../components/organisms/FaqAccordion.vue";
+
+const questions = [
+  {
+    question: "Do I need to change my email provider to use Shroud.email?",
+    answer: "Shroud.email works with all email providers. You can keep using Gmail, Proton Mail, or anything else. We’ll forward emails to your aliases to your real inbox!",
+  },
+  {
+    question: "How does an email alias keep my real address private?",
+    answer: "With email aliases, you don't have to give out your real address at all. Instead, you can give people an alias! It’s like a disguise, but for your email.",
+  },
+  {
+    question: "Can I send and reply to emails from an alias?",
+    answer: "Yes! On our paid plan, you can send outgoing emails and replies.",
+  },
+  {
+    question: "How does Shroud.email block email trackers?",
+    answer: "Many email senders like to add sneaky tracking pixels to their emails, so they know where you were when you opened it. Shroud.email blocks both known and never-before-seen trackers.",
+  },
+  {
+    question: "What’s included in the free plan?",
+    answer: "The free plan has everything you need to get started! You get 5 privacy-preserving, tracker-blocking email aliases for free. If you need more, or if you’d like to send outgoing emails, you can sign up for our paid plan.",
+  },
+];
 ---
 
 <LandingLayout>
@@ -12,6 +36,18 @@ import SignupCta from "~/components/organisms/SignupCta.astro";
   <HowItWorksSection />
 
   <FeatureSection />
+
+  <section id="faq" aria-labelledby="faq-heading" class="bg-white dark:bg-slate-950">
+    <div class="mx-auto max-w-3xl px-4 py-20 sm:px-6 sm:py-28 lg:px-8">
+      <h2
+        id="faq-heading"
+        class="font-display text-3xl font-semibold tracking-tight text-balance text-slate-900 dark:text-slate-50 sm:text-4xl lg:text-5xl"
+      >
+        Frequently asked questions
+      </h2>
+      <FaqAccordion questions={questions} client:load />
+    </div>
+  </section>
 
   <SignupCta />
 </LandingLayout>

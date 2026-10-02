@@ -3,6 +3,7 @@ import icon from "astro-icon";
 import { defineConfig } from "astro/config";
 import sitemap from "@astrojs/sitemap";
 import tailwindcss from "@tailwindcss/vite";
+import ui from "@nuxt/ui/vite";
 import mdx from "@astrojs/mdx";
 import starlight from "@astrojs/starlight";
 import starlightOpenAPI, { openAPISidebarGroups } from "starlight-openapi";
@@ -76,7 +77,17 @@ export default defineConfig({
   ],
 
   vite: {
-    plugins: [tailwindcss()],
+    plugins: [
+      tailwindcss(),
+      ui({
+        autoImport: false,
+        components: false,
+        dts: false,
+        colorMode: false,
+        router: false,
+        experimental: { componentDetection: ["Accordion"] },
+      }),
+    ],
     ssr: {
       external: ["svgo"],
     },

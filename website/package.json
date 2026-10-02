@@ -34,6 +34,7 @@
     "@heroicons/vue": "^2.2.0",
     "@iconify-json/heroicons-solid": "^1.2.1",
     "@iconify-json/mdi": "^1.2.3",
+    "@nuxt/ui": "^4.11.3",
     "@tailwindcss/vite": "^4.3.3",
     "astro-icon": "^1.1.5",
     "astro-seo": "^0.8.4",
