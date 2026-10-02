@@ -202,12 +202,40 @@ defmodule ShroudWeb.EmailAliasLive.Index do
     domains =
       socket.assigns[:current_user]
       |> Domain.list_custom_domains()
-      |> Enum.filter(&Domain.fully_verified?/1)
 
     assign(
       socket,
       :custom_domains,
       domains
     )
+  end
+
+  defp new_alias_button(assigns) do
+    ~H"""
+    <%= if @at_free_limit do %>
+      <div x-init x-tooltip.raw="Upgrade to create more aliases">
+        <.button text="New alias" icon={:plus} disabled={true} />
+      </div>
+    <% else %>
+      <%= if Enum.empty?(@custom_domains) do %>
+        <.button click="add_alias" text="New alias" icon={:plus} />
+      <% else %>
+        <.button_with_dropdown click="add_alias" text="New alias" icon={:plus}>
+          <.dropdown_item index={0} click="add_alias" text={"@#{Util.email_domain()}"} />
+          <%= for {domain, index} <- Enum.with_index(@custom_domains, 1) do %>
+            <% verified = Domain.fully_verified?(domain) %>
+            <.dropdown_item
+              id={"new-alias-domain-#{domain.id}"}
+              index={index}
+              click="open_custom_alias_modal"
+              text={"@#{domain.domain}"}
+              disabled={!verified}
+              tooltip={if(!verified, do: "Domain is not verified")}
+            />
+          <% end %>
+        </.button_with_dropdown>
+      <% end %>
+    <% end %>
+    """
   end
 end
