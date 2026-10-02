@@ -3,22 +3,36 @@ title: Upgrading
 description: How to update your Shroud.email deployment.
 ---
 
-## Version 1.4.0: SMTP certificate renewal migration
+## Version 1.4.0: Required manual changes
 
-Existing installations need a one-time migration to the new `tls.pem` bundle.
-Run from `hosting/` during a maintenance window. **Stop Haraka before pulling**
-to prevent its live configuration from referencing a bundle that does not yet exist:
+Update the checkout and Haraka image to enable automatic certificate renewal
+and DKIM signing for custom domains.
+
+Keep your existing DKIM key and `shroudemail` selector in
+`haraka/haraka_config/config/dkim/<EMAIL_DOMAIN>/`. The matching TXT record at
+`shroudemail._domainkey.<EMAIL_DOMAIN>` must be present. **Do not regenerate a
+working key.**
+
+Run from `hosting/` during a maintenance window. **Stop Haraka before updating**
+so it cannot load the certificate configuration before the bundle is ready:
 
 ```sh
 docker compose stop haraka &&
-git pull &&
+git pull --ff-only &&
+docker compose pull haraka &&
 docker compose up -d --build cron &&
 docker compose exec cron /etc/periodic/daily/bundle_certs &&
-docker compose up -d --force-recreate haraka
+docker compose up -d --no-deps --force-recreate haraka
 ```
 
-If a command fails, leave Haraka stopped until resolved. Future certificate
-renewals activate automatically without restarting Haraka.
+If a command fails, keep Haraka stopped until fixed. Check startup logs with
+`docker compose logs --tail=100 haraka`.
+
+Test a forwarded message and an alias reply from a custom domain at an external
+inbox. Check for `d=<custom-domain>; s=shroudemail` in `DKIM-Signature` and
+`dkim=pass` in `Authentication-Results`. Existing DKIM CNAMEs need no changes.
+
+Certificate renewals and custom-domain signing are automatic after this upgrade.
 
 ## Version 1.0 breaking changes
 

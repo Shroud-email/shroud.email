@@ -168,6 +168,8 @@ test('activates initial and repeated bundles on live Haraka TLS sockets and work
   const instanceConfig = path.join(instance, 'config');
   fs.cpSync(path.join(__dirname, '../config'), instanceConfig, { recursive: true });
   fs.cpSync(path.join(__dirname, '../plugins'), path.join(instance, 'plugins'), { recursive: true });
+  // Folder plugins resolve their own dependencies, as in the container's /app layout.
+  fs.symlinkSync(path.join(__dirname, '../node_modules'), path.join(instance, 'node_modules'));
   fs.mkdirSync(path.join(instanceConfig, 'certs'), { recursive: true });
   fs.copyFileSync(path.join(config, 'dhparams.pem'), path.join(instanceConfig, 'dhparams.pem'));
   fs.writeFileSync(path.join(instanceConfig, 'me'), hostname);
