@@ -4,13 +4,21 @@ const fs = require('node:fs/promises')
 const path = require('node:path')
 
 const { parseHeader } = require('@haraka/email-address')
+const { Pool } = require('pg')
 
 const dkim = require('./lib/dkim')
 
 const { DKIMVerifyStream, DKIMSignStream } = dkim
+const pool = new Pool({ max: 10 })
+let pool_error_logger
+
+pool.on('error', (err) => {
+  pool_error_logger?.logerror(`DKIM database pool error: ${err.message}`)
+})
 
 exports.register = function () {
   const plugin = this
+  pool_error_logger = plugin
   this.load_dkim_ini()
 
   dkim.DKIMObject.prototype.debug = (str) => {
@@ -130,6 +138,29 @@ exports.get_sign_properties = async function (connection) {
   }
 
   const props = { domain }
+  const email_domain = process.env.EMAIL_DOMAIN?.toLowerCase()
+
+  // Custom domains delegate their public key to EMAIL_DOMAIN via CNAME.
+  // Use that domain's key, but retain the custom domain in the signature.
+  if (domain && domain !== email_domain) {
+    const result = await pool.query(
+      `SELECT domain FROM custom_domains
+        WHERE lower(domain) = $1
+        AND ownership_verified_at > (CURRENT_TIMESTAMP AT TIME ZONE 'UTC') - INTERVAL '24 hours'`,
+      [domain],
+    )
+
+    if (!result.rows.length) {
+      connection.lognotice(this, `skipped: unverified custom domain ${domain}`)
+      return props
+    }
+
+    if (email_domain) {
+      props.private_key = this.load_key(path.join('dkim', email_domain, 'private'))
+      props.selector = this.load_key(path.join('dkim', email_domain, 'selector')).trim()
+    }
+    return props
+  }
 
   let keydir
   try {
