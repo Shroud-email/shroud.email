@@ -342,10 +342,10 @@ defmodule ShroudWeb.EmailAliasLive.Show do
         {:ok, deleted_alias} = Aliases.delete_email_alias(email_alias.id)
 
         socket
-        |> put_flash(:success, "Deleted alias #{deleted_alias.address}.")
+        |> put_notification(:success, "Deleted alias #{deleted_alias.address}.")
         |> push_navigate(to: ~p"/")
       else
-        socket |> put_flash(:error, "You don't have permission to do that.")
+        socket |> put_notification(:error, "You don't have permission to do that.")
       end
 
     {:noreply, socket}
@@ -377,14 +377,14 @@ defmodule ShroudWeb.EmailAliasLive.Show do
         case Aliases.unblock_sender(email_alias, sender) do
           {:ok, _email_alias} ->
             socket
-            |> put_flash(:info, "Unblocked #{sender}.")
+            |> put_notification(:info, "Unblocked #{sender}.")
             |> update_email_alias()
 
           :error ->
-            put_flash(socket, :error, "Something went wrong.")
+            put_notification(socket, :error, "Something went wrong.")
         end
       else
-        socket |> put_flash(:error, "You don't have permission to do that.")
+        socket |> put_notification(:error, "You don't have permission to do that.")
       end
 
     {:noreply, socket}
@@ -402,7 +402,7 @@ defmodule ShroudWeb.EmailAliasLive.Show do
           {:ok, _email_alias} ->
             socket
             |> assign(:blocked_sender_error, "")
-            |> put_flash(:success, "Blocked #{sender}.")
+            |> put_notification(:success, "Blocked #{sender}.")
             |> update_email_alias()
 
           {:error, changeset} ->
@@ -412,7 +412,7 @@ defmodule ShroudWeb.EmailAliasLive.Show do
             |> assign(:blocked_sender_error, error)
         end
       else
-        socket |> put_flash(:error, "You don't have permission to do that.")
+        socket |> put_notification(:error, "You don't have permission to do that.")
       end
 
     {:noreply, socket}
@@ -431,14 +431,14 @@ defmodule ShroudWeb.EmailAliasLive.Show do
 
           socket
           |> update_email_alias()
-          |> put_flash(:info, "#{verb} #{email_alias.address}.")
+          |> put_notification(:info, "#{verb} #{email_alias.address}.")
 
         {:error, _error} ->
           socket
-          |> put_flash(:error, "Something went wrong.")
+          |> put_notification(:error, "Something went wrong.")
       end
     else
-      socket |> put_flash(:error, "You don't have permission to do that.")
+      socket |> put_notification(:error, "You don't have permission to do that.")
     end
   end
 

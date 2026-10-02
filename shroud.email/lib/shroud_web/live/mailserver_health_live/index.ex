@@ -32,7 +32,9 @@ defmodule ShroudWeb.MailserverHealthLive.Index do
 
   def handle_async(:health, {:exit, _reason}, socket) do
     {:noreply,
-     socket |> assign(:checking, false) |> put_flash(:error, "Health checks could not finish.")}
+     socket
+     |> assign(:checking, false)
+     |> put_notification(:error, "Health checks could not finish.")}
   end
 
   defp run_checks(socket) do

@@ -1,6 +1,5 @@
 defmodule ShroudWeb.Components.Atoms do
   alias Shroud.Accounts.Logging
-  alias Phoenix.LiveView.JS
 
   use Phoenix.Component
 
@@ -191,57 +190,5 @@ defmodule ShroudWeb.Components.Atoms do
       if you did not expect this.
     </p>
     """
-  end
-
-  attr(:flash, :any, required: true)
-  attr(:kind, :atom, required: true)
-
-  def notification(assigns) do
-    [icon, icon_class] =
-      case assigns.kind do
-        :success -> [:check_circle, "text-green-400"]
-        :info -> [:information_circle, "text-gray-400"]
-        :error -> [:exclamation_circle, "text-red-400"]
-      end
-
-    assigns = assign(assigns, :icon, icon)
-    assigns = assign(assigns, :icon_class, icon_class)
-
-    ~H"""
-    <button
-      :if={Phoenix.Flash.get(@flash, @kind)}
-      phx-hook="Notification"
-      id={"flash-#{@kind}"}
-      class="fade-in-translate max-w-sm w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg pointer-events-auto ring-1 ring-black/5 dark:ring-gray-700 overflow-hidden hover:shadow-xl transition-all duration-100"
-      phx-click={close("#flash", @kind)}
-    >
-      <div class="p-4">
-        <div class="flex items-start">
-          <div class="shrink-0">
-            <.icon name={@icon} class={"h-6 w-6 " <> @icon_class} />
-          </div>
-          <div class="ml-3 w-0 flex-1 pt-0.5">
-            <p class="text-left text-sm font-medium text-gray-900 dark:text-gray-100">
-              {Phoenix.Flash.get(@flash, @kind)}
-            </p>
-          </div>
-        </div>
-      </div>
-    </button>
-    """
-  end
-
-  defp close(selector, kind) do
-    JS.push("lv:clear-flash", value: %{key: kind})
-    |> JS.remove_class("fade-in-translate")
-    |> JS.hide(
-      to: selector,
-      time: 100,
-      transition: {
-        "transition ease-in duration-100",
-        "opacity-100",
-        "opacity-0"
-      }
-    )
   end
 end

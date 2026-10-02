@@ -180,14 +180,14 @@ defmodule ShroudWeb.RateLimitIntegrationTest do
       user: %{email: "new@example.com"}
     })
 
-    assert has_element?(view, "#settings-error", "Too many requests")
+    assert has_element?(view, "#notification-source [data-kind=error]", "Too many requests")
     refute_receive {:email, _}
     assert Repo.reload!(user).email == user.email
 
     seed({:security, :second_factor}, {:account, user.id}, 5)
     {:ok, security, _} = live(conn, "/settings/security")
     render_click(security, "generate_totp_secret")
-    assert has_element?(security, "#settings-error", "Too many requests")
+    assert has_element?(security, "#notification-source [data-kind=error]", "Too many requests")
     refute Repo.reload!(user).totp_enabled
 
     # Display-only events still work; the socket remains connected.
@@ -224,7 +224,7 @@ defmodule ShroudWeb.RateLimitIntegrationTest do
     seed({:security, :second_factor}, {:account, user.id}, 5)
     {:ok, view, _} = live(conn, "/settings/security")
     render_click(view, "generate_totp_secret")
-    assert has_element?(view, "#settings-error", "Too many requests")
+    assert has_element?(view, "#notification-source [data-kind=error]", "Too many requests")
     refute has_element?(view, "#totp-qr-code")
   end
 

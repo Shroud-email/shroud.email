@@ -9,6 +9,7 @@
 
 @source '../js';
 @source '../../lib/shroud_web';
+@source '../../deps/live_toast/lib';
 
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -38,15 +39,6 @@
 /* Form errors from error_tag */
 .invalid-feedback {
   @apply text-red-600 text-sm mt-1;
-}
-
-.fade-in-translate {
-  animation: 0.3s ease-out 0s normal forwards 1 fade-in-translate-keys;
-}
-
-@keyframes fade-in-translate-keys{
-  0% { transform: translateX(0.5rem); opacity: 0; }
-  100% { transform: translateX(0); opacity: 1; }
 }
 
 [x-cloak] {

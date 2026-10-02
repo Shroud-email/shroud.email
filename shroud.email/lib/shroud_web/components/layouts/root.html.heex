@@ -45,6 +45,7 @@
   >
     <div class="min-h-full flex flex-col">
       <.navbar {assigns} />
+      <.notification_group :if={!assigns[:live_module]} flash={@flash} />
       <div class="flex-1">
         <%= @inner_content %>
       </div>

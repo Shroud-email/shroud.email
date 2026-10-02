@@ -23,7 +23,8 @@ import { LiveSocket } from "phoenix_live_view";
 import topbar from "../vendor/topbar";
 import "../vendor/components";
 import "@cap.js/widget";
-import { CopyToClipboard, Modal, Notification } from "./hooks";
+import { CopyToClipboard, Modal } from "./hooks";
+import { LiveToast, NotificationSource, initializeFlashNotifications } from "./notifications.mjs";
 
 import { initTheme, setTheme } from "./theme";
 import Alpine from "alpinejs";
@@ -41,6 +42,7 @@ initTheme();
 window.setTheme = setTheme;
 
 window.addEventListener("phx:set-theme", (event) => setTheme(event.detail.theme));
+initializeFlashNotifications();
 window.addEventListener("shroud:copy", async (event) => {
   try {
     await navigator.clipboard.writeText(event.detail.text);
@@ -55,7 +57,8 @@ let liveSocket = new LiveSocket("/live", Socket, {
   hooks: {
     CopyToClipboard,
     Modal,
-    Notification,
+    LiveToast,
+    NotificationSource,
     PasskeyRegistration,
     PasskeyLogin,
     PaddleCheckout: {
@@ -70,6 +73,10 @@ let liveSocket = new LiveSocket("/live", Socket, {
   params: { _csrf_token: csrfToken },
   dom: {
     onBeforeElUpdated(from, to) {
+      // LiveView patches must not reset Motion's in-flight transforms or opacity.
+      if (from.dataset.kind && from.getAttribute("phx-hook") === "LiveToast") {
+        to.style.cssText = from.style.cssText;
+      }
       if (from._x_dataStack) {
         window.Alpine.clone(from, to);
       }
