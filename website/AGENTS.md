@@ -24,7 +24,7 @@ No test framework is configured. Verify changes with `npm run build`.
 - `src/components/molecules/` — composed UI (NavbarDropdown, NewsletterForm, PageHeader, PostPreview)
 - `src/components/organisms/` — page sections (HeroSection, Pricing, Footer, navbar, FeatureSection)
 
-**Layouts:** `src/layouts/` — `BaseLayout` is the root (includes SEO, PostHog analytics, fonts). `LandingLayout`, `BlogPost`, `DocsLayout`, and `ComparisonLayout` extend it.
+**Layouts:** `src/layouts/` — `BaseLayout` is the root (includes SEO, Plausible analytics, fonts). `LandingLayout`, `BlogPost`, `DocsLayout`, and `ComparisonLayout` extend it.
 
 **Content collections:** Defined in `src/content.config.ts` using Astro's glob loader:
 - `blog` — `src/content/blog/*.md` (schema: title, description, date, image, imageAlt)

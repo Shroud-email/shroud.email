@@ -31,6 +31,22 @@ import Tooltip from "@ryangjchandler/alpine-tooltip";
 import { initializePaddle } from "@paddle/paddle-js";
 import { setupPaddleCheckout } from "./paddle_checkout.mjs";
 import { PasskeyRegistration, PasskeyLogin } from "./passkeys.mjs";
+import { init, track } from "@plausible-analytics/tracker";
+import { transformAnalyticsRequest } from "./analytics.mjs";
+
+if (window.location.hostname === "app.shroud.email") {
+  // The tracker observes history changes, including LiveView patch/navigation.
+  init({
+    domain: "shroud.email",
+    endpoint: "https://p.shroud.email/qwerty/event",
+    transformRequest: transformAnalyticsRequest,
+  });
+  const analyticsEvent = document.body.dataset.analyticsEvent;
+  if (analyticsEvent) {
+    track(analyticsEvent, {});
+    delete document.body.dataset.analyticsEvent;
+  }
+}
 
 Alpine.plugin(Tooltip);
 window.Alpine = Alpine;

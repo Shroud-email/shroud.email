@@ -335,3 +335,31 @@ test("disposing during transaction creation prevents opening checkout on another
   await click;
   assert.deepEqual(opened, []);
 });
+
+test("tracks only completed checkout, once, without customer or transaction data", async () => {
+  const { document } = fixture();
+  const events = [];
+  const timers = [];
+  let callback;
+  const checkout = setupPaddleCheckout({
+    document,
+    window: {
+      plausible: (...args) => events.push(args),
+      setTimeout: (...args) => timers.push(args),
+    },
+    initializePaddle: async (options) => {
+      callback = options.eventCallback;
+      return { Checkout: { open() {} } };
+    },
+  });
+  await checkout;
+  callback({ name: "checkout.loaded" });
+  assert.deepEqual(events, []);
+  callback({ name: "checkout.completed", data: { email: "secret@example.com", transaction_id: "txn_private" } });
+  callback({ name: "checkout.completed" });
+  assert.deepEqual(events, [["Purchase", {}]]);
+  assert.equal(timers.length, 1);
+  checkout.dispose();
+  callback({ name: "checkout.completed" });
+  assert.equal(events.length, 1);
+});

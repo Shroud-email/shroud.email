@@ -5,6 +5,7 @@
   "dependencies": {
     "@cap.js/widget": "0.1.56",
     "@paddle/paddle-js": "^1.6.4",
+    "@plausible-analytics/tracker": "^0.4.6",
     "@ryangjchandler/alpine-tooltip": "^2.0.1",
     "alpinejs": "^3.15.11",
     "tippy.js": "^6.3.7"
