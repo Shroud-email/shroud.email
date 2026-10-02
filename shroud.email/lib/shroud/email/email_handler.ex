@@ -54,15 +54,17 @@ defmodule Shroud.Email.EmailHandler do
   end
 
   defp fan_out(%Oban.Job{id: id}, from, recipients, data) do
-    # Commit all recipients and the marker together. Locking the parent also
-    # prevents concurrent executions from creating a second set of children.
-    # Unlike child-job uniqueness, this survives pruning completed children.
+    # Save recipient jobs and the parent's fan-out completion flag together.
+    # The flag prevents duplicate jobs on retry, even after children are pruned.
+    # Lock the parent so concurrent executions cannot both create jobs.
     case Repo.transaction(fn ->
            parent = Repo.one!(from j in Oban.Job, where: j.id == ^id, lock: "FOR UPDATE")
 
            unless parent.meta["fan_out_completed"] do
              encoded_data = Base.encode64(data)
 
+             # Each child stores the payload so it can retry after the parent is
+             # pruned. Storage and write I/O scale with the recipient count.
              recipients
              |> Enum.uniq()
              |> Enum.map(&new(%{from: from, to: &1, data: encoded_data}))
