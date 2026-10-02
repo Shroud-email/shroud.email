@@ -240,7 +240,7 @@ defmodule Shroud.Aliases do
     generate_alias_name(domain) <> "@" <> domain
   end
 
-  @doc "Generates an unused random username for the given domain without creating an alias."
+  @doc "Generates an unused random alias name for the given domain without creating an alias."
   def generate_alias_name(domain) do
     # Note: don't ever use underscores in an alias as it will break Shroud.Email.ReplyAddress.
     alphabet = "abcdefghijklmnopqrstuvwxyz1234567890" |> String.graphemes()

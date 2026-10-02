@@ -206,7 +206,7 @@ defmodule ShroudWeb.EmailAliasLiveTest do
       assert html =~ "john.doe@#{custom_domain.domain}"
     end
 
-    test "ignores username generation before selecting a custom domain", %{
+    test "ignores random alias creation before selecting a custom domain", %{
       conn: conn,
       user: user,
       email_alias: email_alias
@@ -214,86 +214,79 @@ defmodule ShroudWeb.EmailAliasLiveTest do
       {:ok, view, _html} = live(conn, ~p"/")
       count = Shroud.Aliases.count_aliases(user)
 
-      render_hook(view, "generate_alias_name", %{})
+      render_hook(view, "create_random_custom_alias", %{})
 
       assert has_element?(view, "#copy-alias-#{email_alias.id}")
       refute has_element?(view, "#add_alias_modal")
       assert Shroud.Aliases.count_aliases(user) == count
     end
 
-    test "generates and regenerates an editable custom-domain username without saving", %{
-      conn: conn,
-      user: user
-    } do
-      custom_domain = custom_domain_fixture(%{user_id: user.id})
-      {:ok, view, _html} = live(conn, ~p"/")
-      count = Shroud.Aliases.count_aliases(user)
-
-      render_hook(view, "open_custom_alias_modal", %{"text" => "@#{custom_domain.domain}"})
-      assert has_element?(view, "#alias_name[value='']")
-      assert has_element?(view, "#generate-alias-name[type='button']")
-
-      view |> element("#generate-alias-name") |> render_click()
-
-      [name] =
-        view
-        |> element("#alias_name")
-        |> render()
-        |> LazyHTML.from_fragment()
-        |> LazyHTML.attribute("value")
-
-      assert name =~ ~r/^[a-z0-9]{16}$/
-      assert_push_event(view, "generated-alias-name", %{name: name})
-      assert Shroud.Aliases.count_aliases(user) == count
-
-      view |> element("#generate-alias-name") |> render_click()
-
-      [new_name] =
-        view
-        |> element("#alias_name")
-        |> render()
-        |> LazyHTML.from_fragment()
-        |> LazyHTML.attribute("value")
-
-      assert new_name =~ ~r/^[a-z0-9]{16}$/
-      refute new_name == name
-      assert_push_event(view, "generated-alias-name", %{name: new_name})
-      assert Shroud.Aliases.count_aliases(user) == count
-
-      {:ok, _view, _html} =
-        view |> form("#custom-alias-form") |> render_submit() |> follow_redirect(conn)
-
-      email_alias =
-        Shroud.Aliases.get_email_alias_by_address!(new_name <> "@" <> custom_domain.domain)
-
-      assert email_alias.user_id == user.id
-      assert email_alias.domain_id == custom_domain.id
-    end
-
-    test "allows editing a generated username and resets it when switching domains", %{
+    test "creates a random alias on the selected domain with one click", %{
       conn: conn,
       user: user
     } do
       first_domain = custom_domain_fixture(%{user_id: user.id})
-      second_domain = custom_domain_fixture(%{user_id: user.id})
+      custom_domain = custom_domain_fixture(%{user_id: user.id})
       {:ok, view, _html} = live(conn, ~p"/")
+      count = Shroud.Aliases.count_aliases(user)
 
       render_hook(view, "open_custom_alias_modal", %{"text" => "@#{first_domain.domain}"})
-      view |> element("#generate-alias-name") |> render_click()
-      render_hook(view, "open_custom_alias_modal", %{"text" => "@#{second_domain.domain}"})
-      assert has_element?(view, "#alias_name[value='']")
-      view |> element("#generate-alias-name") |> render_click()
+      render_hook(view, "open_custom_alias_modal", %{"text" => "@#{custom_domain.domain}"})
+      assert has_element?(view, "#create-random-custom-alias[type='button']")
+      refute has_element?(view, "#custom-alias-error")
+      assert Shroud.Aliases.count_aliases(user) == count
 
       {:ok, _view, _html} =
         view
-        |> form("#custom-alias-form", alias_name: "edited.username")
-        |> render_submit()
+        |> element("#create-random-custom-alias")
+        |> render_click()
         |> follow_redirect(conn)
 
-      email_alias =
-        Shroud.Aliases.get_email_alias_by_address!("edited.username@#{second_domain.domain}")
+      [email_alias] =
+        user |> Shroud.Aliases.list_aliases() |> Enum.filter(&(&1.domain_id == custom_domain.id))
 
-      assert email_alias.domain_id == second_domain.id
+      [name, domain] = String.split(email_alias.address, "@")
+      assert name =~ ~r/^[a-z0-9]{16}$/
+      assert domain == custom_domain.domain
+      assert Shroud.Aliases.count_aliases(user) == count + 1
+      assert email_alias.user_id == user.id
+    end
+
+    test "random creation does not submit a typed alias or require fixing its validation error",
+         %{
+           conn: conn,
+           user: user
+         } do
+      domain = custom_domain_fixture(%{user_id: user.id})
+      alias_fixture(%{user_id: user.id, address: "taken@#{domain.domain}"})
+      {:ok, view, _html} = live(conn, ~p"/")
+      count = Shroud.Aliases.count_aliases(user)
+
+      render_hook(view, "open_custom_alias_modal", %{"text" => "@#{domain.domain}"})
+      view |> form("#custom-alias-form", alias_name: "taken") |> render_submit()
+      assert has_element?(view, "#custom-alias-error", "has already been taken")
+      assert Shroud.Aliases.count_aliases(user) == count
+
+      {:ok, _view, _html} =
+        view
+        |> element("#create-random-custom-alias")
+        |> render_click(%{alias_name: "taken"})
+        |> follow_redirect(conn)
+
+      assert Shroud.Aliases.count_aliases(user) == count + 1
+    end
+
+    test "random creation respects the alias limit without crashing", %{conn: conn, user: user} do
+      domain = custom_domain_fixture(%{user_id: user.id})
+      for _ <- 1..4, do: alias_fixture(%{user_id: user.id})
+      user |> Shroud.Accounts.User.status_changeset(%{status: :free}) |> Shroud.Repo.update!()
+      {:ok, view, _html} = live(conn, ~p"/")
+
+      render_hook(view, "open_custom_alias_modal", %{"text" => "@#{domain.domain}"})
+      view |> element("#create-random-custom-alias") |> render_click()
+
+      assert Shroud.Aliases.count_aliases(user) == 5
+      assert has_element?(view, "#create-random-custom-alias")
     end
 
     # test "deletes email_alias in listing", %{conn: conn, email_alias: email_alias} do

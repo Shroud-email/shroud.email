@@ -41,11 +41,6 @@ initTheme();
 window.setTheme = setTheme;
 
 window.addEventListener("phx:set-theme", (event) => setTheme(event.detail.theme));
-window.addEventListener("phx:generated-alias-name", (event) => {
-  // LiveView preserves focused input values, even when generation replaces them.
-  const input = document.getElementById("alias_name");
-  if (input) input.value = event.detail.name;
-});
 window.addEventListener("shroud:copy", async (event) => {
   try {
     await navigator.clipboard.writeText(event.detail.text);

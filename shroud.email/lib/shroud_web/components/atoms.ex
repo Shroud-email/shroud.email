@@ -81,7 +81,6 @@ defmodule ShroudWeb.Components.Atoms do
   attr(:type, :string, default: "text")
   attr(:name, :string, required: true)
   attr(:placeholder, :string, required: false)
-  attr(:value, :string, default: "")
 
   def text_input(assigns) do
     ~H"""
@@ -93,7 +92,6 @@ defmodule ShroudWeb.Components.Atoms do
           name={@name}
           id={@name}
           placeholder={@placeholder}
-          value={@value}
           class="shadow-xs focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
         />
       </div>

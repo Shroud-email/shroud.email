@@ -23,7 +23,6 @@ defmodule ShroudWeb.EmailAliasLive.Index do
       socket
       |> update_custom_domains()
       |> assign(:custom_alias_domain, nil)
-      |> assign(:custom_alias_name, "")
       |> assign(:custom_alias_error, "")
       |> assign(:alias_count, Aliases.count_aliases(socket.assigns.current_user))
       |> assign_at_free_limit()
@@ -96,27 +95,23 @@ defmodule ShroudWeb.EmailAliasLive.Index do
   def handle_event("open_custom_alias_modal", %{"text" => domain}, socket) do
     PopupAlert.show("add_alias_modal")
 
-    {:noreply,
-     assign(socket, custom_alias_domain: domain, custom_alias_name: "", custom_alias_error: "")}
+    {:noreply, assign(socket, custom_alias_domain: domain, custom_alias_error: "")}
   end
 
   @impl true
   def handle_event(
-        "generate_alias_name",
+        "create_random_custom_alias",
         _params,
         %{assigns: %{custom_alias_domain: nil}} = socket
       ) do
     {:noreply, socket}
   end
 
-  def handle_event("generate_alias_name", _params, socket) do
+  def handle_event("create_random_custom_alias", _params, socket) do
     domain = String.trim_leading(socket.assigns.custom_alias_domain, "@")
     name = Aliases.generate_alias_name(domain)
 
-    {:noreply,
-     socket
-     |> assign(custom_alias_name: name, custom_alias_error: "")
-     |> push_event("generated-alias-name", %{name: name})}
+    handle_event("create_custom_alias", %{"alias_name" => name}, socket)
   end
 
   @impl true
@@ -141,7 +136,7 @@ defmodule ShroudWeb.EmailAliasLive.Index do
              to: ~p"/alias/#{email_alias.address}"
            )}
 
-        {:error, changeset} ->
+        {:error, %Ecto.Changeset{} = changeset} ->
           {error, _} = Keyword.get(changeset.errors, :address)
 
           socket =
@@ -150,7 +145,12 @@ defmodule ShroudWeb.EmailAliasLive.Index do
             |> put_flash(:error, "Something went wrong.")
 
           {:noreply, socket}
+
+        {:error, _reason} ->
+          {:noreply, put_flash(socket, :error, "Something went wrong.")}
       end
+    else
+      {:noreply, put_flash(socket, :error, "You don't have permission to do that.")}
     end
   end
 
