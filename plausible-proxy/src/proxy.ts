@@ -1,5 +1,6 @@
 // Replace this with the personalized script URL in Plausible's site settings.
-export const PROXY_SCRIPT = "https://plausible.io/js/pa-XXXXX.js";
+export const PROXY_SCRIPT =
+  "https://plausible.io/js/pa-5AG4aRFlACAj4itoPfLBC.js";
 export const SCRIPT_PATH = "/qwerty/script.js";
 export const EVENT_PATH = "/qwerty/event";
 
