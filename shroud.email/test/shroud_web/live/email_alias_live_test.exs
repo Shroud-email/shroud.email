@@ -206,6 +206,79 @@ defmodule ShroudWeb.EmailAliasLiveTest do
       assert html =~ "john.doe@#{custom_domain.domain}"
     end
 
+    test "generates and regenerates an editable custom-domain username without saving", %{
+      conn: conn,
+      user: user
+    } do
+      custom_domain = custom_domain_fixture(%{user_id: user.id})
+      {:ok, view, _html} = live(conn, ~p"/")
+      count = Shroud.Aliases.count_aliases(user)
+
+      render_hook(view, "open_custom_alias_modal", %{"text" => "@#{custom_domain.domain}"})
+      assert has_element?(view, "#alias_name[value='']")
+      assert has_element?(view, "#generate-alias-name[type='button']")
+
+      view |> element("#generate-alias-name") |> render_click()
+
+      [name] =
+        view
+        |> element("#alias_name")
+        |> render()
+        |> LazyHTML.from_fragment()
+        |> LazyHTML.attribute("value")
+
+      assert name =~ ~r/^[a-z0-9]{16}$/
+      assert Shroud.Aliases.count_aliases(user) == count
+
+      view |> element("#generate-alias-name") |> render_click()
+
+      [new_name] =
+        view
+        |> element("#alias_name")
+        |> render()
+        |> LazyHTML.from_fragment()
+        |> LazyHTML.attribute("value")
+
+      assert new_name =~ ~r/^[a-z0-9]{16}$/
+      refute new_name == name
+      assert Shroud.Aliases.count_aliases(user) == count
+
+      {:ok, _view, _html} =
+        view |> form("#custom-alias-form") |> render_submit() |> follow_redirect(conn)
+
+      email_alias =
+        Shroud.Aliases.get_email_alias_by_address!(new_name <> "@" <> custom_domain.domain)
+
+      assert email_alias.user_id == user.id
+      assert email_alias.domain_id == custom_domain.id
+    end
+
+    test "allows editing a generated username and resets it when switching domains", %{
+      conn: conn,
+      user: user
+    } do
+      first_domain = custom_domain_fixture(%{user_id: user.id})
+      second_domain = custom_domain_fixture(%{user_id: user.id})
+      {:ok, view, _html} = live(conn, ~p"/")
+
+      render_hook(view, "open_custom_alias_modal", %{"text" => "@#{first_domain.domain}"})
+      view |> element("#generate-alias-name") |> render_click()
+      render_hook(view, "open_custom_alias_modal", %{"text" => "@#{second_domain.domain}"})
+      assert has_element?(view, "#alias_name[value='']")
+      view |> element("#generate-alias-name") |> render_click()
+
+      {:ok, _view, _html} =
+        view
+        |> form("#custom-alias-form", alias_name: "edited.username")
+        |> render_submit()
+        |> follow_redirect(conn)
+
+      email_alias =
+        Shroud.Aliases.get_email_alias_by_address!("edited.username@#{second_domain.domain}")
+
+      assert email_alias.domain_id == second_domain.id
+    end
+
     # test "deletes email_alias in listing", %{conn: conn, email_alias: email_alias} do
     #   {:ok, index_live, _html} =
     #     conn

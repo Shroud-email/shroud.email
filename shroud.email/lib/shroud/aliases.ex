@@ -236,18 +236,24 @@ defmodule Shroud.Aliases do
   end
 
   defp generate_email_address() do
-    # Note: don't ever use underscores in an alias as it will break Shroud.Email.ReplyAddress.
-    alphabet = "abcdefghijklmnopqrstuvwxyz1234567890" |> String.split("")
+    domain = Util.email_domain()
+    generate_alias_name(domain) <> "@" <> domain
+  end
 
-    address =
+  @doc "Generates an unused random username for the given domain without creating an alias."
+  def generate_alias_name(domain) do
+    # Note: don't ever use underscores in an alias as it will break Shroud.Email.ReplyAddress.
+    alphabet = "abcdefghijklmnopqrstuvwxyz1234567890" |> String.graphemes()
+
+    name =
       Enum.reduce(1..16, [], fn _, acc -> [Enum.random(alphabet) | acc] end) |> Enum.join("")
 
-    address = address <> "@" <> Util.email_domain()
+    address = name <> "@" <> domain
 
     if Repo.exists?(from(a in EmailAlias, where: a.address == ^address)) do
-      generate_email_address()
+      generate_alias_name(domain)
     else
-      address
+      name
     end
   end
 

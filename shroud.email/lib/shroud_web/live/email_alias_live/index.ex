@@ -23,6 +23,7 @@ defmodule ShroudWeb.EmailAliasLive.Index do
       socket
       |> update_custom_domains()
       |> assign(:custom_alias_domain, nil)
+      |> assign(:custom_alias_name, "")
       |> assign(:custom_alias_error, "")
       |> assign(:alias_count, Aliases.count_aliases(socket.assigns.current_user))
       |> assign_at_free_limit()
@@ -94,7 +95,16 @@ defmodule ShroudWeb.EmailAliasLive.Index do
   @impl true
   def handle_event("open_custom_alias_modal", %{"text" => domain}, socket) do
     PopupAlert.show("add_alias_modal")
-    {:noreply, assign(socket, :custom_alias_domain, domain)}
+
+    {:noreply,
+     assign(socket, custom_alias_domain: domain, custom_alias_name: "", custom_alias_error: "")}
+  end
+
+  @impl true
+  def handle_event("generate_alias_name", _params, socket) do
+    domain = String.trim_leading(socket.assigns.custom_alias_domain, "@")
+    name = Aliases.generate_alias_name(domain)
+    {:noreply, assign(socket, custom_alias_name: name, custom_alias_error: "")}
   end
 
   @impl true
