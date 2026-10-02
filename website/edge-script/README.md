@@ -32,6 +32,16 @@ The middleware:
 This means the script degrades safely: if the script is disabled or the header
 is absent, visitors see the UK default.
 
+### Response framing
+
+The worldwide rewrite removes `Content-Length` from both the original middleware
+context and the returned response. UK price strings contain `£` (two UTF-8 bytes),
+while `$` occupies one byte, so the three pricing spans shorten the body by three
+bytes. Preserving the origin's length makes clients wait for bytes that will
+never arrive. The body remains streamed; UK responses and assets retain their
+unchanged framing. Unit tests use a conservative rewriter double that retains
+upstream headers; a live Bunny deployment is still needed to verify wire behavior.
+
 ## Files
 
 - `src/main.ts` — entry point (imports `pricing.ts`).
@@ -49,6 +59,9 @@ cd edge-script
 
 # Type-check
 deno check src/main.ts
+
+# Test response framing and price replacement without network access
+deno task test
 
 # Bundle to dist/index.ts
 deno task build

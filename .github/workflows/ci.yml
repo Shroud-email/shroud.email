@@ -116,6 +116,12 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - run: pnpm check:content-images
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version: v2.x
+      - name: Check and test geo-localized pricing middleware
+        working-directory: website/edge-script
+        run: deno task check && deno task test
 
   image-e2e:
     name: Production image E2E
