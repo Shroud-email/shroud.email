@@ -131,5 +131,11 @@ jobs:
       - name: Verify complete pricing response after middleware publication
         run: |
           response="$(mktemp)"
-          trap 'rm -f "$response"' EXIT
-          curl --fail --silent --show-error --max-time 20 --retry 5 --retry-delay 5 --retry-all-errors --output "$response" https://shroud-email-website-staging.b-cdn.net/pricing/
+          headers="$(mktemp)"
+          trap 'rm -f "$response" "$headers"' EXIT
+          result=0
+          curl --fail --silent --show-error --max-time 20 --retry 5 --retry-delay 5 --retry-all-errors --dump-header "$headers" --output "$response" https://shroud-email-website-staging.b-cdn.net/pricing/ || result=$?
+          grep -Ei '^(HTTP/|content-length:|content-encoding:|cache-control:|cdn-cache:|x-shroud-pricing-revision:)' "$headers" || true
+          printf 'Received bytes: '
+          wc -c < "$response"
+          exit "$result"

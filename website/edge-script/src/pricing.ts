@@ -38,6 +38,24 @@ export async function rewritePricing(
   }
 
   const country = ctx.request.headers.get("cdn-requestcountrycode");
+  const pricingRequest = /^\/pricing(?:\/|\/index\.html)?$/.test(
+    new URL(ctx.request.url).pathname,
+  );
+  if (pricingRequest) {
+    console.info(
+      "shroud-pricing",
+      JSON.stringify({
+        revision: "framing-diagnostics-v1",
+        stage: "origin-response",
+        method: ctx.request.method,
+        status: ctx.response.status,
+        uk: isUK(country),
+        originLength: ctx.response.headers.get("content-length"),
+        originEncoding: ctx.response.headers.get("content-encoding"),
+        bodyless: ctx.response.body === null,
+      }),
+    );
+  }
 
   // UK visitor (or unknown country): the static default is already in £, so
   // no rewrite needed. Still bypass the cache so a prior worldwide visitor's
@@ -86,16 +104,41 @@ export async function rewritePricing(
     headers: inputHeaders,
   });
   const rewritten = rewriter.transform(ctx.response);
-  // Staging still advertised the origin length after publishing a deletion-only fix.
-  // Its active edge revision was not verified; propagation delay remains possible.
+  if (pricingRequest) {
+    console.info(
+      "shroud-pricing",
+      JSON.stringify({
+        revision: "framing-diagnostics-v1",
+        stage: "before-buffer",
+        rewrittenLength: rewritten.headers.get("content-length"),
+        rewrittenEncoding: rewritten.headers.get("content-encoding"),
+      }),
+    );
+  }
+  // Live staging still advertises the origin length despite the explicit override.
   // Explicitly override it with the actual output byte count, not string length.
   const body = await rewritten.arrayBuffer();
   const headers = new Headers(rewritten.headers);
   headers.set("content-length", String(body.byteLength));
   headers.set("cache-control", "no-store");
+  if (pricingRequest) {
+    headers.set("x-shroud-pricing-revision", "framing-diagnostics-v1");
+  }
   ctx.response = new Response(body, {
     status: rewritten.status,
     headers,
   });
+  if (pricingRequest) {
+    console.info(
+      "shroud-pricing",
+      JSON.stringify({
+        revision: "framing-diagnostics-v1",
+        stage: "return-response",
+        bodyBytes: body.byteLength,
+        returnedLength: ctx.response.headers.get("content-length"),
+        returnedEncoding: ctx.response.headers.get("content-encoding"),
+      }),
+    );
+  }
   return ctx.response;
 }

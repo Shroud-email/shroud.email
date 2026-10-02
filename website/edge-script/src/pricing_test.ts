@@ -3,6 +3,12 @@ import { rewritePricing } from "./pricing.ts";
 
 Deno.test("worldwide rewrite replaces stale framing with the exact UTF-8 byte count", async () => {
   const original = Object.getOwnPropertyDescriptor(globalThis, "HTMLRewriter");
+  const originalInfo = console.info;
+  const logs: unknown[] = [];
+  console.info = (prefix: string, payload: string) => {
+    assert.equal(prefix, "shroud-pricing");
+    logs.push(JSON.parse(payload));
+  };
   let upstreamHeaders: Headers;
   // Preserve a snapshot of upstream framing on the transformed response.
   // Exercise an explicit override even when the rewriter retains old headers.
@@ -58,8 +64,12 @@ Deno.test("worldwide rewrite replaces stale framing with the exact UTF-8 byte co
     });
     upstreamHeaders = new Headers(response.headers);
     const ctx = {
-      request: new Request("https://example.test/pricing/", {
-        headers: { "cdn-requestcountrycode": "US" },
+      request: new Request("https://example.test/pricing/?private=fixture", {
+        headers: {
+          "cdn-requestcountrycode": "US",
+          "authorization": "Bearer fixture",
+          "cookie": "private=fixture",
+        },
       }),
       response,
     };
@@ -69,6 +79,35 @@ Deno.test("worldwide rewrite replaces stale framing with the exact UTF-8 byte co
     assert.equal(result.headers.get("content-length"), "147");
     assert.equal(result.headers.get("cache-control"), "no-store");
     assert.equal(result.headers.get("x-bunny-deploy"), "fixture");
+    assert.equal(
+      result.headers.get("x-shroud-pricing-revision"),
+      "framing-diagnostics-v1",
+    );
+    assert.deepEqual(logs, [
+      {
+        revision: "framing-diagnostics-v1",
+        stage: "origin-response",
+        method: "GET",
+        status: 404,
+        uk: false,
+        originLength: "150",
+        originEncoding: null,
+        bodyless: false,
+      },
+      {
+        revision: "framing-diagnostics-v1",
+        stage: "before-buffer",
+        rewrittenLength: "150",
+        rewrittenEncoding: null,
+      },
+      {
+        revision: "framing-diagnostics-v1",
+        stage: "return-response",
+        bodyBytes: 147,
+        returnedLength: "147",
+        returnedEncoding: null,
+      },
+    ]);
     const rewritten = await result.text();
     assert.equal(
       rewritten,
@@ -79,6 +118,7 @@ Deno.test("worldwide rewrite replaces stale framing with the exact UTF-8 byte co
       new TextEncoder().encode(html).length - 3,
     );
   } finally {
+    console.info = originalInfo;
     if (original) Object.defineProperty(globalThis, "HTMLRewriter", original);
     else Reflect.deleteProperty(globalThis, "HTMLRewriter");
   }

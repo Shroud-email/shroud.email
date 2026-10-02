@@ -37,15 +37,26 @@ is absent, visitors see the UK default.
 UK price strings contain `£` (two UTF-8 bytes), while `$` occupies one byte, so
 the three pricing spans shorten the body by three bytes. Preserving the origin's
 length makes clients wait for bytes that will never arrive. The deletion-only
-fix was published successfully, but staging still advertised the origin length.
-The active edge revision was not verified, so propagation delay remains possible.
+fix and the explicit byte-length override were both published, but staging still
+advertised the origin length, including after a pull-zone cache purge. The user
+confirmed that the deployed source contains the explicit override.
 The worldwide handler therefore buffers the transformed HTML and explicitly
 sets `Content-Length` to the output buffer's byte length, not its character count.
 It uses a mutable copy of the context response so immutable Fetch headers are
 not modified. UK responses and assets retain their unchanged, streamed bodies.
-This trades streaming worldwide HTML for reliable explicit framing. Unit tests
-include non-ASCII text and a rewriter double that retains upstream headers;
-a live Bunny deployment is still needed to validate the revised override.
+The native runtime's wire framing remains unresolved; unit tests validate the
+returned Response, not Bunny's serialization of it.
+
+For `/pricing`, `/pricing/`, and `/pricing/index.html`, temporary `shroud-pricing`
+logs record the origin framing, entry into body buffering, and the actual byte
+count and headers just before returning. They exclude URLs, query strings,
+cookies, credentials, and response contents. Worldwide rewritten pricing also
+returns `X-Shroud-Pricing-Revision: framing-diagnostics-v1`. The workflow prints
+only framing/cache/revision headers and the received byte count, preserving
+curl's failure status. Compare those headers with Bunny's script logs: a missing
+`return-response` event points to incomplete execution; a correct logged length
+but incorrect wire length points to subsequent response handling. Remove these
+temporary diagnostics once the native framing issue is resolved.
 
 ## Files
 
