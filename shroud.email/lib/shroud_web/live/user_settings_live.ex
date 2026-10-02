@@ -370,6 +370,11 @@ defmodule ShroudWeb.UserSettingsLive do
     {:noreply, assign(socket, :totp_backup_codes, nil)}
   end
 
+  def handle_event("backup_copy_failed", _params, socket) do
+    PopupAlert.show("backup-copy-error")
+    {:noreply, socket}
+  end
+
   def handle_event("disable_totp", %{"verification_code" => otp}, socket) do
     user = Repo.reload!(socket.assigns.current_user)
 

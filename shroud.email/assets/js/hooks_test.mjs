@@ -95,3 +95,23 @@ test("an unavailable clipboard API shows failure feedback", async () => {
   assert.equal(tooltipContents.at(-1), "Copy failed — please copy manually");
   hook.destroyed();
 });
+
+test("backup-code copy opens its custom alert only when copying fails", async () => {
+  let denied = false;
+  const copied = [];
+  const { hook, listeners } = fixture(async text => {
+    if (denied) throw new Error("Denied");
+    copied.push(text);
+  });
+  hook.el.dataset.clipboardText = "12345678\n87654321";
+  hook.el.dataset.copyErrorEvent = "backup_copy_failed";
+  const events = [];
+  hook.pushEvent = (...args) => events.push(args);
+  await listeners.click();
+  assert.deepEqual(copied, ["12345678\n87654321"]);
+  assert.deepEqual(events, []);
+  denied = true;
+  await listeners.click();
+  assert.deepEqual(events, [["backup_copy_failed", {}]]);
+  hook.destroyed();
+});
