@@ -226,7 +226,12 @@
       aria-label="Alias pagination"
       class="mt-4 flex items-center justify-between gap-3 text-sm"
     >
-      <p id="alias-page-range" class="hidden sm:block text-gray-600 dark:text-gray-400">
+      <p
+        id="alias-page-range"
+        aria-live="polite"
+        aria-atomic="true"
+        class="hidden sm:block text-gray-600 dark:text-gray-400"
+      >
         Showing {(@page_number - 1) * @page_size + 1}–{min(
           @page_number * @page_size,
           @filtered_alias_count
@@ -248,14 +253,19 @@
         >
           Previous
         </span>
-        <p class="sm:hidden text-gray-600 dark:text-gray-400">
+        <p
+          id="alias-page-summary"
+          aria-live="polite"
+          aria-atomic="true"
+          class="sm:hidden text-gray-600 dark:text-gray-400"
+        >
           Page {@page_number} of {@total_pages}
         </p>
         <div class="hidden sm:flex items-center gap-1">
           <%= for number <- @pagination_pages do %>
             <%= cond do %>
               <% number == :ellipsis -> %>
-                <span class="px-2 text-gray-500 dark:text-gray-400">…</span>
+                <span aria-hidden="true" class="px-2 text-gray-500 dark:text-gray-400">…</span>
               <% number == @page_number -> %>
                 <span
                   id={"alias-page-#{number}"}

@@ -73,6 +73,8 @@ defmodule ShroudWeb.EmailAliasLiveTest do
       assert has_element?(view, "#copy-alias-#{newest.id}")
       refute has_element?(view, "#copy-alias-#{second_page_first.id}")
       assert has_element?(view, "#alias-page-range", "Showing 1–20 of 41 aliases")
+      assert has_element?(view, "#alias-page-range[aria-live='polite'][aria-atomic='true']")
+      assert has_element?(view, "#alias-page-summary[aria-live='polite'][aria-atomic='true']")
       refute has_element?(view, "#alias-page-previous")
 
       view |> element("#alias-page-next") |> render_click()
@@ -97,6 +99,12 @@ defmodule ShroudWeb.EmailAliasLiveTest do
       assert_patch(view, ~p"/?page=2")
       assert has_element?(view, "#copy-alias-#{second_page_first.id}")
       refute has_element?(view, "#copy-alias-#{oldest.id}")
+
+      render_patch(view, ~p"/?page=999")
+      assert_patch(view, ~p"/?page=3")
+      assert has_element?(view, "#copy-alias-#{oldest.id}")
+      assert has_element?(view, "#alias-page-range", "Showing 41–41 of 41 aliases")
+      assert has_element?(view, "#alias-page-summary", "Page 3 of 3")
     end
 
     test "search resets the page and paginates all matches while retaining the query", %{
@@ -147,6 +155,22 @@ defmodule ShroudWeb.EmailAliasLiveTest do
         assert has_element?(view, "#copy-alias-#{email_alias.id}")
         refute has_element?(view, "#alias-pagination")
       end
+
+      render_patch(view, ~p"/?#{[page: 999, query: "missing"]}")
+      assert_patch(view, ~p"/?#{[page: 1, query: "missing"]}")
+      assert has_element?(view, "h3", "No matching aliases")
+      refute has_element?(view, "#aliases")
+      refute has_element?(view, "#alias-pagination")
+    end
+
+    test "compact pagination hides ellipses from assistive technology", %{conn: conn, user: user} do
+      for _ <- 1..140, do: alias_fixture(%{user_id: user.id})
+      {:ok, view, _html} = live(conn, ~p"/?page=4")
+
+      for page <- [1, 3, 4, 5, 8], do: assert(has_element?(view, "#alias-page-#{page}"))
+      for page <- [2, 6, 7], do: refute(has_element?(view, "#alias-page-#{page}"))
+      assert has_element?(view, "#alias-pagination span[aria-hidden='true']", "…")
+      refute has_element?(view, "#alias-pagination span:not([aria-hidden='true'])", "…")
     end
 
     test "creates new email_alias", %{conn: conn} do
