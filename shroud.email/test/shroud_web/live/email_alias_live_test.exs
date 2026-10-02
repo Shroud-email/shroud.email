@@ -278,14 +278,15 @@ defmodule ShroudWeb.EmailAliasLiveTest do
 
     test "random creation respects the alias limit without crashing", %{conn: conn, user: user} do
       domain = custom_domain_fixture(%{user_id: user.id})
-      for _ <- 1..4, do: alias_fixture(%{user_id: user.id})
+      for _ <- 1..5, do: alias_fixture(%{user_id: user.id})
+      count = Shroud.Aliases.count_aliases(user)
       user |> Shroud.Accounts.User.status_changeset(%{status: :free}) |> Shroud.Repo.update!()
       {:ok, view, _html} = live(conn, ~p"/")
 
       render_hook(view, "open_custom_alias_modal", %{"text" => "@#{domain.domain}"})
       view |> element("#create-random-custom-alias") |> render_click()
 
-      assert Shroud.Aliases.count_aliases(user) == 5
+      assert Shroud.Aliases.count_aliases(user) == count
       assert has_element?(view, "#create-random-custom-alias")
     end
 
