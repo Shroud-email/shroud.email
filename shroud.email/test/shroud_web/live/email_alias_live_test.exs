@@ -23,6 +23,58 @@ defmodule ShroudWeb.EmailAliasLiveTest do
       assert html =~ email_alias.address
     end
 
+    test "shows unverified domains as disabled, including without aliases", %{
+      conn: conn,
+      user: user,
+      email_alias: email_alias
+    } do
+      unverified = custom_domain_fixture(%{user_id: user.id, ownership_verified_at: nil})
+      partial = custom_domain_fixture(%{user_id: user.id, dkim_verified_at: nil})
+
+      expired =
+        custom_domain_fixture(%{
+          user_id: user.id,
+          mx_verified_at:
+            NaiveDateTime.utc_now()
+            |> NaiveDateTime.truncate(:second)
+            |> NaiveDateTime.add(-25, :hour)
+        })
+
+      other_user_domain = custom_domain_fixture()
+
+      for empty? <- [false, true] do
+        if empty?, do: Shroud.Aliases.delete_email_alias(email_alias.id)
+        {:ok, view, _html} = live(conn, ~p"/")
+
+        assert has_element?(view, "button[aria-haspopup='true']", "Open menu")
+        assert has_element?(view, "#new-alias-default-domain[role='menuitem']")
+
+        for domain <- [unverified, partial, expired] do
+          selector = "#new-alias-domain-#{domain.id}"
+          assert has_element?(view, selector <> "[aria-disabled='true']", "@#{domain.domain}")
+
+          assert has_element?(
+                   view,
+                   selector <> "[aria-label='@#{domain.domain}: Domain is not verified']"
+                 )
+
+          assert has_element?(
+                   view,
+                   selector <> "[x-tooltip\\.raw\\.placement\\.left='Domain is not verified']"
+                 )
+
+          refute has_element?(view, selector <> "[phx-click]")
+        end
+
+        refute has_element?(view, "#new-alias-domain-#{other_user_domain.id}")
+      end
+    end
+
+    test "does not show a domain dropdown without custom domains", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/")
+      refute has_element?(view, "button[aria-haspopup='true']", "Open menu")
+    end
+
     test "searches on change and submit, and clears an empty result", %{
       conn: conn,
       user: user,
@@ -194,7 +246,8 @@ defmodule ShroudWeb.EmailAliasLiveTest do
 
       # open the custom alias modal, which sets the domain to create the alias under
       index_live
-      |> render_hook("open_custom_alias_modal", %{"text" => "@#{custom_domain.domain}"})
+      |> element("#new-alias-domain-#{custom_domain.id}:not([aria-disabled])")
+      |> render_click()
 
       {:ok, _view, html} =
         index_live
