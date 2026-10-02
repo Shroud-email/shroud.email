@@ -77,7 +77,18 @@ defmodule Shroud.McpConcurrencyTest do
                    :count
                  ) == before + 1
 
-          assert :ok = Mcp.with_access(winner.access_token, "aliases:read", fn _ -> :ok end)
+          if grant == "refresh_token" do
+            assert Repo.get!(Mcp.Connection, connection.id).revoked_at != nil
+
+            assert {:error, :invalid_token} =
+                     Mcp.with_access(winner.access_token, nil, fn _ -> :ok end)
+
+            assert {:error, :invalid_grant} =
+                     Mcp.exchange(Map.put(params, "refresh_token", winner.refresh_token))
+          else
+            assert :ok = Mcp.with_access(winner.access_token, "aliases:read", fn _ -> :ok end)
+          end
+
           assert {:error, :invalid_grant} = Mcp.exchange(params)
         end)
       after

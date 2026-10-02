@@ -4,6 +4,19 @@ defmodule ShroudWeb.Plugs.McpAuth do
 
   def init(opts), do: opts
 
+  def call(%{path_info: [resource | _]} = conn, :cors) do
+    with true <- URI.decode(resource) == "mcp",
+         true <- conn.host == URI.parse(Mcp.issuer()).host,
+         [origin] <- get_req_header(conn, "origin"),
+         true <- allowed_origin?(origin) do
+      cors(conn, origin)
+    else
+      _ -> conn
+    end
+  end
+
+  def call(conn, :cors), do: conn
+
   def call(conn, _opts) do
     if conn.host == URI.parse(Mcp.issuer()).host,
       do: check_origin(conn),
@@ -25,14 +38,12 @@ defmodule ShroudWeb.Plugs.McpAuth do
           nil
       end
 
-    origins = [Mcp.issuer(), "https://chatgpt.com", "https://chat.openai.com"]
-
     case get_req_header(conn, "origin") do
       [] ->
         authenticate(conn, token)
 
       [origin] ->
-        if origin in origins,
+        if allowed_origin?(origin),
           do: conn |> cors(origin) |> authenticate_or_preflight(token),
           else: conn |> send_resp(403, "Forbidden origin") |> halt()
 
@@ -40,6 +51,9 @@ defmodule ShroudWeb.Plugs.McpAuth do
         conn |> send_resp(403, "Forbidden origin") |> halt()
     end
   end
+
+  defp allowed_origin?(origin),
+    do: origin in [Mcp.issuer(), "https://chatgpt.com", "https://chat.openai.com"]
 
   defp cors(conn, origin) do
     conn
@@ -56,7 +70,7 @@ defmodule ShroudWeb.Plugs.McpAuth do
     |> put_resp_header("access-control-allow-methods", "GET, POST, DELETE, OPTIONS")
     |> put_resp_header(
       "access-control-allow-headers",
-      "Authorization, Content-Type, Accept, MCP-Protocol-Version, MCP-Session-Id, Last-Event-ID"
+      "Authorization, Content-Type, Accept, MCP-Protocol-Version, MCP-Session-Id, MCP-Method, MCP-Name, Last-Event-ID"
     )
     |> send_resp(204, "")
     |> halt()

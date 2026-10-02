@@ -226,13 +226,18 @@ defmodule ShroudWeb.McpTest do
         build_conn()
         |> put_req_header("origin", origin)
         |> put_req_header("access-control-request-method", "POST")
-        |> put_req_header("access-control-request-headers", "authorization, mcp-protocol-version")
+        |> put_req_header(
+          "access-control-request-headers",
+          "authorization, mcp-protocol-version, mcp-method, mcp-name"
+        )
         |> options(Mcp.resource())
 
       assert response(preflight, 204) == ""
       assert get_resp_header(preflight, "access-control-allow-origin") == [origin]
       assert get_resp_header(preflight, "access-control-allow-methods") |> hd() =~ "POST"
       assert get_resp_header(preflight, "access-control-allow-headers") |> hd() =~ "Authorization"
+      assert get_resp_header(preflight, "access-control-allow-headers") |> hd() =~ "MCP-Method"
+      assert get_resp_header(preflight, "access-control-allow-headers") |> hd() =~ "MCP-Name"
       assert get_resp_header(preflight, "access-control-allow-credentials") == []
 
       challenge = rpc(nil, "tools/list", %{}, [{"origin", origin}])

@@ -1,6 +1,7 @@
 defmodule Shroud.Mcp.Tools do
   @moduledoc "The bounded alias-management surface exposed to MCP clients."
   import Ecto.Query
+  require Logger
   alias ExMCP.Content.SchemaPolicy
   alias Shroud.{Aliases, Domain, Repo}
 
@@ -148,8 +149,22 @@ defmodule Shroud.Mcp.Tools do
          :ok <- SchemaPolicy.validate(arguments, tool.inputSchema) do
       execute(connection, name, arguments)
     else
-      nil -> {:error, "Unknown tool"}
-      _ -> {:error, "Invalid tool arguments"}
+      nil ->
+        {:error, "Unknown tool"}
+
+      {:error, errors} when is_list(errors) ->
+        {:error, "Invalid tool arguments"}
+
+      {:error, reason} ->
+        category =
+          case reason do
+            {category, _} when is_atom(category) -> category
+            {category, _, _} when is_atom(category) -> category
+            _ -> :schema_policy_failure
+          end
+
+        Logger.warning("MCP schema validation unavailable (#{category})")
+        {:error, "Tool unavailable; please try again."}
     end
   end
 

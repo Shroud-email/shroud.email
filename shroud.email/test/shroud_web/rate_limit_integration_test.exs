@@ -87,6 +87,32 @@ defmodule ShroudWeb.RateLimitIntegrationTest do
     assert post(build_conn(), "/oauth/token", %{}).status == 400
   end
 
+  test "global MCP rejection preserves CORS only for allowed origins and hosts", %{conn: conn} do
+    seed(:http, {:ip, conn.remote_ip}, 600)
+
+    for method <- [:post, :options], path <- ["/mcp", "/m%63p"] do
+      response =
+        conn
+        |> put_req_header("origin", "https://chatgpt.com")
+        |> Phoenix.ConnTest.dispatch(@endpoint, method, Shroud.Mcp.issuer() <> path, %{})
+
+      assert response.status == 429
+      assert get_resp_header(response, "access-control-allow-origin") == ["https://chatgpt.com"]
+      assert get_resp_header(response, "access-control-expose-headers") |> hd() =~ "Retry-After"
+      assert [_] = get_resp_header(response, "retry-after")
+    end
+
+    for {origin, url} <- [
+          {"https://evil.example", Shroud.Mcp.resource()},
+          {"https://chatgpt.com", "https://evil.example/mcp"},
+          {"https://chatgpt.com", Shroud.Mcp.issuer() <> "/oauth/token"}
+        ] do
+      rejected = conn |> put_req_header("origin", origin) |> post(url, %{})
+      assert rejected.status == 429
+      assert get_resp_header(rejected, "access-control-allow-origin") == []
+    end
+  end
+
   test "MCP shares the REST account quota across connections and IPs", %{conn: conn} do
     Shroud.McpFixtures.configure_clients()
     %{user: user, tokens: tokens} = Shroud.McpFixtures.connection_fixture()

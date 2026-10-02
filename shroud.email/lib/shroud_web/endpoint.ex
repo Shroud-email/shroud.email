@@ -48,6 +48,7 @@ defmodule ShroudWeb.Endpoint do
   plug ShroudWeb.Plug.Telemetry, event_prefix: [:phoenix, :endpoint]
 
   plug ShroudWeb.Plugs.ClientIP
+  plug ShroudWeb.Plugs.McpAuth, :cors
   plug ShroudWeb.Plugs.RateLimit, :global
 
   plug ShroudWeb.Plugs.RequestParsers,

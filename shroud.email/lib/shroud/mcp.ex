@@ -111,8 +111,13 @@ defmodule Shroud.Mcp do
            true <- params["resource"] == connection.resource,
            true <- not Map.has_key?(params, "scope") or valid_scopes?(params["scope"]),
            true <- not Map.has_key?(params, "request") and not Map.has_key?(params, "request_uri") do
-        conn = oauth_conn(params) |> Plug.Conn.assign(:mcp_connection, connection)
-        Boruta.Oauth.token(conn, __MODULE__)
+        if grant == "refresh_token" and reused_refresh_token?(credential, params) do
+          revoke(%{id: connection.user_id}, connection.id)
+          {:error, :refresh_token_reused}
+        else
+          conn = oauth_conn(params) |> Plug.Conn.assign(:mcp_connection, connection)
+          Boruta.Oauth.token(conn, __MODULE__)
+        end
       else
         _ -> {:error, :invalid_grant}
       end
@@ -225,12 +230,30 @@ defmodule Shroud.Mcp do
   end
 
   defp transact(fun) do
-    Repo.transaction(fn ->
-      case fun.() do
-        {:ok, result} -> result
-        {:error, reason} -> Repo.rollback(reason)
-      end
-    end)
+    result =
+      Repo.transaction(fn ->
+        case fun.() do
+          {:ok, result} -> result
+          # Replay rejection must commit the connection's revocation.
+          {:error, :refresh_token_reused} -> :refresh_token_reused
+          {:error, reason} -> Repo.rollback(reason)
+        end
+      end)
+
+    case result do
+      {:ok, :refresh_token_reused} -> {:error, :invalid_grant}
+      result -> result
+    end
+  end
+
+  defp reused_refresh_token?(credential, params) do
+    # Read after acquiring the connection lock so a waiting exchange sees rotation.
+    token = Repo.get_by!(Boruta.Ecto.Token, refresh_token: credential)
+    scopes = String.split(token.scope, " ", trim: true)
+
+    token.refresh_token_revoked_at != nil and
+      (not Map.has_key?(params, "scope") or
+         Enum.all?(String.split(params["scope"], " ", trim: true), &(&1 in scopes)))
   end
 
   defp valid_scopes?(scope) when is_binary(scope) do
