@@ -32,6 +32,29 @@ import Tooltip from "@ryangjchandler/alpine-tooltip";
 import { initializePaddle } from "@paddle/paddle-js";
 import { setupPaddleCheckout } from "./paddle_checkout.mjs";
 import { PasskeyRegistration, PasskeyLogin } from "./passkeys.mjs";
+import posthog from "posthog-js";
+
+const posthogToken = document.querySelector('meta[name="posthog-token"]')?.content;
+if (posthogToken) {
+  posthog.init(posthogToken, {
+    api_host: document.querySelector('meta[name="posthog-host"]').content,
+    defaults: "2025-05-24",
+    cookieless_mode: "always",
+    person_profiles: "never",
+    capture_pageview: "history_change",
+    autocapture: false,
+    disable_session_recording: true,
+    disable_surveys: true,
+    capture_heatmaps: false,
+    capture_exceptions: false,
+    capture_performance: false,
+    capture_dead_clicks: false,
+    rageclick: false,
+    enable_recording_console_log: false,
+    logs: { captureConsoleLogs: false },
+    advanced_disable_flags: true,
+  });
+}
 
 Alpine.plugin(Tooltip);
 window.Alpine = Alpine;
@@ -56,7 +79,14 @@ let liveSocket = new LiveSocket("/live", Socket, {
     PasskeyLogin,
     PaddleCheckout: {
       mounted() {
-        this.cleanup = setupPaddleCheckout({ document, window, initializePaddle });
+        this.cleanup = setupPaddleCheckout({
+          document,
+          window,
+          initializePaddle,
+          onCheckoutCompleted: () => {
+            if (posthogToken) posthog.capture("paid plan signed up");
+          },
+        });
       },
       destroyed() {
         this.cleanup.dispose();
