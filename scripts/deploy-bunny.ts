@@ -1,8 +1,8 @@
 // Publish the built static site to a bunny.net Storage Zone and purge
 // the Pull Zone cache.
 //
-// Performs a clean deploy: the existing zone contents are deleted first so that
-// removed pages and stale hashed assets don't linger.
+// Uploads the replacement before removing stale files and purging the cache.
+// This is not atomic: live files are overwritten in place during upload.
 //
 // Required env vars:
 //   BUNNY_STORAGE_PASSWORD  - storage zone read/write password (AccessKey)
@@ -24,7 +24,7 @@ import { join, relative, extname } from "node:path";
 // Map bunny storage region codes to their HTTP API endpoints. The default
 // (Falkenstein / Frankfurt, DE) has no prefix.
 // Ref: https://docs.bunny.net/storage/http
-const REGION_ENDPOINTS = {
+const REGION_ENDPOINTS: Record<string, string> = {
   de: "storage.bunnycdn.com",
   uk: "uk.storage.bunnycdn.com",
   ny: "ny.storage.bunnycdn.com",
@@ -43,22 +43,15 @@ const DIST = join(ROOT, "dist");
 // BUNNY_STORAGE_ZONE for staging (e.g. shroud-email-website-staging).
 const ZONE = process.env.BUNNY_STORAGE_ZONE || "shroud-email-website";
 
-const {
-  BUNNY_STORAGE_PASSWORD: PASSWORD,
-  BUNNY_PULLZONE_ID: PULLZONE_ID,
-  BUNNY_API_KEY: API_KEY,
-} = process.env;
-
-for (const [name, value] of Object.entries({
-  BUNNY_STORAGE_PASSWORD: PASSWORD,
-  BUNNY_PULLZONE_ID: PULLZONE_ID,
-  BUNNY_API_KEY: API_KEY,
-})) {
-  if (!value) {
-    console.error(`Missing required env var: ${name}`);
-    process.exit(1);
-  }
+function requiredEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) throw new Error(`Missing required env var: ${name}`);
+  return value;
 }
+
+const PASSWORD = requiredEnv("BUNNY_STORAGE_PASSWORD");
+const PULLZONE_ID = requiredEnv("BUNNY_PULLZONE_ID");
+const API_KEY = requiredEnv("BUNNY_API_KEY");
 
 // Resolve the storage endpoint for the zone's region. If BUNNY_STORAGE_ENDPOINT
 // is set, use it as an override. Otherwise look the zone up via the bunny API
@@ -76,7 +69,7 @@ async function resolveStorageEndpoint() {
     if (!res.ok) {
       throw new Error(`${res.status} ${await res.text()}`);
     }
-    const zones = await res.json();
+    const zones: { Name: string; Region: string | null }[] = await res.json();
     const zone = (Array.isArray(zones) ? zones : []).find((z) => z.Name === ZONE);
     if (!zone) {
       throw new Error(`zone "${ZONE}" not found in account`);
@@ -89,7 +82,7 @@ async function resolveStorageEndpoint() {
     return endpoint;
   } catch (err) {
     console.warn(
-      `Could not auto-detect storage region for zone "${ZONE}" (${err.message}). ` +
+      `Could not auto-detect storage region for zone "${ZONE}" (${err instanceof Error ? err.message : String(err)}). ` +
         "Falling back to the default endpoint (Falkenstein, DE). If deploys fail " +
         "with 401, set BUNNY_STORAGE_ENDPOINT to your zone's regional endpoint.",
     );
@@ -97,7 +90,7 @@ async function resolveStorageEndpoint() {
   }
 }
 
-const MIME = {
+const MIME: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
@@ -121,13 +114,13 @@ const MIME = {
   ".pdf": "application/pdf",
 };
 
-const contentType = (path) => MIME[extname(path).toLowerCase()] || "application/octet-stream";
+const contentType = (path: string) => MIME[extname(path).toLowerCase()] || "application/octet-stream";
 
 // Recursively collect every file under `dir`, skipping dotfiles such as
 // .DS_Store (macOS) and .assetsignore (Cloudflare-specific).
-async function walk(dir) {
+async function walk(dir: string): Promise<string[]> {
   const entries = await readdir(dir, { withFileTypes: true });
-  const files = [];
+  const files: string[] = [];
   for (const entry of entries) {
     if (entry.name.startsWith(".")) continue;
     const abs = join(dir, entry.name);
@@ -138,14 +131,25 @@ async function walk(dir) {
 }
 
 // List the immediate contents of a storage path (must end with "/").
-async function list(base, path = "") {
+async function list(base: string, path = ""): Promise<{ ObjectName: string; IsDirectory: boolean }[]> {
   const res = await fetch(`${base}${path}`, { headers: { AccessKey: PASSWORD } });
   if (res.status === 404) return [];
   if (!res.ok) throw new Error(`List ${path} failed: ${res.status} ${await res.text()}`);
   return res.json();
 }
 
-async function remove(base, path) {
+// Never delete whole directories: they may contain newly uploaded files.
+async function staleFiles(base: string, current: Set<string>, path = ""): Promise<string[]> {
+  const files: string[] = [];
+  for (const item of await list(base, path)) {
+    const rel = `${path}${item.ObjectName}`;
+    if (item.IsDirectory) files.push(...(await staleFiles(base, current, `${rel}/`)));
+    else if (!current.has(rel)) files.push(rel);
+  }
+  return files;
+}
+
+async function remove(base: string, path: string) {
   const res = await fetch(`${base}${path}`, {
     method: "DELETE",
     headers: { AccessKey: PASSWORD },
@@ -155,7 +159,7 @@ async function remove(base, path) {
   }
 }
 
-async function put(base, rel, body) {
+async function put(base: string, rel: string, body: Buffer<ArrayBuffer>) {
   const res = await fetch(`${base}${rel}`, {
     method: "PUT",
     headers: { AccessKey: PASSWORD, "Content-Type": contentType(rel) },
@@ -165,7 +169,7 @@ async function put(base, rel, body) {
   return rel;
 }
 
-async function upload(base, abs) {
+async function upload(base: string, abs: string) {
   const rel = relative(DIST, abs).split(/[/\\]/).join("/");
   return put(base, rel, await readFile(abs));
 }
@@ -180,7 +184,7 @@ async function purge() {
 
 // Run async tasks with a bounded concurrency so large deploys stay fast
 // without opening hundreds of sockets at once.
-async function pool(items, limit, fn) {
+async function pool<T>(items: T[], limit: number, fn: (item: T) => Promise<unknown>) {
   let i = 0;
   const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
     while (i < items.length) {
@@ -191,7 +195,7 @@ async function pool(items, limit, fn) {
   await Promise.all(workers);
 }
 
-// Check the local build before deleting anything in the destination zone.
+// Check the local build before changing anything in the destination zone.
 const files = await walk(DIST);
 if (files.length === 0) throw new Error(`No files to deploy in ${DIST}`);
 const notFoundPage = await readFile(join(DIST, "404.html"));
@@ -199,12 +203,6 @@ const notFoundPage = await readFile(join(DIST, "404.html"));
 const endpoint = await resolveStorageEndpoint();
 console.log(`Using storage endpoint ${endpoint} for zone ${ZONE}`);
 const base = `https://${endpoint}/${ZONE}/`;
-
-console.log(`Cleaning storage zone ${ZONE}…`);
-const existing = await list(base, "");
-await pool(existing, 8, (item) =>
-  remove(base, item.IsDirectory ? `${item.ObjectName}/` : item.ObjectName),
-);
 
 console.log(`Uploading ${files.length} file(s) to ${ZONE}…`);
 let done = 0;
@@ -218,6 +216,13 @@ console.log(`  ↑ ${done} uploaded`);
 // root, so publish the built 404 page there too.
 console.log("Publishing custom 404 page…");
 await put(base, "bunnycdn_errors/404.html", notFoundPage);
+
+// Only start cleanup after every upload has succeeded, including the custom 404.
+const current = new Set(files.map((abs) => relative(DIST, abs).split(/[/\\]/).join("/")));
+current.add("bunnycdn_errors/404.html");
+console.log(`Removing stale files from storage zone ${ZONE}…`);
+const stale = await staleFiles(base, current);
+await pool(stale, 8, (path) => remove(base, path));
 
 console.log("Purging Pull Zone cache…");
 await purge();

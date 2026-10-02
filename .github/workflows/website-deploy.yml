@@ -7,7 +7,10 @@ on:
       - 'website/**'
       - 'shroud.email/openapi.json'
       - 'shared/components/PostHog.astro'
-      - 'scripts/deploy-bunny.mjs'
+      - 'scripts/deploy-bunny.ts'
+      - 'scripts/package.json'
+      - 'package.json'
+      - 'package-lock.json'
       - '.github/workflows/website-deploy.yml'
   workflow_dispatch:
 
@@ -42,11 +45,21 @@ jobs:
           cache: pnpm
           cache-dependency-path: website/pnpm-lock.yaml
 
+      - name: Cache deployment tooling downloads
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node22-npm-${{ hashFiles('package-lock.json') }}
+
+      - name: Install deployment tooling
+        working-directory: .
+        run: npm ci --ignore-scripts
+
       - run: pnpm install --frozen-lockfile
 
       - run: pnpm run build
 
-      - run: node ../scripts/deploy-bunny.mjs
+      - run: ../node_modules/.bin/tsx ../scripts/deploy-bunny.ts
         env:
           BUNNY_STORAGE_PASSWORD: ${{ secrets.WEBSITE_BUNNY_STORAGE_PASSWORD }}
           BUNNY_PULLZONE_ID: ${{ secrets.WEBSITE_BUNNY_PULLZONE_ID }}

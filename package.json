@@ -1,7 +1,10 @@
 {
   "name": "shroud.email",
   "scripts": {
-    "test": "node --test shroud.email/assets/js/*_test.mjs",
+    "test": "node --test shroud.email/assets/js/*_test.mjs && npm run test:scripts",
+    "test:scripts": "vitest run --root scripts",
+    "typecheck:scripts": "tsc -p scripts/tsconfig.json",
+    "deploy:bunny": "tsx scripts/deploy-bunny.ts",
     "prepare": "husky"
   },
   "dependencies": {
@@ -9,6 +12,10 @@
     "@commitlint/config-conventional": "^20.5.0"
   },
   "devDependencies": {
-    "husky": "^9.1.7"
+    "@types/node": "^22.20.4",
+    "husky": "^9.1.7",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.3"
   }
 }
