@@ -12,8 +12,8 @@ prices; other country codes receive the worldwide values from the HTML attribute
 ## Middleware behavior
 
 - `onOriginRequest` removes Range and If-Range for GET/HEAD URLs ending in `/`
-  or `.html`. Bunny injects origin ranges even for full client requests; those
-  partial responses caused stale byte lengths after rewriting. Asset ranges,
+  or `.html`. Bunny injects origin ranges even for full client requests; fetching
+  full HTML prevents stale byte lengths after rewriting. Asset ranges,
   URLs, queries, authentication, and other methods remain unchanged.
 - `onOriginResponse` rewrites HTML prices and sets `Cache-Control: no-store`
   for both UK and worldwide responses. Worldwide HTML is buffered to measure
@@ -32,11 +32,9 @@ before cache**. Enable it separately for staging and production. It executes the
 script for cached requests too, increasing execution volume. Workflows do not
 change this setting.
 
-Staging verified complete pricing responses and custom 404 responses for missing
-URLs with and without trailing slashes, including HEAD. The fallback body matched
-the explicit-index error page byte-for-byte. Temporary per-request diagnostics
-and the revision response header have been removed; regression tests retain the
-framing, immutable-header, range, bodyless, and failure-handling checks.
+Regression tests cover response framing, immutable headers, range removal,
+bodyless responses, and failure handling. Verify that missing-directory responses
+match the explicit-index custom error page, including GET and HEAD requests.
 
 ## Local development
 
@@ -54,7 +52,7 @@ is local-only; native Bunny execution uses the attached Pull Zone's origin.
 
 ## Deployment
 
-The root workflows deploy the website first, then optionally its middleware:
+The root workflows deploy the website first, then its middleware:
 
 | Environment | Workflow | Script ID secret | Deploy key secret |
 | --- | --- | --- | --- |
@@ -65,13 +63,14 @@ Each secret pair must identify a Middleware script attached to the corresponding
 Pull Zone. Existing working scripts can be reused; no new script or zone is
 required. Website deployment also requires `BUNNY_API_KEY`.
 
-Manual runs replace the script only with `deploy_edge_script=true`. Production
-pushes to `main` deploy the script automatically after the site job succeeds.
-Staging remains manual after merging. See [website deployment instructions](../README.md#official-bunny-website-deployments)
-for initialization, production cutover, and the old-uploader warning.
+Every deployment replaces the script after the site job succeeds. Production
+deploys on relevant `main` pushes; staging remains manual. Manual deployments
+use GitHub's branch/tag selector and publish the same commit for both jobs.
+See [website deployment instructions](../README.md#official-bunny-website-deployments)
+for the required pricing cache rule and deployment safeguards.
 
-When the edge-script job runs, it checks pricing with a complete GET. Site-only
-runs check `no-store` with HEAD. Also check
+The site job checks `no-store` with HEAD; the edge-script job follows publication
+with a complete pricing GET. Also check
 missing-directory GET/HEAD, home, docs, and assets. Verify £25/year from a UK
 network and $35/year from a non-UK network, using fresh browser caches. A supplied
 country header alone does not prove geographic isolation.

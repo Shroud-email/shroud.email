@@ -7,23 +7,8 @@ on:
       - 'website/**'
       - 'shroud.email/openapi.json'
       - 'shared/components/PostHog.astro'
-      - 'scripts/adopt-bunny-site.mjs'
       - '.github/workflows/website-deploy.yml'
   workflow_dispatch:
-    inputs:
-      ref:
-        description: "Branch/tag/SHA to deploy"
-        required: true
-        type: string
-        default: "main"
-      initialize_sites:
-        description: "Initialize official CLI metadata on the existing production pair (first run only)"
-        type: boolean
-        default: false
-      deploy_edge_script:
-        description: "Also replace the production Edge script (automatic on main pushes)"
-        type: boolean
-        default: false
 
 # Avoid overlapping deploys racing to upload to the same storage zone.
 concurrency:
@@ -44,7 +29,7 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          ref: ${{ inputs.ref || github.sha }}
+          ref: ${{ github.sha }}
           persist-credentials: false
 
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
@@ -60,13 +45,6 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - run: pnpm run build
-
-      - name: Validate production and protect geo-localized pricing
-        run: node ../scripts/adopt-bunny-site.mjs
-        env:
-          BUNNY_API_KEY: ${{ secrets.BUNNY_API_KEY }}
-          INITIALIZE_SITES: ${{ inputs.initialize_sites || false }}
-          BUNNY_SITE_ENVIRONMENT: production
 
       - name: Deploy production with the official Bunny action
         uses: BunnyWay/actions/deploy-site@4b22fe0b319386b3913117daf97729409dd0a6ef # deploy-site_0.1.1
@@ -94,14 +72,13 @@ jobs:
   deploy-edge-script:
     name: Deploy edge script
     needs: deploy-site
-    if: github.event_name == 'push' || inputs.deploy_edge_script
     runs-on: depot-ubuntu-24.04
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          ref: ${{ inputs.ref || github.sha }}
+          ref: ${{ github.sha }}
           persist-credentials: false
 
       - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
