@@ -1,5 +1,58 @@
 import assert from "node:assert/strict";
-import { rewritePricing } from "./pricing.ts";
+import { resolveDirectoryIndex, rewritePricing } from "./pricing.ts";
+
+Deno.test("directory GET and HEAD resolve index files without changing prefix, query or headers", async () => {
+  for (
+    const [method, input, expected] of [
+      [
+        "GET",
+        "http://origin.test:9000/deploys/release-42/docs/privacy/?lang=en&next=%2Fpricing%2F",
+        "http://origin.test:9000/deploys/release-42/docs/privacy/index.html?lang=en&next=%2Fpricing%2F",
+      ],
+      [
+        "HEAD",
+        "http://origin.test:9000/deploys/release-42/pricing/",
+        "http://origin.test:9000/deploys/release-42/pricing/index.html",
+      ],
+      ["GET", "https://example.test/", "https://example.test/index.html"],
+    ]
+  ) {
+    const request = new Request(input, {
+      method,
+      headers: {
+        "cdn-requestcountrycode": "GB",
+        "authorization": "Bearer fixture",
+        "range": "bytes=0-99",
+      },
+    });
+    const ctx = { request };
+    const result = await resolveDirectoryIndex(ctx);
+    assert.equal(result, ctx.request);
+    assert.equal(result.url, expected);
+    assert.equal(result.method, method);
+    assert.deepEqual([...result.headers], [...request.headers]);
+  }
+});
+
+Deno.test("files, extensionless paths and non-GET/HEAD methods remain untouched", async () => {
+  for (
+    const [method, path] of [
+      ["GET", "/style.css"],
+      ["GET", "/pricing/index.html"],
+      ["GET", "/pricing"],
+      ["POST", "/pricing/"],
+      ["OPTIONS", "/"],
+    ]
+  ) {
+    const request = new Request(`https://example.test${path}`, {
+      method,
+      body: method === "POST" ? "fixture" : undefined,
+    });
+    const result = await resolveDirectoryIndex({ request });
+    assert.equal(result, request);
+    if (method === "POST") assert.equal(await result.text(), "fixture");
+  }
+});
 
 Deno.test("worldwide rewrite replaces stale framing with the exact UTF-8 byte count", async () => {
   const original = Object.getOwnPropertyDescriptor(globalThis, "HTMLRewriter");
@@ -84,11 +137,11 @@ Deno.test("worldwide rewrite replaces stale framing with the exact UTF-8 byte co
     assert.equal(result.headers.get("x-bunny-deploy"), "fixture");
     assert.equal(
       result.headers.get("x-shroud-pricing-revision"),
-      "framing-diagnostics-v2",
+      "directory-index-v3",
     );
     assert.deepEqual(logs, [
       {
-        revision: "framing-diagnostics-v2",
+        revision: "directory-index-v3",
         stage: "origin-response",
         method: "GET",
         status: 404,
@@ -106,13 +159,13 @@ Deno.test("worldwide rewrite replaces stale framing with the exact UTF-8 byte co
         bodyLocked: false,
       },
       {
-        revision: "framing-diagnostics-v2",
+        revision: "directory-index-v3",
         stage: "before-transform",
         bodyUsed: false,
         bodyLocked: false,
       },
       {
-        revision: "framing-diagnostics-v2",
+        revision: "directory-index-v3",
         stage: "before-buffer",
         inputLength: null,
         rewrittenLength: "150",
@@ -121,7 +174,7 @@ Deno.test("worldwide rewrite replaces stale framing with the exact UTF-8 byte co
         bodyLocked: false,
       },
       {
-        revision: "framing-diagnostics-v2",
+        revision: "directory-index-v3",
         stage: "return-response",
         status: 404,
         priceReplacements: 3,
@@ -129,7 +182,7 @@ Deno.test("worldwide rewrite replaces stale framing with the exact UTF-8 byte co
         returnedLength: "147",
         returnedEncoding: null,
         returnedCacheControl: "no-store",
-        returnedRevision: "framing-diagnostics-v2",
+        returnedRevision: "directory-index-v3",
         bodyUsed: false,
         bodyLocked: false,
       },

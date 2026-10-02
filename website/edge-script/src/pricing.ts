@@ -28,6 +28,33 @@ function isUK(country: string | null): boolean {
   return country !== null && UK_COUNTRY_CODES.has(country.toUpperCase());
 }
 
+// Avoid Storage's directory-response path: live directory HTML arrives as 206
+// and the CDN retains its original length after rewriting. Explicit index files
+// arrive as 200 and the identical rewritten body completes successfully.
+export async function resolveDirectoryIndex(ctx: { request: Request }) {
+  const url = new URL(ctx.request.url);
+  const resolveIndex =
+    (ctx.request.method === "GET" || ctx.request.method === "HEAD") &&
+    url.pathname.endsWith("/");
+  if (resolveIndex) {
+    url.pathname += "index.html";
+    ctx.request = new Request(url, ctx.request);
+  }
+  console.log(
+    "shroud-pricing",
+    JSON.stringify({
+      revision: "directory-index-v3",
+      stage: "origin-request",
+      method: ctx.request.method,
+      resolvedDirectoryIndex: resolveIndex,
+      deployPrefixedPath: /^\/deploys\//.test(url.pathname),
+      indexPathSuffix: /\/index\.html$/.test(url.pathname),
+      rangeRequested: ctx.request.headers.has("range"),
+    }),
+  );
+  return ctx.request;
+}
+
 export async function rewritePricing(
   ctx: { request: Request; response: Response },
 ) {
@@ -37,7 +64,7 @@ export async function rewritePricing(
   console.log(
     "shroud-pricing",
     JSON.stringify({
-      revision: "framing-diagnostics-v2",
+      revision: "directory-index-v3",
       stage: "origin-response",
       method: ctx.request.method,
       status: ctx.response.status,
@@ -63,7 +90,7 @@ export async function rewritePricing(
     console.log(
       "shroud-pricing",
       JSON.stringify({
-        revision: "framing-diagnostics-v2",
+        revision: "directory-index-v3",
         stage: "non-html-pass-through",
       }),
     );
@@ -76,11 +103,11 @@ export async function rewritePricing(
   if (isUK(country)) {
     const headers = new Headers(ctx.response.headers);
     headers.set("cache-control", "no-store");
-    headers.set("x-shroud-pricing-revision", "framing-diagnostics-v2");
+    headers.set("x-shroud-pricing-revision", "directory-index-v3");
     console.log(
       "shroud-pricing",
       JSON.stringify({
-        revision: "framing-diagnostics-v2",
+        revision: "directory-index-v3",
         stage: "uk-pass-through",
         returnedLength: headers.get("content-length"),
       }),
@@ -98,7 +125,7 @@ export async function rewritePricing(
     const headers = new Headers(ctx.response.headers);
     headers.delete("content-length");
     headers.set("cache-control", "no-store");
-    headers.set("x-shroud-pricing-revision", "framing-diagnostics-v2");
+    headers.set("x-shroud-pricing-revision", "directory-index-v3");
     ctx.response = new Response(null, {
       status: ctx.response.status,
       statusText: ctx.response.statusText,
@@ -107,7 +134,7 @@ export async function rewritePricing(
     console.log(
       "shroud-pricing",
       JSON.stringify({
-        revision: "framing-diagnostics-v2",
+        revision: "directory-index-v3",
         stage: "bodyless-return",
         returnedLength: ctx.response.headers.get("content-length"),
       }),
@@ -141,7 +168,7 @@ export async function rewritePricing(
   console.log(
     "shroud-pricing",
     JSON.stringify({
-      revision: "framing-diagnostics-v2",
+      revision: "directory-index-v3",
       stage: "before-transform",
       bodyUsed: ctx.response.bodyUsed,
       bodyLocked: ctx.response.body?.locked ?? null,
@@ -151,7 +178,7 @@ export async function rewritePricing(
   console.log(
     "shroud-pricing",
     JSON.stringify({
-      revision: "framing-diagnostics-v2",
+      revision: "directory-index-v3",
       stage: "before-buffer",
       inputLength: ctx.response.headers.get("content-length"),
       rewrittenLength: rewritten.headers.get("content-length"),
@@ -169,7 +196,7 @@ export async function rewritePricing(
     console.log(
       "shroud-pricing",
       JSON.stringify({
-        revision: "framing-diagnostics-v2",
+        revision: "directory-index-v3",
         stage: "buffer-error",
         errorName: error instanceof Error ? error.name : "non-Error",
         bodyUsed: rewritten.bodyUsed,
@@ -181,7 +208,7 @@ export async function rewritePricing(
   const headers = new Headers(rewritten.headers);
   headers.set("content-length", String(body.byteLength));
   headers.set("cache-control", "no-store");
-  headers.set("x-shroud-pricing-revision", "framing-diagnostics-v2");
+  headers.set("x-shroud-pricing-revision", "directory-index-v3");
   ctx.response = new Response(body, {
     status: rewritten.status,
     headers,
@@ -189,7 +216,7 @@ export async function rewritePricing(
   console.log(
     "shroud-pricing",
     JSON.stringify({
-      revision: "framing-diagnostics-v2",
+      revision: "directory-index-v3",
       stage: "return-response",
       status: ctx.response.status,
       priceReplacements,
