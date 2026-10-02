@@ -307,7 +307,7 @@ defmodule ShroudWeb.UserSettingsLiveTest do
     assert has_element?(view, "#copy-backup-codes[phx-hook='CopyToClipboard']")
     render_hook(view, "backup_copy_failed", %{})
     assert has_element?(view, "#backup-copy-error[role='dialog']")
-    assert has_element?(view, "#backup-copy-error button[autofocus]", "OK")
+    assert has_element?(view, "#backup-copy-error button[data-modal-dismiss]", "OK")
     view |> element("#backup-copy-error") |> render_hook("hide", %{})
     refute has_element?(view, "#backup-copy-error")
     assert has_element?(view, "#totp-backup-codes")

@@ -37,6 +37,7 @@ defmodule ShroudWeb.SpamEmailLiveTest do
       view |> element("#delete-spam-button-#{spam_email.id}") |> render_click()
       assert has_element?(view, "#delete-spam-#{spam_email.id}", spam_email.subject)
       view |> element("#delete-spam-#{spam_email.id}") |> render_hook("hide", %{})
+      refute has_element?(view, "#delete-spam-#{spam_email.id}")
       assert Shroud.Repo.get(Shroud.Email.SpamEmail, spam_email.id)
       view |> element("#delete-spam-button-#{spam_email.id}") |> render_click()
       view |> element("#confirm-delete-spam-#{spam_email.id}") |> render_click()

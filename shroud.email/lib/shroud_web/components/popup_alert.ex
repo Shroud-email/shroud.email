@@ -26,7 +26,11 @@ defmodule ShroudWeb.Components.PopupAlert do
         x-init="() => {
           setTimeout(() => {
             open = true
-            $nextTick(() => $el.querySelector('[autofocus]')?.focus())
+            $nextTick(() => (
+              $el.querySelector('[autofocus]') ||
+              $el.querySelector('input:not([type=hidden]):not([disabled]), textarea:not([disabled]), select:not([disabled])') ||
+              $el.querySelector('[data-modal-dismiss]')
+            )?.focus())
           }, 0)
           $watch('open', isOpen => {
             if (!isOpen) modalHook.modalClosing()
@@ -98,7 +102,7 @@ defmodule ShroudWeb.Components.PopupAlert do
                     alpine_click="open = false"
                     text={@dismiss_text}
                     intent={:secondary}
-                    autofocus
+                    data-modal-dismiss
                   />
                 </div>
               </.focus_wrap>
