@@ -1,0 +1,10 @@
+<script>
+  import { init } from "@plausible-analytics/tracker";
+
+  if (window.location.hostname === "shroud.email") {
+    init({
+      domain: "shroud.email",
+      endpoint: "https://p.shroud.email/qwerty/event",
+    });
+  }
+</script>
