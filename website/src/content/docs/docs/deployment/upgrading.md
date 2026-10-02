@@ -3,6 +3,23 @@ title: Upgrading
 description: How to update your Shroud.email deployment.
 ---
 
+## Version 1.4.0: SMTP certificate renewal migration
+
+Existing installations need a one-time migration to the new `tls.pem` bundle.
+Run from `hosting/` during a maintenance window. **Stop Haraka before pulling**
+to prevent its live configuration from referencing a bundle that does not yet exist:
+
+```sh
+docker compose stop haraka &&
+git pull &&
+docker compose up -d --build cron &&
+docker compose exec cron /etc/periodic/daily/bundle_certs &&
+docker compose up -d --force-recreate haraka
+```
+
+If a command fails, leave Haraka stopped until resolved. Future certificate
+renewals activate automatically without restarting Haraka.
+
 ## Version 1.0 breaking changes
 
 On 2023-03-11, we released [Shroud.email version 1.0.0](https://github.com/Shroud-email/shroud.email/releases/tag/v1.0.0).
