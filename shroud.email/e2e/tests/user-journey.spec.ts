@@ -134,6 +134,40 @@ test("signup, login, alias lifecycle, and incoming forwarding", async ({ page, r
   await page.getByRole("button", { name: "Sign in" }).click()
   await expect(page).toHaveURL(/\/$/)
 
+  // Open the custom-alias modal directly so this UI regression doesn't depend
+  // on paid-plan setup or external DNS verification. No alias is saved here.
+  await page.locator("[data-phx-main].phx-connected").waitFor()
+  await page.evaluate(`window.liveSocket.execJS(
+    document.querySelector('[data-phx-main]'),
+    JSON.stringify([['push', {
+      event: 'open_custom_alias_modal', value: {text: '@focus-race.example.test'}
+    }]])
+  )`)
+  const aliasName = page.locator("#alias_name")
+  await expect(aliasName).toBeVisible()
+  await page.evaluate("window.liveSocket.enableLatencySim(500)")
+  try {
+    // Click and refocus in one browser turn, before the delayed response arrives.
+    await page.evaluate(`document.querySelector('#generate-alias-name').click();
+      document.querySelector('#alias_name').focus()`)
+    await expect(aliasName).toBeFocused()
+    await expect(aliasName).toHaveValue(/^[a-z0-9]{16}$/)
+    const firstName = await aliasName.inputValue()
+
+    await aliasName.fill("typed.before.regeneration")
+    await page.evaluate(`document.querySelector('#generate-alias-name').click();
+      document.querySelector('#alias_name').focus()`)
+    await expect(aliasName).toBeFocused()
+    await expect(aliasName).toHaveValue(/^[a-z0-9]{16}$/)
+    await expect(aliasName).not.toHaveValue(firstName)
+    await aliasName.fill("still.editable")
+    await expect(aliasName).toHaveValue("still.editable")
+  } finally {
+    await page.evaluate("window.liveSocket.disableLatencySim()")
+  }
+  await page.locator("#add_alias_modal").getByRole("button", { name: "Cancel" }).click()
+  await expect(page.locator("#add_alias_modal")).toHaveCount(0)
+
   await page.getByRole("button", { name: "New alias" }).click()
   await expect(page).toHaveURL(/\/alias\//)
   const alias = decodeURIComponent(new URL(page.url()).pathname.split("/").pop() || "")

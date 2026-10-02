@@ -243,6 +243,7 @@ defmodule ShroudWeb.EmailAliasLiveTest do
         |> LazyHTML.attribute("value")
 
       assert name =~ ~r/^[a-z0-9]{16}$/
+      assert_push_event(view, "generated-alias-name", %{name: name})
       assert Shroud.Aliases.count_aliases(user) == count
 
       view |> element("#generate-alias-name") |> render_click()
@@ -256,6 +257,7 @@ defmodule ShroudWeb.EmailAliasLiveTest do
 
       assert new_name =~ ~r/^[a-z0-9]{16}$/
       refute new_name == name
+      assert_push_event(view, "generated-alias-name", %{name: new_name})
       assert Shroud.Aliases.count_aliases(user) == count
 
       {:ok, _view, _html} =
