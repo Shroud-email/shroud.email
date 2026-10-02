@@ -21,7 +21,7 @@ defmodule ShroudWeb.Api.V1.EmailAliasController do
             in: :query,
             type: :string,
             description:
-              "Case-insensitive search across address, title and notes. Space-separated terms match any term; punctuation acts as a wildcard.",
+              "Case-insensitive literal substring search across address, title and notes. Every whitespace-separated term must match at least one field; punctuation is matched literally.",
             example: "Acme"
           ],
           enabled: [

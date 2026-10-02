@@ -251,25 +251,27 @@ defmodule Shroud.Aliases do
     )
   end
 
-  # Shamelessly copied from https://smartlogic.io/blog/dynamic-conditionals-with-ecto/
   defp filter_aliases(value, query) do
-    # value is the string entered by the user
-    # query is the existing database query with prior scopes applied
     values =
       value
-      # split on and remove all extra whitespace
-      |> String.split(~r/ +/, trim: true)
+      |> String.split()
       |> Enum.map(fn value ->
-        # replace non characters with wildcard characters
-        "%" <> String.replace(value, ~r/[\b\W]+/, "%") <> "%"
+        escaped =
+          value
+          |> String.replace("\\", "\\\\")
+          |> String.replace("%", "\\%")
+          |> String.replace("_", "\\_")
+
+        "%" <> escaped <> "%"
       end)
 
     conditions =
       values
-      |> Enum.reduce(false, fn v, acc_query ->
+      |> Enum.reduce(true, fn v, acc_query ->
         dynamic(
           [ea],
-          ilike(ea.address, ^v) or ilike(ea.title, ^v) or ilike(ea.notes, ^v) or ^acc_query
+          (ilike(ea.address, ^v) or ilike(ea.title, ^v) or ilike(ea.notes, ^v)) and
+            ^acc_query
         )
       end)
 
