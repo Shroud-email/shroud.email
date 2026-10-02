@@ -76,12 +76,6 @@ Deno.test("asset ranges, extensionless paths and non-GET/HEAD methods remain unt
 
 Deno.test("worldwide rewrite replaces stale framing with the exact UTF-8 byte count", async () => {
   const original = Object.getOwnPropertyDescriptor(globalThis, "HTMLRewriter");
-  const originalLog = console.log;
-  const logs: unknown[] = [];
-  console.log = (prefix: string, payload: string) => {
-    assert.equal(prefix, "shroud-pricing");
-    logs.push(JSON.parse(payload));
-  };
   let upstreamHeaders: Headers;
   // Preserve a snapshot of upstream framing on the transformed response.
   // Exercise an explicit override even when the rewriter retains old headers.
@@ -155,58 +149,7 @@ Deno.test("worldwide rewrite replaces stale framing with the exact UTF-8 byte co
     assert.equal(result.headers.get("content-length"), "147");
     assert.equal(result.headers.get("cache-control"), "no-store");
     assert.equal(result.headers.get("x-bunny-deploy"), "fixture");
-    assert.equal(
-      result.headers.get("x-shroud-pricing-revision"),
-      "directory-errors-v5",
-    );
-    assert.deepEqual(logs, [
-      {
-        revision: "directory-errors-v5",
-        stage: "origin-response",
-        method: "GET",
-        status: 404,
-        country: "US",
-        uk: false,
-        deployPrefixedPath: true,
-        pricingPathSuffix: true,
-        indexPathSuffix: true,
-        contentType: "text/html; charset=utf-8",
-        originLength: "150",
-        originEncoding: null,
-        originCacheControl: null,
-        bodyless: false,
-        bodyUsed: false,
-        bodyLocked: false,
-      },
-      {
-        revision: "directory-errors-v5",
-        stage: "before-transform",
-        bodyUsed: false,
-        bodyLocked: false,
-      },
-      {
-        revision: "directory-errors-v5",
-        stage: "before-buffer",
-        inputLength: null,
-        rewrittenLength: "150",
-        rewrittenEncoding: null,
-        bodyUsed: false,
-        bodyLocked: false,
-      },
-      {
-        revision: "directory-errors-v5",
-        stage: "return-response",
-        status: 404,
-        priceReplacements: 3,
-        bodyBytes: 147,
-        returnedLength: "147",
-        returnedEncoding: null,
-        returnedCacheControl: "no-store",
-        returnedRevision: "directory-errors-v5",
-        bodyUsed: false,
-        bodyLocked: false,
-      },
-    ]);
+    assert.equal(result.headers.has("x-shroud-pricing-revision"), false);
     const rewritten = await result.text();
     assert.equal(
       rewritten,
@@ -217,7 +160,6 @@ Deno.test("worldwide rewrite replaces stale framing with the exact UTF-8 byte co
       new TextEncoder().encode(html).length - 3,
     );
   } finally {
-    console.log = originalLog;
     if (original) Object.defineProperty(globalThis, "HTMLRewriter", original);
     else Reflect.deleteProperty(globalThis, "HTMLRewriter");
   }
@@ -256,10 +198,8 @@ Deno.test("worldwide HTML accepts a native Fetch response with immutable headers
   }
 });
 
-Deno.test("buffer failures are logged without exposing the error message or hiding failure", async () => {
+Deno.test("rewrite buffer failures propagate without hiding failure", async () => {
   const original = Object.getOwnPropertyDescriptor(globalThis, "HTMLRewriter");
-  const originalLog = console.log;
-  const logs: { stage: string; errorName?: string }[] = [];
   const failure = new TypeError("private fixture data");
   class TestRewriter {
     on() {
@@ -279,8 +219,6 @@ Deno.test("buffer failures are logged without exposing the error message or hidi
     value: TestRewriter,
     configurable: true,
   });
-  console.log = (_prefix: string, payload: string) =>
-    logs.push(JSON.parse(payload));
   try {
     await assert.rejects(
       rewritePricing({
@@ -291,16 +229,7 @@ Deno.test("buffer failures are logged without exposing the error message or hidi
       }),
       (error) => error === failure,
     );
-    assert.deepEqual(logs.map((log) => log.stage), [
-      "origin-response",
-      "before-transform",
-      "before-buffer",
-      "buffer-error",
-    ]);
-    assert.equal(logs.at(-1)?.errorName, "TypeError");
-    assert.equal(JSON.stringify(logs).includes("private fixture data"), false);
   } finally {
-    console.log = originalLog;
     if (original) Object.defineProperty(globalThis, "HTMLRewriter", original);
     else Reflect.deleteProperty(globalThis, "HTMLRewriter");
   }
@@ -411,10 +340,7 @@ Deno.test("directory 400 uses the actual index-file 404, preserving GET/HEAD and
       if (method === "GET") {
         assert.equal(result.headers.get("content-length"), "15");
       }
-      assert.equal(
-        result.headers.get("x-shroud-pricing-revision"),
-        "directory-errors-v5",
-      );
+      assert.equal(result.headers.has("x-shroud-pricing-revision"), false);
       if (method === "HEAD") assert.equal(result.body, null);
       else assert.equal(await result.text(), "Real custom 404");
     }

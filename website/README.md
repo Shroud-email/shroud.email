@@ -131,15 +131,28 @@ gh workflow run website-deploy.yml \
   --ref feat/official-bunny-staging \
   -f ref=feat/official-bunny-staging \
   -f initialize_sites=true \
-  -f deploy_edge_script=false
+  -f deploy_edge_script=true
 ```
 
 This adopts the existing production pair and publishes the branch's website while
-preserving the attached production Edge script. Verify home, docs, assets, 404,
+updating the attached production Edge script. First enable **Pull Zone → General
+→ Origin → Run script before cache** on production for the missing-directory
+404 fallback. Staging already has this setting enabled. It increases script
+execution volume; the workflows do not enable it automatically.
+
+If an old `main` deployment ran after adoption, its clean-delete uploader may
+have removed Sites metadata. Use `initialize_sites=true` for this cutover: valid
+existing metadata is checked and left unchanged, while absent metadata is
+initialized. Do not run an old uploader between this trial and merging.
+
+Verify home, docs, assets, 404,
 state/direct-deploy protection, and UK/US pricing on `https://shroud.email` before
 merging. After adoption, leave initialization off. Main pushes then deploy via the
 official action and replace the Edge script only after the site job succeeds.
 Main pushes refuse to initialize missing metadata automatically.
+
+Staging remains manual after merging. To publish middleware cleanup there, run
+the staging workflow with initialization off and `deploy_edge_script=true`.
 
 ### Deployment behavior and checks
 

@@ -130,7 +130,7 @@ jobs:
           trap 'rm -f "$response" "$headers"' EXIT
           result=0
           curl --fail --silent --show-error --max-time 20 --retry 5 --retry-delay 5 --retry-all-errors --dump-header "$headers" --output "$response" https://shroud.email/pricing/ || result=$?
-          grep -Ei '^(HTTP/|content-length:|content-encoding:|cache-control:|cdn-cache:|x-shroud-pricing-revision:)' "$headers" || true
+          grep -Ei '^(HTTP/|content-length:|content-encoding:|cache-control:|cdn-cache:)' "$headers" || true
           printf 'Received bytes: '
           wc -c < "$response"
           exit "$result"
