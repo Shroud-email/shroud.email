@@ -8,7 +8,7 @@ defmodule Shroud.Accounts.UserNotifier do
   use ShroudWeb, :verified_routes
 
   # Delivers the email using the application mailer.
-  defp deliver(recipient, subject, html_body, text_body) do
+  defp deliver(recipient, subject, html_body, text_body, email_attachment \\ nil) do
     email =
       new()
       |> to(recipient)
@@ -17,6 +17,7 @@ defmodule Shroud.Accounts.UserNotifier do
       |> subject(subject)
       |> html_body(html_body)
       |> text_body(text_body)
+      |> maybe_attach(email_attachment)
 
     case Mailer.deliver(email) do
       {:ok, _metadata} -> {:ok, email}
@@ -37,6 +38,9 @@ defmodule Shroud.Accounts.UserNotifier do
 
       {:error, {:delivery_failed, exception}}
   end
+
+  defp maybe_attach(email, nil), do: email
+  defp maybe_attach(email, email_attachment), do: attachment(email, email_attachment)
 
   @doc """
   Deliver instructions to confirm account.
@@ -181,6 +185,59 @@ defmodule Shroud.Accounts.UserNotifier do
     """
 
     deliver(user.email, "We blocked a spam email", html_body, text_body)
+  end
+
+  def deliver_catchall_alias_creation_failed(user_id, address, original_message) do
+    user = Accounts.get_user!(user_id)
+
+    {attachment_status, email_attachment} =
+      case original_message do
+        nil ->
+          {"The original message was marked as spam, so it was not attached.", nil}
+
+        data ->
+          attachment =
+            Swoosh.Attachment.new(
+              {:data, data},
+              filename: "original-message.eml",
+              content_type: "message/rfc822"
+            )
+
+          {"The original message is attached for review.", attachment}
+      end
+
+    html_body =
+      EmailTemplate.CatchallAliasCreationFailed.render(
+        user_email: user.email,
+        address: address,
+        attachment_status: attachment_status,
+        current_year: DateTime.utc_now().year
+      )
+
+    text_body = """
+    ==============================
+
+    Hi #{user.email},
+
+    Someone sent an email to #{address} on your catch-all domain, but we couldn't
+    create an alias for it because the address is invalid. Email addresses can't
+    contain spaces or underscores.
+
+    The email was not forwarded to you. If you'd like to receive emails at this
+    address, please use a valid address (without underscores or spaces).
+
+    #{attachment_status}
+
+    ==============================
+    """
+
+    deliver(
+      user.email,
+      "We couldn't create a catch-all alias",
+      html_body,
+      text_body,
+      email_attachment
+    )
   end
 
   def deliver_domain_verified(custom_domain_id) do
