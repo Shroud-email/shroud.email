@@ -35,7 +35,8 @@ is absent, visitors see the UK default.
 ### Response framing
 
 The worldwide rewrite removes `Content-Length` from both the original middleware
-context and the returned response. UK price strings contain `£` (two UTF-8 bytes),
+context and the returned response, using a mutable copy of the context response
+so immutable Fetch headers are not modified. UK price strings contain `£` (two UTF-8 bytes),
 while `$` occupies one byte, so the three pricing spans shorten the body by three
 bytes. Preserving the origin's length makes clients wait for bytes that will
 never arrive. The body remains streamed; UK responses and assets retain their

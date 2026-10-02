@@ -5,7 +5,7 @@ Deno.test("worldwide rewrite removes the upstream length before changing UTF-8 b
   const original = Object.getOwnPropertyDescriptor(globalThis, "HTMLRewriter");
   let upstreamHeaders: Headers;
   // Preserve a snapshot of upstream framing on the transformed response.
-  // Neither context mutation nor runtime header removal alone is sufficient.
+  // Exercise header removal on both the context and the returned response.
   class TestRewriter {
     handler!: ElementHandler;
     on(selector: string, handler: ElementHandler) {
@@ -76,6 +76,39 @@ Deno.test("worldwide rewrite removes the upstream length before changing UTF-8 b
       new TextEncoder().encode(rewritten).length,
       new TextEncoder().encode(html).length - 3,
     );
+  } finally {
+    if (original) Object.defineProperty(globalThis, "HTMLRewriter", original);
+    else Reflect.deleteProperty(globalThis, "HTMLRewriter");
+  }
+});
+
+Deno.test("worldwide HTML accepts a native Fetch response with immutable headers", async () => {
+  const original = Object.getOwnPropertyDescriptor(globalThis, "HTMLRewriter");
+  const response = await fetch("data:text/html,<p>plain HTML</p>");
+  assert.throws(() => response.headers.delete("content-length"), TypeError);
+  class TestRewriter {
+    on() {
+      return this;
+    }
+    transform(input: Response) {
+      assert.notEqual(input, response);
+      assert.doesNotThrow(() => input.headers.delete("content-length"));
+      return input;
+    }
+  }
+  Object.defineProperty(globalThis, "HTMLRewriter", {
+    value: TestRewriter,
+    configurable: true,
+  });
+  try {
+    const result = await rewritePricing({
+      request: new Request("https://example.test/pricing/", {
+        headers: { "cdn-requestcountrycode": "US" },
+      }),
+      response,
+    });
+    assert.equal(await result.text(), "<p>plain HTML</p>");
+    assert.equal(result.headers.get("content-length"), null);
   } finally {
     if (original) Object.defineProperty(globalThis, "HTMLRewriter", original);
     else Reflect.deleteProperty(globalThis, "HTMLRewriter");

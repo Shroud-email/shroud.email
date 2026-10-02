@@ -62,8 +62,14 @@ export function rewritePricing(ctx: { request: Request; response: Response }) {
   });
 
   // Rewriting changes the byte count (£ is two UTF-8 bytes; $ is one).
-  // Clear the original context too so the runtime cannot reuse its framing.
-  ctx.response.headers.delete("content-length");
+  // Replace the context response too, without mutating Fetch-guarded headers.
+  const inputHeaders = new Headers(ctx.response.headers);
+  inputHeaders.delete("content-length");
+  ctx.response = new Response(ctx.response.body, {
+    status: ctx.response.status,
+    statusText: ctx.response.statusText,
+    headers: inputHeaders,
+  });
   const rewritten = rewriter.transform(ctx.response);
   const headers = new Headers(rewritten.headers);
   headers.delete("content-length");
