@@ -6,7 +6,7 @@ description: How to update your Shroud.email deployment.
 ## Version 1.4.0: Required manual changes
 
 Update the checkout and Haraka image to enable automatic certificate renewal
-and custom-domain DKIM signing.
+and DKIM signing for custom domains.
 
 Keep your existing DKIM key and `shroudemail` selector in
 `haraka/haraka_config/config/dkim/<EMAIL_DOMAIN>/`. The matching TXT record at
