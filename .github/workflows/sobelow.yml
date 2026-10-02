@@ -3,6 +3,9 @@ name: Sobelow
 on:
   push:
     branches: ["main"]
+    paths:
+      - 'shroud.email/**'
+      - '.github/workflows/sobelow.yml'
   pull_request:
     branches: ["main"]
 
