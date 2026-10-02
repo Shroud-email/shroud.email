@@ -20,6 +20,8 @@
 
 import "./bunny-globals.d.ts";
 
+export const PRICING_REVISION = "html-ranges-v4";
+
 // Country codes that should see the UK price. GB + the Crown dependencies
 // (Guernsey, Jersey, Isle of Man) share the UK billing entity in Paddle.
 const UK_COUNTRY_CODES = new Set(["GB", "GG", "JE", "IM"]);
@@ -28,28 +30,37 @@ function isUK(country: string | null): boolean {
   return country !== null && UK_COUNTRY_CODES.has(country.toUpperCase());
 }
 
-// Avoid Storage's directory-response path: live directory HTML arrives as 206
-// and the CDN retains its original length after rewriting. Explicit index files
-// arrive as 200 and the identical rewritten body completes successfully.
-export async function resolveDirectoryIndex(ctx: { request: Request }) {
+// Rewritten HTML is a different representation with different byte offsets.
+// Fetch it in full rather than forwarding the CDN's origin Range request.
+export async function disableHtmlRanges(ctx: { request: Request }) {
   const url = new URL(ctx.request.url);
-  const resolveIndex =
+  const htmlRequest =
     (ctx.request.method === "GET" || ctx.request.method === "HEAD") &&
-    url.pathname.endsWith("/");
-  if (resolveIndex) {
-    url.pathname += "index.html";
-    ctx.request = new Request(url, ctx.request);
+    (url.pathname.endsWith("/") || /\.html$/i.test(url.pathname));
+  const range = ctx.request.headers.get("range");
+  const ifRangeRequested = ctx.request.headers.has("if-range");
+  if (htmlRequest && (range !== null || ifRangeRequested)) {
+    ctx.request = new Request(ctx.request);
+    ctx.request.headers.delete("range");
+    ctx.request.headers.delete("if-range");
   }
   console.log(
     "shroud-pricing",
     JSON.stringify({
-      revision: "directory-index-v3",
+      revision: PRICING_REVISION,
       stage: "origin-request",
       method: ctx.request.method,
-      resolvedDirectoryIndex: resolveIndex,
+      htmlRequest,
       deployPrefixedPath: /^\/deploys\//.test(url.pathname),
       indexPathSuffix: /\/index\.html$/.test(url.pathname),
-      rangeRequested: ctx.request.headers.has("range"),
+      rangeRequested: range !== null,
+      range:
+        range !== null && range.length <= 128 && /^bytes=[0-9, -]+$/.test(range)
+          ? range
+          : null,
+      ifRangeRequested,
+      outgoingRangeRequested: ctx.request.headers.has("range"),
+      outgoingIfRangeRequested: ctx.request.headers.has("if-range"),
     }),
   );
   return ctx.request;
@@ -64,7 +75,7 @@ export async function rewritePricing(
   console.log(
     "shroud-pricing",
     JSON.stringify({
-      revision: "directory-index-v3",
+      revision: PRICING_REVISION,
       stage: "origin-response",
       method: ctx.request.method,
       status: ctx.response.status,
@@ -90,7 +101,7 @@ export async function rewritePricing(
     console.log(
       "shroud-pricing",
       JSON.stringify({
-        revision: "directory-index-v3",
+        revision: PRICING_REVISION,
         stage: "non-html-pass-through",
       }),
     );
@@ -103,11 +114,11 @@ export async function rewritePricing(
   if (isUK(country)) {
     const headers = new Headers(ctx.response.headers);
     headers.set("cache-control", "no-store");
-    headers.set("x-shroud-pricing-revision", "directory-index-v3");
+    headers.set("x-shroud-pricing-revision", PRICING_REVISION);
     console.log(
       "shroud-pricing",
       JSON.stringify({
-        revision: "directory-index-v3",
+        revision: PRICING_REVISION,
         stage: "uk-pass-through",
         returnedLength: headers.get("content-length"),
       }),
@@ -125,7 +136,7 @@ export async function rewritePricing(
     const headers = new Headers(ctx.response.headers);
     headers.delete("content-length");
     headers.set("cache-control", "no-store");
-    headers.set("x-shroud-pricing-revision", "directory-index-v3");
+    headers.set("x-shroud-pricing-revision", PRICING_REVISION);
     ctx.response = new Response(null, {
       status: ctx.response.status,
       statusText: ctx.response.statusText,
@@ -134,7 +145,7 @@ export async function rewritePricing(
     console.log(
       "shroud-pricing",
       JSON.stringify({
-        revision: "directory-index-v3",
+        revision: PRICING_REVISION,
         stage: "bodyless-return",
         returnedLength: ctx.response.headers.get("content-length"),
       }),
@@ -168,7 +179,7 @@ export async function rewritePricing(
   console.log(
     "shroud-pricing",
     JSON.stringify({
-      revision: "directory-index-v3",
+      revision: PRICING_REVISION,
       stage: "before-transform",
       bodyUsed: ctx.response.bodyUsed,
       bodyLocked: ctx.response.body?.locked ?? null,
@@ -178,7 +189,7 @@ export async function rewritePricing(
   console.log(
     "shroud-pricing",
     JSON.stringify({
-      revision: "directory-index-v3",
+      revision: PRICING_REVISION,
       stage: "before-buffer",
       inputLength: ctx.response.headers.get("content-length"),
       rewrittenLength: rewritten.headers.get("content-length"),
@@ -196,7 +207,7 @@ export async function rewritePricing(
     console.log(
       "shroud-pricing",
       JSON.stringify({
-        revision: "directory-index-v3",
+        revision: PRICING_REVISION,
         stage: "buffer-error",
         errorName: error instanceof Error ? error.name : "non-Error",
         bodyUsed: rewritten.bodyUsed,
@@ -208,7 +219,7 @@ export async function rewritePricing(
   const headers = new Headers(rewritten.headers);
   headers.set("content-length", String(body.byteLength));
   headers.set("cache-control", "no-store");
-  headers.set("x-shroud-pricing-revision", "directory-index-v3");
+  headers.set("x-shroud-pricing-revision", PRICING_REVISION);
   ctx.response = new Response(body, {
     status: rewritten.status,
     headers,
@@ -216,7 +227,7 @@ export async function rewritePricing(
   console.log(
     "shroud-pricing",
     JSON.stringify({
-      revision: "directory-index-v3",
+      revision: PRICING_REVISION,
       stage: "return-response",
       status: ctx.response.status,
       priceReplacements,

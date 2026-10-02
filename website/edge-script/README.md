@@ -50,12 +50,17 @@ returned the correct byte length in both cases. The two rewritten bodies were
 byte-for-byte identical, but only the directory response retained the stale
 length on the wire. The native internals behind that difference are not public.
 
-The origin-request hook now resolves trailing-slash GET/HEAD paths to explicit
-`index.html` files, preserving the deploy prefix, query string, and headers.
-This avoids the problematic directory-response path without redirecting the
-public URL. Files, extensionless paths without trailing slashes, and other
-methods remain unchanged. A staging deployment must still verify this workaround
-against Bunny's native origin-request handling.
+The attempted explicit-index origin rewrite did not fix it: native logs showed
+the URL was resolved but the origin request still contained Range and returned
+206, even though the client GET did not request a range. This points to the
+partial-response path rather than directory resolution alone.
+
+The origin-request hook now removes Range and If-Range for GET/HEAD paths ending
+in `/` or `.html`, so HTML can be fetched in full before changing byte offsets.
+It leaves URLs, queries, authentication and other headers intact. Asset ranges,
+extensionless paths without trailing slashes, and other methods are unchanged.
+The unsuccessful URL rewrite was removed. Staging must still verify that Bunny
+honors the cleared origin range headers and returns full responses.
 
 Temporary `shroud-pricing` logs now cover every origin response without a path
 filter. Sites configures an origin prefix `/deploys/<release>/`; the native
@@ -63,16 +68,16 @@ middleware logs confirmed deploy-prefixed paths, so a public-path-only diagnosti
 filter excluded those rewritten requests. The initial v1 diagnostics used that
 filter and produced no logs in the user's capture.
 
-Revision `directory-index-v3` logs script startup and middleware registration,
+Revision `html-ranges-v4` logs script startup and middleware registration,
 including whether the native Bunny global exists. Per-request logs include
 method, status, validated country, path-shape flags (not actual URLs), framing,
 content type, cache control, stream state, transformation/buffering checkpoints,
 replacement count, and returned headers. Every branch logs its outcome;
 buffering errors log their type and are rethrown. Logs exclude URLs, query
 strings, cookies, credentials, error messages, and response contents. All HTML
-responses return `X-Shroud-Pricing-Revision: directory-index-v3`. The origin-request
-log records whether directory resolution occurred and whether a Range header
-was present. The workflow prints
+responses return `X-Shroud-Pricing-Revision: html-ranges-v4`. The origin-request
+log records HTML classification, bounded numeric byte-range values and incoming
+and outgoing Range/If-Range presence. The workflow prints
 only framing/cache/revision headers and the received byte count, preserving
 curl's failure status. Compare those headers with Bunny's script logs: if
 `before-buffer` appears without `return-response` or `buffer-error` for the same

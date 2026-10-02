@@ -1,20 +1,19 @@
 import assert from "node:assert/strict";
-import { resolveDirectoryIndex, rewritePricing } from "./pricing.ts";
+import { disableHtmlRanges, rewritePricing } from "./pricing.ts";
 
-Deno.test("directory GET and HEAD resolve index files without changing prefix, query or headers", async () => {
+Deno.test("HTML GET and HEAD drop range headers without changing URLs or other headers", async () => {
   for (
-    const [method, input, expected] of [
+    const [method, input] of [
       [
         "GET",
         "http://origin.test:9000/deploys/release-42/docs/privacy/?lang=en&next=%2Fpricing%2F",
-        "http://origin.test:9000/deploys/release-42/docs/privacy/index.html?lang=en&next=%2Fpricing%2F",
       ],
       [
         "HEAD",
         "http://origin.test:9000/deploys/release-42/pricing/",
-        "http://origin.test:9000/deploys/release-42/pricing/index.html",
       ],
-      ["GET", "https://example.test/", "https://example.test/index.html"],
+      ["GET", "https://example.test/"],
+      ["GET", "https://example.test/pricing/index.html?lang=en"],
     ]
   ) {
     const request = new Request(input, {
@@ -23,22 +22,36 @@ Deno.test("directory GET and HEAD resolve index files without changing prefix, q
         "cdn-requestcountrycode": "GB",
         "authorization": "Bearer fixture",
         "range": "bytes=0-99",
+        "if-range": '"fixture-etag"',
       },
     });
     const ctx = { request };
-    const result = await resolveDirectoryIndex(ctx);
+    const result = await disableHtmlRanges(ctx);
     assert.equal(result, ctx.request);
-    assert.equal(result.url, expected);
+    assert.equal(result.url, input);
     assert.equal(result.method, method);
-    assert.deepEqual([...result.headers], [...request.headers]);
+    assert.deepEqual([...result.headers], [
+      ["authorization", "Bearer fixture"],
+      ["cdn-requestcountrycode", "GB"],
+    ]);
+    assert.equal(request.headers.get("range"), "bytes=0-99");
+    assert.equal(request.headers.get("if-range"), '"fixture-etag"');
   }
+  const ifRangeOnly = await disableHtmlRanges({
+    request: new Request("https://example.test/", {
+      headers: { "if-range": '"etag"' },
+    }),
+  });
+  assert.equal(ifRangeOnly.headers.has("if-range"), false);
+  const complete = new Request("https://example.test/pricing/");
+  assert.equal(await disableHtmlRanges({ request: complete }), complete);
 });
 
-Deno.test("files, extensionless paths and non-GET/HEAD methods remain untouched", async () => {
+Deno.test("asset ranges, extensionless paths and non-GET/HEAD methods remain untouched", async () => {
   for (
     const [method, path] of [
       ["GET", "/style.css"],
-      ["GET", "/pricing/index.html"],
+      ["GET", "/video.mp4"],
       ["GET", "/pricing"],
       ["POST", "/pricing/"],
       ["OPTIONS", "/"],
@@ -47,9 +60,12 @@ Deno.test("files, extensionless paths and non-GET/HEAD methods remain untouched"
     const request = new Request(`https://example.test${path}`, {
       method,
       body: method === "POST" ? "fixture" : undefined,
+      headers: { "range": "bytes=0-99", "if-range": '"etag"' },
     });
-    const result = await resolveDirectoryIndex({ request });
+    const result = await disableHtmlRanges({ request });
     assert.equal(result, request);
+    assert.equal(result.headers.get("range"), "bytes=0-99");
+    assert.equal(result.headers.get("if-range"), '"etag"');
     if (method === "POST") assert.equal(await result.text(), "fixture");
   }
 });
@@ -137,11 +153,11 @@ Deno.test("worldwide rewrite replaces stale framing with the exact UTF-8 byte co
     assert.equal(result.headers.get("x-bunny-deploy"), "fixture");
     assert.equal(
       result.headers.get("x-shroud-pricing-revision"),
-      "directory-index-v3",
+      "html-ranges-v4",
     );
     assert.deepEqual(logs, [
       {
-        revision: "directory-index-v3",
+        revision: "html-ranges-v4",
         stage: "origin-response",
         method: "GET",
         status: 404,
@@ -159,13 +175,13 @@ Deno.test("worldwide rewrite replaces stale framing with the exact UTF-8 byte co
         bodyLocked: false,
       },
       {
-        revision: "directory-index-v3",
+        revision: "html-ranges-v4",
         stage: "before-transform",
         bodyUsed: false,
         bodyLocked: false,
       },
       {
-        revision: "directory-index-v3",
+        revision: "html-ranges-v4",
         stage: "before-buffer",
         inputLength: null,
         rewrittenLength: "150",
@@ -174,7 +190,7 @@ Deno.test("worldwide rewrite replaces stale framing with the exact UTF-8 byte co
         bodyLocked: false,
       },
       {
-        revision: "directory-index-v3",
+        revision: "html-ranges-v4",
         stage: "return-response",
         status: 404,
         priceReplacements: 3,
@@ -182,7 +198,7 @@ Deno.test("worldwide rewrite replaces stale framing with the exact UTF-8 byte co
         returnedLength: "147",
         returnedEncoding: null,
         returnedCacheControl: "no-store",
-        returnedRevision: "directory-index-v3",
+        returnedRevision: "html-ranges-v4",
         bodyUsed: false,
         bodyLocked: false,
       },
