@@ -456,6 +456,12 @@ defmodule Shroud.Accounts do
     |> Repo.update()
   end
 
+  def update_user_email_preferences(user, attrs) do
+    user
+    |> User.email_preferences_changeset(attrs)
+    |> Repo.update()
+  end
+
   def update_paddle_details!(user, attrs \\ %{}) do
     user
     |> User.paddle_changeset(attrs)

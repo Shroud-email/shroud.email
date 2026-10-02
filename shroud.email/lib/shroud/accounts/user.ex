@@ -29,6 +29,7 @@ defmodule Shroud.Accounts.User do
     field :plan_expires_at, :naive_datetime
     field :status, Ecto.Enum, values: [:lead, :active, :inactive, :lifetime, :free]
     field :theme, Ecto.Enum, values: [:system, :light, :dark], default: :system
+    field :email_branding, :boolean, default: true
 
     has_many :aliases, EmailAlias
 
@@ -218,5 +219,11 @@ defmodule Shroud.Accounts.User do
     user
     |> cast(attrs, [:theme])
     |> validate_inclusion(:theme, [:system, :light, :dark])
+  end
+
+  def email_preferences_changeset(user, attrs) do
+    user
+    |> cast(attrs, [:email_branding])
+    |> validate_required([:email_branding])
   end
 end

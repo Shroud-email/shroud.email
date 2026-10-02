@@ -62,6 +62,7 @@ defmodule ShroudWeb.UserSettingsLive do
      assign(socket,
        current_user: user,
        page_title: title,
+       email_preferences_form: to_form(User.email_preferences_changeset(user, %{})),
        appearance_form: to_form(%{"theme" => to_string(user.theme)}),
        totp_backup_codes:
          if(socket.assigns.live_action == :security, do: socket.assigns.totp_backup_codes),
@@ -103,6 +104,24 @@ defmodule ShroudWeb.UserSettingsLive do
 
       {:error, changeset} ->
         {:noreply, assign(socket, :email_form, to_form(changeset))}
+    end
+  end
+
+  def handle_event("update_email_preferences", %{"user" => params}, socket) do
+    user = Repo.reload!(socket.assigns.current_user)
+
+    case Accounts.update_user_email_preferences(user, params) do
+      {:ok, user} ->
+        {:noreply,
+         socket
+         |> assign(
+           current_user: user,
+           email_preferences_form: to_form(User.email_preferences_changeset(user, %{}))
+         )
+         |> put_flash(:info, "Email preferences updated.")}
+
+      {:error, changeset} ->
+        {:noreply, assign(socket, :email_preferences_form, to_form(changeset))}
     end
   end
 

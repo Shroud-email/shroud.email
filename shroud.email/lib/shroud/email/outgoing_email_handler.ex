@@ -55,7 +55,7 @@ defmodule Shroud.Email.OutgoingEmailHandler do
 
     case ParsedEmail.parse(mimemail_email, sender, recipient)
          |> Map.get(:swoosh_email)
-         |> fix_outgoing_sender_and_recipient(recipient)
+         |> fix_outgoing_sender_and_recipient(recipient, sender_user)
          |> Mailer.deliver() do
       {:ok, _id} ->
         {_recipient_address, email_alias} = ReplyAddress.from_reply_address(recipient)
@@ -78,13 +78,15 @@ defmodule Shroud.Email.OutgoingEmailHandler do
     end
   end
 
-  @spec fix_outgoing_sender_and_recipient(Swoosh.Email.t(), String.t()) :: Swoosh.Email.t()
-  defp fix_outgoing_sender_and_recipient(email, recipient) do
+  @spec fix_outgoing_sender_and_recipient(Swoosh.Email.t(), String.t(), User.t()) ::
+          Swoosh.Email.t()
+  defp fix_outgoing_sender_and_recipient(email, recipient, user) do
     {recipient_address, email_alias} = ReplyAddress.from_reply_address(recipient)
+    suffix = if user.email_branding, do: " (via Shroud.email)", else: ""
 
     email
     # Fix the sender (replace the user's real email with the alias)
-    |> Map.put(:from, {"#{email_alias} (via Shroud.email)", email_alias})
+    |> Map.put(:from, {email_alias <> suffix, email_alias})
     # Fix the recipient (replace the reply address with the real recipient)
     |> Map.put(:to, [{recipient_address, recipient_address}])
     # Don't forward the reply-to header in replies as it may contain the user's real email
