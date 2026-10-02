@@ -25,6 +25,8 @@ const { post, featured = false } = Astro.props;
     <Image
       src={post.data.image}
       alt={post.data.imageAlt}
+      data-featured-image={featured ? "true" : undefined}
+      priority={featured}
       class:list={["w-full object-cover", featured ? "h-64 lg:h-80" : "h-48"]}
       layout="full-width"
       widths={featured ? [480, 640, 768, 1024, 1280] : [320, 480, 640, 768]}
