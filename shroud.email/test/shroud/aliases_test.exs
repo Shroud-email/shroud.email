@@ -77,6 +77,59 @@ defmodule Shroud.AliasesTest do
 
       assert [email_alias] == Aliases.list_aliases(user, "")
     end
+
+    test "requires every word, allowing matches across fields and whitespace" do
+      %{id: id} = user = user_fixture()
+
+      matching_alias =
+        alias_fixture(%{user_id: id, address: "amazon@example.com", notes: "Shopping receipts"})
+
+      alias_fixture(%{user_id: id, title: "Amazon"})
+      alias_fixture(%{user_id: id, notes: "Shopping"})
+
+      assert [matching_alias] == Aliases.list_aliases(user, "  AMAZON\tshopping\n")
+      assert [] == Aliases.list_aliases(user, "amazon shopping missing")
+      assert length(Aliases.list_aliases(user, " \t\n")) == 3
+    end
+
+    test "preserves punctuation in pasted addresses" do
+      %{id: id} = user = user_fixture()
+      matching_alias = alias_fixture(%{user_id: id, address: "john.doe@example.com"})
+      alias_fixture(%{user_id: id, address: "johnXdoe@exampleXcom"})
+
+      assert [matching_alias] == Aliases.list_aliases(user, "JOHN.DOE@example.com")
+      assert [matching_alias] == Aliases.list_aliases(user, "@example.com")
+    end
+
+    test "matches SQL wildcard characters and backslashes literally" do
+      %{id: id} = user = user_fixture()
+      matching_alias = alias_fixture(%{user_id: id, notes: "100% saved_file C:\\receipts"})
+      alias_fixture(%{user_id: id, notes: "1000 savedXfile C:receipts"})
+
+      for query <- ["%", "_", "100%", "saved_file", "C:\\receipts", "\\"] do
+        assert [matching_alias] == Aliases.list_aliases(user, query)
+      end
+    end
+
+    test "preserves Unicode characters" do
+      %{id: id} = user = user_fixture()
+      matching_alias = alias_fixture(%{user_id: id, title: "Café 東京"})
+      alias_fixture(%{user_id: id, title: "Cafeteria 大阪"})
+
+      assert [matching_alias] == Aliases.list_aliases(user, "café")
+      assert [matching_alias] == Aliases.list_aliases(user, "東京")
+    end
+
+    test "search remains scoped to the user's non-deleted aliases" do
+      %{id: id} = user = user_fixture()
+      other_user = user_fixture()
+      matching_alias = alias_fixture(%{user_id: id, title: "Shopping"})
+      deleted_alias = alias_fixture(%{user_id: id, title: "Shopping"})
+      Aliases.delete_email_alias(deleted_alias.id)
+      alias_fixture(%{user_id: other_user.id, title: "Shopping"})
+
+      assert [matching_alias] == Aliases.list_aliases(user, "shopping")
+    end
   end
 
   describe "get_email_alias_by_address!/1" do

@@ -59,18 +59,18 @@
 
     <div class="flex flex-col-reverse sm:flex-row items-center w-full sm:w-fit">
       <div class="sm:mr-3 sm:mt-0 mt-3 w-full sm:w-fit">
-        <form phx-change="filter" phx-submit="filter">
-          <label for="query" class="sr-only">Filter aliases</label>
+        <form id="alias-search" phx-change="filter" phx-submit="filter">
+          <label for="query" class="sr-only">Search aliases</label>
           <input
-            phx-debounce="1000"
+            phx-debounce="300"
             value={@filter_query}
             type="text"
             name="query"
             id="query"
             class="shadow-xs focus:ring-indigo-500 focus:border-indigo-500 block w-full text-sm border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400 px-4 rounded-full"
-            placeholder="Filter"
+            placeholder="Search aliases"
           />
-          <button type="submit" class="hidden">Apply filter</button>
+          <button type="submit" class="sr-only">Search aliases</button>
         </form>
       </div>
       <%= if @at_free_limit do %>
@@ -94,7 +94,15 @@
       <% end %>
     </div>
   </div>
-  <div class="flex flex-col">
+  <.empty_state
+    :if={@filtered_alias_count == 0}
+    title="No matching aliases"
+    description="Try a different search or clear it to see all your aliases."
+    icon={:envelope}
+  >
+    <.button id="clear-alias-search" click="filter" text="Clear search" phx-value-query="" />
+  </.empty_state>
+  <div :if={@filtered_alias_count > 0} class="flex flex-col">
     <div class="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
       <div class="py-2 align-middle inline-block min-w-full sm:px-6 lg:px-8">
         <div class="shadow-sm dark:shadow-gray-900/50 overflow-hidden border-b border-gray-200 dark:border-gray-700 sm:rounded-lg">

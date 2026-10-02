@@ -295,7 +295,7 @@
             }
           },
           {
-            "description": "Case-insensitive search across address, title and notes. Space-separated terms match any term; punctuation acts as a wildcard.",
+            "description": "Case-insensitive literal substring search across address, title and notes. Every whitespace-separated term must match at least one field; punctuation is matched literally.",
             "example": "Acme",
             "in": "query",
             "name": "search",
