@@ -11,16 +11,11 @@ image and the production checkout: Compose mounts
 `hosting/haraka/haraka_config` over the configuration bundled in the image, so
 pulling the image alone does not activate the plugin.
 
-Before upgrading:
-
-- Wait for the **Hosting images → publish-haraka** workflow job to publish the
-  updated `ghcr.io/shroud-email/haraka:main` image.
-- Confirm that `haraka/haraka_config/config/dkim/<EMAIL_DOMAIN>/private` contains
-  your valid installation key and its sibling `selector` file contains
-  `shroudemail`. Publish the matching public TXT record at
-  `shroudemail._domainkey.<EMAIL_DOMAIN>`. Preserve these files when updating the
-  checkout; **do not regenerate a working key**. For initial key setup, follow
-  the [self-hosting guide](/docs/deployment/self-host/#step-3-setup-dkim).
+Your existing DKIM configuration must include a valid installation key at
+`haraka/haraka_config/config/dkim/<EMAIL_DOMAIN>/private`, a sibling `selector`
+file containing `shroudemail`, and the matching public TXT record at
+`shroudemail._domainkey.<EMAIL_DOMAIN>`. Preserve these files when updating the
+checkout; **do not regenerate a working key**.
 
 Run from `hosting/` during a maintenance window. **Stop Haraka before updating
 the checkout** to prevent its live configuration from referencing a certificate
