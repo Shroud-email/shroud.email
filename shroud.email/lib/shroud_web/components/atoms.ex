@@ -18,7 +18,7 @@ defmodule ShroudWeb.Components.Atoms do
   attr(:intent, :atom, default: :primary)
   attr(:type, :string, default: "button")
   attr(:disabled, :boolean, default: false)
-  attr(:click, :string, required: false, default: nil)
+  attr(:click, :any, required: false, default: nil)
   attr(:alpine_click, :string, required: false, default: nil)
   attr(:rest, :global)
 

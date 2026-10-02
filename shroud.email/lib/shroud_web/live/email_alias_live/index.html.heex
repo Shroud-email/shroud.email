@@ -28,12 +28,17 @@
     </div>
     <:buttons>
       <.button text="Create" type="submit" phx-disable-with="Creating…" />
+      <%!-- Let LiveView dispatch the click before disabling the button. --%>
       <.button
         id="create-random-custom-alias"
-        click="create_random_custom_alias"
+        click={JS.push("create_random_custom_alias") |> JS.dispatch("alias-creating")}
         text="Create random alias"
         intent={:white}
-        phx-disable-with="Creating…"
+        x-data="{ creating: false }"
+        x-on:alias-creating="creating = true"
+        x-text="creating ? 'Creating…' : 'Create random alias'"
+        x-bind:disabled="creating"
+        x-on:phx:custom-alias-error.window="creating = false"
       />
     </:buttons>
   </.live_component>

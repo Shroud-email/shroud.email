@@ -3,6 +3,7 @@ defmodule ShroudWeb.EmailAliasLive.Index do
 
   use ShroudWeb, :live_view
 
+  alias Phoenix.LiveView.JS
   alias Shroud.Aliases
   alias Shroud.Aliases.EmailAlias
   alias Shroud.Domain
@@ -104,7 +105,7 @@ defmodule ShroudWeb.EmailAliasLive.Index do
         _params,
         %{assigns: %{custom_alias_domain: nil}} = socket
       ) do
-    {:noreply, socket}
+    {:noreply, push_event(socket, "custom-alias-error", %{})}
   end
 
   def handle_event("create_random_custom_alias", _params, socket) do
@@ -143,14 +144,21 @@ defmodule ShroudWeb.EmailAliasLive.Index do
             socket
             |> assign(:custom_alias_error, error)
             |> put_flash(:error, "Something went wrong.")
+            |> push_event("custom-alias-error", %{})
 
           {:noreply, socket}
 
         {:error, _reason} ->
-          {:noreply, put_flash(socket, :error, "Something went wrong.")}
+          {:noreply,
+           socket
+           |> put_flash(:error, "Something went wrong.")
+           |> push_event("custom-alias-error", %{})}
       end
     else
-      {:noreply, put_flash(socket, :error, "You don't have permission to do that.")}
+      {:noreply,
+       socket
+       |> put_flash(:error, "You don't have permission to do that.")
+       |> push_event("custom-alias-error", %{})}
     end
   end
 

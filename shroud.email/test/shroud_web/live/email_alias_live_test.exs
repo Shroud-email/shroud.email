@@ -216,6 +216,7 @@ defmodule ShroudWeb.EmailAliasLiveTest do
 
       render_hook(view, "create_random_custom_alias", %{})
 
+      assert_push_event(view, "custom-alias-error", %{})
       assert has_element?(view, "#copy-alias-#{email_alias.id}")
       refute has_element?(view, "#add_alias_modal")
       assert Shroud.Aliases.count_aliases(user) == count
@@ -265,6 +266,7 @@ defmodule ShroudWeb.EmailAliasLiveTest do
       render_hook(view, "open_custom_alias_modal", %{"text" => "@#{domain.domain}"})
       view |> form("#custom-alias-form", alias_name: "taken") |> render_submit()
       assert has_element?(view, "#custom-alias-error", "has already been taken")
+      assert_push_event(view, "custom-alias-error", %{})
       assert Shroud.Aliases.count_aliases(user) == count
 
       {:ok, _view, _html} =
@@ -286,6 +288,7 @@ defmodule ShroudWeb.EmailAliasLiveTest do
       render_hook(view, "open_custom_alias_modal", %{"text" => "@#{domain.domain}"})
       view |> element("#create-random-custom-alias") |> render_click()
 
+      assert_push_event(view, "custom-alias-error", %{})
       assert Shroud.Aliases.count_aliases(user) == count
       assert has_element?(view, "#create-random-custom-alias")
     end
