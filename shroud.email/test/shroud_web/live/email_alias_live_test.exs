@@ -29,13 +29,21 @@ defmodule ShroudWeb.EmailAliasLiveTest do
       email_alias: email_alias
     } do
       matching_alias =
-        alias_fixture(%{user_id: user.id, title: "Amazon", notes: "Shopping receipts"})
+        alias_fixture(%{user_id: user.id, title: "Amazon", notes: "Shopping receipts 100%"})
+
+      partial_match = alias_fixture(%{user_id: user.id, title: "Amazon", notes: "1000 receipts"})
 
       {:ok, view, _html} = live(conn, ~p"/")
       assert has_element?(view, "#query[phx-debounce='300']")
 
       view |> form("#alias-search", query: "amazon shopping") |> render_change()
       assert has_element?(view, "#copy-alias-#{matching_alias.id}")
+      refute has_element?(view, "#copy-alias-#{email_alias.id}")
+      refute has_element?(view, "#copy-alias-#{partial_match.id}")
+
+      view |> form("#alias-search", query: "100%") |> render_submit()
+      assert has_element?(view, "#copy-alias-#{matching_alias.id}")
+      refute has_element?(view, "#copy-alias-#{partial_match.id}")
       refute has_element?(view, "#copy-alias-#{email_alias.id}")
 
       view |> form("#alias-search", query: "missing") |> render_submit()
@@ -46,6 +54,7 @@ defmodule ShroudWeb.EmailAliasLiveTest do
       assert has_element?(view, "#query[value='']")
       assert has_element?(view, "#copy-alias-#{matching_alias.id}")
       assert has_element?(view, "#copy-alias-#{email_alias.id}")
+      assert has_element?(view, "#copy-alias-#{partial_match.id}")
       refute has_element?(view, "#clear-alias-search")
     end
 
