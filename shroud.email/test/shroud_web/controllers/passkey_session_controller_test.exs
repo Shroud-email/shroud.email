@@ -132,11 +132,11 @@ defmodule ShroudWeb.PasskeySessionControllerTest do
     assert html_response(context.conn, 200) =~ "login-form"
   end
 
-  test "repeated options and invalid assertions do not block a valid sign-in", context do
-    for _ <- 1..31, do: assert(options(context.view).token)
+  test "options and invalid assertions below the limit do not block a valid sign-in", context do
+    for _ <- 1..3, do: assert(options(context.view).token)
     issued = options(context.view)
 
-    for _ <- 1..61 do
+    for _ <- 1..3 do
       conn = post(recycle(context.conn), ~p"/users/passkeys", %{})
       assert redirected_to(conn) == "/users/log_in"
       refute get_session(conn, :user_token)

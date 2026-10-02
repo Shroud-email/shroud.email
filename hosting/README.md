@@ -44,6 +44,43 @@ npm ci --omit=dev --omit=optional
 node --test test/tls_cert_reload.test.js
 ```
 
+## Rate limiting and trusted proxies
+
+The app enforces single-node, in-memory rate limits on dynamic HTTP requests and
+LiveView events. Limits reset when the application or limiter restarts. HTTP
+rejections return 429 with `Retry-After`; connected pages show retry guidance.
+Static assets, `GET /_health`, and `POST /api/webhooks/paddle` are exempt; webhook
+signatures are still required.
+
+Compose sets `TRUSTED_PROXY_HOSTS=caddy`. A supervised background worker refreshes
+proxy addresses through Docker's internal DNS every 30 seconds, with a five-second
+lookup timeout. Requests only read a cached snapshot (at most 256 addresses),
+which expires after one minute. Missing, failed, or stale snapshots grant no trust;
+DNS never blocks a request. Replacing Caddy is picked up on the next refresh.
+No fixed container IP or custom subnet is required.
+
+For other deployments, set `TRUSTED_PROXY_HOSTS` to comma-separated proxy names
+in a DNS system you control, or leave it empty for direct connections.
+These are deployment settings, never names supplied by clients. The app
+ignores forwarded headers from every other peer, including private/loopback
+addresses. It walks `X-Forwarded-For` right-to-left, stopping at the first
+untrusted address. Your proxy must sanitize/append the actual client's address.
+If Caddy itself is behind another proxy/CDN, configure Caddy's upstream trusted
+proxies explicitly; do not blindly pass client-supplied forwarding headers.
+
+Initial limits: 600 HTTP requests/minute/IP; 10 sign-ins/minute/IP shared across
+password, passkey and API-token entry points; 5 second-factor attempts/minute/IP
+and account; 5 account-email requests/15 minutes/IP and, where authenticated,
+account; 5 password mutations/15 minutes; 120 API requests/minute/account;
+120 image fetches/minute/IP; 10 billing sessions/minute/account; 5 sensitive
+LiveView security events/minute/account per action group. Ordinary LiveView
+events have no blanket cap; email changes share the account-email allowance.
+Unauthenticated passkey challenges are limited to 10/minute/IP.
+WebSocket upgrades count as HTTP requests; connected LiveView mounts have a
+separate 600/minute/IP allowance to prevent repeated joins on a single socket.
+The targeted event limits cover application root handlers, not component-targeted
+events, live patches, or third-party admin LiveViews.
+
 ## TLS via Bunny DNS-01 (optional)
 
 Caddy defaults to HTTP-01 ACME (port 80), which works behind no other reverse

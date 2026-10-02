@@ -8,6 +8,14 @@ if Config.config_env() == :dev do
   end
 end
 
+# Only these connection peers may supply X-Forwarded-For. No implicit trust of
+# loopback/private networks; direct deployments leave this empty.
+config :shroud,
+  trusted_proxy_hosts:
+    System.get_env("TRUSTED_PROXY_HOSTS", "")
+    |> String.split(",", trim: true)
+    |> Enum.map(&String.trim/1)
+
 # Optional: Chatwoot support widget. Set CHATWOOT_BASE_URL to the URL of
 # your Chatwoot server to enable the widget. When unset (e.g. for
 # self-hosted deployments), the widget is not loaded at all.

@@ -174,7 +174,10 @@ export function createPasskeyHooks(window, document) {
         if (generation !== this.passkeyGeneration) return;
         if (reply?.error || !reply?.publicKey) {
           this.finishPasskeyLogin(generation);
-          if (!conditional) this.pushEvent("passkey_login_error", { reason: "failed" });
+          // Rate-limit replies already render specific retry guidance on the server.
+          if (!conditional && !reply?.retry_after) {
+            this.pushEvent("passkey_login_error", { reason: "failed" });
+          }
           return;
         }
         this.getPasskey(reply, conditional, generation, () => timedOut);

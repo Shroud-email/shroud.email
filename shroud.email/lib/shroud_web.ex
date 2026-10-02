@@ -61,6 +61,7 @@ defmodule ShroudWeb do
       use Phoenix.LiveView, @opts
 
       on_mount(ShroudWeb.UserLiveAuth)
+      on_mount(ShroudWeb.RateLimitLive)
       unquote(view_helpers())
     end
   end

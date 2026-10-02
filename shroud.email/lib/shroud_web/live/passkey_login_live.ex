@@ -1,5 +1,6 @@
 defmodule ShroudWeb.PasskeyLoginLive do
   use Phoenix.LiveView, layout: false
+  on_mount(ShroudWeb.RateLimitLive)
 
   use Phoenix.VerifiedRoutes,
     endpoint: ShroudWeb.Endpoint,

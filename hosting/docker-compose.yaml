@@ -94,6 +94,7 @@ services:
       - CAP_INSTANCE_URL=${CAP_INSTANCE_URL:-https://${CAP_DOMAIN}}
       - CAP_SITE_KEY=${CAP_SITE_KEY}
       - CAP_SECRET_KEY=${CAP_SECRET_KEY}
+      - TRUSTED_PROXY_HOSTS=caddy
 
   caddy:
     build:
