@@ -5,6 +5,29 @@ defmodule ShroudWeb.EmailAliasLiveTest do
   import Shroud.AliasesFixtures
   import Shroud.DomainFixtures
 
+  describe "Show" do
+    setup :register_and_log_in_user
+
+    test "desktop and mobile deletion require confirmation", %{conn: conn, user: user} do
+      email_alias = alias_fixture(%{user_id: user.id})
+      {:ok, view, _} = live(conn, ~p"/alias/#{email_alias.address}")
+
+      for button <- ["#delete-alias-desktop", "#delete-alias-mobile"] do
+        view |> element(button) |> render_click()
+        assert has_element?(view, "#delete-alias-modal[role='dialog']", email_alias.address)
+        assert is_nil(Shroud.Repo.reload!(email_alias).deleted_at)
+        view |> element("#delete-alias-modal") |> render_hook("hide", %{})
+        refute has_element?(view, "#delete-alias-modal")
+        assert is_nil(Shroud.Repo.reload!(email_alias).deleted_at)
+      end
+
+      view |> element("#delete-alias-desktop") |> render_click()
+      view |> element("#confirm-delete-alias") |> render_click()
+      assert_redirect(view, ~p"/")
+      assert Shroud.Repo.reload!(email_alias).deleted_at
+    end
+  end
+
   describe "Index" do
     setup :register_and_log_in_user
 

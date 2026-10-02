@@ -3,6 +3,7 @@ defmodule ShroudWeb.EmailAliasLive.Show do
   use ShroudWeb, :live_view
   alias Shroud.{Accounts, Aliases}
   alias Shroud.Email.ReplyAddress
+  alias ShroudWeb.Components.PopupAlert
 
   import ShroudWeb.Components.CopyToClipboardButton
 
@@ -26,6 +27,17 @@ defmodule ShroudWeb.EmailAliasLive.Show do
   def render(assigns) do
     ~H"""
     <div>
+      <.live_component
+        module={PopupAlert}
+        id="delete-alias-modal"
+        title="Delete alias?"
+        text={"Are you sure you want to permanently delete #{@alias.address}?"}
+        icon={:trash}
+      >
+        <:buttons>
+          <.button id="confirm-delete-alias" intent={:danger} text="Delete" click="delete" />
+        </:buttons>
+      </.live_component>
       <div class="bg-white dark:bg-gray-800 shadow-sm dark:shadow-gray-900/50 overflow-hidden sm:rounded-lg">
         <div class="px-4 py-5 sm:px-6">
           <div class="flex flex-col sm:flex-row items-center w-full">
@@ -39,8 +51,8 @@ defmodule ShroudWeb.EmailAliasLive.Show do
             />
             <div class="hidden sm:block ml-auto">
               <button
-                phx-click="delete"
-                data-confirm={"Are you sure you want to permanently delete #{@alias.address}?"}
+                id="delete-alias-desktop"
+                phx-click="open_delete_modal"
                 class="text-xs font-semibold uppercase text-red-700 hover:text-red-500"
               >
                 Delete
@@ -49,8 +61,8 @@ defmodule ShroudWeb.EmailAliasLive.Show do
           </div>
           <div class="flex justify-end sm:justify-between items-center mt-2">
             <button
-              phx-click="delete"
-              data-confirm={"Are you sure you want to permanently delete #{@alias.address}?"}
+              id="delete-alias-mobile"
+              phx-click="open_delete_modal"
               class="sm:hidden text-xs font-semibold uppercase text-red-700 hover:text-red-500"
             >
               Delete
@@ -330,6 +342,11 @@ defmodule ShroudWeb.EmailAliasLive.Show do
       </dl>
     </div>
     """
+  end
+
+  def handle_event("open_delete_modal", _params, socket) do
+    PopupAlert.show("delete-alias-modal")
+    {:noreply, socket}
   end
 
   def handle_event(

@@ -5,6 +5,7 @@ defmodule ShroudWeb.SpamEmailLive.Index do
 
   alias Shroud.Email
   alias Shroud.Aliases
+  alias ShroudWeb.Components.PopupAlert
 
   @impl true
   def mount(_params, _session, socket) do
@@ -19,6 +20,11 @@ defmodule ShroudWeb.SpamEmailLive.Index do
   end
 
   @impl true
+  def handle_event("open_delete_modal", %{"id" => id}, socket) do
+    PopupAlert.show("delete-spam-#{id}")
+    {:noreply, socket}
+  end
+
   def handle_event("delete", %{"id" => id}, socket) do
     spam_email =
       id

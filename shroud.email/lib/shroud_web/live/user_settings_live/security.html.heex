@@ -121,11 +121,10 @@
           </div>
           <div class="text-right space-x-3">
             <button
-              phx-click={
-                Phoenix.LiveView.JS.dispatch("shroud:copy",
-                  detail: %{text: Enum.join(@totp_backup_codes, "\n")}
-                )
-              }
+              id="copy-backup-codes"
+              phx-hook="CopyToClipboard"
+              data-clipboard-text={Enum.join(@totp_backup_codes, "\n")}
+              data-copy-error-event="backup_copy_failed"
               class="btn btn-primary"
             >
               Copy backup codes
@@ -138,6 +137,14 @@
               I've saved my backup codes
             </button>
           </div>
+          <.live_component
+            module={PopupAlert}
+            id="backup-copy-error"
+            title="Could not copy backup codes"
+            text="Please select and copy your backup codes manually."
+            icon={:exclamation_triangle}
+            dismiss_text="OK"
+          />
         </div>
       <% @show_disable_totp -> %>
         <.form for={@totp_form} phx-submit="disable_totp" id="disable_totp">

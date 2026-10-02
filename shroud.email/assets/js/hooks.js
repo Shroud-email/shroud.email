@@ -18,6 +18,9 @@ export function createCopyToClipboardHook({
           this.tooltip.setContent("Copied!");
         } catch {
           this.tooltip.setContent("Copy failed — please copy manually");
+          if (this.el.dataset.copyErrorEvent) {
+            this.pushEvent(this.el.dataset.copyErrorEvent, {});
+          }
         }
         this.resetTimer = setTimeout(
           () => this.tooltip.setContent("Copy to clipboard"),

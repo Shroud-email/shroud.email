@@ -5,12 +5,13 @@ defmodule ShroudWeb.Components.PopupAlert do
   attr(:text, :string, required: true)
   attr(:icon, :atom, required: true)
   attr(:on_close, :any, default: nil)
+  attr(:dismiss_text, :string, default: "Cancel")
 
   slot(:inner_block, required: false)
   slot(:buttons, required: false)
 
   def mount(socket) do
-    {:ok, assign(socket, :show, false)}
+    {:ok, assign(socket, show: false, dismiss_text: "Cancel", inner_block: [], buttons: [])}
   end
 
   def render(assigns) do
@@ -35,7 +36,7 @@ defmodule ShroudWeb.Components.PopupAlert do
         x-show="open"
         x-cloak
         class="relative z-10"
-        aria-labelledby="modal-title"
+        aria-labelledby={@id <> "-title"}
         role="dialog"
         aria-modal="true"
       >
@@ -80,7 +81,7 @@ defmodule ShroudWeb.Components.PopupAlert do
                     <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
                       <h3
                         class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100"
-                        id="modal-title"
+                        id={@id <> "-title"}
                       >
                         {@title}
                       </h3>
@@ -93,7 +94,12 @@ defmodule ShroudWeb.Components.PopupAlert do
                 </div>
                 <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 flex flex-col sm:flex-row-reverse gap-1">
                   {render_slot(@buttons)}
-                  <.button alpine_click="open = false" text="Cancel" intent={:secondary} />
+                  <.button
+                    alpine_click="open = false"
+                    text={@dismiss_text}
+                    intent={:secondary}
+                    autofocus
+                  />
                 </div>
               </.focus_wrap>
             </div>

@@ -26,6 +26,26 @@ defmodule ShroudWeb.SpamEmailLiveTest do
       assert html =~ spam_email.subject
     end
 
+    test "deletion confirms the selected email and cancellation preserves it", %{
+      conn: conn,
+      user: user,
+      spam_email: spam_email,
+      email_alias: email_alias
+    } do
+      other = spam_email_fixture(%{subject: "Keep this email"}, user, email_alias)
+      {:ok, view, _} = live(conn, ~p"/detention")
+      view |> element("#delete-spam-button-#{spam_email.id}") |> render_click()
+      assert has_element?(view, "#delete-spam-#{spam_email.id}", spam_email.subject)
+      view |> element("#delete-spam-#{spam_email.id}") |> render_hook("hide", %{})
+      assert Shroud.Repo.get(Shroud.Email.SpamEmail, spam_email.id)
+      view |> element("#delete-spam-button-#{spam_email.id}") |> render_click()
+      view |> element("#confirm-delete-spam-#{spam_email.id}") |> render_click()
+      refute has_element?(view, "#delete-spam-button-#{spam_email.id}")
+      refute Shroud.Repo.get(Shroud.Email.SpamEmail, spam_email.id)
+      assert Shroud.Repo.get(Shroud.Email.SpamEmail, other.id)
+      assert has_element?(view, "#delete-spam-button-#{other.id}")
+    end
+
     test "blocks a sender", %{conn: conn, spam_email: spam_email, email_alias: email_alias} do
       {:ok, view, _html} = live(conn, ~p"/detention")
 
