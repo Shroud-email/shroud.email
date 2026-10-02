@@ -25,15 +25,6 @@
     </script>
     <link phx-track-static rel="icon" href={~p"/favicon.ico"} />
     <script defer phx-track-static type="text/javascript" src={~p"/assets/app.js"}></script>
-    <%= if Application.fetch_env!(:shroud, :app_domain) == "app.shroud.email" do %>
-      <script
-        defer
-        data-domain="app.shroud.email"
-        data-api="https://shroud.email/p/api/event"
-        data-exclude="/alias/**, /domains/**, /users/confirm, /users/confirm/**, /email-report/**"
-        src="https://shroud.email/p/pjs/script.exclusions.js"
-      ></script>
-    <% end %>
     <script src="https://uptime.betterstack.com/widgets/announcement.js" data-id="251784" async="async" type="text/javascript"></script>
     <script :if={chatwoot_base_url()} src={chatwoot_base_url() <> "/packs/js/sdk.js"} async></script>
   </head>
