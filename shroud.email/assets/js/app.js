@@ -33,7 +33,7 @@ import { initializePaddle } from "@paddle/paddle-js";
 import { setupPaddleCheckout } from "./paddle_checkout.mjs";
 import { PasskeyRegistration, PasskeyLogin } from "./passkeys.mjs";
 import posthog from "posthog-js";
-import { redactAnalyticsTokens } from "./analytics.mjs";
+import { sanitizeAnalyticsEvent } from "./analytics.mjs";
 
 const posthogToken = document.querySelector('meta[name="posthog-token"]')?.content;
 if (posthogToken) {
@@ -43,7 +43,7 @@ if (posthogToken) {
     cookieless_mode: "always",
     person_profiles: "never",
     capture_pageview: "history_change",
-    before_send: redactAnalyticsTokens,
+    before_send: sanitizeAnalyticsEvent,
     autocapture: false,
     disable_session_recording: true,
     disable_surveys: true,
