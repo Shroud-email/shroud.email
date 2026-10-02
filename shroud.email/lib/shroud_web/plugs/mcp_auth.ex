@@ -47,7 +47,7 @@ defmodule ShroudWeb.Plugs.McpAuth do
     |> put_resp_header("access-control-allow-origin", origin)
     |> put_resp_header(
       "access-control-expose-headers",
-      "WWW-Authenticate, MCP-Session-Id, MCP-Protocol-Version"
+      "WWW-Authenticate, MCP-Session-Id, MCP-Protocol-Version, Retry-After"
     )
   end
 
@@ -76,15 +76,22 @@ defmodule ShroudWeb.Plugs.McpAuth do
   end
 
   defp authenticate(conn, token) do
-    case Mcp.with_access(token, nil, fn _connection -> :ok end) do
-      :ok ->
-        if conn.method == "GET" and conn.request_path == "/mcp" do
-          conn
-          |> put_resp_header("allow", "POST, DELETE")
-          |> send_resp(405, "Streaming not supported")
-          |> halt()
-        else
-          assign(conn, :mcp_token, token)
+    case Mcp.with_access(token, nil, fn connection -> {:ok, connection.user_id} end) do
+      {:ok, user_id} ->
+        conn = ShroudWeb.Plugs.RateLimit.enforce(conn, :api, {:account, user_id})
+
+        cond do
+          conn.halted ->
+            conn
+
+          conn.method == "GET" and conn.request_path == "/mcp" ->
+            conn
+            |> put_resp_header("allow", "POST, DELETE")
+            |> send_resp(405, "Streaming not supported")
+            |> halt()
+
+          true ->
+            assign(conn, :mcp_token, token)
         end
 
       _ ->

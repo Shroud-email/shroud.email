@@ -3,6 +3,7 @@ defmodule ShroudWeb.McpOAuthController do
   alias Shroud.Mcp
 
   plug :put_private_headers
+  plug ShroudWeb.Plugs.RateLimit, :routes when action in [:token, :revoke]
 
   def metadata(conn, _params) do
     json(conn, %{
