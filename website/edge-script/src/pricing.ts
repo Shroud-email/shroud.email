@@ -20,7 +20,7 @@
 
 import "./bunny-globals.d.ts";
 
-export const PRICING_REVISION = "html-ranges-v4";
+export const PRICING_REVISION = "directory-errors-v5";
 
 // Country codes that should see the UK price. GB + the Crown dependencies
 // (Guernsey, Jersey, Isle of Man) share the UK billing entity in Paddle.
@@ -28,6 +28,100 @@ const UK_COUNTRY_CODES = new Set(["GB", "GG", "JE", "IM"]);
 
 function isUK(country: string | null): boolean {
   return country !== null && UK_COUNTRY_CODES.has(country.toUpperCase());
+}
+
+// Native Storage returns an empty 400 for some missing directory URLs. Check
+// the explicit index file before replacing that response; other 400s stay 400.
+// This hook requires the Pull Zone's "Run script before cache" setting.
+export async function repairDirectoryNotFound(
+  ctx: { request: Request; response: Response },
+) {
+  const url = new URL(ctx.request.url);
+  const directoryStyle = url.pathname.endsWith("/") ||
+    !url.pathname.split("/").at(-1)!.includes(".");
+  console.log(
+    "shroud-pricing",
+    JSON.stringify({
+      revision: PRICING_REVISION,
+      stage: "client-response",
+      method: ctx.request.method,
+      status: ctx.response.status,
+      directoryStyle,
+    }),
+  );
+  if (
+    ctx.response.status !== 400 || !directoryStyle ||
+    (ctx.request.method !== "GET" && ctx.request.method !== "HEAD")
+  ) {
+    return ctx.response;
+  }
+
+  url.pathname += url.pathname.endsWith("/") ? "index.html" : "/index.html";
+  const requestHeaders = new Headers(ctx.request.headers);
+  requestHeaders.delete("range");
+  requestHeaders.delete("if-range");
+  let fallback: Response;
+  try {
+    // The explicit .html path cannot enter this fallback again. Do not follow
+    // redirects or turn an origin/network failure into a fabricated 404.
+    fallback = await fetch(url, {
+      method: ctx.request.method,
+      headers: requestHeaders,
+      redirect: "manual",
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch (error) {
+    console.log(
+      "shroud-pricing",
+      JSON.stringify({
+        revision: PRICING_REVISION,
+        stage: "directory-error-probe-failed",
+        errorName: error instanceof Error ? error.name : "non-Error",
+      }),
+    );
+    return ctx.response;
+  }
+  console.log(
+    "shroud-pricing",
+    JSON.stringify({
+      revision: PRICING_REVISION,
+      stage: "directory-error-probe",
+      status: fallback.status,
+    }),
+  );
+  if (fallback.status !== 404) {
+    try {
+      await fallback.body?.cancel();
+    } catch {
+      // A failed cleanup must not replace the original error response.
+    }
+    return ctx.response;
+  }
+
+  let body: ArrayBuffer | null;
+  try {
+    body = ctx.request.method === "HEAD" ? null : await fallback.arrayBuffer();
+  } catch (error) {
+    console.log(
+      "shroud-pricing",
+      JSON.stringify({
+        revision: PRICING_REVISION,
+        stage: "directory-error-body-failed",
+        errorName: error instanceof Error ? error.name : "non-Error",
+      }),
+    );
+    return ctx.response;
+  }
+  const headers = new Headers(fallback.headers);
+  if (body !== null) {
+    headers.delete("content-encoding");
+    headers.delete("transfer-encoding");
+    headers.set("content-length", String(body.byteLength));
+  }
+  headers.set("cache-control", "no-store");
+  headers.set("x-shroud-pricing-revision", PRICING_REVISION);
+  ctx.response = new Response(body, { status: 404, headers });
+  return ctx.response;
 }
 
 // Rewritten HTML is a different representation with different byte offsets.

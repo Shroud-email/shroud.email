@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
-import { disableHtmlRanges, rewritePricing } from "./pricing.ts";
+import {
+  disableHtmlRanges,
+  repairDirectoryNotFound,
+  rewritePricing,
+} from "./pricing.ts";
 
 Deno.test("HTML GET and HEAD drop range headers without changing URLs or other headers", async () => {
   for (
@@ -153,11 +157,11 @@ Deno.test("worldwide rewrite replaces stale framing with the exact UTF-8 byte co
     assert.equal(result.headers.get("x-bunny-deploy"), "fixture");
     assert.equal(
       result.headers.get("x-shroud-pricing-revision"),
-      "html-ranges-v4",
+      "directory-errors-v5",
     );
     assert.deepEqual(logs, [
       {
-        revision: "html-ranges-v4",
+        revision: "directory-errors-v5",
         stage: "origin-response",
         method: "GET",
         status: 404,
@@ -175,13 +179,13 @@ Deno.test("worldwide rewrite replaces stale framing with the exact UTF-8 byte co
         bodyLocked: false,
       },
       {
-        revision: "html-ranges-v4",
+        revision: "directory-errors-v5",
         stage: "before-transform",
         bodyUsed: false,
         bodyLocked: false,
       },
       {
-        revision: "html-ranges-v4",
+        revision: "directory-errors-v5",
         stage: "before-buffer",
         inputLength: null,
         rewrittenLength: "150",
@@ -190,7 +194,7 @@ Deno.test("worldwide rewrite replaces stale framing with the exact UTF-8 byte co
         bodyLocked: false,
       },
       {
-        revision: "html-ranges-v4",
+        revision: "directory-errors-v5",
         stage: "return-response",
         status: 404,
         priceReplacements: 3,
@@ -198,7 +202,7 @@ Deno.test("worldwide rewrite replaces stale framing with the exact UTF-8 byte co
         returnedLength: "147",
         returnedEncoding: null,
         returnedCacheControl: "no-store",
-        returnedRevision: "html-ranges-v4",
+        returnedRevision: "directory-errors-v5",
         bodyUsed: false,
         bodyLocked: false,
       },
@@ -357,4 +361,148 @@ Deno.test("non-HTML assets retain the original response and cache/framing header
   assert.equal(result, response);
   assert.equal(result.headers.get("content-length"), "4");
   assert.equal(result.headers.get("cache-control"), "public, max-age=86400");
+});
+
+Deno.test("directory 400 uses the actual index-file 404, preserving GET/HEAD and query", async () => {
+  const originalFetch = globalThis.fetch;
+  try {
+    for (const [method, path] of [["GET", "/missing/"], ["HEAD", "/missing"]]) {
+      let probes = 0;
+      globalThis.fetch = (input, init) => {
+        probes++;
+        assert.equal(
+          String(input),
+          "https://example.test/missing/index.html?lang=en",
+        );
+        assert.equal(init?.method, method);
+        assert.equal(init?.redirect, "manual");
+        assert.ok(init?.signal);
+        const headers = new Headers(init?.headers);
+        assert.equal(headers.get("authorization"), "Bearer fixture");
+        assert.equal(headers.has("range"), false);
+        assert.equal(headers.has("if-range"), false);
+        return Promise.resolve(
+          new Response(method === "HEAD" ? null : "Real custom 404", {
+            status: 404,
+            headers: {
+              "content-type": "text/html",
+              "cache-control": "public, max-age=60",
+            },
+          }),
+        );
+      };
+      const ctx = {
+        request: new Request(`https://example.test${path}?lang=en`, {
+          method,
+          headers: {
+            "authorization": "Bearer fixture",
+            "range": "bytes=0-99",
+            "if-range": '"etag"',
+          },
+        }),
+        response: new Response("Original 400", { status: 400 }),
+      };
+      const result = await repairDirectoryNotFound(ctx);
+      assert.equal(probes, 1);
+      assert.equal(result, ctx.response);
+      assert.equal(result.status, 404);
+      assert.equal(result.headers.get("content-type"), "text/html");
+      assert.equal(result.headers.get("cache-control"), "no-store");
+      if (method === "GET") {
+        assert.equal(result.headers.get("content-length"), "15");
+      }
+      assert.equal(
+        result.headers.get("x-shroud-pricing-revision"),
+        "directory-errors-v5",
+      );
+      if (method === "HEAD") assert.equal(result.body, null);
+      else assert.equal(await result.text(), "Real custom 404");
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+Deno.test("client handler leaves successful, blocked, file and non-read requests alone", async () => {
+  const originalFetch = globalThis.fetch;
+  let probes = 0;
+  globalThis.fetch = () => {
+    probes++;
+    throw new Error("Must not probe");
+  };
+  try {
+    for (
+      const [status, method, path] of [
+        [200, "GET", "/pricing/"],
+        [404, "GET", "/missing/"],
+        [403, "GET", "/_bunny/"],
+        [400, "GET", "/missing/index.html"],
+        [400, "GET", "/missing.css"],
+        [400, "POST", "/missing/"],
+      ] as const
+    ) {
+      const response = new Response("Original", { status });
+      const result = await repairDirectoryNotFound({
+        request: new Request(`https://example.test${path}`, { method }),
+        response,
+      });
+      assert.equal(result, response);
+      assert.equal(await result.text(), "Original");
+    }
+    assert.equal(probes, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+Deno.test("an index probe must really return 404; redirects, successes and failures preserve 400", async () => {
+  const originalFetch = globalThis.fetch;
+  try {
+    for (const status of [200, 301, 400, 403, 500, "network-error"] as const) {
+      globalThis.fetch = () => {
+        if (status === "network-error") {
+          return Promise.reject(new TypeError("Private fixture data"));
+        }
+        return Promise.resolve(new Response("Probe", { status }));
+      };
+      const response = new Response("Original 400", { status: 400 });
+      const result = await repairDirectoryNotFound({
+        request: new Request("https://example.test/missing/"),
+        response,
+      });
+      assert.equal(result, response);
+      assert.equal(await result.text(), "Original 400");
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+Deno.test("failed probe body reads and cleanup preserve the original 400", async () => {
+  const originalFetch = globalThis.fetch;
+  try {
+    for (const status of [404, 500]) {
+      globalThis.fetch = () =>
+        Promise.resolve(
+          new Response(
+            new ReadableStream({
+              start(controller) {
+                controller.error(new TypeError("Private stream error"));
+              },
+            }),
+            { status },
+          ),
+        );
+      const response = new Response("Original 400", { status: 400 });
+      const ctx = {
+        request: new Request("https://example.test/missing/"),
+        response,
+      };
+      assert.equal(await repairDirectoryNotFound(ctx), response);
+      assert.equal(ctx.response, response);
+      assert.equal(await response.text(), "Original 400");
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

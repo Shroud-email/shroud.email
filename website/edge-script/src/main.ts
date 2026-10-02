@@ -1,7 +1,8 @@
-import * as BunnySDK from "https://esm.sh/@bunny.net/edgescript-sdk@0.12.0";
+import * as BunnySDK from "https://esm.sh/@bunny.net/edgescript-sdk@0.13.0";
 import {
   disableHtmlRanges,
   PRICING_REVISION,
+  repairDirectoryNotFound,
   rewritePricing,
 } from "./pricing.ts";
 
@@ -10,7 +11,7 @@ console.log(
   JSON.stringify({
     revision: PRICING_REVISION,
     stage: "script-start",
-    sdk: "0.12.0",
+    sdk: "0.13.0",
     nativeBunny: "Bunny" in globalThis,
   }),
 );
@@ -19,7 +20,8 @@ console.log(
 BunnySDK.net.http
   .servePullZone({ url: "https://shroud.email/" })
   .onOriginRequest(disableHtmlRanges)
-  .onOriginResponse(rewritePricing);
+  .onOriginResponse(rewritePricing)
+  .onClientResponse(repairDirectoryNotFound);
 
 console.log(
   "shroud-pricing",

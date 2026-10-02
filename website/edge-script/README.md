@@ -59,8 +59,31 @@ The origin-request hook now removes Range and If-Range for GET/HEAD paths ending
 in `/` or `.html`, so HTML can be fetched in full before changing byte offsets.
 It leaves URLs, queries, authentication and other headers intact. Asset ranges,
 extensionless paths without trailing slashes, and other methods are unchanged.
-The unsuccessful URL rewrite was removed. Staging must still verify that Bunny
-honors the cleared origin range headers and returns full responses.
+The unsuccessful URL rewrite was removed. The v4
+staging run and an independent US request confirmed that pricing now completes
+with 39,317 bytes both advertised and received, and the origin returns 200.
+
+### Directory not-found responses
+
+Missing directory-style URLs still return an empty 400, while their explicit
+`index.html` counterparts return the real custom 404 page. SDK 0.13.0 adds
+`onClientResponse`, which handles responses on the client side of the cache.
+For a GET/HEAD directory-style 400, the handler probes the same-origin explicit
+index file without Range/If-Range. It uses that response only if its status is
+404. Successful pages, redirects, blocked paths, asset errors, non-read methods,
+and probe/network failures retain their original response. The probe does not
+follow redirects and has a 10-second timeout, including reading the error body.
+Its explicit `.html` path excludes it from the fallback guard; native client
+URL handling and same-zone fetch behavior still need staging verification.
+The replacement 404 is not cached.
+
+This hook requires **Pull Zone → General → Origin → Run script before cache**.
+Enabling it executes the script even for cached requests, increasing execution
+volume. Do not enable it automatically or change the production zone as part of
+a staging trial. The operator must agree to and enable this account setting for
+staging; no workflow or adoption-script change enables it. Native behavior is
+still pending staging validation. The existing origin hooks keep the verified
+pricing fix regardless of whether before-cache execution is enabled.
 
 Temporary `shroud-pricing` logs now cover every origin response without a path
 filter. Sites configures an origin prefix `/deploys/<release>/`; the native
@@ -68,14 +91,14 @@ middleware logs confirmed deploy-prefixed paths, so a public-path-only diagnosti
 filter excluded those rewritten requests. The initial v1 diagnostics used that
 filter and produced no logs in the user's capture.
 
-Revision `html-ranges-v4` logs script startup and middleware registration,
+Revision `directory-errors-v5` logs script startup and middleware registration,
 including whether the native Bunny global exists. Per-request logs include
 method, status, validated country, path-shape flags (not actual URLs), framing,
 content type, cache control, stream state, transformation/buffering checkpoints,
 replacement count, and returned headers. Every branch logs its outcome;
 buffering errors log their type and are rethrown. Logs exclude URLs, query
 strings, cookies, credentials, error messages, and response contents. All HTML
-responses return `X-Shroud-Pricing-Revision: html-ranges-v4`. The origin-request
+responses return `X-Shroud-Pricing-Revision: directory-errors-v5`. The origin-request
 log records HTML classification, bounded numeric byte-range values and incoming
 and outgoing Range/If-Range presence. The workflow prints
 only framing/cache/revision headers and the received byte count, preserving
@@ -85,6 +108,8 @@ invocation, buffering has not completed. UK, HEAD/bodyless, and non-HTML
 responses have distinct pass-through/return events instead.
 A correct logged length but incorrect wire length points to subsequent response
 handling. Remove these temporary diagnostics once the native framing issue is resolved.
+Client-side logs also record the original status and the explicit-index probe's
+status (or error type), without logging URLs, header credentials, or bodies.
 
 ## Files
 
