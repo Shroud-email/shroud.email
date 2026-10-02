@@ -12,6 +12,34 @@ If you want to get up and running with Shroud.email quickly, and don't want to m
 
 Copy `haraka/haraka_config/config/me.example` to `haraka/haraka_config/config/me` and set your mail hostname.
 
+## Custom-domain DKIM
+
+Generate and publish the `EMAIL_DOMAIN` DKIM key using the deployment guide and
+`haraka/haraka_config/config/dkim/dkim_key_gen.sh`. The local `dkim_shroud` plugin
+automatically signs for custom domains whose ownership was verified within the
+last 24 hours, using this same private key and selector while retaining the
+custom domain as the signature's `d=` value. Customers publish the DKIM CNAME
+shown in the app; no per-customer keys, files or restarts are required.
+
+The plugin was imported from `haraka-plugin-dkim` 1.3.1 with its MIT license.
+Signing and verification code remain upstream; custom-domain key selection uses
+PostgreSQL through the existing Haraka database environment variables. Unknown
+or expired domains are not signed. Lookup errors and missing keys are logged
+and mail continues without a signature, preserving upstream behavior.
+
+After updating an existing installation, rebuild/recreate Haraka to activate the
+plugin. Test both a forwarded message and an alias reply at an external inbox:
+the signature should have `d=<custom domain>; s=shroudemail`, and the recipient's
+`Authentication-Results` should report `dkim=pass`.
+
+Regression tests (requires Node.js and OpenSSL):
+
+```sh
+cd haraka/haraka_config
+npm ci --omit=dev --omit=optional
+node --test test/*.test.js
+```
+
 ## SMTP certificate renewal
 
 The daily cron job publishes Caddy's certificate and matching private key as one

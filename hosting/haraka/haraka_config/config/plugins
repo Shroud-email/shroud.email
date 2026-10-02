@@ -62,7 +62,7 @@ headers
 #attachment
 #clamd
 spamassassin
-dkim
+dkim_shroud
 #limit
 
 # Log (outgoing) bounces as WARN
