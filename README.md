@@ -11,6 +11,7 @@ projects.
 | [mobile](mobile/) | React Native/Expo app | `npx tsc --noEmit` and `npm run lint` |
 | [hosting](hosting/) | Self-hosting Docker Compose stack | `docker compose config --quiet` |
 | [email-trackers](email-trackers/) | Tracker list and publishing script | `node --check scripts/deploy-bunny.mjs` |
+| [plausible-proxy](plausible-proxy/) | Bunny Edge Script proxy for Plausible Analytics | `mise exec -- deno task check` and `mise exec -- deno task test` |
 | [caddy-permissive-file-storage](caddy-permissive-file-storage/) | Caddy storage module | `bash test/e2e.sh` (requires xcaddy) |
 
 Run project commands from their respective directories. Each project keeps its
