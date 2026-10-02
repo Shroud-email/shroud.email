@@ -3,11 +3,11 @@ import test from "node:test";
 import { sanitizeAnalyticsEvent } from "./analytics.mjs";
 
 test("retains pageviews but redacts bearer tokens from URL and referrer properties", () => {
-  for (const route of [
-    "/users/reset_password",
-    "/users/confirm",
-    "/settings/confirm_email",
-    "/email-report",
+  for (const [route, placeholder] of [
+    ["/users/reset_password", ":token"],
+    ["/users/confirm", ":token"],
+    ["/settings/confirm_email", ":token"],
+    ["/email-report", ":data"],
   ]) {
     const event = {
       event: "$pageview",
@@ -24,10 +24,10 @@ test("retains pageviews but redacts bearer tokens from URL and referrer properti
       event: "$pageview",
       uuid: "event-uuid",
       properties: {
-        $current_url: `https://app.shroud.email${route}/[redacted]?source=email#form`,
-        $pathname: `${route}/[redacted]`,
-        $referrer: `https://app.shroud.email${route}/[redacted]`,
-        $set_once: { $initial_current_url: `https://app.shroud.email${route}/[redacted]` },
+        $current_url: `https://app.shroud.email${route}/${placeholder}?source=email#form`,
+        $pathname: `${route}/${placeholder}`,
+        $referrer: `https://app.shroud.email${route}/${placeholder}`,
+        $set_once: { $initial_current_url: `https://app.shroud.email${route}/${placeholder}` },
         $process_person_profile: false,
       },
     });
