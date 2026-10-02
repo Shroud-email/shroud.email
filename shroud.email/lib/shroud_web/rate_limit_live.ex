@@ -2,6 +2,7 @@ defmodule ShroudWeb.RateLimitLive do
   @moduledoc "Rate limits sensitive connected LiveView events before their handlers run."
   import Phoenix.Component
   import Phoenix.LiveView
+  import ShroudWeb.Components.Notifications, only: [put_notification: 3]
   alias Shroud.RateLimit
   alias ShroudWeb.Plugs.ClientIP
 
@@ -75,7 +76,7 @@ defmodule ShroudWeb.RateLimitLive do
     socket =
       if socket.view == ShroudWeb.PasskeyLoginLive,
         do: assign(socket, :error, message),
-        else: put_flash(socket, :error, message)
+        else: put_notification(socket, :error, message)
 
     {:halt, %{error: message, retry_after: seconds}, socket}
   end

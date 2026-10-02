@@ -15,7 +15,12 @@ defmodule ShroudWeb.UserSettingsLiveTest do
 
     render_submit(view, "update_email_preferences", %{"user" => %{"email_branding" => "false"}})
 
-    assert has_element?(view, "#settings-error", "Email preferences are not available.")
+    assert has_element?(
+             view,
+             "#notification-source [data-kind=error]",
+             "Email preferences are not available."
+           )
+
     assert Repo.reload!(user).email_branding
   end
 
@@ -33,7 +38,13 @@ defmodule ShroudWeb.UserSettingsLiveTest do
     |> render_submit()
 
     refute has_element?(view, "#email-preferences-form")
-    assert has_element?(view, "#settings-error", "Email preferences are not available.")
+
+    assert has_element?(
+             view,
+             "#notification-source [data-kind=error]",
+             "Email preferences are not available."
+           )
+
     assert Repo.reload!(user).email_branding
   end
 
@@ -51,7 +62,13 @@ defmodule ShroudWeb.UserSettingsLiveTest do
       |> render_submit()
 
       assert Repo.reload!(user).email_branding == enabled
-      assert has_element?(view, "#settings-info", "Email preferences updated.")
+
+      assert has_element?(
+               view,
+               "#notification-source [data-kind=info]",
+               "Email preferences updated."
+             )
+
       {:ok, reloaded, _} = live(conn, ~p"/settings/account")
       assert has_element?(reloaded, "#user_email_branding[checked]") == enabled
     end
@@ -65,6 +82,76 @@ defmodule ShroudWeb.UserSettingsLiveTest do
 
     assert has_element?(view, "#email-preferences-form .invalid-feedback", "is invalid")
     assert Repo.reload!(user).email_branding
+  end
+
+  test "repeated confirmations stack independently and errors have no expiry", %{conn: conn} do
+    {:ok, view, _} = live(conn, ~p"/settings/appearance")
+    notifications = find_live_child(view, "notifications")
+
+    render_submit(view, "update_theme", %{"theme" => "dark"})
+
+    [first_source_id] =
+      render(view)
+      |> Floki.parse_document!()
+      |> Floki.find("#notification-source [data-kind=info]")
+      |> Floki.attribute("data-id")
+
+    assert has_element?(
+             view,
+             "#notification-source [data-id='#{first_source_id}'][data-duration='8000']",
+             "Appearance updated."
+           )
+
+    render_submit(view, "update_theme", %{"theme" => "light"})
+
+    [second_source_id] =
+      render(view)
+      |> Floki.parse_document!()
+      |> Floki.find("#notification-source [data-kind=info]")
+      |> Floki.attribute("data-id")
+
+    refute first_source_id == second_source_id
+
+    assert has_element?(
+             view,
+             "#notification-source [data-id='#{second_source_id}'][data-duration='8000']",
+             "Appearance updated."
+           )
+
+    for _ <- 1..2 do
+      notifications
+      |> element("#toast-group")
+      |> render_hook("add_toast", %{
+        kind: "info",
+        message: "Appearance updated.",
+        options: %{duration: 8000}
+      })
+    end
+
+    assert has_element?(
+             notifications,
+             "#toast-group-stream > :nth-child(2)[data-duration='8000']",
+             "Appearance updated."
+           )
+
+    [first_id, second_id] =
+      render(notifications)
+      |> Floki.parse_document!()
+      |> Floki.find("#toast-group-stream > div")
+      |> Floki.attribute("id")
+
+    refute first_id == second_id
+
+    view |> element("#settings-nav-account") |> render_click()
+    assert find_live_child(view, "notifications").pid == notifications.pid
+    assert has_element?(notifications, "##{first_id}")
+    notifications |> element("#toast-group") |> render_hook("clear", %{id: first_id})
+    refute has_element?(notifications, "##{first_id}")
+    assert has_element?(notifications, "##{second_id}")
+
+    render_submit(view, "update_theme", %{"theme" => "invalid"})
+    assert has_element?(view, "#notification-source [data-kind=error][data-duration='0']")
+    refute has_element?(view, "#settings-info, #settings-error")
   end
 
   test "patches between settings pages and updates the active navigation", %{conn: conn} do
@@ -107,7 +194,12 @@ defmodule ShroudWeb.UserSettingsLiveTest do
     |> form("#update_email", user: %{email: email}, current_password: valid_user_password())
     |> render_submit()
 
-    assert has_element?(view, "#settings-info", "A link to confirm your email")
+    assert has_element?(
+             view,
+             "#notification-source [data-kind=info]",
+             "A link to confirm your email"
+           )
+
     assert Repo.reload!(user).email == user.email
     assert_receive {:email, %{to: [{_, ^email}], text_body: body}}
     assert body =~ "/settings/confirm_email/"
@@ -180,7 +272,13 @@ defmodule ShroudWeb.UserSettingsLiveTest do
     end
 
     render_submit(view, "update_theme", %{"theme" => "invalid"})
-    assert has_element?(view, "#settings-error", "Invalid theme preference")
+
+    assert has_element?(
+             view,
+             "#notification-source [data-kind=error]",
+             "Invalid theme preference"
+           )
+
     assert Repo.reload!(user).theme == :system
   end
 
@@ -247,7 +345,7 @@ defmodule ShroudWeb.UserSettingsLiveTest do
     view |> form("#enable_totp", verification_code: "invalid") |> render_submit()
     refute Repo.reload!(user).totp_enabled
     refute has_element?(view, "#totp-qr-code")
-    assert has_element?(view, "#settings-error", "Invalid two-factor")
+    assert has_element?(view, "#notification-source [data-kind=error]", "Invalid two-factor")
   end
 
   test "2FA disable rejects invalid codes and consumes a valid backup code", %{
@@ -262,7 +360,7 @@ defmodule ShroudWeb.UserSettingsLiveTest do
     assert has_element?(view, "#disable_totp")
     view |> form("#disable_totp", verification_code: "invalid") |> render_submit()
     assert Repo.reload!(user).totp_enabled
-    assert has_element?(view, "#settings-error", "Invalid two-factor")
+    assert has_element?(view, "#notification-source [data-kind=error]", "Invalid two-factor")
     [code | remaining] = Repo.reload!(user).totp_backup_codes
     view |> form("#disable_totp", verification_code: code) |> render_submit()
     refute Repo.reload!(user).totp_enabled
@@ -276,20 +374,20 @@ defmodule ShroudWeb.UserSettingsLiveTest do
   } do
     {:ok, view, _} = live(conn, ~p"/settings/billing/lifetime")
     view |> form("#lifetime-form", lifetime_code: "invalid") |> render_submit()
-    assert has_element?(view, "#settings-error", "Invalid code")
+    assert has_element?(view, "#notification-source [data-kind=error]", "Invalid code")
     refute Repo.reload!(user).status == :lifetime
 
     used = Billing.create_lifetime_code()
     :ok = Billing.redeem_lifetime_code(used, user_fixture())
     view |> form("#lifetime-form", lifetime_code: used) |> render_submit()
-    assert has_element?(view, "#settings-error", "already been redeemed")
+    assert has_element?(view, "#notification-source [data-kind=error]", "already been redeemed")
 
     code = Billing.create_lifetime_code()
     view |> form("#lifetime-form", lifetime_code: code) |> render_submit()
     assert_patch(view, ~p"/settings/billing")
     assert Repo.reload!(user).status == :lifetime
     refute has_element?(view, "#upgrade-button")
-    assert has_element?(view, "#settings-info", "successfully signed up")
+    assert has_element?(view, "#notification-source [data-kind=info]", "successfully signed up")
   end
 
   test "billing shows subscriber portal or free-plan upgrade", %{conn: conn, user: user} do

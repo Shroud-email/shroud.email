@@ -98,7 +98,7 @@ defmodule ShroudWeb.UserSettingsLive do
         {:noreply,
          socket
          |> assign(:email_form, to_form(Accounts.change_user_email(user)))
-         |> put_flash(
+         |> put_notification(
            :info,
            "A link to confirm your email change has been sent to the new address."
          )}
@@ -119,13 +119,13 @@ defmodule ShroudWeb.UserSettingsLive do
            current_user: user,
            email_preferences_form: to_form(User.email_preferences_changeset(user, %{}))
          )
-         |> put_flash(:info, "Email preferences updated.")}
+         |> put_notification(:info, "Email preferences updated.")}
 
       {:error, :feature_disabled} ->
         {:noreply,
          socket
          |> assign(:email_preferences_enabled?, false)
-         |> put_flash(:error, "Email preferences are not available.")}
+         |> put_notification(:error, "Email preferences are not available.")}
 
       {:error, changeset} ->
         {:noreply, assign(socket, :email_preferences_form, to_form(changeset))}
@@ -304,7 +304,7 @@ defmodule ShroudWeb.UserSettingsLive do
            socket
            |> assign(passkey_dialog: nil, passkey_password_error: nil)
            |> stream(:passkeys, Accounts.list_passkeys(user), reset: true)
-           |> put_flash(:info, "Passkey removed.")}
+           |> put_notification(:info, "Passkey removed.")}
       end
     else
       _ -> {:noreply, stream(socket, :passkeys, credentials, reset: true)}
@@ -318,11 +318,11 @@ defmodule ShroudWeb.UserSettingsLive do
          socket
          |> assign(:current_user, user)
          |> assign(:appearance_form, to_form(%{"theme" => to_string(user.theme)}))
-         |> put_flash(:info, "Appearance updated.")
+         |> put_notification(:info, "Appearance updated.")
          |> push_event("set-theme", %{theme: to_string(user.theme)})}
 
       {:error, _changeset} ->
-        {:noreply, put_flash(socket, :error, "Invalid theme preference.")}
+        {:noreply, put_notification(socket, :error, "Invalid theme preference.")}
     end
   end
 
@@ -353,12 +353,12 @@ defmodule ShroudWeb.UserSettingsLive do
          otp_qr_code: nil,
          totp_backup_codes: backup_codes
        )
-       |> put_flash(:info, "Enabled two-factor authentication.")}
+       |> put_notification(:info, "Enabled two-factor authentication.")}
     else
       {:noreply,
        socket
        |> assign(totp_secret: nil, otp_qr_code: nil, current_user: user)
-       |> put_flash(:error, "Invalid two-factor authentication code.")}
+       |> put_notification(:error, "Invalid two-factor authentication code.")}
     end
   end
 
@@ -379,9 +379,9 @@ defmodule ShroudWeb.UserSettingsLive do
       {:noreply,
        socket
        |> assign(current_user: user, show_disable_totp: false, totp_backup_codes: nil)
-       |> put_flash(:info, "Disabled two-factor authentication.")}
+       |> put_notification(:info, "Disabled two-factor authentication.")}
     else
-      {:noreply, put_flash(socket, :error, "Invalid two-factor authentication code.")}
+      {:noreply, put_notification(socket, :error, "Invalid two-factor authentication code.")}
     end
   end
 
@@ -390,17 +390,18 @@ defmodule ShroudWeb.UserSettingsLive do
       :ok ->
         {:noreply,
          socket
-         |> put_flash(:info, "You have successfully signed up for lifetime access!")
+         |> put_notification(:info, "You have successfully signed up for lifetime access!")
          |> push_patch(to: ~p"/settings/billing")}
 
       {:error, :invalid_code} ->
-        {:noreply, put_flash(socket, :error, "Invalid code.")}
+        {:noreply, put_notification(socket, :error, "Invalid code.")}
 
       {:error, :already_redeemed} ->
-        {:noreply, put_flash(socket, :error, "This code has already been redeemed.")}
+        {:noreply, put_notification(socket, :error, "This code has already been redeemed.")}
 
       {:error, :redemption_failed} ->
-        {:noreply, put_flash(socket, :error, "We couldn't redeem this code. Please try again.")}
+        {:noreply,
+         put_notification(socket, :error, "We couldn't redeem this code. Please try again.")}
     end
   end
 

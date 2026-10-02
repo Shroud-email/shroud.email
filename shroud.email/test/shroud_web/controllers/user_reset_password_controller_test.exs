@@ -34,7 +34,7 @@ defmodule ShroudWeb.UserResetPasswordControllerTest do
 
       assert_redirected_alert(
         conn,
-        "#login-info[role=alert]",
+        "#toast-group #flash-info[role=alert]",
         "If your email is in our system, you will receive instructions to reset your password shortly."
       )
     end
@@ -51,7 +51,7 @@ defmodule ShroudWeb.UserResetPasswordControllerTest do
 
       assert_redirected_alert(
         conn,
-        "#login-info[role=alert]",
+        "#toast-group #flash-info[role=alert]",
         "If your email is in our system, you will receive instructions to reset your password shortly."
       )
     end
@@ -113,7 +113,11 @@ defmodule ShroudWeb.UserResetPasswordControllerTest do
       assert Flash.get(conn.assigns.flash, :info) =~ "Password reset successfully"
       assert Accounts.get_user_by_email_and_password(user.email, "new valid password")
 
-      assert_redirected_alert(conn, "#login-info[role=alert]", "Password reset successfully.")
+      assert_redirected_alert(
+        conn,
+        "#toast-group #flash-info[role=alert]",
+        "Password reset successfully."
+      )
     end
 
     test "does not reset password on invalid data", %{conn: conn, token: token} do
@@ -154,7 +158,7 @@ defmodule ShroudWeb.UserResetPasswordControllerTest do
 
       assert_redirected_alert(
         conn,
-        "#reset-password-error[role=alert]",
+        "#toast-group #flash-error[role=alert]",
         "CAPTCHA verification failed. Please try again."
       )
     after

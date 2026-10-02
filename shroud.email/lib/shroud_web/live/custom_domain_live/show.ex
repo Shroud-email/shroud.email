@@ -113,7 +113,7 @@ defmodule ShroudWeb.CustomDomainLive.Show do
     socket =
       socket
       |> assign(:domain, domain)
-      |> put_flash(:success, "#{verb} catch-all for #{domain.domain}.")
+      |> put_notification(:success, "#{verb} catch-all for #{domain.domain}.")
 
     {:noreply, socket}
   end
@@ -129,10 +129,10 @@ defmodule ShroudWeb.CustomDomainLive.Show do
         Domain.delete_custom_domain!(domain)
 
         socket
-        |> put_flash(:success, "Deleted #{domain.domain}.")
+        |> put_notification(:success, "Deleted #{domain.domain}.")
         |> redirect(to: ~p"/domains")
       else
-        socket |> put_flash(:error, "You don't have permission to do that.")
+        socket |> put_notification(:error, "You don't have permission to do that.")
       end
 
     {:noreply, socket}
@@ -150,10 +150,10 @@ defmodule ShroudWeb.CustomDomainLive.Show do
     socket =
       if Domain.fully_verified?(socket.assigns.domain) do
         socket
-        |> put_flash(:success, "DNS records verified.")
+        |> put_notification(:success, "DNS records verified.")
       else
         socket
-        |> put_flash(
+        |> put_notification(
           :error,
           "Some DNS records are still missing. DNS propagation may take up to 24 hours."
         )

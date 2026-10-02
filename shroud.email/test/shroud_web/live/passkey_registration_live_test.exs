@@ -31,7 +31,7 @@ defmodule ShroudWeb.PasskeyRegistrationLiveTest do
            )
 
     assert has_element?(view, "#passkey-password[aria-invalid=true]")
-    refute has_element?(view, "#settings-error")
+    refute has_element?(view, "#notification-source [data-kind=error]")
     assert has_element?(view, "#passkey-dialog[role=dialog]")
     refute_push_event(view, "passkey-register", _)
 
@@ -75,7 +75,7 @@ defmodule ShroudWeb.PasskeyRegistrationLiveTest do
            )
 
     assert has_element?(view, "#passkey-password[aria-invalid=true]")
-    refute has_element?(view, "#settings-error")
+    refute has_element?(view, "#notification-source [data-kind=error]")
 
     view
     |> form("#remove-passkey-#{credential.id}",
@@ -224,7 +224,7 @@ defmodule ShroudWeb.PasskeyRegistrationLiveTest do
              "Incorrect password"
            )
 
-    refute has_element?(view, "#settings-error")
+    refute has_element?(view, "#notification-source [data-kind=error]")
     assert length(Accounts.list_passkeys(user)) == 2
 
     view |> element("#passkey-dialog") |> render_hook("hide", %{})

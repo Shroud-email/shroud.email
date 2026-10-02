@@ -42,6 +42,7 @@ defmodule ShroudWeb do
       import ShroudWeb.ErrorHelpers
       import ShroudWeb.Components.Atoms
       import ShroudWeb.Components.Cap
+      import ShroudWeb.Components.Notifications, only: [notification_group: 1]
 
       use Gettext, backend: ShroudWeb.Gettext
 
@@ -112,6 +113,9 @@ defmodule ShroudWeb do
       use Gettext, backend: ShroudWeb.Gettext
 
       import ShroudWeb.Components.Atoms
+
+      import ShroudWeb.Components.Notifications,
+        only: [notification_group: 1, put_notification: 3]
 
       unquote(verified_routes())
     end

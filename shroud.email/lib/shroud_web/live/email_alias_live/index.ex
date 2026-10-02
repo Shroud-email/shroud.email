@@ -72,7 +72,7 @@ defmodule ShroudWeb.EmailAliasLive.Index do
         {:ok, email_alias} ->
           socket =
             socket
-            |> put_flash(:success, "Created new alias #{email_alias.address}.")
+            |> put_notification(:success, "Created new alias #{email_alias.address}.")
 
           {:noreply,
            push_navigate(socket,
@@ -82,12 +82,12 @@ defmodule ShroudWeb.EmailAliasLive.Index do
         {:error, _changeset} ->
           socket =
             socket
-            |> put_flash(:error, "Something went wrong.")
+            |> put_notification(:error, "Something went wrong.")
 
           {:noreply, socket}
       end
     else
-      socket = socket |> put_flash(:error, "You don't have permission to do that.")
+      socket = socket |> put_notification(:error, "You don't have permission to do that.")
       {:noreply, socket}
     end
   end
@@ -130,7 +130,7 @@ defmodule ShroudWeb.EmailAliasLive.Index do
         {:ok, email_alias} ->
           socket =
             socket
-            |> put_flash(:success, "Created new alias #{email_alias.address}.")
+            |> put_notification(:success, "Created new alias #{email_alias.address}.")
 
           {:noreply,
            push_navigate(socket,
@@ -143,7 +143,7 @@ defmodule ShroudWeb.EmailAliasLive.Index do
           socket =
             socket
             |> assign(:custom_alias_error, error)
-            |> put_flash(:error, "Something went wrong.")
+            |> put_notification(:error, "Something went wrong.")
             |> push_event("custom-alias-error", %{})
 
           {:noreply, socket}
@@ -151,13 +151,13 @@ defmodule ShroudWeb.EmailAliasLive.Index do
         {:error, _reason} ->
           {:noreply,
            socket
-           |> put_flash(:error, "Something went wrong.")
+           |> put_notification(:error, "Something went wrong.")
            |> push_event("custom-alias-error", %{})}
       end
     else
       {:noreply,
        socket
-       |> put_flash(:error, "You don't have permission to do that.")
+       |> put_notification(:error, "You don't have permission to do that.")
        |> push_event("custom-alias-error", %{})}
     end
   end
@@ -180,14 +180,14 @@ defmodule ShroudWeb.EmailAliasLive.Index do
 
             socket
             |> assign(:email_alias, email_alias)
-            |> put_flash(:info, "#{verb} #{email_alias.address}.")
+            |> put_notification(:info, "#{verb} #{email_alias.address}.")
 
           {:error, _error} ->
             socket
-            |> put_flash(:error, "Something went wrong.")
+            |> put_notification(:error, "Something went wrong.")
         end
       else
-        socket |> put_flash(:error, "You don't have permission to do that.")
+        socket |> put_notification(:error, "You don't have permission to do that.")
       end
 
     {:noreply, socket}

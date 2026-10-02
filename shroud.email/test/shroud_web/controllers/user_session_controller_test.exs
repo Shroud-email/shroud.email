@@ -18,7 +18,7 @@ defmodule ShroudWeb.UserSessionControllerTest do
       response = html_response(conn, 200)
       assert response =~ "Sign in"
       assert response =~ "sign up for free"
-      assert response |> Floki.parse_document!() |> Floki.find("#login-info, #login-error") == []
+      assert response |> Floki.parse_document!() |> Floki.find("#toast-group [data-kind]") == []
 
       assert response
              |> Floki.parse_document!()
@@ -127,7 +127,7 @@ defmodule ShroudWeb.UserSessionControllerTest do
 
       assert_redirected_alert(
         conn,
-        "#login-error[role=alert]",
+        "#toast-group #flash-error[role=alert]",
         "CAPTCHA verification failed. Please try again."
       )
     after

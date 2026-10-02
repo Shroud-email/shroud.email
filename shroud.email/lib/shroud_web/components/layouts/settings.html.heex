@@ -1,11 +1,6 @@
+<.notification_group flash={@flash} socket={@socket} toasts_sync={assigns[:toasts_sync]} />
 <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
   <.logging_warning current_user={@current_user} />
-  <p :if={Flash.get(@flash, :info)} id="settings-info" class="alert alert-info mb-6" role="alert">
-    {Flash.get(@flash, :info)}
-  </p>
-  <p :if={Flash.get(@flash, :error)} id="settings-error" class="alert alert-error mb-6" role="alert">
-    {Flash.get(@flash, :error)}
-  </p>
   <div class="lg:grid lg:grid-cols-12 lg:gap-x-5">
     <aside class="px-2 sm:px-6 lg:px-0 lg:col-span-3">
       <nav class="space-y-1" aria-label="Settings">

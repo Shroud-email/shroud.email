@@ -43,10 +43,10 @@ defmodule ShroudWeb.SpamEmailLive.Index do
             load_spam_emails(socket)
 
           {:error, _changeset} ->
-            put_flash(socket, :error, "Something went wrong.")
+            put_notification(socket, :error, "Something went wrong.")
         end
       else
-        put_flash(socket, :error, "You don't have permission to do that.")
+        put_notification(socket, :error, "You don't have permission to do that.")
       end
 
     {:noreply, socket}
