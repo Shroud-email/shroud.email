@@ -6,6 +6,7 @@ on:
     paths:
       - 'website/**'
       - 'shroud.email/openapi.json'
+      - 'shared/components/PostHog.astro'
       - '.github/workflows/website-deploy.yml'
   workflow_dispatch:
 

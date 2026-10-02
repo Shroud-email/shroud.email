@@ -60,7 +60,6 @@ export function setupPaddleCheckout({
 
   let checkoutPending = false;
   let disposed = false;
-  let completionTracked = false;
 
   const paddlePromise = initializePaddle({
     token,
@@ -69,10 +68,7 @@ export function setupPaddleCheckout({
         ? "sandbox"
         : undefined,
     eventCallback: (data) => {
-      if (data.name === "checkout.completed" && !completionTracked && !disposed) {
-        completionTracked = true;
-        // Never forward the Paddle payload (customer and transaction data).
-        window.plausible?.("Purchase", {});
+      if (data.name === "checkout.completed") {
         window.setTimeout(() => {
           window.location.href = "/settings/billing";
         }, 5000);

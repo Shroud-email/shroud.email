@@ -32,7 +32,6 @@ defmodule ShroudWeb.UserRegistrationControllerTest do
 
       assert get_session(conn, :user_token)
       assert redirected_to(conn) == "/users/confirm"
-      assert Flash.get(conn.assigns.flash, :analytics_event) == "Signup"
 
       # Now do a logged in request and assert on the menu
       conn = get(conn, "/users/confirm")
@@ -40,16 +39,6 @@ defmodule ShroudWeb.UserRegistrationControllerTest do
       assert response =~ email
       assert response =~ "Settings</a>"
       assert response =~ "Log out</a>"
-
-      assert Floki.find(Floki.parse_document!(response), "body[data-analytics-event='Signup']") !=
-               []
-
-      conn = get(conn, "/users/confirm")
-
-      assert Floki.find(
-               Floki.parse_document!(html_response(conn, 200)),
-               "body[data-analytics-event]"
-             ) == []
     end
 
     test "render errors for invalid data", %{conn: conn} do
@@ -62,7 +51,6 @@ defmodule ShroudWeb.UserRegistrationControllerTest do
       assert response =~ "Sign up"
       assert response =~ "is invalid"
       assert response =~ "should be at least 12 character"
-      refute Flash.get(conn.assigns.flash, :analytics_event)
     end
 
     test "creates a lifetime user", %{conn: conn} do
