@@ -122,16 +122,16 @@ defmodule Shroud.Email.IncomingEmailHandler do
 
     parsed_email = ParsedEmail.parse(Mailex.parse!(data), sender, recipient)
 
+    processed = TrackerRemover.process(parsed_email)
+
     processed =
-      parsed_email
-      |> TrackerRemover.process()
-      |> Enricher.process()
+      if Accounts.email_branding_enabled?(user), do: Enricher.process(processed), else: processed
 
     deliver_result =
       processed
       # Now our pipeline is done, we just want our Swoosh email
       |> Map.get(:swoosh_email)
-      |> fix_incoming_sender_and_recipient(user.email, sender, recipient)
+      |> fix_incoming_sender_and_recipient(user, sender, recipient)
       |> Mailer.deliver()
 
     case deliver_result do
@@ -161,9 +161,9 @@ defmodule Shroud.Email.IncomingEmailHandler do
     end
   end
 
-  @spec fix_incoming_sender_and_recipient(Swoosh.Email.t(), String.t(), String.t(), String.t()) ::
+  @spec fix_incoming_sender_and_recipient(Swoosh.Email.t(), User.t(), String.t(), String.t()) ::
           Swoosh.Email.t()
-  defp fix_incoming_sender_and_recipient(email, recipient_address, sender, email_alias) do
+  defp fix_incoming_sender_and_recipient(email, user, sender, email_alias) do
     # Modify the email to make it clear it came from us
     recipient_name =
       if is_list(email.to) and length(email.to) == 1 do
@@ -202,11 +202,12 @@ defmodule Shroud.Email.IncomingEmailHandler do
       |> String.trim()
 
     reply_address = ReplyAddress.to_reply_address(sender_address, email_alias)
-    sender = {sanitized_sender_name <> " (via Shroud.email)", reply_address}
+    suffix = if Accounts.email_branding_enabled?(user), do: " (via Shroud.email)", else: ""
+    sender = {sanitized_sender_name <> suffix, reply_address}
 
     email
     |> Map.put(:from, sender)
-    |> Map.put(:to, [{recipient_name, recipient_address}])
+    |> Map.put(:to, [{recipient_name, user.email}])
     |> (fn email ->
           if email.reply_to == nil do
             email

@@ -45,6 +45,147 @@ defmodule Shroud.Email.EmailHandlerTest do
   end
 
   describe "perform/1" do
+    test "disabling branding removes both footers without disabling tracker removal", %{
+      user: user,
+      email_alias: email_alias
+    } do
+      FunWithFlags.enable(:email_branding_preferences, for_actor: user)
+      {:ok, _} = Accounts.update_user_email_preferences(user, %{email_branding: false})
+
+      perform_job(EmailHandler, %{
+        from: "sender@example.com",
+        to: email_alias.address,
+        data:
+          multipart_email(
+            {"Alice", "sender@example.com"},
+            [email_alias.address],
+            "Without branding",
+            "Plain text content",
+            ~s(<html><body><p>HTML content</p><img src="https://spy.example.com/pixel" width="1" height="1" /></body></html>)
+          )
+      })
+
+      assert_email_sent(fn email ->
+        assert email.from == {"Alice", "sender_at_example.com_alias@email.shroud.test"}
+        assert email.to == [{email_alias.address, user.email}]
+        assert String.trim(email.text_body) == "Plain text content"
+        refute email.html_body =~ "spy.example.com"
+        refute email.html_body =~ "Shroud.email"
+        refute email.html_body =~ "/email-report/"
+        assert email.html_body =~ "HTML content"
+      end)
+
+      assert %TrackerDomain{count: 1} =
+               Repo.get_by(TrackerDomain, domain: "spy.example.com", date: Date.utc_today())
+
+      assert Aliases.get_email_alias_by_address!(email_alias.address).forwarded == 1
+    end
+
+    test "disabling branding keeps fallback sender names and private reply-to routing", %{
+      user: user,
+      email_alias: email_alias
+    } do
+      FunWithFlags.enable(:email_branding_preferences, for_actor: user)
+      {:ok, _} = Accounts.update_user_email_preferences(user, %{email_branding: false})
+
+      perform_job(EmailHandler, %{
+        from: "sender@example.com",
+        to: email_alias.address,
+        data:
+          text_email(
+            "sender@example.com",
+            [email_alias.address],
+            "Without branding",
+            "Plain text content",
+            "Reply-To: custom@example.com"
+          )
+      })
+
+      assert_email_sent(fn email ->
+        assert email.from ==
+                 {"sender@example.com", "sender_at_example.com_alias@email.shroud.test"}
+
+        assert email.reply_to ==
+                 {"custom_at_example.com_alias@email.shroud.test",
+                  "custom_at_example.com_alias@email.shroud.test"}
+      end)
+    end
+
+    test "outgoing replies omit branding when disabled without leaking the real address", %{
+      user: user,
+      email_alias: email_alias
+    } do
+      FunWithFlags.enable(:email_branding_preferences, for_actor: user)
+      {:ok, _} = Accounts.update_user_email_preferences(user, %{email_branding: false})
+      reply_address = "recipient_at_example.com_alias@email.shroud.test"
+
+      perform_job(EmailHandler, %{
+        from: user.email,
+        to: reply_address,
+        data:
+          text_email(
+            {"Real name", user.email},
+            [reply_address],
+            "Reply without branding",
+            "Reply content",
+            "Reply-To: #{user.email}"
+          )
+      })
+
+      assert_email_sent(fn email ->
+        assert email.from == {email_alias.address, email_alias.address}
+        assert email.to == [{"recipient@example.com", "recipient@example.com"}]
+        assert is_nil(email.reply_to)
+        assert String.trim(email.text_body) == "Reply content"
+      end)
+
+      assert Aliases.get_email_alias_by_address!(email_alias.address).replied == 1
+    end
+
+    test "revoking the feature restores incoming and outgoing branding despite a saved opt-out",
+         %{
+           user: user,
+           email_alias: email_alias
+         } do
+      FunWithFlags.enable(:email_branding_preferences, for_actor: user)
+      {:ok, _} = Accounts.update_user_email_preferences(user, %{email_branding: false})
+      FunWithFlags.disable(:email_branding_preferences, for_actor: user)
+
+      perform_job(EmailHandler, %{
+        from: "sender@example.com",
+        to: email_alias.address,
+        data:
+          multipart_email(
+            "sender@example.com",
+            [email_alias.address],
+            "Incoming after rollback",
+            "Plain text content",
+            "<p>HTML content</p>"
+          )
+      })
+
+      assert_email_sent(fn email ->
+        assert email.from ==
+                 {"sender@example.com (via Shroud.email)",
+                  "sender_at_example.com_alias@email.shroud.test"}
+
+        assert email.text_body =~ "forwarded from #{email_alias.address} by Shroud.email"
+        assert email.html_body =~ "forwarded by Shroud.email"
+      end)
+
+      reply_address = "recipient_at_example.com_alias@email.shroud.test"
+
+      perform_job(EmailHandler, %{
+        from: user.email,
+        to: reply_address,
+        data: text_email(user.email, [reply_address], "Reply after rollback", "Reply content")
+      })
+
+      assert_email_sent(fn email ->
+        assert email.from == {"#{email_alias.address} (via Shroud.email)", email_alias.address}
+      end)
+    end
+
     test "forwards to the correct user", %{user: user, email_alias: email_alias} do
       args = %{
         from: "sender@example.com",

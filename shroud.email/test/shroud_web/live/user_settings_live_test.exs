@@ -9,6 +9,64 @@ defmodule ShroudWeb.UserSettingsLiveTest do
 
   setup :register_and_log_in_user
 
+  test "unflagged users cannot see or submit email preferences", %{conn: conn, user: user} do
+    {:ok, view, _} = live(conn, ~p"/settings/account")
+    refute has_element?(view, "#email-preferences-form")
+
+    render_submit(view, "update_email_preferences", %{"user" => %{"email_branding" => "false"}})
+
+    assert has_element?(view, "#settings-error", "Email preferences are not available.")
+    assert Repo.reload!(user).email_branding
+  end
+
+  test "revoking the flag rejects submissions from an already open form", %{
+    conn: conn,
+    user: user
+  } do
+    FunWithFlags.enable(:email_branding_preferences, for_actor: user)
+    {:ok, view, _} = live(conn, ~p"/settings/account")
+    assert has_element?(view, "#email-preferences-form")
+    FunWithFlags.disable(:email_branding_preferences, for_actor: user)
+
+    view
+    |> form("#email-preferences-form", user: %{email_branding: "false"})
+    |> render_submit()
+
+    refute has_element?(view, "#email-preferences-form")
+    assert has_element?(view, "#settings-error", "Email preferences are not available.")
+    assert Repo.reload!(user).email_branding
+  end
+
+  test "email branding can be disabled and enabled and survives reloads", %{
+    conn: conn,
+    user: user
+  } do
+    FunWithFlags.enable(:email_branding_preferences, for_actor: user)
+    {:ok, view, _} = live(conn, ~p"/settings/account")
+    assert has_element?(view, "#user_email_branding[checked]")
+
+    for enabled <- [false, true] do
+      view
+      |> form("#email-preferences-form", user: %{email_branding: to_string(enabled)})
+      |> render_submit()
+
+      assert Repo.reload!(user).email_branding == enabled
+      assert has_element?(view, "#settings-info", "Email preferences updated.")
+      {:ok, reloaded, _} = live(conn, ~p"/settings/account")
+      assert has_element?(reloaded, "#user_email_branding[checked]") == enabled
+    end
+  end
+
+  test "invalid email branding is rejected in place", %{conn: conn, user: user} do
+    FunWithFlags.enable(:email_branding_preferences, for_actor: user)
+    {:ok, view, _} = live(conn, ~p"/settings/account")
+
+    render_submit(view, "update_email_preferences", %{"user" => %{"email_branding" => "invalid"}})
+
+    assert has_element?(view, "#email-preferences-form .invalid-feedback", "is invalid")
+    assert Repo.reload!(user).email_branding
+  end
+
   test "patches between settings pages and updates the active navigation", %{conn: conn} do
     {:ok, view, _} = live(conn, ~p"/settings/account")
     assert has_element?(view, "#update_email")
