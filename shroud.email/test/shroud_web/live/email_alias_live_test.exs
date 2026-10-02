@@ -206,6 +206,21 @@ defmodule ShroudWeb.EmailAliasLiveTest do
       assert html =~ "john.doe@#{custom_domain.domain}"
     end
 
+    test "ignores username generation before selecting a custom domain", %{
+      conn: conn,
+      user: user,
+      email_alias: email_alias
+    } do
+      {:ok, view, _html} = live(conn, ~p"/")
+      count = Shroud.Aliases.count_aliases(user)
+
+      render_hook(view, "generate_alias_name", %{})
+
+      assert has_element?(view, "#copy-alias-#{email_alias.id}")
+      refute has_element?(view, "#add_alias_modal")
+      assert Shroud.Aliases.count_aliases(user) == count
+    end
+
     test "generates and regenerates an editable custom-domain username without saving", %{
       conn: conn,
       user: user

@@ -101,6 +101,14 @@ defmodule ShroudWeb.EmailAliasLive.Index do
   end
 
   @impl true
+  def handle_event(
+        "generate_alias_name",
+        _params,
+        %{assigns: %{custom_alias_domain: nil}} = socket
+      ) do
+    {:noreply, socket}
+  end
+
   def handle_event("generate_alias_name", _params, socket) do
     domain = String.trim_leading(socket.assigns.custom_alias_domain, "@")
     name = Aliases.generate_alias_name(domain)
