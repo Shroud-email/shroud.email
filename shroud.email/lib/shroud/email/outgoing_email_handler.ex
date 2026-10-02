@@ -82,7 +82,7 @@ defmodule Shroud.Email.OutgoingEmailHandler do
           Swoosh.Email.t()
   defp fix_outgoing_sender_and_recipient(email, recipient, user) do
     {recipient_address, email_alias} = ReplyAddress.from_reply_address(recipient)
-    suffix = if user.email_branding, do: " (via Shroud.email)", else: ""
+    suffix = if Accounts.email_branding_enabled?(user), do: " (via Shroud.email)", else: ""
 
     email
     # Fix the sender (replace the user's real email with the alias)

@@ -8,8 +8,38 @@ defmodule Shroud.AccountsTest do
   alias Shroud.Accounts.{LoopsJob, User, UserToken}
 
   describe "update_user_email_preferences/2" do
+    test "the feature defaults off and cannot be changed by unflagged users" do
+      user = user_fixture()
+      refute Accounts.email_preferences_enabled?(user)
+      assert Accounts.email_branding_enabled?(user)
+
+      assert {:error, :feature_disabled} =
+               Accounts.update_user_email_preferences(user, %{email_branding: false})
+
+      assert Repo.reload!(user).email_branding
+    end
+
+    test "actor targeting and flag rollback preserve the saved preference" do
+      user = user_fixture()
+      other = user_fixture()
+      FunWithFlags.enable(:email_branding_preferences, for_actor: user)
+
+      assert Accounts.email_preferences_enabled?(user)
+      refute Accounts.email_preferences_enabled?(other)
+      assert {:ok, user} = Accounts.update_user_email_preferences(user, %{email_branding: false})
+      refute Accounts.email_branding_enabled?(user)
+
+      FunWithFlags.disable(:email_branding_preferences, for_actor: user)
+      assert Accounts.email_branding_enabled?(user)
+      refute Repo.reload!(user).email_branding
+
+      FunWithFlags.enable(:email_branding_preferences, for_actor: user)
+      refute Accounts.email_branding_enabled?(Repo.reload!(user))
+    end
+
     test "defaults to branding enabled and persists either preference" do
       user = user_fixture()
+      FunWithFlags.enable(:email_branding_preferences, for_actor: user)
       assert Repo.reload!(user).email_branding
 
       for enabled <- [false, true] do
@@ -24,6 +54,7 @@ defmodule Shroud.AccountsTest do
 
     test "rejects invalid or null preferences and ignores unrelated fields" do
       user = user_fixture()
+      FunWithFlags.enable(:email_branding_preferences, for_actor: user)
 
       for invalid <- [nil, "invalid"] do
         assert {:error, changeset} =

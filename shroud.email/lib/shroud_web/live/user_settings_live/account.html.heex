@@ -20,7 +20,7 @@
   </div>
 </.form>
 
-<.form for={@email_preferences_form} phx-submit="update_email_preferences" id="email-preferences-form" class="mt-6">
+<.form :if={@email_preferences_enabled?} for={@email_preferences_form} phx-submit="update_email_preferences" id="email-preferences-form" class="mt-6">
   <div class="shadow-sm dark:shadow-gray-900/50 sm:rounded-md sm:overflow-hidden">
     <div class="bg-white dark:bg-gray-800 py-6 px-4 space-y-6 sm:p-6">
       <div>

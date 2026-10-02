@@ -49,6 +49,7 @@ defmodule Shroud.Email.EmailHandlerTest do
       user: user,
       email_alias: email_alias
     } do
+      FunWithFlags.enable(:email_branding_preferences, for_actor: user)
       {:ok, _} = Accounts.update_user_email_preferences(user, %{email_branding: false})
 
       perform_job(EmailHandler, %{
@@ -84,6 +85,7 @@ defmodule Shroud.Email.EmailHandlerTest do
       user: user,
       email_alias: email_alias
     } do
+      FunWithFlags.enable(:email_branding_preferences, for_actor: user)
       {:ok, _} = Accounts.update_user_email_preferences(user, %{email_branding: false})
 
       perform_job(EmailHandler, %{
@@ -113,6 +115,7 @@ defmodule Shroud.Email.EmailHandlerTest do
       user: user,
       email_alias: email_alias
     } do
+      FunWithFlags.enable(:email_branding_preferences, for_actor: user)
       {:ok, _} = Accounts.update_user_email_preferences(user, %{email_branding: false})
       reply_address = "recipient_at_example.com_alias@email.shroud.test"
 
@@ -137,6 +140,50 @@ defmodule Shroud.Email.EmailHandlerTest do
       end)
 
       assert Aliases.get_email_alias_by_address!(email_alias.address).replied == 1
+    end
+
+    test "revoking the feature restores incoming and outgoing branding despite a saved opt-out",
+         %{
+           user: user,
+           email_alias: email_alias
+         } do
+      FunWithFlags.enable(:email_branding_preferences, for_actor: user)
+      {:ok, _} = Accounts.update_user_email_preferences(user, %{email_branding: false})
+      FunWithFlags.disable(:email_branding_preferences, for_actor: user)
+
+      perform_job(EmailHandler, %{
+        from: "sender@example.com",
+        to: email_alias.address,
+        data:
+          multipart_email(
+            "sender@example.com",
+            [email_alias.address],
+            "Incoming after rollback",
+            "Plain text content",
+            "<p>HTML content</p>"
+          )
+      })
+
+      assert_email_sent(fn email ->
+        assert email.from ==
+                 {"sender@example.com (via Shroud.email)",
+                  "sender_at_example.com_alias@email.shroud.test"}
+
+        assert email.text_body =~ "forwarded from #{email_alias.address} by Shroud.email"
+        assert email.html_body =~ "forwarded by Shroud.email"
+      end)
+
+      reply_address = "recipient_at_example.com_alias@email.shroud.test"
+
+      perform_job(EmailHandler, %{
+        from: user.email,
+        to: reply_address,
+        data: text_email(user.email, [reply_address], "Reply after rollback", "Reply content")
+      })
+
+      assert_email_sent(fn email ->
+        assert email.from == {"#{email_alias.address} (via Shroud.email)", email_alias.address}
+      end)
     end
 
     test "forwards to the correct user", %{user: user, email_alias: email_alias} do

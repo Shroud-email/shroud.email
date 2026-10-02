@@ -123,7 +123,9 @@ defmodule Shroud.Email.IncomingEmailHandler do
     parsed_email = ParsedEmail.parse(Mailex.parse!(data), sender, recipient)
 
     processed = TrackerRemover.process(parsed_email)
-    processed = if user.email_branding, do: Enricher.process(processed), else: processed
+
+    processed =
+      if Accounts.email_branding_enabled?(user), do: Enricher.process(processed), else: processed
 
     deliver_result =
       processed
@@ -200,7 +202,7 @@ defmodule Shroud.Email.IncomingEmailHandler do
       |> String.trim()
 
     reply_address = ReplyAddress.to_reply_address(sender_address, email_alias)
-    suffix = if user.email_branding, do: " (via Shroud.email)", else: ""
+    suffix = if Accounts.email_branding_enabled?(user), do: " (via Shroud.email)", else: ""
     sender = {sanitized_sender_name <> suffix, reply_address}
 
     email

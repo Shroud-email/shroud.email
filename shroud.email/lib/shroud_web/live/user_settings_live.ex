@@ -62,6 +62,7 @@ defmodule ShroudWeb.UserSettingsLive do
      assign(socket,
        current_user: user,
        page_title: title,
+       email_preferences_enabled?: Accounts.email_preferences_enabled?(user),
        email_preferences_form: to_form(User.email_preferences_changeset(user, %{})),
        appearance_form: to_form(%{"theme" => to_string(user.theme)}),
        totp_backup_codes:
@@ -119,6 +120,12 @@ defmodule ShroudWeb.UserSettingsLive do
            email_preferences_form: to_form(User.email_preferences_changeset(user, %{}))
          )
          |> put_flash(:info, "Email preferences updated.")}
+
+      {:error, :feature_disabled} ->
+        {:noreply,
+         socket
+         |> assign(:email_preferences_enabled?, false)
+         |> put_flash(:error, "Email preferences are not available.")}
 
       {:error, changeset} ->
         {:noreply, assign(socket, :email_preferences_form, to_form(changeset))}
