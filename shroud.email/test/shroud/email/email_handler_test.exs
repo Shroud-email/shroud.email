@@ -1,9 +1,16 @@
 defmodule Shroud.Email.EmailHandlerTest.FailingMailerAdapter do
-  @moduledoc "Test-only Swoosh adapter that always fails delivery."
+  @moduledoc "Test-only Swoosh adapter that fails all deliveries or a selected recipient."
   @behaviour Swoosh.Adapter
+  alias Swoosh.Adapters.Test
 
   @impl true
-  def deliver(_email, _config), do: {:error, :simulated_smtp_failure}
+  def deliver(email, config) do
+    if is_nil(config[:fail_to]) or Enum.any?(email.to, fn {_, to} -> to == config[:fail_to] end) do
+      {:error, :simulated_smtp_failure}
+    else
+      Test.deliver(email, [])
+    end
+  end
 
   @impl true
   def validate_config(_config), do: :ok
@@ -225,7 +232,10 @@ defmodule Shroud.Email.EmailHandlerTest do
           )
       }
 
-      perform_job(EmailHandler, args)
+      assert {:ok, _} = args |> EmailHandler.new() |> Oban.insert()
+
+      assert %{success: 3, failure: 0} =
+               Oban.drain_queue(queue: :outgoing_email, with_recursion: true)
 
       assert_email_sent(fn email ->
         {_name, recipient} = hd(email.to)
@@ -251,7 +261,10 @@ defmodule Shroud.Email.EmailHandlerTest do
           )
       }
 
-      perform_job(EmailHandler, args)
+      assert {:ok, _} = args |> EmailHandler.new() |> Oban.insert()
+
+      assert %{success: 3, failure: 0} =
+               Oban.drain_queue(queue: :outgoing_email, with_recursion: true)
 
       assert_email_sent(fn email ->
         {_name, recipient} = hd(email.to)
@@ -264,12 +277,151 @@ defmodule Shroud.Email.EmailHandlerTest do
       end)
     end
 
+    test "a one-element recipient list uses fan-out before delivery", %{
+      user: user,
+      email_alias: email_alias
+    } do
+      args = %{tracking_pixel_email_args(email_alias) | to: [email_alias.address]}
+      assert {:ok, _} = args |> EmailHandler.new() |> Oban.insert()
+
+      assert %{success: 1, failure: 0} = Oban.drain_queue(queue: :outgoing_email)
+      assert_no_email_sent()
+      assert_enqueued(worker: EmailHandler, args: %{to: email_alias.address})
+
+      assert %{success: 1, failure: 0} = Oban.drain_queue(queue: :outgoing_email)
+      assert_email_sent(fn email -> hd(email.to) |> elem(1) == user.email end)
+      assert_no_email_sent()
+      assert Aliases.get_email_alias_by_address!(email_alias.address).forwarded == 1
+    end
+
+    test "retries only the failed recipient after a partial delivery failure", %{
+      user: user,
+      email_alias: email_alias
+    } do
+      other_user = user_fixture(%{status: :active})
+      user_email = user.email
+      other_email = other_user.email
+      other_alias = alias_fixture(%{user_id: other_user.id})
+      args = tracking_pixel_email_args(email_alias)
+      args = %{args | to: [email_alias.address, other_alias.address]}
+      assert {:ok, parent} = args |> EmailHandler.new() |> Oban.insert()
+      parent = Repo.get!(Oban.Job, parent.id)
+      jobs = from j in Oban.Job, where: j.queue == "outgoing_email"
+
+      assert %{success: 1, failure: 0} = Oban.drain_queue(queue: :outgoing_email)
+      assert_no_email_sent()
+
+      capture_log(fn ->
+        with_failing_mailer(
+          fn ->
+            assert %{success: 1, failure: 1} = Oban.drain_queue(queue: :outgoing_email)
+          end,
+          fail_to: other_user.email
+        )
+      end)
+
+      assert_email_sent(fn email -> hd(email.to) |> elem(1) == user_email end)
+      refute_received {:email, %{to: [{_, ^other_email}]}}
+      assert Aliases.get_email_alias_by_address!(email_alias.address).forwarded == 1
+      assert Aliases.get_email_alias_by_address!(other_alias.address).forwarded == 0
+      assert %TrackerDomain{count: 1} = Repo.get_by!(TrackerDomain, domain: "spy.example.com")
+
+      # Replay even a stale parent struct: no duplicate children may be created.
+      assert :ok = EmailHandler.perform(parent)
+      assert Repo.aggregate(jobs, :count) == 3
+
+      assert %{success: 1, failure: 0} =
+               Oban.drain_queue(queue: :outgoing_email, with_scheduled: true)
+
+      assert_email_sent(fn email -> hd(email.to) |> elem(1) == other_email end)
+      assert_no_email_sent()
+      assert Aliases.get_email_alias_by_address!(email_alias.address).forwarded == 1
+      assert Aliases.get_email_alias_by_address!(other_alias.address).forwarded == 1
+      assert %TrackerDomain{count: 2} = Repo.get_by!(TrackerDomain, domain: "spy.example.com")
+
+      # Pruning completed children must not make a parent retry fan out again.
+      Repo.delete_all(from j in jobs, where: j.id != ^parent.id)
+      assert :ok = EmailHandler.perform(parent)
+      assert Repo.aggregate(jobs, :count) == 1
+      assert_no_email_sent()
+    end
+
+    test "fan-out deduplicates envelope recipients and preserves binary email data", %{
+      email_alias: email_alias
+    } do
+      data = "Raw email with invalid UTF-8: \xE7"
+      recipients = [email_alias.address, "other@example.com", email_alias.address]
+
+      assert {:ok, parent} =
+               %{from: "sender@example.com", to: recipients, data: Base.encode64(data)}
+               |> EmailHandler.new(meta: %{existing: "preserved"})
+               |> Oban.insert()
+
+      parent = Repo.get!(Oban.Job, parent.id)
+      assert :ok = EmailHandler.perform(parent)
+
+      children =
+        Repo.all(from j in Oban.Job, where: j.queue == "outgoing_email" and j.id != ^parent.id)
+
+      assert Enum.sort(Enum.map(children, & &1.args["to"])) == Enum.sort(Enum.uniq(recipients))
+      assert Enum.all?(children, &(&1.args["data"] == Base.encode64(data)))
+
+      assert Repo.get!(Oban.Job, parent.id).meta ==
+               %{"existing" => "preserved", "fan_out_completed" => true}
+
+      assert_no_email_sent()
+    end
+
+    test "a failed fan-out transaction rolls back children and can be retried", %{
+      email_alias: email_alias
+    } do
+      args = %{
+        tracking_pixel_email_args(email_alias)
+        | to: [email_alias.address, "other@example.com"]
+      }
+
+      assert {:ok, parent} = args |> EmailHandler.new() |> Oban.insert()
+      parent = Repo.get!(Oban.Job, parent.id)
+      jobs = from j in Oban.Job, where: j.queue == "outgoing_email"
+
+      # Fail the marker write, after child insertion, to exercise atomicity.
+      Repo.query!("""
+      ALTER TABLE oban_jobs ADD CONSTRAINT reject_fan_out_marker
+      CHECK (NOT (meta ? 'fan_out_completed'))
+      """)
+
+      assert_raise Ecto.ConstraintError, fn -> EmailHandler.perform(parent) end
+      assert Repo.aggregate(jobs, :count) == 1
+      refute Repo.get!(Oban.Job, parent.id).meta["fan_out_completed"]
+
+      Repo.query!("ALTER TABLE oban_jobs DROP CONSTRAINT reject_fan_out_marker")
+      assert :ok = EmailHandler.perform(parent)
+      assert Repo.aggregate(jobs, :count) == 3
+      assert_no_email_sent()
+    end
+
+    test "failed reply deliveries are returned to Oban", %{user: user} do
+      args = %{
+        from: user.email,
+        to: "recipient_at_example.com_alias@email.shroud.test",
+        data: text_email(user.email, ["recipient@example.com"], "Reply", "Hello")
+      }
+
+      capture_log(fn ->
+        with_failing_mailer(fn ->
+          assert {:error, :simulated_smtp_failure} = perform_job(EmailHandler, args)
+        end)
+      end)
+
+      assert Aliases.get_email_alias_by_address!("alias@email.shroud.test").replied == 0
+    end
+
     test "transforms reply-to headers to reply addresses", %{user: user} do
       email_alias = alias_fixture(%{address: "myalias@email.shroud.test", user_id: user.id})
 
       args = %{
         from: "sender@example.com",
-        to: [email_alias.address],
+        to: email_alias.address,
         data:
           text_email(
             "sender@example.com",
@@ -295,7 +447,7 @@ defmodule Shroud.Email.EmailHandlerTest do
     test "handles replies from an alias", %{user: user} do
       args = %{
         from: user.email,
-        to: ["recipient_at_example.com_alias@email.shroud.test"],
+        to: "recipient_at_example.com_alias@email.shroud.test",
         data:
           text_email(
             user.email,
@@ -320,7 +472,7 @@ defmodule Shroud.Email.EmailHandlerTest do
     test "ignores replies from non-users" do
       args = %{
         from: "other@example.com",
-        to: ["recipient_at_example.com_alias@email.shroud.test"],
+        to: "recipient_at_example.com_alias@email.shroud.test",
         data:
           text_email(
             "other@example.com",
@@ -343,7 +495,7 @@ defmodule Shroud.Email.EmailHandlerTest do
 
       args = %{
         from: other_user.email,
-        to: ["recipient_at_example.com_alias@email.shroud.test"],
+        to: "recipient_at_example.com_alias@email.shroud.test",
         data:
           text_email(
             other_user.email,
@@ -364,7 +516,7 @@ defmodule Shroud.Email.EmailHandlerTest do
     test "does not include reply-to in replies", %{user: user} do
       args = %{
         from: user.email,
-        to: ["recipient_at_example.com_alias@email.shroud.test"],
+        to: "recipient_at_example.com_alias@email.shroud.test",
         data:
           text_email(
             user.email,
@@ -393,7 +545,7 @@ defmodule Shroud.Email.EmailHandlerTest do
 
       args = %{
         from: user.email,
-        to: [other_alias.address],
+        to: other_alias.address,
         data:
           text_email(
             user.email,
@@ -711,7 +863,7 @@ defmodule Shroud.Email.EmailHandlerTest do
 
       perform_job(EmailHandler, %{
         from: "MAILER-DAEMON@amazonses.com",
-        to: [email_alias.address],
+        to: email_alias.address,
         data: data
       })
 
@@ -1148,7 +1300,7 @@ defmodule Shroud.Email.EmailHandlerTest do
 
       perform_job(EmailHandler, %{
         from: "sender@example.com",
-        to: [email_alias.address],
+        to: email_alias.address,
         data: data
       })
     end
@@ -1158,7 +1310,7 @@ defmodule Shroud.Email.EmailHandlerTest do
 
       perform_job(EmailHandler, %{
         from: "sender@example.com",
-        to: [email_alias.address],
+        to: email_alias.address,
         data: data
       })
 
@@ -1340,9 +1492,9 @@ defmodule Shroud.Email.EmailHandlerTest do
     }
   end
 
-  defp with_failing_mailer(fun) do
+  defp with_failing_mailer(fun, opts \\ []) do
     original = Application.get_env(:shroud, Shroud.Mailer)
-    Application.put_env(:shroud, Shroud.Mailer, adapter: FailingMailerAdapter)
+    Application.put_env(:shroud, Shroud.Mailer, [adapter: FailingMailerAdapter] ++ opts)
 
     try do
       fun.()

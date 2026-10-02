@@ -79,8 +79,10 @@ defmodule Shroud.Email.IncomingEmailHandler do
 
         forward_incoming_email(recipient_user, sender, recipient, data)
     end
-
-    :ok
+    |> case do
+      {:error, reason} -> {:error, reason}
+      _ -> :ok
+    end
   end
 
   @spec create_catchall_address(
