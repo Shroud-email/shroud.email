@@ -1,7 +1,8 @@
 // Vendored from live_toast 0.11.0 (MIT), assets/js/live_toast/live_toast.ts.
 // Local fixes: lifecycle-owned events/timers and resize-aware stack geometry.
+// Native transform/opacity keyframes use Motion's lightweight mini entry point.
 // Keep these fixes when upgrading LiveToast. See live_toast.LICENSE.md.
-import { animate } from 'motion'
+import { animate } from 'motion/mini'
 import type { ViewHook } from 'phoenix_live_view'
 
 function isHidden(el: HTMLElement | null) {
@@ -184,13 +185,13 @@ function doAnimations(
       toast.classList.add('pointer-events-auto')
     }
 
-    const keyframes = { y: [`${direction}${val}px`], opacity: [opacity] }
+    const keyframes = { transform: [`translateY(${direction}${val}px)`], opacity: [opacity] }
 
     // if element is entering for the first time, start below the fold
     if (toast.order === 0 && lastTS.includes(toast) === false) {
       const val = toast.offsetHeight + gap
       const oppositeDirection = direction === '-' ? '' : '-'
-      keyframes.y.unshift(`${oppositeDirection}${val}px`)
+      keyframes.transform.unshift(`translateY(${oppositeDirection}${val}px)`)
 
       keyframes.opacity.unshift(0)
     }
@@ -205,7 +206,7 @@ function doAnimations(
     if (toast.targetDestination !== destination || toast.targetOpacity !== opacity) {
       this.animateToast(toast, keyframes, {
         duration,
-        easing: [0.22, 1.0, 0.36, 1.0],
+        ease: [0.22, 1.0, 0.36, 1.0],
         delay: delayTime
       })
       toast.targetDestination = destination
@@ -260,14 +261,14 @@ async function animateOut(this: ViewHook) {
 
   const animation = this.animateToast(
     this.el,
-    { y: `${direction}${val}%`, opacity: 0 },
+    { transform: `translateY(${direction}${val}%)`, opacity: 0 },
     {
       opacity: {
         duration: 0.2,
-        easing: 'ease-out'
+        ease: 'ease-out'
       },
       duration: 0.3,
-      easing: 'ease-out'
+      ease: 'ease-out'
     }
   )
 

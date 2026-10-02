@@ -89,29 +89,42 @@ defmodule ShroudWeb.UserSettingsLiveTest do
     notifications = find_live_child(view, "notifications")
 
     render_submit(view, "update_theme", %{"theme" => "dark"})
-    first = :sys.get_state(view.pid).socket.assigns.toasts_sync |> hd()
+
+    [first_source_id] =
+      render(view)
+      |> Floki.parse_document!()
+      |> Floki.find("#notification-source [data-kind=info]")
+      |> Floki.attribute("data-id")
 
     assert has_element?(
              view,
-             "#notification-source [data-id='#{first.uuid}'][data-duration='8000']"
+             "#notification-source [data-id='#{first_source_id}'][data-duration='8000']",
+             "Appearance updated."
            )
 
     render_submit(view, "update_theme", %{"theme" => "light"})
-    second = :sys.get_state(view.pid).socket.assigns.toasts_sync |> hd()
-    refute first.uuid == second.uuid
+
+    [second_source_id] =
+      render(view)
+      |> Floki.parse_document!()
+      |> Floki.find("#notification-source [data-kind=info]")
+      |> Floki.attribute("data-id")
+
+    refute first_source_id == second_source_id
 
     assert has_element?(
              view,
-             "#notification-source [data-id='#{second.uuid}'][data-duration='8000']"
+             "#notification-source [data-id='#{second_source_id}'][data-duration='8000']",
+             "Appearance updated."
            )
 
-    for toast <- [first, second] do
+    for _ <- 1..2 do
       notifications
       |> element("#toast-group")
       |> render_hook("add_toast", %{
-        kind: to_string(toast.kind),
-        message: toast.msg,
-        options: %{duration: toast.duration}
+        kind: "info",
+        message: "Appearance updated.",
+        options: %{duration: 8000}
       })
     end
 

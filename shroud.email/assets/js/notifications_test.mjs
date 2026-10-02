@@ -180,7 +180,7 @@ test("stack offsets use current asymmetric heights on resize and stay correct af
   first.updated();
   assert.equal(first.el.dataset.corner, "bottom_center");
   assert.equal(first.el.targetDestination, "-301px");
-  assert.equal(first.el.lastAnimation.y.at(-1), "-301px");
+  assert.equal(first.el.lastAnimation.transform.at(-1), "translateY(-301px)");
 });
 
 test("unchanged layouts do not restart animation or reorder existing notifications", context => {
