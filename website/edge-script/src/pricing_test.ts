@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { rewritePricing } from "./pricing.ts";
 
-Deno.test("worldwide rewrite removes the upstream length before changing UTF-8 byte counts", async () => {
+Deno.test("worldwide rewrite replaces stale framing with the exact UTF-8 byte count", async () => {
   const original = Object.getOwnPropertyDescriptor(globalThis, "HTMLRewriter");
   let upstreamHeaders: Headers;
   // Preserve a snapshot of upstream framing on the transformed response.
-  // Exercise header removal on both the context and the returned response.
+  // Exercise an explicit override even when the rewriter retains old headers.
   class TestRewriter {
     handler!: ElementHandler;
     on(selector: string, handler: ElementHandler) {
@@ -47,7 +47,7 @@ Deno.test("worldwide rewrite removes the upstream length before changing UTF-8 b
   });
   try {
     const html =
-      '<span data-price-world="$35/year">£25/year</span><span data-price-world="$0">£0</span><span data-price-world="$35/year">£25/year</span>';
+      '<span data-price-world="$35/year">£25/year</span><span data-price-world="$0">£0</span><span data-price-world="$35/year">£25/year</span><p>π☃</p>';
     const response = new Response(html, {
       status: 404,
       headers: {
@@ -57,20 +57,22 @@ Deno.test("worldwide rewrite removes the upstream length before changing UTF-8 b
       },
     });
     upstreamHeaders = new Headers(response.headers);
-    const result = await rewritePricing({
+    const ctx = {
       request: new Request("https://example.test/pricing/", {
         headers: { "cdn-requestcountrycode": "US" },
       }),
       response,
-    });
+    };
+    const result = await rewritePricing(ctx);
+    assert.equal(result, ctx.response);
     assert.equal(result.status, 404);
-    assert.equal(result.headers.get("content-length"), null);
+    assert.equal(result.headers.get("content-length"), "147");
     assert.equal(result.headers.get("cache-control"), "no-store");
     assert.equal(result.headers.get("x-bunny-deploy"), "fixture");
     const rewritten = await result.text();
     assert.equal(
       rewritten,
-      '<span data-price-world="$35/year">$35/year</span><span data-price-world="$0">$0</span><span data-price-world="$35/year">$35/year</span>',
+      '<span data-price-world="$35/year">$35/year</span><span data-price-world="$0">$0</span><span data-price-world="$35/year">$35/year</span><p>π☃</p>',
     );
     assert.equal(
       new TextEncoder().encode(rewritten).length,
@@ -108,7 +110,7 @@ Deno.test("worldwide HTML accepts a native Fetch response with immutable headers
       response,
     });
     assert.equal(await result.text(), "<p>plain HTML</p>");
-    assert.equal(result.headers.get("content-length"), null);
+    assert.equal(result.headers.get("content-length"), "17");
   } finally {
     if (original) Object.defineProperty(globalThis, "HTMLRewriter", original);
     else Reflect.deleteProperty(globalThis, "HTMLRewriter");
@@ -130,6 +132,28 @@ Deno.test("UK HTML retains its unchanged body length", async () => {
   assert.equal(result.headers.get("content-length"), "16");
   assert.equal(result.headers.get("cache-control"), "no-store");
 });
+
+for (const [method, status] of [["HEAD", 200], ["GET", 304]] as const) {
+  Deno.test(`worldwide ${method} ${status} stays bodyless without rewriting`, async () => {
+    // No HTMLRewriter is installed: invoking it would fail this test.
+    const ctx = {
+      request: new Request("https://example.test/pricing/", {
+        method,
+        headers: { "cdn-requestcountrycode": "US" },
+      }),
+      response: new Response(null, {
+        status,
+        headers: { "content-type": "text/html", "content-length": "150" },
+      }),
+    };
+    const result = await rewritePricing(ctx);
+    assert.equal(result, ctx.response);
+    assert.equal(result.status, status);
+    assert.equal(result.body, null);
+    assert.equal(result.headers.get("content-length"), null);
+    assert.equal(result.headers.get("cache-control"), "no-store");
+  });
+}
 
 Deno.test("non-HTML assets retain the original response and cache/framing headers", async () => {
   const response = new Response("body", {

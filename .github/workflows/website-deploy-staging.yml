@@ -129,4 +129,7 @@ jobs:
           file: website/edge-script/dist/index.ts
 
       - name: Verify complete pricing response after middleware publication
-        run: curl --fail --silent --show-error --max-time 20 --retry 5 --retry-delay 5 --retry-all-errors --output /dev/null https://shroud-email-website-staging.b-cdn.net/pricing/
+        run: |
+          response="$(mktemp)"
+          trap 'rm -f "$response"' EXIT
+          curl --fail --silent --show-error --max-time 20 --retry 5 --retry-delay 5 --retry-all-errors --output "$response" https://shroud-email-website-staging.b-cdn.net/pricing/

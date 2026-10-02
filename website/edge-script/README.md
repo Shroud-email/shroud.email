@@ -2,7 +2,7 @@
 
 A bunny.net **middleware** edge script that rewrites the displayed price on the
 pricing page based on the visitor's country, using bunny's `CDN-RequestCountryCode`
-header and `HTMLRewriter` (streaming, no buffering).
+header and `HTMLRewriter`. Rewritten HTML is buffered to publish its exact byte length.
 
 | Visitor         | Price shown   |
 | --------------- | ------------- |
@@ -34,14 +34,18 @@ is absent, visitors see the UK default.
 
 ### Response framing
 
-The worldwide rewrite removes `Content-Length` from both the original middleware
-context and the returned response, using a mutable copy of the context response
-so immutable Fetch headers are not modified. UK price strings contain `£` (two UTF-8 bytes),
-while `$` occupies one byte, so the three pricing spans shorten the body by three
-bytes. Preserving the origin's length makes clients wait for bytes that will
-never arrive. The body remains streamed; UK responses and assets retain their
-unchanged framing. Unit tests use a conservative rewriter double that retains
-upstream headers; a live Bunny deployment is still needed to verify wire behavior.
+UK price strings contain `£` (two UTF-8 bytes), while `$` occupies one byte, so
+the three pricing spans shorten the body by three bytes. Preserving the origin's
+length makes clients wait for bytes that will never arrive. The deletion-only
+fix was published successfully, but staging still advertised the origin length.
+The active edge revision was not verified, so propagation delay remains possible.
+The worldwide handler therefore buffers the transformed HTML and explicitly
+sets `Content-Length` to the output buffer's byte length, not its character count.
+It uses a mutable copy of the context response so immutable Fetch headers are
+not modified. UK responses and assets retain their unchanged, streamed bodies.
+This trades streaming worldwide HTML for reliable explicit framing. Unit tests
+include non-ASCII text and a rewriter double that retains upstream headers;
+a live Bunny deployment is still needed to validate the revised override.
 
 ## Files
 

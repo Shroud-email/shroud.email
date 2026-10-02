@@ -3,7 +3,7 @@
 // bunny.net injects `CDN-RequestCountryCode` (ISO-3166-1 alpha-2) on every
 // request. We read it in onOriginResponse and rewrite the price inside any
 // element carrying a `data-price-world` attribute to that attribute's value,
-// using HTMLRewriter (streaming, no buffering).
+// using HTMLRewriter. Rewritten HTML is buffered to publish its exact byte length.
 //
 // The static HTML ships with UK prices as the default (£0 / £25/year), so if
 // the script is ever disabled or the country header is missing, visitors see
@@ -28,7 +28,9 @@ function isUK(country: string | null): boolean {
   return country !== null && UK_COUNTRY_CODES.has(country.toUpperCase());
 }
 
-export function rewritePricing(ctx: { request: Request; response: Response }) {
+export async function rewritePricing(
+  ctx: { request: Request; response: Response },
+) {
   // Only rewrite HTML responses.
   const type = ctx.response.headers.get("content-type") ?? "";
   if (!type.includes("text/html")) {
@@ -51,6 +53,19 @@ export function rewritePricing(ctx: { request: Request; response: Response }) {
     );
   }
 
+  // HEAD has no payload to measure; null-body statuses must stay bodyless.
+  if (ctx.request.method === "HEAD" || ctx.response.body === null) {
+    const headers = new Headers(ctx.response.headers);
+    headers.delete("content-length");
+    headers.set("cache-control", "no-store");
+    ctx.response = new Response(null, {
+      status: ctx.response.status,
+      statusText: ctx.response.statusText,
+      headers,
+    });
+    return ctx.response;
+  }
+
   // Worldwide visitor: replace each localized price with its worldwide
   // counterpart. The worldwide value is carried in the data-price-world
   // attribute on each <span data-price> (the hero heading + price cells).
@@ -71,13 +86,16 @@ export function rewritePricing(ctx: { request: Request; response: Response }) {
     headers: inputHeaders,
   });
   const rewritten = rewriter.transform(ctx.response);
+  // Staging still advertised the origin length after publishing a deletion-only fix.
+  // Its active edge revision was not verified; propagation delay remains possible.
+  // Explicitly override it with the actual output byte count, not string length.
+  const body = await rewritten.arrayBuffer();
   const headers = new Headers(rewritten.headers);
-  headers.delete("content-length");
+  headers.set("content-length", String(body.byteLength));
   headers.set("cache-control", "no-store");
-  return Promise.resolve(
-    new Response(rewritten.body, {
-      status: rewritten.status,
-      headers,
-    }),
-  );
+  ctx.response = new Response(body, {
+    status: rewritten.status,
+    headers,
+  });
+  return ctx.response;
 }
