@@ -21,6 +21,8 @@ export function transformAnalyticsRequest(payload) {
   if (path.startsWith("/alias/")) url.pathname = "/alias/:address";
   if (path.startsWith("/domains/")) url.pathname = "/domains/:domain";
   if (path.startsWith("/email-report/")) url.pathname = "/email-report/:data";
+  // The alias-list search contains private account data, not campaign attribution.
+  if (path === "/") url.searchParams.delete("query");
 
   return { ...payload, u: url.href };
 }

@@ -340,10 +340,12 @@ test("tracks only completed checkout, once, without customer or transaction data
   const { document } = fixture();
   const events = [];
   const timers = [];
+  const location = { href: "/settings/billing/lifetime" };
   let callback;
   const checkout = setupPaddleCheckout({
     document,
     window: {
+      location,
       plausible: (...args) => events.push(args),
       setTimeout: (...args) => timers.push(args),
     },
@@ -359,6 +361,10 @@ test("tracks only completed checkout, once, without customer or transaction data
   callback({ name: "checkout.completed" });
   assert.deepEqual(events, [["Purchase", {}]]);
   assert.equal(timers.length, 1);
+  assert.equal(timers[0][1], 5000);
+  assert.equal(location.href, "/settings/billing/lifetime");
+  timers[0][0]();
+  assert.equal(location.href, "/settings/billing");
   checkout.dispose();
   callback({ name: "checkout.completed" });
   assert.equal(events.length, 1);

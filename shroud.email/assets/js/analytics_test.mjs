@@ -15,6 +15,17 @@ test("leaves ordinary tracker payloads unchanged", () => {
   assert.deepEqual(transformAnalyticsRequest(payload), payload);
 });
 
+test("removes private alias-list searches without filtering campaign or other parameters", () => {
+  const result = transformAnalyticsRequest({
+    n: "pageview",
+    u: "https://app.shroud.email/?query=private%40example.com&page=2&utm_source=newsletter&ref=partner&query=second-private-value",
+  });
+  assert.equal(
+    result.u,
+    "https://app.shroud.email/?page=2&utm_source=newsletter&ref=partner",
+  );
+});
+
 test("normalizes alias, domain and email-report details without sending their values", () => {
   for (const [path, expected] of [
     ["/alias/private%40example.com", "/alias/:address"],
