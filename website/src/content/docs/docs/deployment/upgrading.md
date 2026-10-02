@@ -5,21 +5,16 @@ description: How to update your Shroud.email deployment.
 
 ## Version 1.4.0: Required manual changes
 
-Existing installations need a one-time migration to the `tls.pem` certificate
-bundle and must activate the custom-domain DKIM plugin. Update both the Haraka
-image and the production checkout: Compose mounts
-`hosting/haraka/haraka_config` over the configuration bundled in the image, so
-pulling the image alone does not activate the plugin.
+Update the checkout and Haraka image to enable automatic certificate renewal
+and custom-domain DKIM signing.
 
-Your existing DKIM configuration must include a valid installation key at
-`haraka/haraka_config/config/dkim/<EMAIL_DOMAIN>/private`, a sibling `selector`
-file containing `shroudemail`, and the matching public TXT record at
-`shroudemail._domainkey.<EMAIL_DOMAIN>`. Preserve these files when updating the
-checkout; **do not regenerate a working key**.
+Keep your existing DKIM key and `shroudemail` selector in
+`haraka/haraka_config/config/dkim/<EMAIL_DOMAIN>/`. The matching TXT record at
+`shroudemail._domainkey.<EMAIL_DOMAIN>` must be present. **Do not regenerate a
+working key.**
 
-Run from `hosting/` during a maintenance window. **Stop Haraka before updating
-the checkout** to prevent its live configuration from referencing a certificate
-bundle that does not yet exist:
+Run from `hosting/` during a maintenance window. **Stop Haraka before updating**
+so it cannot load the certificate configuration before the bundle is ready:
 
 ```sh
 docker compose stop haraka &&
@@ -30,19 +25,16 @@ docker compose exec cron /etc/periodic/daily/bundle_certs &&
 docker compose up -d --no-deps --force-recreate haraka
 ```
 
-If a command fails, leave Haraka stopped until resolved. Check startup logs with
+If a command fails, keep Haraka stopped until fixed. Check startup logs with
 `docker compose logs --tail=100 haraka`.
 
-Send both a forwarded message and an alias reply through a custom domain to an
-external inbox. Confirm that `DKIM-Signature` contains `d=<custom-domain>` and
-`s=shroudemail`, and that the recipient's `Authentication-Results` reports
-`dkim=pass`. Custom-domain owners must publish the DKIM CNAME shown in the app;
-existing matching CNAMEs need no changes.
+Test a forwarded message and an alias reply from a custom domain at an external
+inbox. Check for `d=<custom-domain>; s=shroudemail` in `DKIM-Signature` and
+`dkim=pass` in `Authentication-Results`. Existing DKIM CNAMEs need no changes.
 
-These Haraka changes require no database migrations, new environment variables, or
-per-custom-domain key provisioning. Certificate renewals activate automatically
-without restarting Haraka, and ownership-verified custom domains use the
-installation's DKIM key without per-domain files or restarts.
+No database migrations, new environment variables, or per-domain keys are needed
+for these Haraka changes. Certificate renewals and custom-domain signing are
+automatic after this upgrade.
 
 ## Version 1.0 breaking changes
 
