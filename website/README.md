@@ -29,7 +29,7 @@ specification is also published at `/docs/openapi.json`.
 The `/docs/api/aliases/` and `/docs/api/domains/` URLs redirect to the generated
 list-operation pages. Since this is a static build, Astro emits HTML redirect
 pages rather than HTTP redirects. All other existing guide URLs are preserved.
-Docs retain the shared cookieless PostHog integration, Manrope font, and indigo
+Docs use the website's cookieless PostHog integration, Manrope font, and indigo
 accent. Documentation is built and deployed with the website using the existing
 website Bunny Storage and Pull Zones; no separate docs deployment is required.
 
