@@ -93,6 +93,43 @@ defmodule Shroud.ProxyTest do
       assert {:ok, {image_body(), nil}} == Proxy.get(first_url)
     end
 
+    test "handles case-insensitive redirect and content-type headers" do
+      first_url = "http://example.com/image.png?name=Tao&points=0&language=EN&lname="
+      second_url = "http://assets.example.com/image.png"
+
+      for status <- [301, 302], location_header <- ["location", "LoCaTiOn"] do
+        Shroud.MockHTTPoison
+        |> expect(:get, fn ^first_url ->
+          {:ok,
+           %HTTPoison.Response{
+             status_code: status,
+             headers: [{"X-Other", "ignored"}, {location_header, second_url}]
+           }}
+        end)
+        |> expect(:get, fn ^second_url ->
+          {:ok,
+           %HTTPoison.Response{
+             status_code: 200,
+             body: image_body(),
+             headers: [{"content-type", "image/jpeg"}]
+           }}
+        end)
+
+        assert {:ok, {image_body(), "image/jpeg"}} == Proxy.get(first_url)
+      end
+    end
+
+    test "rejects a redirect without a location header" do
+      url = "https://example.com/foo.png"
+
+      Shroud.MockHTTPoison
+      |> expect(:get, fn ^url ->
+        {:ok, %HTTPoison.Response{status_code: 302, headers: [{"X-Other", "ignored"}]}}
+      end)
+
+      assert {:error, :non_200_status_code} == Proxy.get(url)
+    end
+
     test "does not follow redirect loop" do
       # stub to always return a redirect
       Shroud.MockHTTPoison

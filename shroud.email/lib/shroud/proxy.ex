@@ -29,20 +29,17 @@ defmodule Shroud.Proxy do
     case http().get(url) do
       {:ok, %HTTPoison.Response{status_code: status, headers: headers}}
       when status in [301, 302] ->
-        case List.keyfind(headers, "Location", 0) do
-          {"Location", location} ->
-            get_from_network(location, depth + 1)
-
+        case header_value(headers, "location") do
           nil ->
             {:error, :non_200_status_code}
+
+          location ->
+            get_from_network(location, depth + 1)
         end
 
       {:ok, %HTTPoison.Response{status_code: 200, body: body, headers: headers}} ->
         if ExImageInfo.seems?(body) do
-          {_header_name, content_type} =
-            List.keyfind(headers, "Content-Type", 0, {"Content-Type", nil})
-
-          {:ok, {body, content_type}}
+          {:ok, {body, header_value(headers, "content-type")}}
         else
           {:error, :not_an_image}
         end
@@ -55,6 +52,12 @@ defmodule Shroud.Proxy do
         Logger.warning("Could not fetch #{url}: #{Exception.message(error)}")
         {:error, :network_error}
     end
+  end
+
+  defp header_value(headers, name) do
+    Enum.find_value(headers, fn {key, value} ->
+      if String.downcase(key) == name, do: value
+    end)
   end
 
   defp http, do: Application.fetch_env!(:shroud, :http_client)
