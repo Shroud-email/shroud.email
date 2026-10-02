@@ -82,17 +82,17 @@ install_mise() {
 
   export PATH="$HOME/.local/bin:$PATH"
   "$mise_bin" trust --yes mise.toml
-  "$mise_bin" install --yes
+  step "Install shared tools" "$mise_bin" install --yes
   "$mise_bin" trust --yes shroud.email/mise.toml
   "$mise_bin" trust --yes caddy-permissive-file-storage/mise.toml
   # Debian 12 can use Bob's Ubuntu 22.04 OTP build; avoid compiling Erlang from source.
   # Install Erlang first so Elixir's install dependency is present before mise runs in parallel.
   (
     cd shroud.email
-    MISE_ERLANG_PRECOMPILED_OS=ubuntu-22.04 "$mise_bin" install --yes erlang
-    "$mise_bin" install --yes
+    step "Install precompiled Erlang" env MISE_ERLANG_PRECOMPILED_OS=ubuntu-22.04 "$mise_bin" install --yes erlang
+    step "Install Phoenix tools" "$mise_bin" install --yes
   )
-  (cd caddy-permissive-file-storage && "$mise_bin" install --yes)
+  (cd caddy-permissive-file-storage && step "Install Go tools" "$mise_bin" install --yes)
 }
 
 configure_login_shell() {
@@ -120,15 +120,15 @@ prepare_environment() {
 }
 
 install_javascript_dependencies() {
-  mise exec -- npm --prefix assets ci
-  mise exec -- npm --prefix e2e ci
+  step "Install Phoenix JavaScript dependencies" mise exec -- npm --prefix assets ci --prefer-offline --no-audit --no-fund
+  step "Install E2E JavaScript dependencies" mise exec -- npm --prefix e2e ci --prefer-offline --no-audit --no-fund
 }
 
 install_elixir_dependencies() {
   mise exec -- mix local.hex --force --if-missing
   mise exec -- mix local.rebar --force --if-missing
-  step "Fetch development Mix dependencies" mise exec -- mix deps.get
-  step "Fetch test Mix dependencies" mise exec -- env MIX_ENV=test mix deps.get
+  # Without --only, deps.get fetches dependencies for every environment.
+  step "Fetch Mix dependencies" mise exec -- mix deps.get
   step "Compile development Mix environment" mise exec -- mix compile
   step "Compile test Mix environment" mise exec -- env MIX_ENV=test mix compile
   step "Install Phoenix asset tools" mise exec -- mix assets.setup
@@ -184,7 +184,7 @@ step "Install system packages" install_apt_packages \
 step "Install Docker" install_docker
 step "Install pinned toolchain" install_mise
 step "Configure login shell" configure_login_shell
-step "Install repository tooling" mise exec -- npm ci
+step "Install repository tooling" mise exec -- npm ci --prefer-offline --no-audit --no-fund
 cd "$repo_root/shroud.email"
 step "Prepare local environment" prepare_environment
 step "Install JavaScript dependencies" install_javascript_dependencies

@@ -3,6 +3,11 @@ import Config
 if Config.config_env() == :dev do
   DotenvParser.load_file(".env")
 
+  # Sentry reads this variable directly; a blank optional DSN disables reporting.
+  if System.get_env("SENTRY_DSN") == "" do
+    System.delete_env("SENTRY_DSN")
+  end
+
   if app_domain = System.get_env("APP_DOMAIN") do
     config :shroud, ShroudWeb.Endpoint, url: [host: app_domain, scheme: "https", port: 443]
   end
