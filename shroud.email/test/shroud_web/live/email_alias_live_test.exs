@@ -58,6 +58,97 @@ defmodule ShroudWeb.EmailAliasLiveTest do
       refute has_element?(view, "#clear-alias-search")
     end
 
+    test "paginates without retaining previous rows and restores pages from the URL", %{
+      conn: conn,
+      user: user,
+      email_alias: oldest
+    } do
+      aliases = for _ <- 1..40, do: alias_fixture(%{user_id: user.id})
+      newest = List.last(aliases)
+      second_page_first = Enum.at(aliases, 19)
+
+      {:ok, view, _html} = live(conn, ~p"/")
+      assert has_element?(view, "#aliases > tr:nth-child(20)")
+      refute has_element?(view, "#aliases > tr:nth-child(21)")
+      assert has_element?(view, "#copy-alias-#{newest.id}")
+      refute has_element?(view, "#copy-alias-#{second_page_first.id}")
+      assert has_element?(view, "#alias-page-range", "Showing 1–20 of 41 aliases")
+      refute has_element?(view, "#alias-page-previous")
+
+      view |> element("#alias-page-next") |> render_click()
+      assert_patch(view, ~p"/?page=2")
+      assert has_element?(view, "#alias-page-2[aria-current='page']")
+      assert has_element?(view, "#copy-alias-#{second_page_first.id}")
+      refute has_element?(view, "#copy-alias-#{newest.id}")
+      assert has_element?(view, "#alias-page-range", "Showing 21–40 of 41 aliases")
+
+      {:ok, restored, _html} = live(conn, ~p"/?page=2")
+      assert has_element?(restored, "#copy-alias-#{second_page_first.id}")
+      refute has_element?(restored, "#copy-alias-#{newest.id}")
+
+      view |> element("#alias-page-3") |> render_click()
+      assert_patch(view, ~p"/?page=3")
+      assert has_element?(view, "#copy-alias-#{oldest.id}")
+      refute has_element?(view, "#aliases > tr:nth-child(2)")
+      refute has_element?(view, "#alias-page-next")
+      assert has_element?(view, "#alias-page-range", "Showing 41–41 of 41 aliases")
+
+      view |> element("#alias-page-previous") |> render_click()
+      assert_patch(view, ~p"/?page=2")
+      assert has_element?(view, "#copy-alias-#{second_page_first.id}")
+      refute has_element?(view, "#copy-alias-#{oldest.id}")
+    end
+
+    test "search resets the page and paginates all matches while retaining the query", %{
+      conn: conn,
+      user: user
+    } do
+      matches = for _ <- 1..25, do: alias_fixture(%{user_id: user.id, notes: "100% receipts"})
+      for _ <- 1..20, do: alias_fixture(%{user_id: user.id, notes: "1000 receipts"})
+
+      {:ok, view, _html} = live(conn, ~p"/?page=3")
+      view |> form("#alias-search", query: "100%") |> render_submit()
+      assert_patch(view, ~p"/?#{[page: 1, query: "100%"]}")
+      assert has_element?(view, "#alias-page-range", "Showing 1–20 of 25 aliases")
+      assert has_element?(view, "#copy-alias-#{List.last(matches).id}")
+      refute has_element?(view, "#copy-alias-#{hd(matches).id}")
+
+      view |> element("#alias-page-next") |> render_click()
+      assert_patch(view, ~p"/?#{[page: 2, query: "100%"]}")
+      assert has_element?(view, "#query[value='100%']")
+      assert has_element?(view, "#copy-alias-#{hd(matches).id}")
+      assert has_element?(view, "#aliases > tr:nth-child(5)")
+      refute has_element?(view, "#aliases > tr:nth-child(6)")
+      assert has_element?(view, "#alias-page-range", "Showing 21–25 of 25 aliases")
+
+      {:ok, restored, _html} = live(conn, ~p"/?#{[page: 2, query: "100%"]}")
+      assert has_element?(restored, "#query[value='100%']")
+      assert has_element?(restored, "#copy-alias-#{hd(matches).id}")
+
+      view |> form("#alias-search", query: "missing") |> render_change()
+      assert_patch(view, ~p"/?#{[page: 1, query: "missing"]}")
+      refute has_element?(view, "#alias-pagination")
+      assert has_element?(view, "#clear-alias-search")
+      view |> element("#clear-alias-search") |> render_click()
+      assert_patch(view, ~p"/?page=1")
+      assert has_element?(view, "#alias-page-range", "Showing 1–20 of 46 aliases")
+    end
+
+    test "normalizes invalid and out-of-range pages and hides single-page navigation", %{
+      conn: conn,
+      email_alias: email_alias
+    } do
+      {:ok, view, _html} = live(conn, ~p"/")
+      refute has_element?(view, "#alias-pagination")
+
+      for page <- ["0", "-2", "abc", "2oops", "999999999999999999999999999"] do
+        render_patch(view, ~p"/?#{[page: page]}")
+        assert_patch(view, ~p"/?page=1")
+        assert has_element?(view, "#copy-alias-#{email_alias.id}")
+        refute has_element?(view, "#alias-pagination")
+      end
+    end
+
     test "creates new email_alias", %{conn: conn} do
       {:ok, index_live, _html} =
         conn

@@ -21,18 +21,47 @@ defmodule ShroudWeb.EmailAliasLive.Index do
   def mount(_params, _session, socket) do
     socket =
       socket
-      |> update_email_aliases()
       |> update_custom_domains()
-      |> assign(:filter_query, "")
       |> assign(:custom_alias_domain, nil)
       |> assign(:custom_alias_error, "")
-      |> assign(:alias_count, length(Aliases.list_aliases(socket.assigns.current_user)))
+      |> assign(:alias_count, Aliases.count_aliases(socket.assigns.current_user))
       |> assign_at_free_limit()
       |> assign(:page_title, "Aliases")
       |> assign(:page_title_url, nil)
       |> assign(:subpage_title, nil)
 
     {:ok, socket}
+  end
+
+  @impl true
+  def handle_params(params, _uri, socket) do
+    query =
+      case params["query"] do
+        value when is_binary(value) -> value
+        _ -> ""
+      end
+
+    page_number = parse_page(params["page"])
+    page = Aliases.paginate_aliases(socket.assigns.current_user, query, page_number)
+
+    socket =
+      socket
+      |> assign(:filter_query, query)
+      |> assign(:filtered_alias_count, page.total_entries)
+      |> assign(:page_number, page.page_number)
+      |> assign(:page_size, page.page_size)
+      |> assign(:total_pages, page.total_pages)
+      |> assign(:pagination_pages, pagination_pages(page.page_number, page.total_pages))
+      |> stream(:aliases, page.entries, reset: true)
+
+    socket =
+      if params["page"] && params["page"] != Integer.to_string(page.page_number) do
+        push_patch(socket, to: aliases_path(page.page_number, query), replace: true)
+      else
+        socket
+      end
+
+    {:noreply, socket}
   end
 
   @impl true
@@ -105,12 +134,7 @@ defmodule ShroudWeb.EmailAliasLive.Index do
 
   @impl true
   def handle_event("filter", %{"query" => query}, socket) do
-    socket =
-      socket
-      |> assign(:filter_query, query)
-      |> update_email_aliases()
-
-    {:noreply, socket}
+    {:noreply, push_patch(socket, to: aliases_path(1, query))}
   end
 
   @impl true
@@ -139,13 +163,33 @@ defmodule ShroudWeb.EmailAliasLive.Index do
     {:noreply, socket}
   end
 
-  defp update_email_aliases(socket) do
-    aliases =
-      Aliases.list_aliases(socket.assigns[:current_user], socket.assigns[:filter_query])
+  defp aliases_path(page_number, ""), do: ~p"/?#{[page: page_number]}"
 
-    socket
-    |> stream(:aliases, aliases, reset: true)
-    |> assign(:filtered_alias_count, length(aliases))
+  defp aliases_path(page_number, query), do: ~p"/?#{[page: page_number, query: query]}"
+
+  defp parse_page(value) when is_binary(value) do
+    case Integer.parse(value) do
+      {page, ""} when page > 0 -> page
+      _ -> 1
+    end
+  end
+
+  defp parse_page(_value), do: 1
+
+  defp pagination_pages(_page, total) when total <= 7, do: Enum.to_list(1..total)
+
+  defp pagination_pages(page, total) do
+    [1, page - 1, page, page + 1, total]
+    |> Enum.filter(&(&1 >= 1 and &1 <= total))
+    |> Enum.uniq()
+    |> Enum.sort()
+    |> Enum.reduce([], fn number, acc ->
+      case acc do
+        [previous | _] when number - previous > 1 -> [number, :ellipsis | acc]
+        _ -> [number | acc]
+      end
+    end)
+    |> Enum.reverse()
   end
 
   defp assign_at_free_limit(socket) do

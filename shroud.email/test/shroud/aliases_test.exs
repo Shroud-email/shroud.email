@@ -132,6 +132,40 @@ defmodule Shroud.AliasesTest do
     end
   end
 
+  describe "paginate_aliases/3" do
+    test "counts all scoped matches, orders timestamp ties, and retains recent metrics" do
+      user = user_fixture()
+      matches = for _ <- 1..21, do: alias_fixture(%{user_id: user.id, title: "Needle"})
+      oldest = hd(matches)
+      alias_fixture(%{user_id: user.id, title: "Other"})
+      deleted = alias_fixture(%{user_id: user.id, title: "Needle"})
+      Aliases.delete_email_alias(deleted.id)
+      alias_fixture(%{user_id: user_fixture().id, title: "Needle"})
+
+      Repo.update_all(
+        from(ea in EmailAlias, where: ea.user_id == ^user.id),
+        set: [inserted_at: ~N[2026-01-01 00:00:00]]
+      )
+
+      metric_fixture(%{alias_id: oldest.id, date: Date.utc_today(), forwarded: 7})
+      first = Aliases.paginate_aliases(user, "needle", 1)
+      second = Aliases.paginate_aliases(user, "needle", 2)
+
+      assert first.total_entries == 21
+      assert first.total_pages == 2
+      assert first.page_size == 20
+
+      assert Enum.map(first.entries, & &1.id) ==
+               matches |> tl() |> Enum.reverse() |> Enum.map(& &1.id)
+
+      assert [entry] = second.entries
+      assert entry.id == oldest.id
+      assert entry.forwarded_in_last_30_days == 7
+      assert second.page_number == 2
+      assert Aliases.count_aliases(user) == 22
+    end
+  end
+
   describe "get_email_alias_by_address!/1" do
     test "counts recent metrics" do
       one_week_seconds = 7 * 24 * 60 * 60

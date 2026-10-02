@@ -15,10 +15,25 @@ defmodule Shroud.Aliases do
   @spec list_aliases(User.t()) :: [EmailAlias.t()]
   def list_aliases(%User{} = user, search_query \\ nil) do
     user
+    |> aliases_with_metrics(search_query)
+    |> Repo.all()
+  end
+
+  def paginate_aliases(%User{} = user, search_query, page_number) do
+    user
+    |> aliases_with_metrics(search_query)
+    |> Repo.paginate(page: page_number, page_size: 20)
+  end
+
+  def count_aliases(%User{} = user) do
+    user |> aliases_query() |> Repo.aggregate(:count)
+  end
+
+  defp aliases_with_metrics(user, search_query) do
+    user
     |> aliases_query(search_query)
     |> join(:left, [ea], m in subquery(recent_metrics()), on: m.alias_id == ea.id)
     |> select_merge([ea, m], %{ea | forwarded_in_last_30_days: coalesce(m.forwarded, 0)})
-    |> Repo.all()
   end
 
   @doc "Returns the current user's non-deleted aliases query, optionally searched as in the dashboard."
@@ -26,7 +41,7 @@ defmodule Shroud.Aliases do
     query =
       from(ea in EmailAlias,
         where: ea.user_id == ^user.id and is_nil(ea.deleted_at),
-        order_by: [desc: ea.inserted_at]
+        order_by: [desc: ea.inserted_at, desc: ea.id]
       )
 
     if is_nil(search_query) or String.trim(search_query) == "" do
