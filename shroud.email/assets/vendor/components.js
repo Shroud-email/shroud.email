@@ -71,12 +71,7 @@
   (window.AlpineComponents.menu = function (e = { open: !1 }) {
     return {
       init() {
-        ;(this.items = Array.from(
-          this.$el.querySelectorAll('[role="menuitem"]'),
-        )),
-          this.$watch("open", () => {
-            this.open && (this.activeIndex = -1)
-          })
+        this.items = Array.from(this.$el.querySelectorAll('[role="menuitem"]'))
       },
       activeDescendant: null,
       activeIndex: null,
@@ -89,42 +84,40 @@
         ;(this.open = !this.open),
           this.open &&
             this.$nextTick(() => {
+              this.activeIndex = -1
+              this.activeDescendant = null
               this.$refs["menu-items"].focus()
             })
       },
       onButtonEnter() {
-        ;(this.open = !this.open),
-          this.open &&
-            ((this.activeIndex = 0),
-            (this.activeDescendant = this.items[this.activeIndex].id),
-            this.$nextTick(() => {
-              this.$refs["menu-items"].focus()
-            }))
+        if (this.open) {
+          this.open = false
+          return
+        }
+        this.onArrowDown()
+        this.$nextTick(() => this.$refs["menu-items"].focus())
       },
       onArrowUp() {
-        if (!this.open)
-          return (
-            (this.open = !0),
-            (this.activeIndex = this.items.length - 1),
-            void (this.activeDescendant = this.items[this.activeIndex].id)
-          )
-        0 !== this.activeIndex &&
-          ((this.activeIndex =
-            -1 === this.activeIndex
-              ? this.items.length - 1
-              : this.activeIndex - 1),
-          (this.activeDescendant = this.items[this.activeIndex].id))
+        const start = !this.open || this.activeIndex === -1
+          ? this.items.length - 1
+          : this.activeIndex - 1
+        this.open = true
+        for (let index = start; index >= 0; index--) {
+          if (this.items[index].getAttribute("aria-disabled") === "true") continue
+          this.activeIndex = index
+          this.activeDescendant = this.items[index].id
+          break
+        }
       },
       onArrowDown() {
-        if (!this.open)
-          return (
-            (this.open = !0),
-            (this.activeIndex = 0),
-            void (this.activeDescendant = this.items[this.activeIndex].id)
-          )
-        this.activeIndex !== this.items.length - 1 &&
-          ((this.activeIndex = this.activeIndex + 1),
-          (this.activeDescendant = this.items[this.activeIndex].id))
+        const start = this.open ? this.activeIndex + 1 : 0
+        this.open = true
+        for (let index = start; index < this.items.length; index++) {
+          if (this.items[index].getAttribute("aria-disabled") === "true") continue
+          this.activeIndex = index
+          this.activeDescendant = this.items[index].id
+          break
+        }
       },
       onClickAway(e) {
         if (this.open) {

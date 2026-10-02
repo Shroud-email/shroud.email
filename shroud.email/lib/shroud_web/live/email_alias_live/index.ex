@@ -210,6 +210,9 @@ defmodule ShroudWeb.EmailAliasLive.Index do
     )
   end
 
+  attr(:at_free_limit, :boolean, required: true)
+  attr(:custom_domains, :list, required: true)
+
   defp new_alias_button(assigns) do
     ~H"""
     <%= if @at_free_limit do %>
@@ -221,7 +224,12 @@ defmodule ShroudWeb.EmailAliasLive.Index do
         <.button click="add_alias" text="New alias" icon={:plus} />
       <% else %>
         <.button_with_dropdown click="add_alias" text="New alias" icon={:plus}>
-          <.dropdown_item index={0} click="add_alias" text={"@#{Util.email_domain()}"} />
+          <.dropdown_item
+            id="new-alias-default-domain"
+            index={0}
+            click="add_alias"
+            text={"@#{Util.email_domain()}"}
+          />
           <%= for {domain, index} <- Enum.with_index(@custom_domains, 1) do %>
             <% verified = Domain.fully_verified?(domain) %>
             <.dropdown_item

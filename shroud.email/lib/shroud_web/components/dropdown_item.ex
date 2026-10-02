@@ -23,6 +23,7 @@ defmodule ShroudWeb.Components.DropdownItem do
         )
       ]}
       aria-disabled={@disabled && "true"}
+      aria-label={if(@tooltip, do: "#{@text}: #{@tooltip}")}
       x-tooltip.raw.placement.left={@tooltip}
       x-bind:class={
         if(!@disabled,

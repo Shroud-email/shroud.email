@@ -47,10 +47,16 @@ defmodule ShroudWeb.EmailAliasLiveTest do
         {:ok, view, _html} = live(conn, ~p"/")
 
         assert has_element?(view, "button[aria-haspopup='true']", "Open menu")
+        assert has_element?(view, "#new-alias-default-domain[role='menuitem']")
 
         for domain <- [unverified, partial, expired] do
           selector = "#new-alias-domain-#{domain.id}"
           assert has_element?(view, selector <> "[aria-disabled='true']", "@#{domain.domain}")
+
+          assert has_element?(
+                   view,
+                   selector <> "[aria-label='@#{domain.domain}: Domain is not verified']"
+                 )
 
           assert has_element?(
                    view,
