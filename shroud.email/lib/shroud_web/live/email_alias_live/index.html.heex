@@ -9,12 +9,12 @@
   for unlimited aliases, custom domains, and outgoing email.
 </.alert>
 
-<form phx-submit="create_custom_alias">
+<form id="custom-alias-form" phx-submit="create_custom_alias">
   <.live_component
     module={PopupAlert}
     id="add_alias_modal"
     title="New alias"
-    text="What should your new alias be?"
+    text="Enter an alias name, or create a random alias."
     icon={:envelope}
   >
     <div class="mt-2">
@@ -22,12 +22,24 @@
         <.text_input name="alias_name" placeholder="john.doe" />
         <span class="ml-3 text-sm text-gray-700 dark:text-gray-300">{@custom_alias_domain}</span>
       </div>
-      <p :if={@custom_alias_error} class="text-red-600 mt-1 text-sm">
+      <p id="custom-alias-error" :if={@custom_alias_error != ""} class="text-red-600 mt-1 text-sm">
         {@custom_alias_error}
       </p>
     </div>
     <:buttons>
-      <.button text="Create" type="submit" />
+      <.button text="Create" type="submit" phx-disable-with="Creating…" />
+      <%!-- Let LiveView dispatch the click before disabling the button. --%>
+      <.button
+        id="create-random-custom-alias"
+        click={JS.push("create_random_custom_alias") |> JS.dispatch("alias-creating")}
+        text="Create random alias"
+        intent={:white}
+        x-data="{ creating: false }"
+        x-on:alias-creating="creating = true"
+        x-text="creating ? 'Creating…' : 'Create random alias'"
+        x-bind:disabled="creating"
+        x-on:phx:custom-alias-error.window="creating = false"
+      />
     </:buttons>
   </.live_component>
 </form>

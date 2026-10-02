@@ -6,6 +6,25 @@ defmodule Shroud.AliasesTest do
 
   import Shroud.{AccountsFixtures, AliasesFixtures, DomainFixtures}
 
+  describe "generate_alias_name/1" do
+    test "skips collisions on the selected domain without creating an alias" do
+      user = user_fixture()
+      domain = custom_domain_fixture(%{user_id: user.id})
+      :rand.seed(:exsss, {1, 2, 3})
+      taken_name = Aliases.generate_alias_name(domain.domain)
+      alias_fixture(%{user_id: user.id, address: taken_name <> "@" <> domain.domain})
+
+      :rand.seed(:exsss, {1, 2, 3})
+      name = Aliases.generate_alias_name(domain.domain)
+      assert name =~ ~r/^[a-z0-9]{16}$/
+      refute name == taken_name
+      assert Aliases.count_aliases(user) == 1
+
+      :rand.seed(:exsss, {1, 2, 3})
+      assert Aliases.generate_alias_name("other.example.com") == taken_name
+    end
+  end
+
   describe "list_aliases/1" do
     test "lists only the user's aliases" do
       %{id: id_one} = user_one = user_fixture()

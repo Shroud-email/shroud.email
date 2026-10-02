@@ -3,6 +3,7 @@ defmodule ShroudWeb.EmailAliasLive.Index do
 
   use ShroudWeb, :live_view
 
+  alias Phoenix.LiveView.JS
   alias Shroud.Aliases
   alias Shroud.Aliases.EmailAlias
   alias Shroud.Domain
@@ -94,7 +95,24 @@ defmodule ShroudWeb.EmailAliasLive.Index do
   @impl true
   def handle_event("open_custom_alias_modal", %{"text" => domain}, socket) do
     PopupAlert.show("add_alias_modal")
-    {:noreply, assign(socket, :custom_alias_domain, domain)}
+
+    {:noreply, assign(socket, custom_alias_domain: domain, custom_alias_error: "")}
+  end
+
+  @impl true
+  def handle_event(
+        "create_random_custom_alias",
+        _params,
+        %{assigns: %{custom_alias_domain: nil}} = socket
+      ) do
+    {:noreply, push_event(socket, "custom-alias-error", %{})}
+  end
+
+  def handle_event("create_random_custom_alias", _params, socket) do
+    domain = String.trim_leading(socket.assigns.custom_alias_domain, "@")
+    name = Aliases.generate_alias_name(domain)
+
+    handle_event("create_custom_alias", %{"alias_name" => name}, socket)
   end
 
   @impl true
@@ -119,16 +137,28 @@ defmodule ShroudWeb.EmailAliasLive.Index do
              to: ~p"/alias/#{email_alias.address}"
            )}
 
-        {:error, changeset} ->
+        {:error, %Ecto.Changeset{} = changeset} ->
           {error, _} = Keyword.get(changeset.errors, :address)
 
           socket =
             socket
             |> assign(:custom_alias_error, error)
             |> put_flash(:error, "Something went wrong.")
+            |> push_event("custom-alias-error", %{})
 
           {:noreply, socket}
+
+        {:error, _reason} ->
+          {:noreply,
+           socket
+           |> put_flash(:error, "Something went wrong.")
+           |> push_event("custom-alias-error", %{})}
       end
+    else
+      {:noreply,
+       socket
+       |> put_flash(:error, "You don't have permission to do that.")
+       |> push_event("custom-alias-error", %{})}
     end
   end
 

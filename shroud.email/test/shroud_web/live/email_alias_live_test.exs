@@ -206,6 +206,93 @@ defmodule ShroudWeb.EmailAliasLiveTest do
       assert html =~ "john.doe@#{custom_domain.domain}"
     end
 
+    test "ignores random alias creation before selecting a custom domain", %{
+      conn: conn,
+      user: user,
+      email_alias: email_alias
+    } do
+      {:ok, view, _html} = live(conn, ~p"/")
+      count = Shroud.Aliases.count_aliases(user)
+
+      render_hook(view, "create_random_custom_alias", %{})
+
+      assert_push_event(view, "custom-alias-error", %{})
+      assert has_element?(view, "#copy-alias-#{email_alias.id}")
+      refute has_element?(view, "#add_alias_modal")
+      assert Shroud.Aliases.count_aliases(user) == count
+    end
+
+    test "creates a random alias on the selected domain with one click", %{
+      conn: conn,
+      user: user
+    } do
+      first_domain = custom_domain_fixture(%{user_id: user.id})
+      custom_domain = custom_domain_fixture(%{user_id: user.id})
+      {:ok, view, _html} = live(conn, ~p"/")
+      count = Shroud.Aliases.count_aliases(user)
+
+      render_hook(view, "open_custom_alias_modal", %{"text" => "@#{first_domain.domain}"})
+      render_hook(view, "open_custom_alias_modal", %{"text" => "@#{custom_domain.domain}"})
+      assert has_element?(view, "#create-random-custom-alias[type='button']")
+      refute has_element?(view, "#custom-alias-error")
+      assert Shroud.Aliases.count_aliases(user) == count
+
+      {:ok, _view, _html} =
+        view
+        |> element("#create-random-custom-alias")
+        |> render_click()
+        |> follow_redirect(conn)
+
+      [email_alias] =
+        user |> Shroud.Aliases.list_aliases() |> Enum.filter(&(&1.domain_id == custom_domain.id))
+
+      [name, domain] = String.split(email_alias.address, "@")
+      assert name =~ ~r/^[a-z0-9]{16}$/
+      assert domain == custom_domain.domain
+      assert Shroud.Aliases.count_aliases(user) == count + 1
+      assert email_alias.user_id == user.id
+    end
+
+    test "random creation does not submit a typed alias or require fixing its validation error",
+         %{
+           conn: conn,
+           user: user
+         } do
+      domain = custom_domain_fixture(%{user_id: user.id})
+      alias_fixture(%{user_id: user.id, address: "taken@#{domain.domain}"})
+      {:ok, view, _html} = live(conn, ~p"/")
+      count = Shroud.Aliases.count_aliases(user)
+
+      render_hook(view, "open_custom_alias_modal", %{"text" => "@#{domain.domain}"})
+      view |> form("#custom-alias-form", alias_name: "taken") |> render_submit()
+      assert has_element?(view, "#custom-alias-error", "has already been taken")
+      assert_push_event(view, "custom-alias-error", %{})
+      assert Shroud.Aliases.count_aliases(user) == count
+
+      {:ok, _view, _html} =
+        view
+        |> element("#create-random-custom-alias")
+        |> render_click(%{alias_name: "taken"})
+        |> follow_redirect(conn)
+
+      assert Shroud.Aliases.count_aliases(user) == count + 1
+    end
+
+    test "random creation respects the alias limit without crashing", %{conn: conn, user: user} do
+      domain = custom_domain_fixture(%{user_id: user.id})
+      for _ <- 1..5, do: alias_fixture(%{user_id: user.id})
+      count = Shroud.Aliases.count_aliases(user)
+      user |> Shroud.Accounts.User.status_changeset(%{status: :free}) |> Shroud.Repo.update!()
+      {:ok, view, _html} = live(conn, ~p"/")
+
+      render_hook(view, "open_custom_alias_modal", %{"text" => "@#{domain.domain}"})
+      view |> element("#create-random-custom-alias") |> render_click()
+
+      assert_push_event(view, "custom-alias-error", %{})
+      assert Shroud.Aliases.count_aliases(user) == count
+      assert has_element?(view, "#create-random-custom-alias")
+    end
+
     # test "deletes email_alias in listing", %{conn: conn, email_alias: email_alias} do
     #   {:ok, index_live, _html} =
     #     conn
