@@ -70,7 +70,7 @@ const navLink =
           ))
         }
 
-        <div class="relative">
+        <div class="relative" data-hover-disclosure>
           <button
             type="button"
             data-disclosure-button
@@ -95,7 +95,7 @@ const navLink =
             id="more-menu"
             data-disclosure-panel
             hidden
-            class="absolute left-1/2 top-full mt-3 w-screen max-w-sm -translate-x-1/2"
+            class="absolute left-1/2 top-full w-screen max-w-sm -translate-x-1/2 pt-3"
           >
             <div
               class="overflow-hidden rounded-xl bg-white p-2 shadow-lg ring-1 ring-slate-900/5 dark:bg-slate-900 dark:ring-white/10"
@@ -225,11 +225,17 @@ const navLink =
     );
     if (!panel) continue;
 
+    const hoverDisclosure = btn.closest<HTMLElement>("[data-hover-disclosure]");
+
     btn.addEventListener("click", (event) => {
       event.stopPropagation();
       const isOpen = btn.getAttribute("aria-expanded") === "true";
+      const isMouseHover =
+        event instanceof PointerEvent &&
+        event.pointerType === "mouse" &&
+        hoverDisclosure?.matches(":hover");
       closeAll(buttons);
-      if (!isOpen) {
+      if (!isOpen || isMouseHover) {
         btn.setAttribute("aria-expanded", "true");
         panel.hidden = false;
       }
@@ -237,10 +243,42 @@ const navLink =
 
     // Clicks inside a panel shouldn't bubble up to the document closer.
     panel.addEventListener("click", (event) => event.stopPropagation());
+
+    if (hoverDisclosure) {
+      hoverDisclosure.addEventListener("pointerenter", (event) => {
+        // Touch users still toggle the disclosure with a tap.
+        if (event.pointerType !== "mouse") return;
+        closeAll(buttons);
+        btn.setAttribute("aria-expanded", "true");
+        panel.hidden = false;
+      });
+
+      hoverDisclosure.addEventListener("pointerleave", (event) => {
+        if (event.pointerType !== "mouse") return;
+        // Don't hide links while a keyboard user is interacting with them.
+        if (
+          hoverDisclosure.contains(document.activeElement) &&
+          document.activeElement?.matches(":focus-visible")
+        ) return;
+        btn.setAttribute("aria-expanded", "false");
+        panel.hidden = true;
+      });
+
+      hoverDisclosure.addEventListener("focusout", (event) => {
+        if (event.relatedTarget instanceof Node && hoverDisclosure.contains(event.relatedTarget)) return;
+        btn.setAttribute("aria-expanded", "false");
+        panel.hidden = true;
+      });
+    }
   }
 
   document.addEventListener("click", () => closeAll(buttons));
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") closeAll(buttons);
+    if (event.key !== "Escape") return;
+    for (const btn of buttons) {
+      const panel = document.getElementById(btn.getAttribute("aria-controls") || "");
+      if (panel?.contains(document.activeElement)) btn.focus();
+    }
+    closeAll(buttons);
   });
 </script>
