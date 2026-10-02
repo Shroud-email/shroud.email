@@ -47,15 +47,25 @@ not modified. UK responses and assets retain their unchanged, streamed bodies.
 The native runtime's wire framing remains unresolved; unit tests validate the
 returned Response, not Bunny's serialization of it.
 
-For `/pricing`, `/pricing/`, and `/pricing/index.html`, temporary `shroud-pricing`
-logs record the origin framing, entry into body buffering, and the actual byte
-count and headers just before returning. They exclude URLs, query strings,
-cookies, credentials, and response contents. Worldwide rewritten pricing also
-returns `X-Shroud-Pricing-Revision: framing-diagnostics-v1`. The workflow prints
+Temporary `shroud-pricing` logs now cover every origin response without a path
+filter. Sites configures an origin prefix `/deploys/<release>/`; the native
+middleware-visible pathname is unverified, so a public-path-only diagnostic
+filter could exclude a rewritten request. The initial v1 diagnostics used that
+filter and produced no logs in the user's capture.
+
+Revision `framing-diagnostics-v2` logs script startup and middleware registration,
+including whether the native Bunny global exists. Per-request logs include
+method, status, validated country, path-shape flags (not actual URLs), framing,
+content type, cache control, stream state, transformation/buffering checkpoints,
+replacement count, and returned headers. Every branch logs its outcome;
+buffering errors log their type and are rethrown. Logs exclude URLs, query
+strings, cookies, credentials, error messages, and response contents. All HTML
+responses return `X-Shroud-Pricing-Revision: framing-diagnostics-v2`. The workflow prints
 only framing/cache/revision headers and the received byte count, preserving
 curl's failure status. Compare those headers with Bunny's script logs: if
-`before-buffer` appears without `return-response` for the same invocation,
-execution did not complete. UK and HEAD/bodyless responses skip both events.
+`before-buffer` appears without `return-response` or `buffer-error` for the same
+invocation, buffering has not completed. UK, HEAD/bodyless, and non-HTML
+responses have distinct pass-through/return events instead.
 A correct logged length but incorrect wire length points to subsequent response
 handling. Remove these temporary diagnostics once the native framing issue is resolved.
 

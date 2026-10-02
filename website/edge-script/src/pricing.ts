@@ -31,30 +31,43 @@ function isUK(country: string | null): boolean {
 export async function rewritePricing(
   ctx: { request: Request; response: Response },
 ) {
-  // Only rewrite HTML responses.
   const type = ctx.response.headers.get("content-type") ?? "";
-  if (!type.includes("text/html")) {
-    return Promise.resolve(ctx.response);
-  }
-
   const country = ctx.request.headers.get("cdn-requestcountrycode");
-  const pricingRequest = /^\/pricing(?:\/|\/index\.html)?$/.test(
-    new URL(ctx.request.url).pathname,
+  const pathname = new URL(ctx.request.url).pathname;
+  console.log(
+    "shroud-pricing",
+    JSON.stringify({
+      revision: "framing-diagnostics-v2",
+      stage: "origin-response",
+      method: ctx.request.method,
+      status: ctx.response.status,
+      country: country && /^[a-z]{2}$/i.test(country)
+        ? country.toUpperCase()
+        : null,
+      uk: isUK(country),
+      deployPrefixedPath: /^\/deploys\//.test(pathname),
+      pricingPathSuffix: /\/pricing(?:\/|\/index\.html)?$/.test(pathname),
+      indexPathSuffix: /\/index\.html$/.test(pathname),
+      contentType: type,
+      originLength: ctx.response.headers.get("content-length"),
+      originEncoding: ctx.response.headers.get("content-encoding"),
+      originCacheControl: ctx.response.headers.get("cache-control"),
+      bodyless: ctx.response.body === null,
+      bodyUsed: ctx.response.bodyUsed,
+      bodyLocked: ctx.response.body?.locked ?? null,
+    }),
   );
-  if (pricingRequest) {
-    console.info(
+
+  // Only rewrite HTML responses.
+  if (!type.includes("text/html")) {
+    console.log(
       "shroud-pricing",
       JSON.stringify({
-        revision: "framing-diagnostics-v1",
-        stage: "origin-response",
-        method: ctx.request.method,
-        status: ctx.response.status,
-        uk: isUK(country),
-        originLength: ctx.response.headers.get("content-length"),
-        originEncoding: ctx.response.headers.get("content-encoding"),
-        bodyless: ctx.response.body === null,
+        revision: "framing-diagnostics-v2",
+        stage: "non-html-pass-through",
       }),
     );
+    return Promise.resolve(ctx.response);
   }
 
   // UK visitor (or unknown country): the static default is already in £, so
@@ -63,6 +76,15 @@ export async function rewritePricing(
   if (isUK(country)) {
     const headers = new Headers(ctx.response.headers);
     headers.set("cache-control", "no-store");
+    headers.set("x-shroud-pricing-revision", "framing-diagnostics-v2");
+    console.log(
+      "shroud-pricing",
+      JSON.stringify({
+        revision: "framing-diagnostics-v2",
+        stage: "uk-pass-through",
+        returnedLength: headers.get("content-length"),
+      }),
+    );
     return Promise.resolve(
       new Response(ctx.response.body, {
         status: ctx.response.status,
@@ -76,21 +98,34 @@ export async function rewritePricing(
     const headers = new Headers(ctx.response.headers);
     headers.delete("content-length");
     headers.set("cache-control", "no-store");
+    headers.set("x-shroud-pricing-revision", "framing-diagnostics-v2");
     ctx.response = new Response(null, {
       status: ctx.response.status,
       statusText: ctx.response.statusText,
       headers,
     });
+    console.log(
+      "shroud-pricing",
+      JSON.stringify({
+        revision: "framing-diagnostics-v2",
+        stage: "bodyless-return",
+        returnedLength: ctx.response.headers.get("content-length"),
+      }),
+    );
     return ctx.response;
   }
 
   // Worldwide visitor: replace each localized price with its worldwide
   // counterpart. The worldwide value is carried in the data-price-world
   // attribute on each <span data-price> (the hero heading + price cells).
+  let priceReplacements = 0;
   const rewriter = new HTMLRewriter().on("[data-price-world]", {
     element(el: HtmlRewriterElement) {
       const world = el.getAttribute("data-price-world");
-      if (world) el.setInnerContent(world);
+      if (world) {
+        el.setInnerContent(world);
+        priceReplacements++;
+      }
     },
   });
 
@@ -103,42 +138,69 @@ export async function rewritePricing(
     statusText: ctx.response.statusText,
     headers: inputHeaders,
   });
+  console.log(
+    "shroud-pricing",
+    JSON.stringify({
+      revision: "framing-diagnostics-v2",
+      stage: "before-transform",
+      bodyUsed: ctx.response.bodyUsed,
+      bodyLocked: ctx.response.body?.locked ?? null,
+    }),
+  );
   const rewritten = rewriter.transform(ctx.response);
-  if (pricingRequest) {
-    console.info(
-      "shroud-pricing",
-      JSON.stringify({
-        revision: "framing-diagnostics-v1",
-        stage: "before-buffer",
-        rewrittenLength: rewritten.headers.get("content-length"),
-        rewrittenEncoding: rewritten.headers.get("content-encoding"),
-      }),
-    );
-  }
+  console.log(
+    "shroud-pricing",
+    JSON.stringify({
+      revision: "framing-diagnostics-v2",
+      stage: "before-buffer",
+      inputLength: ctx.response.headers.get("content-length"),
+      rewrittenLength: rewritten.headers.get("content-length"),
+      rewrittenEncoding: rewritten.headers.get("content-encoding"),
+      bodyUsed: rewritten.bodyUsed,
+      bodyLocked: rewritten.body?.locked ?? null,
+    }),
+  );
   // Live staging still advertises the origin length despite the explicit override.
   // Explicitly override it with the actual output byte count, not string length.
-  const body = await rewritten.arrayBuffer();
+  let body: ArrayBuffer;
+  try {
+    body = await rewritten.arrayBuffer();
+  } catch (error) {
+    console.log(
+      "shroud-pricing",
+      JSON.stringify({
+        revision: "framing-diagnostics-v2",
+        stage: "buffer-error",
+        errorName: error instanceof Error ? error.name : "non-Error",
+        bodyUsed: rewritten.bodyUsed,
+        bodyLocked: rewritten.body?.locked ?? null,
+      }),
+    );
+    throw error;
+  }
   const headers = new Headers(rewritten.headers);
   headers.set("content-length", String(body.byteLength));
   headers.set("cache-control", "no-store");
-  if (pricingRequest) {
-    headers.set("x-shroud-pricing-revision", "framing-diagnostics-v1");
-  }
+  headers.set("x-shroud-pricing-revision", "framing-diagnostics-v2");
   ctx.response = new Response(body, {
     status: rewritten.status,
     headers,
   });
-  if (pricingRequest) {
-    console.info(
-      "shroud-pricing",
-      JSON.stringify({
-        revision: "framing-diagnostics-v1",
-        stage: "return-response",
-        bodyBytes: body.byteLength,
-        returnedLength: ctx.response.headers.get("content-length"),
-        returnedEncoding: ctx.response.headers.get("content-encoding"),
-      }),
-    );
-  }
+  console.log(
+    "shroud-pricing",
+    JSON.stringify({
+      revision: "framing-diagnostics-v2",
+      stage: "return-response",
+      status: ctx.response.status,
+      priceReplacements,
+      bodyBytes: body.byteLength,
+      returnedLength: ctx.response.headers.get("content-length"),
+      returnedEncoding: ctx.response.headers.get("content-encoding"),
+      returnedCacheControl: ctx.response.headers.get("cache-control"),
+      returnedRevision: ctx.response.headers.get("x-shroud-pricing-revision"),
+      bodyUsed: ctx.response.bodyUsed,
+      bodyLocked: ctx.response.body?.locked ?? null,
+    }),
+  );
   return ctx.response;
 }

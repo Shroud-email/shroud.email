@@ -3,9 +3,9 @@ import { rewritePricing } from "./pricing.ts";
 
 Deno.test("worldwide rewrite replaces stale framing with the exact UTF-8 byte count", async () => {
   const original = Object.getOwnPropertyDescriptor(globalThis, "HTMLRewriter");
-  const originalInfo = console.info;
+  const originalLog = console.log;
   const logs: unknown[] = [];
-  console.info = (prefix: string, payload: string) => {
+  console.log = (prefix: string, payload: string) => {
     assert.equal(prefix, "shroud-pricing");
     logs.push(JSON.parse(payload));
   };
@@ -64,13 +64,16 @@ Deno.test("worldwide rewrite replaces stale framing with the exact UTF-8 byte co
     });
     upstreamHeaders = new Headers(response.headers);
     const ctx = {
-      request: new Request("https://example.test/pricing/?private=fixture", {
-        headers: {
-          "cdn-requestcountrycode": "US",
-          "authorization": "Bearer fixture",
-          "cookie": "private=fixture",
+      request: new Request(
+        "https://example.test/deploys/release/pricing/index.html?private=fixture",
+        {
+          headers: {
+            "cdn-requestcountrycode": "US",
+            "authorization": "Bearer fixture",
+            "cookie": "private=fixture",
+          },
         },
-      }),
+      ),
       response,
     };
     const result = await rewritePricing(ctx);
@@ -81,31 +84,54 @@ Deno.test("worldwide rewrite replaces stale framing with the exact UTF-8 byte co
     assert.equal(result.headers.get("x-bunny-deploy"), "fixture");
     assert.equal(
       result.headers.get("x-shroud-pricing-revision"),
-      "framing-diagnostics-v1",
+      "framing-diagnostics-v2",
     );
     assert.deepEqual(logs, [
       {
-        revision: "framing-diagnostics-v1",
+        revision: "framing-diagnostics-v2",
         stage: "origin-response",
         method: "GET",
         status: 404,
+        country: "US",
         uk: false,
+        deployPrefixedPath: true,
+        pricingPathSuffix: true,
+        indexPathSuffix: true,
+        contentType: "text/html; charset=utf-8",
         originLength: "150",
         originEncoding: null,
+        originCacheControl: null,
         bodyless: false,
+        bodyUsed: false,
+        bodyLocked: false,
       },
       {
-        revision: "framing-diagnostics-v1",
+        revision: "framing-diagnostics-v2",
+        stage: "before-transform",
+        bodyUsed: false,
+        bodyLocked: false,
+      },
+      {
+        revision: "framing-diagnostics-v2",
         stage: "before-buffer",
+        inputLength: null,
         rewrittenLength: "150",
         rewrittenEncoding: null,
+        bodyUsed: false,
+        bodyLocked: false,
       },
       {
-        revision: "framing-diagnostics-v1",
+        revision: "framing-diagnostics-v2",
         stage: "return-response",
+        status: 404,
+        priceReplacements: 3,
         bodyBytes: 147,
         returnedLength: "147",
         returnedEncoding: null,
+        returnedCacheControl: "no-store",
+        returnedRevision: "framing-diagnostics-v2",
+        bodyUsed: false,
+        bodyLocked: false,
       },
     ]);
     const rewritten = await result.text();
@@ -118,7 +144,7 @@ Deno.test("worldwide rewrite replaces stale framing with the exact UTF-8 byte co
       new TextEncoder().encode(html).length - 3,
     );
   } finally {
-    console.info = originalInfo;
+    console.log = originalLog;
     if (original) Object.defineProperty(globalThis, "HTMLRewriter", original);
     else Reflect.deleteProperty(globalThis, "HTMLRewriter");
   }
@@ -152,6 +178,56 @@ Deno.test("worldwide HTML accepts a native Fetch response with immutable headers
     assert.equal(await result.text(), "<p>plain HTML</p>");
     assert.equal(result.headers.get("content-length"), "17");
   } finally {
+    if (original) Object.defineProperty(globalThis, "HTMLRewriter", original);
+    else Reflect.deleteProperty(globalThis, "HTMLRewriter");
+  }
+});
+
+Deno.test("buffer failures are logged without exposing the error message or hiding failure", async () => {
+  const original = Object.getOwnPropertyDescriptor(globalThis, "HTMLRewriter");
+  const originalLog = console.log;
+  const logs: { stage: string; errorName?: string }[] = [];
+  const failure = new TypeError("private fixture data");
+  class TestRewriter {
+    on() {
+      return this;
+    }
+    transform() {
+      return new Response(
+        new ReadableStream({
+          start(controller) {
+            controller.error(failure);
+          },
+        }),
+      );
+    }
+  }
+  Object.defineProperty(globalThis, "HTMLRewriter", {
+    value: TestRewriter,
+    configurable: true,
+  });
+  console.log = (_prefix: string, payload: string) =>
+    logs.push(JSON.parse(payload));
+  try {
+    await assert.rejects(
+      rewritePricing({
+        request: new Request("https://example.test/any-html-route/"),
+        response: new Response("body", {
+          headers: { "content-type": "text/html" },
+        }),
+      }),
+      (error) => error === failure,
+    );
+    assert.deepEqual(logs.map((log) => log.stage), [
+      "origin-response",
+      "before-transform",
+      "before-buffer",
+      "buffer-error",
+    ]);
+    assert.equal(logs.at(-1)?.errorName, "TypeError");
+    assert.equal(JSON.stringify(logs).includes("private fixture data"), false);
+  } finally {
+    console.log = originalLog;
     if (original) Object.defineProperty(globalThis, "HTMLRewriter", original);
     else Reflect.deleteProperty(globalThis, "HTMLRewriter");
   }
