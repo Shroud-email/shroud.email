@@ -2,7 +2,9 @@
 
 const assert = require('node:assert/strict');
 const { createHash, generateKeyPairSync, verify } = require('node:crypto');
+const { once } = require('node:events');
 const fs = require('node:fs');
+const net = require('node:net');
 const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
@@ -94,7 +96,9 @@ test('base-domain signing retains upstream behavior and needs no database', asyn
 test('concurrent custom domains use the shared key but retain distinct From domains', async (t) => {
   const { plugin } = setup(t);
   const queried = [];
-  t.mock.method(Pool.prototype, 'query', async (sql, params) => {
+  t.mock.method(Pool.prototype, 'query', async function (sql, params) {
+    assert.equal(this.options.connectionTimeoutMillis, 5000);
+    assert.equal(this.options.query_timeout, 5000);
     assert.match(sql, /lower\(domain\) = \$1/);
     assert.match(sql, /ownership_verified_at > .* - INTERVAL '24 hours'/);
     queried.push(params[0]);
@@ -127,6 +131,30 @@ test('database failure is logged and continues unsigned', async (t) => {
   assert.deepEqual(await sign(plugin, connection), []);
   assert.equal(connection.transaction.header.get('DKIM-Signature'), '');
   assert.ok(connection.logs.includes('database unavailable'));
+});
+
+test('a stalled PostgreSQL connection times out and continues unsigned', { timeout: 15000 }, async (t) => {
+  const { plugin } = setup(t);
+  const sockets = new Set();
+  // Accept the real pg client's TCP connection but never answer its startup packet.
+  const server = net.createServer((socket) => { sockets.add(socket); });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const previous = { PGHOST: process.env.PGHOST, PGPORT: process.env.PGPORT };
+  process.env.PGHOST = '127.0.0.1';
+  process.env.PGPORT = String(server.address().port);
+  t.after(async () => {
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+    for (const socket of sockets) socket.destroy();
+    await new Promise((resolve) => server.close(resolve));
+  });
+  const connection = await message('alias@customer.example');
+  assert.deepEqual(await sign(plugin, connection), []);
+  assert.equal(connection.transaction.header.get('DKIM-Signature'), '');
+  assert.ok(connection.logs.some((log) => /timeout|timed out/i.test(log)));
 });
 
 test('missing installation key or selector continues unsigned', async (t) => {

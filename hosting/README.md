@@ -32,7 +32,7 @@ plugin. Test both a forwarded message and an alias reply at an external inbox:
 the signature should have `d=<custom domain>; s=shroudemail`, and the recipient's
 `Authentication-Results` should report `dkim=pass`.
 
-Regression tests:
+Regression tests (requires Node.js and OpenSSL):
 
 ```sh
 cd haraka/haraka_config

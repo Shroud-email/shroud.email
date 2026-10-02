@@ -9,7 +9,8 @@ const { Pool } = require('pg')
 const dkim = require('./lib/dkim')
 
 const { DKIMVerifyStream, DKIMSignStream } = dkim
-const pool = new Pool({ max: 10 })
+// Keep connection acquisition and query waits below Haraka's hook timeout.
+const pool = new Pool({ max: 10, connectionTimeoutMillis: 5000, query_timeout: 5000 })
 let pool_error_logger
 
 pool.on('error', (err) => {
