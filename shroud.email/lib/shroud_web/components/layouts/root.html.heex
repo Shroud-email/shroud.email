@@ -7,6 +7,14 @@
     <meta name="theme" content={if assigns[:current_user], do: to_string(@current_user.theme), else: "system"} />
     <meta name="paddle-client-token" content={Application.get_env(:shroud, :billing, [])[:paddle_client_token]} />
     <meta name="paddle-environment" content={Application.get_env(:shroud, :billing, [])[:paddle_environment]} />
+    <%= csrf_meta_tag() %>
+    <.live_title suffix=" · Shroud.email">
+      <%= assigns[:page_title] || "Home" %>
+    </.live_title>
+    <link phx-track-static rel="stylesheet" href={~p"/fonts/inter/inter.css"}/>
+    <link phx-track-static rel="stylesheet" href={~p"/assets/app.css"}/>
+    <%!-- Keep this synchronous script after CSS and before other scripts/body:
+         it waits for stylesheets before Firefox can force an unstyled layout. --%>
     <script>
       (function() {
         var meta = document.querySelector('meta[name="theme"]');
@@ -15,12 +23,6 @@
         if (dark) document.documentElement.classList.add('dark');
       })();
     </script>
-    <%= csrf_meta_tag() %>
-    <.live_title suffix=" · Shroud.email">
-      <%= assigns[:page_title] || "Home" %>
-    </.live_title>
-    <link phx-track-static rel="stylesheet" href={~p"/fonts/inter/inter.css"}/>
-    <link phx-track-static rel="stylesheet" href={~p"/assets/app.css"}/>
     <link phx-track-static rel="icon" href={~p"/favicon.ico"} />
     <script defer phx-track-static type="text/javascript" src={~p"/assets/app.js"}></script>
     <%= if Application.fetch_env!(:shroud, :app_domain) == "app.shroud.email" do %>
