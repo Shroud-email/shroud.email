@@ -1,0 +1,5 @@
+{
+  "servicePorts": {
+    "plausible-proxy-smoke": 32319
+  }
+}

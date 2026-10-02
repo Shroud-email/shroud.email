@@ -1,0 +1,60 @@
+name: Plausible proxy CI and deployment
+
+on:
+  pull_request:
+    paths:
+      - 'plausible-proxy/**'
+      - '.github/workflows/plausible-proxy.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'plausible-proxy/**'
+      - '.github/workflows/plausible-proxy.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: plausible-proxy-${{ github.event_name == 'workflow_dispatch' && 'deployment' || github.ref }}
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  proxy:
+    name: Validate and optionally deploy proxy
+    runs-on: depot-ubuntu-24.04
+    defaults:
+      run:
+        working-directory: plausible-proxy
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version: v2.x
+
+      - name: Check formatting and lint
+        run: deno fmt --check && deno lint
+
+      - name: Type-check and test
+        run: deno task check && deno task test
+
+      - name: Bundle
+        run: deno task build
+
+      - name: Require a configured Plausible script before publication
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          deno eval 'import { PROXY_SCRIPT } from "./src/proxy.ts"; if (PROXY_SCRIPT === "https://plausible.io/js/pa-XXXXX.js") throw new Error("Set PROXY_SCRIPT to your personalized Plausible script URL before deploying.");'
+
+      - name: Deploy script to Bunny Edge Scripting
+        if: github.event_name == 'workflow_dispatch'
+        uses: BunnyWay/actions/deploy-script@cfed0ba7842c85686d0dc3a83d8d971991a752f6 # deploy-script@0.5.0
+        with:
+          script_id: ${{ secrets.PLAUSIBLE_BUNNY_SCRIPT_ID }}
+          deploy_key: ${{ secrets.PLAUSIBLE_BUNNY_DEPLOY_KEY }}
+          file: plausible-proxy/dist/index.ts
