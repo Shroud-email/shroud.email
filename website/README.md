@@ -26,7 +26,7 @@ below for how to regenerate it from the Phoenix app's annotations and schemas.
 Building the website needs only Node.js and pnpm, not Elixir or a database. The
 specification is also published at `/docs/openapi.json`.
 
-The old `/docs/api/aliases/` and `/docs/api/domains/` URLs redirect to the generated
+The `/docs/api/aliases/` and `/docs/api/domains/` URLs redirect to the generated
 list-operation pages. Since this is a static build, Astro emits HTML redirect
 pages rather than HTTP redirects. All other existing guide URLs are preserved.
 Docs retain the shared cookieless PostHog integration, Manrope font, and indigo
@@ -34,7 +34,7 @@ accent. Documentation is built and deployed with the website using the existing
 website Bunny Storage and Pull Zones; no separate docs deployment is required.
 
 Use `pnpm build` followed by `pnpm preview` to check Pagefind search, which needs
-the production search index. `pnpm check:content-images` checks that the moved
+the production search index. `pnpm check:content-images` checks that the
 custom-domain guide and existing marketing content retain their optimized images.
 
 ### Updating the OpenAPI specification
@@ -84,92 +84,51 @@ Both website workflows use the official `BunnyWay/actions/deploy-site` action
 | Staging | 1687847 | 6214167 | `shroud-email-website-staging` | UK |
 | Production | 1604565 | 6040372 | `shroud-email-website` | DE |
 
-No replacement zones are created. The old website uploader is removed;
-the separate tracker-list uploader is unchanged.
+Deployments require the CLI's version-2 `_bunny/site.json` metadata on each pair.
+Missing metadata requires deliberate recovery, not automatic reinitialization.
 
-This is an experimental adoption of existing zones, not an officially documented
-import procedure. The small `scripts/adopt-bunny-site.mjs` bootstrap requires an
-explicit `BUNNY_SITE_ENVIRONMENT` of `staging` or `production`, validates
-the pair, adds the CLI's state-protection rule, verifies a public 403, and writes
-version-2 `_bunny/site.json` only when initialization is explicitly requested and
-both reads find it absent. This is not an atomic create-if-absent operation:
-do not run another metadata writer concurrently. Initialization does not change
-middleware attachment, domains, root files, or zone-wide cache overrides.
-Every run checks state protection, restores a missing rule, and refuses a
-conflicting or disabled rule before proceeding, without rewriting existing state.
-
-To test before merging, dispatch the workflow **from this PR branch**, not `main`:
+Production deploys on relevant `main` pushes. Staging is manual. Both workflows
+also support manual deployment from GitHub's **Use workflow from** branch/tag
+selector. Each run builds and deploys that event's exact commit for both the site
+and middleware; there are no additional inputs or checkboxes.
 
 ```sh
-gh workflow run website-deploy-staging.yml \
-  --ref feat/official-bunny-staging \
-  -f ref=feat/official-bunny-staging \
-  -f initialize_sites=false \
-  -f deploy_edge_script=false
+# Deploy staging from main, or replace main with a branch to test.
+gh workflow run website-deploy-staging.yml --ref main
+
+# Manually deploy production from main.
+gh workflow run website-deploy.yml --ref main
 ```
 
-Both refs matter: the first selects the workflow definition, the second selects
-the code to build. This command is for you to run; opening the PR does not deploy.
-The existing repository `BUNNY_API_KEY` secret must permit storage and Pull Zone
-API access. No new secrets or npm tooling are needed. Subsequent runs can leave
-`initialize_sites=false` (staging is already adopted). A new pair requires an
-explicit first run with `initialize_sites=true`. If rule propagation times out, no metadata is written;
-the protection rule may remain and the same workflow can be retried.
+These commands change their target environment; they are not read-only checks.
+The existing `BUNNY_API_KEY` secret must permit storage and Pull Zone API access.
+The environment-specific script secrets are documented in
+[the middleware README](edge-script/README.md#deployment).
+
 Concurrency preserves the running deployment and keeps only the newest pending
 request per environment. For distinct staging trials, wait for each run to finish
 before dispatching the next; this workflow does not promise a FIFO deployment queue.
-
-### First production cutover, before merging
-
-Only an operator should dispatch this workflow; preparing or pushing the PR does
-not deploy production. Schedule the cutover when no older production run is active
-or queued, and avoid changes to `main` that trigger website deployment until the
-PR is merged. The old `main` uploader would delete the newly adopted Sites state.
-
-```sh
-gh workflow run website-deploy.yml \
-  --ref feat/official-bunny-staging \
-  -f ref=feat/official-bunny-staging \
-  -f initialize_sites=true \
-  -f deploy_edge_script=true
-```
-
-This adopts the existing production pair and publishes the branch's website while
-updating the attached production Edge script. First enable **Pull Zone → General
-→ Origin → Run script before cache** on production for the missing-directory
-404 fallback. Staging already has this setting enabled. It increases script
-execution volume; the workflows do not enable it automatically.
-
-If an old `main` deployment ran after adoption, its clean-delete uploader may
-have removed Sites metadata. Use `initialize_sites=true` for this cutover: valid
-existing metadata is checked and left unchanged, while absent metadata is
-initialized. Do not run an old uploader between this trial and merging.
-
-Verify home, docs, assets, 404,
-state/direct-deploy protection, and UK/US pricing on `https://shroud.email` before
-merging. After adoption, leave initialization off. Main pushes then deploy via the
-official action and replace the Edge script only after the site job succeeds.
-Main pushes refuse to initialize missing metadata automatically.
-
-Staging remains manual after merging. To publish middleware cleanup there, run
-the staging workflow with initialization off and `deploy_edge_script=true`.
 
 ### Deployment behavior and checks
 
 **Running either workflow changes its target:** the official action uploads under `deploys/<id>/`,
 switches that site's routing, configures its custom 404, adds asset caching rules, and
-purges its CDN cache. Existing cache overrides and the attached Edge script remain
-in place. Before deployment, the workflow upserts a target-specific rule to disable
-edge and browser caching for `/pricing`, `/pricing/`, and `/pricing/index.html`
-(including query strings), with a `Cache-Control: no-store` response header.
-The deployment then purges existing cached pricing. Other paths and asset caching
-are unchanged. The named pricing rule is workflow-owned: subsequent runs restore
-its policy by GUID and refuse to duplicate an existing rule without a GUID.
+purges its CDN cache. The CLI maintains its state/direct-deploy protection rules
+and preserves unrelated custom rules.
+
+Keep the existing **shroud: do not cache geo-localized pricing** rule enabled on
+both Pull Zones. It sets edge and browser TTLs to zero and returns
+`Cache-Control: no-store` for `/pricing`, `/pricing/`, and `/pricing/index.html`,
+including query strings. Manage this rule in the Bunny dashboard; the official
+CLI preserves it but does not recreate it if deleted. Keep **Run script before
+cache** enabled for the middleware's missing-directory 404 fallback. The workflows
+do not change that setting.
+
 After publication, the workflow polls pricing for `no-store` before reporting
 success. This verifies the runner's CDN location, not every POP or country.
 If the check fails, publication has already happened; no automatic rollback occurs.
-Replacing that script is opt-in on manual runs (automatic on production main pushes) and only happens after site
-deployment succeeds. Old deploys/root files are not pruned by this workflow.
+The middleware is deployed after the site job succeeds, followed by a complete
+pricing GET check. Old deploys/root files are not pruned by these workflows.
 `deployments: false` disables GitHub deployment records only; it does not disable
 Bunny's versioned uploads, publication, or rollback support.
 
@@ -177,18 +136,13 @@ Check the [staging site](https://shroud-email-website-staging.b-cdn.net/), docs,
 assets, missing-page behavior, `X-Bunny-Deploy`, and pricing from actual UK and
 non-UK requests. Pricing should return `Cache-Control: no-store` and prices must not
 leak across countries. A client-supplied country header alone is not proof of geo
-isolation. Apply the same checks to production during its cutover.
-After the first cache-protection deployment, test in a fresh private window or
-clear the browser's target-site cache; a new response header cannot invalidate
-an old browser entry cached for 30 days. Subsequent deployments should continue
-to bypass pricing caches.
+isolation. Apply the same checks to production after deployment. Use a fresh
+private window or clear the browser's target-site cache when verifying changes;
+non-pricing pages can remain in the browser cache for 30 days.
 
-After adoption, **do not run an older website workflow using the clean-delete
-uploader**: it would delete Sites metadata and versioned deployments. The first
-adopted deployment has no CLI `--previous` rollback target; existing root files
-remain, but returning to root serving requires a deliberate routing/404 rollback.
-Later deployments can use the CLI's published-deployment rollback. No automatic
-rollback or destructive pruning is configured here.
+Use the CLI's published-deployment rollback when needed. Do not delete Sites
+metadata or versioned deployments outside the CLI. No automatic rollback or
+destructive pruning is configured here.
 
 ## Want to learn more?
 
