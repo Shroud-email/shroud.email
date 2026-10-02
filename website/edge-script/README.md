@@ -70,7 +70,8 @@ pushes to `main` deploy the script automatically after the site job succeeds.
 Staging remains manual after merging. See [website deployment instructions](../README.md#official-bunny-website-deployments)
 for initialization, production cutover, and the old-uploader warning.
 
-After publication, the workflow checks pricing with a complete GET. Also check
+When the edge-script job runs, it checks pricing with a complete GET. Site-only
+runs check `no-store` with HEAD. Also check
 missing-directory GET/HEAD, home, docs, and assets. Verify £25/year from a UK
 network and $35/year from a non-UK network, using fresh browser caches. A supplied
 country header alone does not prove geographic isolation.
