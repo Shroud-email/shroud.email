@@ -120,7 +120,7 @@ services:
     build: ./cron
     restart: unless-stopped
     environment:
-      - EMAIL_DOMAIN=${EMAIL_DOMAIN}
+      - APP_DOMAIN=${APP_DOMAIN}
     volumes:
       - caddy_data:/caddy
       - pem_certs:/pem

@@ -42,8 +42,11 @@ node --test test/*.test.js
 
 ## SMTP certificate renewal
 
-The daily cron job publishes Caddy's certificate and matching private key as one
-validated, atomically replaced `tls.pem` bundle. Haraka's `tls_cert_reload` plugin
+The daily cron job publishes Caddy's `APP_DOMAIN` certificate and matching private
+key as one validated, atomically replaced `tls.pem` bundle. Public MX records
+target `APP_DOMAIN`, so the SMTP certificate must cover that hostname.
+`EMAIL_DOMAIN` identifies email aliases and the DKIM key domain.
+Haraka's `tls_cert_reload` plugin
 checks Haraka's cached bundle every second and activates changes for new STARTTLS
 connections after the file watcher's five-second debounce. It does not restart
 the SMTP server or interrupt existing connections.
