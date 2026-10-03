@@ -106,7 +106,6 @@ services:
     environment:
       - ADMIN_EMAIL=${ADMIN_EMAIL}
       - APP_DOMAIN=${APP_DOMAIN}
-      - EMAIL_DOMAIN=${EMAIL_DOMAIN}
       - BUNNY_API_KEY=${BUNNY_API_KEY}
       - CAP_DOMAIN=${CAP_DOMAIN}
       - CAP_CADDYFILE=${CAP_CADDYFILE:-disabled.caddy}
@@ -122,7 +121,7 @@ services:
     build: ./cron
     restart: unless-stopped
     environment:
-      - EMAIL_DOMAIN=${EMAIL_DOMAIN}
+      - APP_DOMAIN=${APP_DOMAIN}
     volumes:
       - caddy_data:/caddy
       - pem_certs:/pem

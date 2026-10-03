@@ -106,8 +106,10 @@ docker compose logs -f
 
 ### Step 3: Bundle SSL certificates
 
-Once you see in the logs that Caddy has setup certificates for your domains, you can continue.
-Now that we have the certificates, we need to convert them to a format that the SMTP relay can understand.
+Once the logs show that Caddy has obtained the `APP_DOMAIN` certificate, you can continue.
+Public MX records must target `APP_DOMAIN`. The SMTP relay uses its certificate;
+`EMAIL_DOMAIN` does not need a separate TLS certificate.
+We need to bundle the certificate and private key in a format that the SMTP relay can understand.
 Run the following command:
 
 ```
