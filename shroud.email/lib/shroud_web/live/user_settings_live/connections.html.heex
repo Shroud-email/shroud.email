@@ -14,7 +14,7 @@
       id={id}
       class="bg-white dark:bg-gray-800 sm:rounded-md shadow-sm py-6 px-4 sm:p-6 space-y-4"
     >
-      <h2 class="text-lg font-semibold">{Shroud.Mcp.client_name(connection.client_id)}</h2>
+      <h2 class="text-lg font-semibold">{connection.client_name}</h2>
       <ul class="list-disc pl-5 text-sm space-y-1">
         <li :for={
           permission <- Enum.map(connection.scopes, &Shroud.Mcp.permissions()[&1]) |> Enum.uniq()

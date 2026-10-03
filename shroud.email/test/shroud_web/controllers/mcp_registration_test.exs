@@ -1,6 +1,7 @@
 defmodule ShroudWeb.McpRegistrationTest do
   use ShroudWeb.ConnCase, async: false
   import Shroud.McpFixtures
+  import Phoenix.LiveViewTest
   alias Shroud.{Mcp, Repo}
 
   setup do
@@ -58,7 +59,9 @@ defmodule ShroudWeb.McpRegistrationTest do
              |> json_response(400)
 
       tokens = build_conn() |> post("/oauth/token", exchange) |> json_response(200)
-      assert Mcp.client_name(registration["client_id"]) == "Independent agent"
+      assert [%{client_name: "Independent agent"}] = Mcp.list_connections(user)
+      {:ok, view, _html} = build_conn() |> log_in_user(user) |> live("/settings/connections")
+      assert has_element?(view, "#connections h2", "Independent agent")
 
       initialized =
         build_conn()

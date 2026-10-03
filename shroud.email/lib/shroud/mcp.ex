@@ -26,7 +26,6 @@ defmodule Shroud.Mcp do
   def issuer, do: ShroudWeb.Endpoint.url()
   def resource, do: issuer() <> "/mcp"
   def clients, do: Application.get_env(:shroud, :mcp_clients, %{})
-  def client_name(id), do: (Clients.metadata(id) || %{})["name"] || "Disconnected client"
 
   def validate_authorization(params) when is_map(params) do
     with %{"name" => name, "redirect_uris" => redirects} = metadata <-
@@ -175,9 +174,24 @@ defmodule Shroud.Mcp do
   def list_connections(user) do
     Repo.all(
       from c in connections_query(user),
+        left_join: client in Boruta.Ecto.Client,
+        on: client.name == c.client_id,
         where: is_nil(c.revoked_at) and c.expires_at > ^now(),
-        order_by: [desc: c.id]
+        order_by: [desc: c.id],
+        select: {c, client.metadata}
     )
+    |> Enum.map(fn {connection, metadata} ->
+      dynamic_name =
+        case metadata do
+          %{"mcp_dynamic" => true, "name" => name} -> name
+          _ -> nil
+        end
+
+      name =
+        get_in(clients(), [connection.client_id, "name"]) || dynamic_name || "Disconnected client"
+
+      %{connection | client_name: name}
+    end)
   end
 
   def revoke(user, id) do

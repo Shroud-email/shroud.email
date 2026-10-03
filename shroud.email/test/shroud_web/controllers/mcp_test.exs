@@ -559,11 +559,23 @@ defmodule ShroudWeb.McpTest do
     assert result["content"] == [
              %{
                "type" => "text",
-               "text" => "Reconnect your Shroud.email account with the required permission."
+               "text" =>
+                 "Required OAuth scopes: aliases:create aliases:read. Reconnect your Shroud.email account with these permissions."
              }
            ]
 
     refute Map.has_key?(result["_meta"] || %{}, "mcp/www_authenticate")
+    domains = tool(tokens, "list_verified_domains", %{})
+    assert domains["isError"]
+
+    assert domains["content"] == [
+             %{
+               "type" => "text",
+               "text" =>
+                 "Required OAuth scopes: domains:read. Reconnect your Shroud.email account with these permissions."
+             }
+           ]
+
     assert Repo.aggregate(Aliases.EmailAlias, :count) == 0
     assert tool(tokens, "delete_alias", %{address: "anything@example.com"})["isError"]
   end
