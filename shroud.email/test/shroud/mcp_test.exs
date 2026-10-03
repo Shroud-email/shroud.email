@@ -377,6 +377,44 @@ defmodule Shroud.McpTest do
     end
   end
 
+  test "connection names are loaded in one query for configured and dynamic clients" do
+    %{user: user} = connection_fixture(["aliases:read"])
+    connection_fixture(["aliases:read"])
+
+    for name <- ["Desktop agent", "Browser agent"] do
+      {:ok, registration} =
+        Clients.register(%{
+          "client_name" => name,
+          "redirect_uris" => ["https://agent.example/callback"]
+        })
+
+      {params, _verifier} = authorization_params(["aliases:read"])
+
+      params = %{
+        params
+        | "client_id" => registration.client_id,
+          "redirect_uri" => "https://agent.example/callback"
+      }
+
+      assert {:ok, _code} = Mcp.authorize(user, params)
+    end
+
+    ref = trace_queries()
+    connections = Mcp.list_connections(user)
+
+    assert Enum.map(connections, & &1.client_name) |> Enum.sort() ==
+             ["Browser agent", "Desktop agent", "Test client"]
+
+    assert_receive {^ref, query}
+    assert query =~ "LEFT OUTER JOIN"
+    refute_receive {^ref, _query}
+
+    Application.put_env(:shroud, :mcp_clients, %{})
+
+    assert Enum.map(Mcp.list_connections(user), & &1.client_name) |> Enum.sort() ==
+             ["Browser agent", "Desktop agent", "Disconnected client"]
+  end
+
   defp past, do: DateTime.utc_now() |> DateTime.truncate(:second) |> DateTime.add(-1)
 
   defp trace_queries do

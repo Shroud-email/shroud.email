@@ -2,7 +2,6 @@ defmodule ShroudWeb.McpHandler do
   use ExMCP.Server.Handler
   alias Shroud.Mcp
   alias Shroud.Mcp.Tools
-  alias ShroudWeb.Plugs.McpAuth
 
   @impl true
   def init(opts), do: {:ok, %{token: Keyword.fetch!(opts, :token)}}
@@ -53,7 +52,21 @@ defmodule ShroudWeb.McpHandler do
             isError: false
           }
 
-        {:error, reason} when reason in [:invalid_token, :insufficient_scope] ->
+        {:error, :insufficient_scope} ->
+          scopes = Mcp.required_scopes(Tools.scope(name)) |> Enum.join(" ")
+
+          %{
+            content: [
+              %{
+                type: "text",
+                text:
+                  "Required OAuth scopes: #{scopes}. Reconnect your Shroud.email account with these permissions."
+              }
+            ],
+            isError: true
+          }
+
+        {:error, :invalid_token} ->
           %{
             content: [
               %{
@@ -61,12 +74,7 @@ defmodule ShroudWeb.McpHandler do
                 text: "Reconnect your Shroud.email account with the required permission."
               }
             ],
-            isError: true,
-            _meta: %{
-              "mcp/www_authenticate" => [
-                McpAuth.challenge(reason, Tools.scope(name))
-              ]
-            }
+            isError: true
           }
 
         {:error, message} ->

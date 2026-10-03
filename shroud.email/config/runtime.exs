@@ -21,7 +21,7 @@ config :shroud,
     |> String.split(",", trim: true)
     |> Enum.map(&String.trim/1)
 
-# Explicit public OAuth clients; no dynamic registration or remote metadata fetch.
+# Optional pre-registered public OAuth clients, alongside dynamic registration.
 # Copy exact client IDs and callback URLs from the MCP client configuration.
 if clients_json = System.get_env("MCP_OAUTH_CLIENTS") do
   clients = Jason.decode!(clients_json)

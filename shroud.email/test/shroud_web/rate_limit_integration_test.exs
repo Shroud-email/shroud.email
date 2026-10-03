@@ -106,7 +106,7 @@ defmodule ShroudWeb.RateLimitIntegrationTest do
 
     for {origin, url} <- [
           {"https://chatgpt.com", "https://evil.example/mcp"},
-          {"https://chatgpt.com", Shroud.Mcp.issuer() <> "/oauth/token"}
+          {"https://chatgpt.com", Shroud.Mcp.issuer() <> "/users/log_in"}
         ] do
       rejected = conn |> put_req_header("origin", origin) |> post(url, %{})
       assert rejected.status == 429

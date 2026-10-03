@@ -19,7 +19,7 @@ defmodule ShroudWeb.McpTest do
     assert metadata["authorization_response_iss_parameter_supported"]
     assert metadata["code_challenge_methods_supported"] == ["S256"]
     assert metadata["token_endpoint_auth_methods_supported"] == ["none"]
-    refute Map.has_key?(metadata, "registration_endpoint")
+    assert metadata["registration_endpoint"] == Mcp.issuer() <> "/oauth/register"
 
     resource =
       build_conn() |> get("/.well-known/oauth-protected-resource/mcp") |> json_response(200)
@@ -314,7 +314,8 @@ defmodule ShroudWeb.McpTest do
     for tool <- tools do
       assert tool["inputSchema"]["additionalProperties"] == false
       assert tool["outputSchema"]["type"] == "object"
-      assert tool["securitySchemes"] == tool["_meta"]["securitySchemes"]
+      refute Map.has_key?(tool, "securitySchemes")
+      refute Map.has_key?(tool["_meta"] || %{}, "securitySchemes")
       assert tool["annotations"]["openWorldHint"] == false
     end
 
@@ -550,7 +551,7 @@ defmodule ShroudWeb.McpTest do
     assert tool(tokens, "get_alias", %{address: own.address})["isError"]
   end
 
-  test "scopes are enforced at execution and insufficient scope has an OAuth challenge" do
+  test "scopes are enforced at execution without client-specific error metadata" do
     %{tokens: tokens} = connection_fixture(["aliases:read"])
     result = tool(tokens, "create_alias", %{title: "Not permitted"})
     assert result["isError"]
@@ -558,13 +559,23 @@ defmodule ShroudWeb.McpTest do
     assert result["content"] == [
              %{
                "type" => "text",
-               "text" => "Reconnect your Shroud.email account with the required permission."
+               "text" =>
+                 "Required OAuth scopes: aliases:create aliases:read. Reconnect your Shroud.email account with these permissions."
              }
            ]
 
-    challenge = result["_meta"]["mcp/www_authenticate"] |> hd()
-    assert challenge =~ "insufficient_scope"
-    assert challenge =~ "aliases:create"
+    refute Map.has_key?(result["_meta"] || %{}, "mcp/www_authenticate")
+    domains = tool(tokens, "list_verified_domains", %{})
+    assert domains["isError"]
+
+    assert domains["content"] == [
+             %{
+               "type" => "text",
+               "text" =>
+                 "Required OAuth scopes: domains:read. Reconnect your Shroud.email account with these permissions."
+             }
+           ]
+
     assert Repo.aggregate(Aliases.EmailAlias, :count) == 0
     assert tool(tokens, "delete_alias", %{address: "anything@example.com"})["isError"]
   end
@@ -756,13 +767,12 @@ defmodule ShroudWeb.McpTest do
            |> response(405)
   end
 
-  test "mutation tools advertise their required read permission and retain full responses" do
+  test "mutation tools require read permission and retain full responses" do
     %{user: user, tokens: tokens} = connection_fixture(["aliases:read", "aliases:edit"])
     email_alias = alias_fixture(%{user_id: user.id, title: "Status", notes: "Existing notes"})
 
     for name <- ~w(create_alias edit_alias) do
-      schema = Enum.find(Tools.list(), &(&1.name == name))
-      assert hd(schema.securitySchemes).scopes == [Tools.scope(name), "aliases:read"]
+      assert Mcp.required_scopes(Tools.scope(name)) == [Tools.scope(name), "aliases:read"]
     end
 
     assert tool(tokens, "edit_alias", %{address: email_alias.address, enabled: true})[

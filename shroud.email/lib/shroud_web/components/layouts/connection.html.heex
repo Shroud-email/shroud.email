@@ -21,10 +21,7 @@
       <div class="max-w-xl mx-auto flex justify-between gap-4">
         <.link href={~p"/"} class="font-semibold">Shroud.email</.link>
         <.link
-          :if={
-            assigns[:current_user] &&
-              FunWithFlags.enabled?(:chatgpt_integration, for: @current_user)
-          }
+          :if={assigns[:current_user]}
           href={~p"/settings/connections"}
           class="text-sm underline"
         >
