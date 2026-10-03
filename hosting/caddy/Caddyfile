@@ -15,9 +15,3 @@
 }
 
 import /etc/caddy/cap/{$CAP_CADDYFILE:disabled.caddy}
-
-{$EMAIL_DOMAIN} {
-  tls {
-    issuer acme
-  }
-}

@@ -104,7 +104,6 @@ services:
     environment:
       - ADMIN_EMAIL=${ADMIN_EMAIL}
       - APP_DOMAIN=${APP_DOMAIN}
-      - EMAIL_DOMAIN=${EMAIL_DOMAIN}
       - BUNNY_API_KEY=${BUNNY_API_KEY}
       - CAP_DOMAIN=${CAP_DOMAIN}
       - CAP_CADDYFILE=${CAP_CADDYFILE:-disabled.caddy}
