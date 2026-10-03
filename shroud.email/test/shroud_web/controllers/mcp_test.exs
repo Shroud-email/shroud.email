@@ -93,13 +93,13 @@ defmodule ShroudWeb.McpTest do
     assert get_resp_header(conn, "cache-control") == ["no-store"]
   end
 
-  test "consent uses short permission labels and groups alias edits without changing scopes" do
+  test "consent uses short permission labels without changing scopes" do
     user = confirmed_user()
 
     for {scopes, expected} <- [
           {["aliases:read", "aliases:create"], ["View aliases", "Create aliases"]},
-          {["aliases:read", "aliases:status"], ["View aliases", "Edit aliases"]},
-          {["aliases:read", "aliases:create", "aliases:edit", "aliases:status", "domains:read"],
+          {["aliases:read", "aliases:edit"], ["View aliases", "Edit aliases"]},
+          {["aliases:read", "aliases:create", "aliases:edit", "domains:read"],
            ["View aliases", "Create aliases", "Edit aliases", "View custom domains"]}
         ] do
       {params, _} = authorization_params(scopes)
@@ -290,7 +290,7 @@ defmodule ShroudWeb.McpTest do
       rpc(tokens.access_token, "tools/list") |> json_response(200) |> get_in(["result", "tools"])
 
     assert Enum.map(tools, & &1["name"]) |> Enum.sort() ==
-             ~w(create_alias disable_alias edit_alias enable_alias find_aliases get_alias list_verified_domains)
+             ~w(create_alias edit_alias get_alias list_aliases list_verified_domains)
 
     for tool <- tools do
       assert tool["inputSchema"]["additionalProperties"] == false
@@ -301,9 +301,10 @@ defmodule ShroudWeb.McpTest do
 
     assert Enum.find(tools, &(&1["name"] == "edit_alias"))["annotations"]["destructiveHint"]
 
-    assert Enum.find(tools, &(&1["name"] == "disable_alias"))["annotations"][
-             "destructiveHint"
-           ]
+    for name <- ~w(list_aliases list_verified_domains) do
+      page = Enum.find(tools, &(&1["name"] == name))["inputSchema"]["properties"]["page"]
+      refute Map.has_key?(page, "maximum")
+    end
 
     conn =
       build_conn()
@@ -365,52 +366,114 @@ defmodule ShroudWeb.McpTest do
     assert conn |> get("https://evil.example/mcp") |> response(403) == "Forbidden host"
   end
 
-  test "search is required, literal, paginated, account-scoped and does not expose notes or inbox" do
+  test "listing returns full alias details, paginates and excludes foreign and deleted aliases" do
     %{user: user, tokens: tokens} = connection_fixture()
-    for i <- 1..11, do: alias_fixture(%{user_id: user.id, title: "Store #{i}", notes: "private"})
-    other = alias_fixture(%{user_id: confirmed_user().id, title: "Store foreign"})
-    only_notes = alias_fixture(%{user_id: user.id, title: "Unrelated", notes: "Store hidden"})
-    first = tool(tokens, "find_aliases", %{query: "Store"})
+
+    expected =
+      for i <- 1..11 do
+        notes = if i == 11, do: nil, else: "Receipt #{i}"
+        alias = alias_fixture(%{user_id: user.id, title: "Store #{i}", notes: notes})
+
+        %{
+          "address" => alias.address,
+          "title" => "Store #{i}",
+          "notes" => notes,
+          "enabled" => true
+        }
+      end
+
+    alias_fixture(%{user_id: confirmed_user().id, title: "Store foreign"})
+    deleted = alias_fixture(%{user_id: user.id, title: "Store deleted"})
+    Aliases.delete_email_alias(deleted.id)
+
+    first = tool(tokens, "list_aliases", %{})
     assert length(first["structuredContent"]["aliases"]) == 10
     assert first["structuredContent"]["has_more"]
-    second = tool(tokens, "find_aliases", %{query: "Store", page: 2})
+    second = tool(tokens, "list_aliases", %{page: 2})
     assert length(second["structuredContent"]["aliases"]) == 1
     refute second["structuredContent"]["has_more"]
 
-    addresses =
-      (first["structuredContent"]["aliases"] ++ second["structuredContent"]["aliases"])
-      |> Enum.map(& &1["address"])
-
-    refute other.address in addresses
-    refute only_notes.address in addresses
-
-    for entry <- first["structuredContent"]["aliases"],
-        do: assert(Enum.sort(Map.keys(entry)) == ~w(address enabled title))
+    assert first["structuredContent"]["aliases"] ++ second["structuredContent"]["aliases"] ==
+             Enum.reverse(expected)
 
     refute Jason.encode!(first) =~ user.email
-    assert tool(tokens, "find_aliases", %{query: "%"})["structuredContent"]["aliases"] == []
 
-    disabled = alias_fixture(%{user_id: user.id, title: "Store disabled", enabled: false})
+    for page <- [3, 1001] do
+      assert tool(tokens, "list_aliases", %{page: page})["structuredContent"] == %{
+               "aliases" => [],
+               "has_more" => false
+             }
+    end
 
-    assert tool(tokens, "find_aliases", %{query: "Store", enabled: false})["structuredContent"][
+    for search <- ["", "   "] do
+      assert tool(tokens, "list_aliases", %{search: search})["structuredContent"] ==
+               first["structuredContent"]
+    end
+  end
+
+  test "listing searches address, label and notes with literal multi-term and enabled filters" do
+    %{user: user, tokens: tokens} = connection_fixture()
+    enabled = alias_fixture(%{user_id: user.id, title: "Store", notes: "Receipt"})
+
+    disabled =
+      alias_fixture(%{
+        user_id: user.id,
+        title: "Unrelated",
+        notes: "Store 100%_\\",
+        enabled: false
+      })
+
+    foreign = alias_fixture(%{user_id: confirmed_user().id, title: "Store"})
+
+    assert tool(tokens, "list_aliases", %{search: "STORE", enabled: true})["structuredContent"] ==
+             %{
+               "aliases" => [
+                 %{
+                   "address" => enabled.address,
+                   "title" => "Store",
+                   "notes" => "Receipt",
+                   "enabled" => true
+                 }
+               ],
+               "has_more" => false
+             }
+
+    assert tool(tokens, "list_aliases", %{enabled: false})["structuredContent"] == %{
+             "aliases" => [
+               %{
+                 "address" => disabled.address,
+                 "title" => "Unrelated",
+                 "notes" => "Store 100%_\\",
+                 "enabled" => false
+               }
+             ],
+             "has_more" => false
+           }
+
+    for search <- [String.upcase(disabled.address), "UNRELATED STORE", "%_\\"] do
+      assert tool(tokens, "list_aliases", %{search: search})["structuredContent"]["aliases"] ==
+               [
+                 %{
+                   "address" => disabled.address,
+                   "title" => "Unrelated",
+                   "notes" => "Store 100%_\\",
+                   "enabled" => false
+                 }
+               ]
+    end
+
+    assert tool(tokens, "list_aliases", %{search: "Store missing"})["structuredContent"][
              "aliases"
-           ] == [
-             %{"address" => disabled.address, "title" => "Store disabled", "enabled" => false}
-           ]
-
-    assert tool(tokens, "find_aliases", %{query: "Store", enabled: true})["structuredContent"][
-             "aliases"
-           ]
-           |> Enum.all?(& &1["enabled"])
+           ] == []
 
     for args <- [
-          %{},
-          %{query: "   "},
-          %{query: "Store", page: 0},
-          %{query: "Store", enabled: "false"},
-          %{query: "Store", user_id: other.user_id}
+          %{page: 0},
+          %{page: 1.5},
+          %{search: false},
+          %{enabled: "false"},
+          %{user_id: foreign.user_id}
         ] do
-      assert tool(tokens, "find_aliases", args)["isError"]
+      assert tool(tokens, "list_aliases", args)["isError"]
     end
   end
 
@@ -419,7 +482,7 @@ defmodule ShroudWeb.McpTest do
     own = alias_fixture(%{user_id: user.id, title: "Before", notes: "Keep", enabled: false})
     foreign = alias_fixture(%{user_id: confirmed_user().id, title: "Foreign", enabled: false})
 
-    for name <- ~w(get_alias edit_alias enable_alias disable_alias) do
+    for name <- ~w(get_alias edit_alias) do
       args =
         if name == "edit_alias",
           do: %{address: foreign.address, title: "Stolen"},
@@ -442,13 +505,26 @@ defmodule ShroudWeb.McpTest do
              "notes"
            ] == nil
 
-    assert tool(tokens, "edit_alias", %{address: own.address, enabled: true})["isError"]
+    assert tool(tokens, "edit_alias", %{address: own.address, enabled: "true"})["isError"]
     assert tool(tokens, "edit_alias", %{address: own.address})["isError"]
-    assert tool(tokens, "enable_alias", %{address: own.address})["structuredContent"]["enabled"]
+
+    assert tool(tokens, "edit_alias", %{
+             address: own.address,
+             title: "Enabled label",
+             notes: "New notes",
+             enabled: true
+           })[
+             "structuredContent"
+           ] == %{
+             "address" => own.address,
+             "title" => "Enabled label",
+             "notes" => "New notes",
+             "enabled" => true
+           }
 
     assert tool(tokens, "get_alias", %{address: String.upcase(own.address)})["structuredContent"][
              "title"
-           ] == "After"
+           ] == "Enabled label"
 
     assert Repo.get!(Aliases.EmailAlias, foreign.id).title == "Foreign"
     Aliases.delete_email_alias(own.id)
@@ -519,13 +595,20 @@ defmodule ShroudWeb.McpTest do
 
     untouched = alias_fixture(%{user_id: user.id, title: "Other alias"})
     foreign = alias_fixture(%{user_id: confirmed_user().id, title: "Foreign", enabled: true})
-    assert tool(tokens, "disable_alias", %{address: foreign.address})["isError"]
+    assert tool(tokens, "edit_alias", %{address: foreign.address, enabled: false})["isError"]
     assert Repo.get!(Aliases.EmailAlias, foreign.id).enabled
     %{tokens: read_only} = connection_fixture(["aliases:read"], user)
-    assert tool(read_only, "disable_alias", %{address: email_alias.address})["isError"]
+
+    assert tool(read_only, "edit_alias", %{address: email_alias.address, enabled: false})[
+             "isError"
+           ]
+
     assert Repo.get!(Aliases.EmailAlias, email_alias.id).enabled
 
-    disabled = tool(tokens, "disable_alias", %{address: email_alias.address})["structuredContent"]
+    disabled =
+      tool(tokens, "edit_alias", %{address: email_alias.address, enabled: false})[
+        "structuredContent"
+      ]
 
     assert disabled == %{
              "address" => email_alias.address,
@@ -537,21 +620,28 @@ defmodule ShroudWeb.McpTest do
     refute Repo.get!(Aliases.EmailAlias, email_alias.id).enabled
     assert Repo.get!(Aliases.EmailAlias, untouched.id).enabled
 
-    assert tool(tokens, "disable_alias", %{address: email_alias.address})["structuredContent"] ==
+    assert tool(tokens, "edit_alias", %{address: email_alias.address, enabled: false})[
+             "structuredContent"
+           ] ==
              disabled
 
-    assert tool(tokens, "enable_alias", %{address: email_alias.address})["structuredContent"][
+    assert tool(tokens, "edit_alias", %{address: email_alias.address, enabled: true})[
+             "structuredContent"
+           ][
              "enabled"
            ]
 
     assert Repo.get!(Aliases.EmailAlias, email_alias.id).enabled
 
-    assert tool(tokens, "disable_alias", %{address: email_alias.address, enabled: true})[
+    assert tool(tokens, "edit_alias", %{
+             address: email_alias.address,
+             forwarding_destination: "other@example.com"
+           })[
              "isError"
            ]
 
     Aliases.delete_email_alias(untouched.id)
-    assert tool(tokens, "disable_alias", %{address: untouched.address})["isError"]
+    assert tool(tokens, "edit_alias", %{address: untouched.address, enabled: false})["isError"]
     assert Repo.get!(Aliases.EmailAlias, untouched.id).enabled
 
     wrong =
@@ -569,8 +659,8 @@ defmodule ShroudWeb.McpTest do
     assert rpc(tokens.access_token, "tools/list") |> response(401)
 
     assert rpc(tokens.access_token, "tools/call", %{
-             name: "disable_alias",
-             arguments: %{address: email_alias.address}
+             name: "edit_alias",
+             arguments: %{address: email_alias.address, enabled: false}
            })
            |> response(401)
 
@@ -619,7 +709,7 @@ defmodule ShroudWeb.McpTest do
     assert rpc(tokens.access_token, "tools/list", %{}, [{"mcp-session-id", session}])
            |> json_response(200)
            |> get_in(["result", "tools"])
-           |> length() == 7
+           |> length() == 5
 
     assert build_conn() |> get(Mcp.resource()) |> response(401)
 
@@ -631,15 +721,17 @@ defmodule ShroudWeb.McpTest do
   end
 
   test "mutation tools advertise their required read permission and retain full responses" do
-    %{user: user, tokens: tokens} = connection_fixture(["aliases:read", "aliases:status"])
+    %{user: user, tokens: tokens} = connection_fixture(["aliases:read", "aliases:edit"])
     email_alias = alias_fixture(%{user_id: user.id, title: "Status", notes: "Existing notes"})
 
-    for name <- ~w(create_alias edit_alias enable_alias disable_alias) do
+    for name <- ~w(create_alias edit_alias) do
       schema = Enum.find(Tools.list(), &(&1.name == name))
       assert hd(schema.securitySchemes).scopes == [Tools.scope(name), "aliases:read"]
     end
 
-    assert tool(tokens, "enable_alias", %{address: email_alias.address})["structuredContent"] ==
+    assert tool(tokens, "edit_alias", %{address: email_alias.address, enabled: true})[
+             "structuredContent"
+           ] ==
              %{
                "address" => email_alias.address,
                "title" => "Status",

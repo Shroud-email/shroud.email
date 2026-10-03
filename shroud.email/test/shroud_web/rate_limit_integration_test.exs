@@ -150,8 +150,8 @@ defmodule ShroudWeb.RateLimitIntegrationTest do
 
     response =
       mcp(conn, tokens.access_token, "tools/call", %{
-        name: "disable_alias",
-        arguments: %{address: email_alias.address}
+        name: "edit_alias",
+        arguments: %{address: email_alias.address, enabled: false}
       })
 
     assert response.status == 429

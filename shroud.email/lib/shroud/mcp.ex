@@ -13,13 +13,12 @@ defmodule Shroud.Mcp do
     "aliases:read" => "View aliases",
     "aliases:create" => "Create aliases",
     "aliases:edit" => "Edit aliases",
-    "aliases:status" => "Edit aliases",
     "domains:read" => "View custom domains"
   }
 
   def permissions, do: @permissions
 
-  def required_scopes(scope) when scope in ["aliases:create", "aliases:edit", "aliases:status"],
+  def required_scopes(scope) when scope in ["aliases:create", "aliases:edit"],
     do: [scope, "aliases:read"]
 
   def required_scopes(scope), do: [scope]

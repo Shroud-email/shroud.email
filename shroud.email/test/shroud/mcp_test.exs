@@ -298,7 +298,7 @@ defmodule Shroud.McpTest do
   end
 
   test "mutation grants require reads at authorization, refresh and access" do
-    for mutation <- ~w(aliases:create aliases:edit aliases:status) do
+    for mutation <- ~w(aliases:create aliases:edit) do
       {params, _} = authorization_params([mutation])
       assert {:error, :invalid_request} = Mcp.validate_authorization(params)
 

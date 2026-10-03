@@ -7,13 +7,12 @@ defmodule Shroud.Mcp.Tools do
 
   def list do
     address = string("Exact alias address", 320)
-    title = string("Alias label; not an email address", 255)
-    notes = string("Alias notes. Do not store passwords or verification codes.", 2000, 0)
+    title = string("Alias label", 255)
+    notes = string("Alias notes", 2000, 0)
 
     page = %{
       type: "integer",
       minimum: 1,
-      maximum: 1000,
       description: "Page number, starting at 1; ten results per page"
     }
 
@@ -30,25 +29,21 @@ defmodule Shroud.Mcp.Tools do
 
     [
       tool(
-        "find_aliases",
-        "Find aliases",
-        "Find aliases by an address or label fragment in the connected account. Returns up to ten candidates without notes; clarify ambiguous matches rather than guessing. A nonblank query is required, not a whole-account export.",
+        "list_aliases",
+        "List aliases",
+        "Search aliases by their address or label or notes.",
         "aliases:read",
         object(
           %{
-            query: string("Address or label fragment", 255),
-            enabled: %{type: "boolean"},
+            search: string("Search address, label or notes; omit to list all aliases", 255, 0),
+            enabled: %{type: "boolean", description: "Filter enabled or disabled aliases"},
             page: page
           },
-          [:query]
+          []
         ),
         object(
           %{
-            aliases: %{
-              type: "array",
-              items:
-                object(Map.drop(alias_output.properties, [:notes]), [:address, :title, :enabled])
-            },
+            aliases: %{type: "array", items: alias_output},
             has_more: %{type: "boolean"}
           },
           [:aliases, :has_more]
@@ -59,7 +54,7 @@ defmodule Shroud.Mcp.Tools do
       tool(
         "get_alias",
         "Get an alias",
-        "Read the label, notes and enabled status of one exact alias owned by the connected account. Does not retrieve email content or forwarding destinations.",
+        "Get an alias's address, label, notes and enabled status.",
         "aliases:read",
         object(%{address: address}, [:address]),
         alias_output,
@@ -69,7 +64,7 @@ defmodule Shroud.Mcp.Tools do
       tool(
         "create_alias",
         "Create a labelled alias",
-        "Create a random alias with a label and optional notes. To use an existing verified custom domain supply both domain and local_part. Retrying creates another alias; no email is sent and no signup is performed.",
+        "Create an alias with a label and optional notes. For a custom domain, supply both domain and local_part.",
         "aliases:create",
         object(
           %{
@@ -86,14 +81,15 @@ defmodule Shroud.Mcp.Tools do
       ),
       tool(
         "edit_alias",
-        "Edit alias label or notes",
-        "Replace the label and/or notes of one exact alias. An empty string clears a field. Does not change the address, enabled status or forwarding destination.",
+        "Edit an alias",
+        "Update an alias's label, notes or enabled status. An empty string clears a label or notes. Disabling stops forwarding immediately, including password-reset emails.",
         "aliases:edit",
         object(
           %{
             address: address,
             title: string("Replacement label; empty clears it", 255, 0),
-            notes: notes
+            notes: notes,
+            enabled: %{type: "boolean", description: "Enable or disable forwarding"}
           },
           [:address]
         ),
@@ -102,29 +98,9 @@ defmodule Shroud.Mcp.Tools do
         true
       ),
       tool(
-        "enable_alias",
-        "Re-enable an alias",
-        "Re-enable forwarding for one exact alias owned by the connected account. Does not change its address or forwarding destination.",
-        "aliases:status",
-        object(%{address: address}, [:address]),
-        alias_output,
-        false,
-        false
-      ),
-      tool(
-        "disable_alias",
-        "Disable an alias",
-        "Disable forwarding for one exact alias owned by the connected account. Takes effect immediately and stops all forwarding, including password-reset emails. Does not delete the alias or change its forwarding destination; it can be re-enabled later.",
-        "aliases:status",
-        object(%{address: address}, [:address]),
-        alias_output,
-        false,
-        true
-      ),
-      tool(
         "list_verified_domains",
         "List verified custom domains",
-        "List up to ten existing, currently verified custom domain names in the connected account, for alias creation. Does not add domains, return DNS secrets, or initiate billing.",
+        "List verified custom domains available for alias creation.",
         "domains:read",
         object(%{page: page}, []),
         object(
@@ -168,31 +144,19 @@ defmodule Shroud.Mcp.Tools do
     end
   end
 
-  defp execute(connection, "find_aliases", args) do
-    escaped =
-      args["query"]
-      |> String.replace("\\", "\\\\")
-      |> String.replace("%", "\\%")
-      |> String.replace("_", "\\_")
-
-    pattern = "%" <> escaped <> "%"
-
-    query =
-      connection.user
-      |> Aliases.aliases_query()
-      |> where([a], ilike(a.address, ^pattern) or ilike(a.title, ^pattern))
+  defp execute(connection, "list_aliases", args) do
+    query = Aliases.aliases_query(connection.user, args["search"])
 
     query =
       if Map.has_key?(args, "enabled"),
         do: where(query, [a], a.enabled == ^args["enabled"]),
         else: query
 
-    entries =
-      query |> order_by([a], desc: a.id) |> limit(11) |> offset(^offset(args)) |> Repo.all()
+    entries = query |> limit(11) |> offset(^offset(args)) |> Repo.all()
 
     {:ok,
      %{
-       aliases: Enum.take(entries, 10) |> Enum.map(&(alias_data(&1) |> Map.delete(:notes))),
+       aliases: Enum.take(entries, 10) |> Enum.map(&alias_data/1),
        has_more: length(entries) > 10
      }}
   end
@@ -259,17 +223,11 @@ defmodule Shroud.Mcp.Tools do
         {:ok, alias_data(email_alias)}
 
       {email_alias, "edit_alias"} ->
-        attrs = Map.take(args, ["title", "notes"])
+        attrs = Map.take(args, ["title", "notes", "enabled"])
 
         if map_size(attrs) == 0,
-          do: {:error, "Supply a label or notes to edit"},
+          do: {:error, "Supply a label, notes or enabled status to edit"},
           else: alias_result(Aliases.update_email_alias(email_alias, attrs))
-
-      {email_alias, "enable_alias"} ->
-        alias_result(Aliases.update_email_alias(email_alias, %{enabled: true}))
-
-      {email_alias, "disable_alias"} ->
-        alias_result(Aliases.update_email_alias(email_alias, %{enabled: false}))
     end
   end
 
