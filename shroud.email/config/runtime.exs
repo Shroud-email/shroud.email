@@ -29,6 +29,11 @@ config :shroud,
   chatwoot_base_url: System.get_env("CHATWOOT_BASE_URL"),
   chatwoot_hmac_token: System.get_env("CHATWOOT_HMAC_TOKEN")
 
+# Optional cookieless browser analytics. An unset token disables PostHog.
+config :shroud,
+  posthog_token: System.get_env("POSTHOG_TOKEN"),
+  posthog_host: System.get_env("POSTHOG_HOST", "https://eu.i.posthog.com")
+
 # Optional: Cap CAPTCHA. Set all three of CAP_INSTANCE_URL, CAP_SITE_KEY,
 # and CAP_SECRET_KEY to enable. When any is unset, Cap is fully disabled
 # (no widget rendered, no verification performed). The instance URL is

@@ -49,6 +49,7 @@ export function setupPaddleCheckout({
   window,
   initializePaddle,
   logger = console,
+  onCheckoutCompleted = () => {},
 }) {
   const button = document.querySelector("#upgrade-button");
   const price = document.querySelector("#upgrade-price[data-paddle-price-id]");
@@ -60,6 +61,7 @@ export function setupPaddleCheckout({
 
   let checkoutPending = false;
   let disposed = false;
+  let checkoutCompleted = false;
 
   const paddlePromise = initializePaddle({
     token,
@@ -68,7 +70,9 @@ export function setupPaddleCheckout({
         ? "sandbox"
         : undefined,
     eventCallback: (data) => {
-      if (data.name === "checkout.completed") {
+      if (data.name === "checkout.completed" && !disposed && !checkoutCompleted) {
+        checkoutCompleted = true;
+        onCheckoutCompleted();
         window.setTimeout(() => {
           window.location.href = "/settings/billing";
         }, 5000);

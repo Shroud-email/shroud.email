@@ -1,18 +1,29 @@
 <!DOCTYPE html>
 <html lang="en" class="h-full">
   <head>
-    <meta charset="utf-8"/>
-    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <meta name="theme" content={if assigns[:current_user], do: to_string(@current_user.theme), else: "system"} />
-    <meta name="paddle-client-token" content={Application.get_env(:shroud, :billing, [])[:paddle_client_token]} />
-    <meta name="paddle-environment" content={Application.get_env(:shroud, :billing, [])[:paddle_environment]} />
-    <%= csrf_meta_tag() %>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="theme"
+      content={if assigns[:current_user], do: to_string(@current_user.theme), else: "system"}
+    />
+    <meta
+      name="paddle-client-token"
+      content={Application.get_env(:shroud, :billing, [])[:paddle_client_token]}
+    />
+    <meta
+      name="paddle-environment"
+      content={Application.get_env(:shroud, :billing, [])[:paddle_environment]}
+    />
+    <meta name="posthog-token" content={Application.get_env(:shroud, :posthog_token)} />
+    <meta name="posthog-host" content={Application.get_env(:shroud, :posthog_host)} />
+    {csrf_meta_tag()}
     <.live_title suffix=" · Shroud.email">
-      <%= assigns[:page_title] || "Home" %>
+      {assigns[:page_title] || "Home"}
     </.live_title>
-    <link phx-track-static rel="stylesheet" href={~p"/fonts/inter/inter.css"}/>
-    <link phx-track-static rel="stylesheet" href={~p"/assets/app.css"}/>
+    <link phx-track-static rel="stylesheet" href={~p"/fonts/inter/inter.css"} />
+    <link phx-track-static rel="stylesheet" href={~p"/assets/app.css"} />
     <%!-- Keep this synchronous script after CSS and before other scripts/body:
          it waits for stylesheets before Firefox can force an unstyled layout. --%>
     <script>
@@ -24,9 +35,17 @@
       })();
     </script>
     <link phx-track-static rel="icon" href={~p"/favicon.ico"} />
-    <script defer phx-track-static type="text/javascript" src={~p"/assets/app.js"}></script>
-    <script src="https://uptime.betterstack.com/widgets/announcement.js" data-id="251784" async="async" type="text/javascript"></script>
-    <script :if={chatwoot_base_url()} src={chatwoot_base_url() <> "/packs/js/sdk.js"} async></script>
+    <script defer phx-track-static type="text/javascript" src={~p"/assets/app.js"}>
+    </script>
+    <script
+      src="https://uptime.betterstack.com/widgets/announcement.js"
+      data-id="251784"
+      async="async"
+      type="text/javascript"
+    >
+    </script>
+    <script :if={chatwoot_base_url()} src={chatwoot_base_url() <> "/packs/js/sdk.js"} async>
+    </script>
   </head>
   <body
     class="h-full bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100"
@@ -38,15 +57,21 @@
       <.navbar {assigns} />
       <.notification_group :if={!assigns[:live_module]} flash={@flash} />
       <div class="flex-1">
-        <%= @inner_content %>
+        {@inner_content}
       </div>
       <%= if !assigns[:current_user] do %>
         <footer class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-auto">
           <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
             <div class="flex flex-col sm:flex-row justify-center sm:justify-end gap-4 sm:gap-6 text-sm text-gray-500 dark:text-gray-400">
-              <.link href="https://shroud.email/privacy/" target="_blank" rel="noopener">Privacy</.link>
-              <.link href="https://shroud.email/terms/" target="_blank" rel="noopener">Terms</.link>
-              <.link href="https://shroud.email/pricing/" target="_blank" rel="noopener">Refund policy</.link>
+              <.link href="https://shroud.email/privacy/" target="_blank" rel="noopener">
+                Privacy
+              </.link>
+              <.link href="https://shroud.email/terms/" target="_blank" rel="noopener">
+                Terms
+              </.link>
+              <.link href="https://shroud.email/pricing/" target="_blank" rel="noopener">
+                Refund policy
+              </.link>
             </div>
           </div>
         </footer>

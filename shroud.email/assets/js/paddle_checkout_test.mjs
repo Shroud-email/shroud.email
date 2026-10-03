@@ -335,3 +335,57 @@ test("disposing during transaction creation prevents opening checkout on another
   await click;
   assert.deepEqual(opened, []);
 });
+
+test("checkout completion reports once without passing Paddle customer data", async () => {
+  const { document } = fixture();
+  let callback;
+  const reported = [];
+  const timers = [];
+  const window = {
+    location: { href: "" },
+    setTimeout(fn, delay) { timers.push({ fn, delay }); },
+  };
+  await setupPaddleCheckout({
+    document,
+    window,
+    initializePaddle: async ({ eventCallback }) => {
+      callback = eventCallback;
+      return { Checkout: { open() {} } };
+    },
+    onCheckoutCompleted: (...args) => reported.push(args),
+  });
+
+  callback({ name: "checkout.loaded" });
+  callback({ name: "checkout.closed" });
+  assert.deepEqual(reported, []);
+  assert.equal(timers.length, 0);
+
+  const completed = {
+    name: "checkout.completed",
+    data: { customer: { email: "private@example.com" }, transaction_id: "txn_private" },
+  };
+  callback(completed);
+  callback(completed);
+  assert.deepEqual(reported, [[]]);
+  assert.equal(timers.length, 1);
+  assert.equal(timers[0].delay, 5000);
+  timers[0].fn();
+  assert.equal(window.location.href, "/settings/billing");
+});
+
+test("disposed checkout does not report completion or schedule a redirect", async () => {
+  const { document } = fixture();
+  let callback;
+  const checkout = setupPaddleCheckout({
+    document,
+    window: { setTimeout() { assert.fail("unexpected redirect"); } },
+    initializePaddle: async ({ eventCallback }) => {
+      callback = eventCallback;
+      return { Checkout: { open() {} } };
+    },
+    onCheckoutCompleted() { assert.fail("unexpected conversion"); },
+  });
+  await checkout;
+  checkout.dispose();
+  callback({ name: "checkout.completed" });
+});
