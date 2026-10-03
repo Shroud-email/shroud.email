@@ -1,8 +1,9 @@
 defmodule Shroud.Mcp.Tools do
   @moduledoc "The bounded alias-management surface exposed to MCP clients."
   require Logger
+  import Ecto.Query
   alias ExMCP.Content.SchemaPolicy
-  alias Shroud.{Aliases, Domain}
+  alias Shroud.{Aliases, Domain, Repo}
 
   def list do
     address = string("Exact alias address", 320)
@@ -144,34 +145,71 @@ defmodule Shroud.Mcp.Tools do
   end
 
   defp execute(connection, "list_aliases", args) do
+    query = Aliases.aliases_query(connection.user, args["search"])
+
+    query =
+      if is_boolean(args["enabled"]),
+        do: where(query, [a], a.enabled == ^args["enabled"]),
+        else: query
+
     page =
-      Aliases.list_aliases_page(connection.user,
-        search: args["search"],
-        enabled: args["enabled"],
+      Repo.paginate(query,
         page: Map.get(args, "page", 1),
-        page_size: 10
+        page_size: 10,
+        options: [allow_overflow_page_number: true]
       )
 
     {:ok,
      %{
        aliases: Enum.map(page.entries, &alias_data/1),
-       has_more: page.has_more
+       has_more: page.page_number < page.total_pages
      }}
   end
 
   defp execute(connection, "create_alias", args) do
     attrs =
-      for key <- ~w(title notes domain local_part), Map.has_key?(args, key), into: %{} do
+      for key <- ~w(title notes), Map.has_key?(args, key), into: %{} do
         {String.to_existing_atom(key), args[key]}
       end
 
-    connection.user |> Aliases.create_email_alias(attrs) |> alias_result()
+    result =
+      case {args["domain"], args["local_part"]} do
+        {nil, nil} ->
+          Aliases.create_random_email_alias(connection.user, attrs)
+
+        {domain, local} when is_binary(domain) and is_binary(local) ->
+          verified =
+            Domain.list_custom_domains(connection.user)
+            |> Enum.find(
+              &(String.downcase(&1.domain) == String.downcase(domain) and
+                  Domain.fully_verified?(&1))
+            )
+
+          case verified do
+            %{domain: stored_domain} ->
+              Aliases.create_email_alias(
+                Map.merge(attrs, %{
+                  user_id: connection.user.id,
+                  address: local <> "@" <> stored_domain
+                })
+              )
+
+            nil ->
+              {:error, :invalid_domain}
+          end
+
+        _ ->
+          {:error, :invalid_domain}
+      end
+
+    alias_result(result)
   end
 
   defp execute(connection, "list_verified_domains", args) do
     domains =
       connection.user
-      |> Domain.list_verified_custom_domains()
+      |> Domain.list_custom_domains()
+      |> Enum.filter(&Domain.fully_verified?/1)
       |> Enum.drop(offset(args))
       |> Enum.take(11)
 
@@ -180,7 +218,10 @@ defmodule Shroud.Mcp.Tools do
   end
 
   defp execute(connection, name, args) do
-    email_alias = Aliases.get_email_alias_by_address(connection.user, args["address"])
+    email_alias =
+      connection.user
+      |> Aliases.aliases_query()
+      |> Repo.get_by(address: String.downcase(args["address"]))
 
     case {email_alias, name} do
       {nil, _} ->
