@@ -25,7 +25,7 @@ defmodule ShroudWeb.Plugs.RequestParsers do
   end
 
   def call(%Plug.Conn{path_info: ["oauth", action]} = conn, _opts)
-      when action in ["token", "revoke"] do
+      when action in ["register", "token", "revoke"] do
     Plug.Parsers.call(
       conn,
       Plug.Parsers.init(parsers: [:urlencoded, :json], length: 65_536, json_decoder: Jason)

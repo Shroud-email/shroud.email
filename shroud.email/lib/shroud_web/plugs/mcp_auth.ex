@@ -4,6 +4,33 @@ defmodule ShroudWeb.Plugs.McpAuth do
 
   def init(opts), do: opts
 
+  def call(%{path_info: path} = conn, :cors)
+      when path in [
+             ["oauth", "register"],
+             ["oauth", "token"],
+             ["oauth", "revoke"],
+             [".well-known", "oauth-authorization-server"],
+             [".well-known", "oauth-protected-resource"],
+             [".well-known", "oauth-protected-resource", "mcp"]
+           ] do
+    with true <- conn.host == URI.parse(Mcp.issuer()).host,
+         [origin] <- get_req_header(conn, "origin") do
+      conn = cors(conn, origin)
+
+      if conn.method == "OPTIONS" do
+        conn
+        |> put_resp_header("access-control-allow-methods", "GET, POST, OPTIONS")
+        |> put_resp_header("access-control-allow-headers", "Content-Type, Accept")
+        |> send_resp(204, "")
+        |> halt()
+      else
+        conn
+      end
+    else
+      _ -> conn
+    end
+  end
+
   def call(%{path_info: [resource | _]} = conn, :cors) do
     with true <- URI.decode(resource) == "mcp",
          true <- conn.host == URI.parse(Mcp.issuer()).host,

@@ -4,13 +4,21 @@ defmodule ShroudWeb.McpOAuthController do
 
   plug :put_root_layout, html: {ShroudWeb.Layouts, :connection}
   plug :put_private_headers
-  plug ShroudWeb.Plugs.RateLimit, :routes when action in [:token, :revoke]
+  plug ShroudWeb.Plugs.RateLimit, :routes when action in [:register, :token, :revoke]
+
+  def register(conn, _params) do
+    case Mcp.Clients.register(conn.body_params) do
+      {:ok, client} -> conn |> put_status(201) |> json(client)
+      {:error, error} -> conn |> put_status(400) |> json(%{error: error})
+    end
+  end
 
   def metadata(conn, _params) do
     json(conn, %{
       issuer: Mcp.issuer(),
       authorization_endpoint: Mcp.issuer() <> "/oauth/authorize",
       token_endpoint: Mcp.issuer() <> "/oauth/token",
+      registration_endpoint: Mcp.issuer() <> "/oauth/register",
       revocation_endpoint: Mcp.issuer() <> "/oauth/revoke",
       response_types_supported: ["code"],
       grant_types_supported: ["authorization_code", "refresh_token"],

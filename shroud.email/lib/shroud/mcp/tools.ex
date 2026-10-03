@@ -32,7 +32,6 @@ defmodule Shroud.Mcp.Tools do
         "list_aliases",
         "List aliases",
         "Search aliases by their address or label or notes.",
-        "aliases:read",
         object(
           %{
             search: string("Search address, label or notes; omit to list all aliases", 255, 0),
@@ -55,7 +54,6 @@ defmodule Shroud.Mcp.Tools do
         "get_alias",
         "Get an alias",
         "Get an alias's address, label, notes and enabled status.",
-        "aliases:read",
         object(%{address: address}, [:address]),
         alias_output,
         true,
@@ -65,7 +63,6 @@ defmodule Shroud.Mcp.Tools do
         "create_alias",
         "Create a labelled alias",
         "Create an alias with a label and optional notes. For a custom domain, supply both domain and local_part.",
-        "aliases:create",
         object(
           %{
             title: title,
@@ -83,7 +80,6 @@ defmodule Shroud.Mcp.Tools do
         "edit_alias",
         "Edit an alias",
         "Update an alias's label, notes or enabled status. An empty string clears a label or notes. Disabling stops forwarding immediately, including password-reset emails.",
-        "aliases:edit",
         object(
           %{
             address: address,
@@ -101,7 +97,6 @@ defmodule Shroud.Mcp.Tools do
         "list_verified_domains",
         "List verified custom domains",
         "List verified custom domains available for alias creation.",
-        "domains:read",
         object(%{page: page}, []),
         object(
           %{domains: %{type: "array", items: %{type: "string"}}, has_more: %{type: "boolean"}},
@@ -113,12 +108,11 @@ defmodule Shroud.Mcp.Tools do
     ]
   end
 
-  def scope(name) do
-    case Enum.find(list(), &(&1.name == name)) do
-      nil -> nil
-      tool -> hd(tool.securitySchemes).scopes |> hd()
-    end
-  end
+  def scope(name) when name in ["list_aliases", "get_alias"], do: "aliases:read"
+  def scope("create_alias"), do: "aliases:create"
+  def scope("edit_alias"), do: "aliases:edit"
+  def scope("list_verified_domains"), do: "domains:read"
+  def scope(_name), do: nil
 
   def call(connection, name, arguments) do
     with tool when not is_nil(tool) <- Enum.find(list(), &(&1.name == name)),
@@ -270,18 +264,14 @@ defmodule Shroud.Mcp.Tools do
       additionalProperties: false
     }
 
-  defp tool(name, title, description, scope, input, output, read_only, destructive) do
-    security_schemes = [%{type: "oauth2", scopes: Shroud.Mcp.required_scopes(scope)}]
-
+  defp tool(name, title, description, input, output, read_only, destructive) do
     %{
       name: name,
       title: title,
       description: description,
       inputSchema: input,
       outputSchema: output,
-      annotations: %{readOnlyHint: read_only, destructiveHint: destructive, openWorldHint: false},
-      securitySchemes: security_schemes,
-      _meta: %{"securitySchemes" => security_schemes}
+      annotations: %{readOnlyHint: read_only, destructiveHint: destructive, openWorldHint: false}
     }
   end
 end
