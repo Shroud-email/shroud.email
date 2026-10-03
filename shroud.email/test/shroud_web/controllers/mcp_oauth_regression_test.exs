@@ -1,0 +1,124 @@
+defmodule ShroudWeb.McpOAuthRegressionTest do
+  use ShroudWeb.ConnCase, async: false
+  import Shroud.McpFixtures
+  alias Shroud.{Accounts, Mcp, Repo}
+
+  setup do
+    configure_clients()
+    %{user: confirmed_user()}
+  end
+
+  test "connection navigation is flagged without blocking browser connection pages", %{user: user} do
+    {params, _} = authorization_params(["aliases:read"])
+
+    for enabled <- [false, true, false] do
+      if enabled,
+        do: FunWithFlags.enable(:chatgpt_integration, for_actor: user),
+        else: FunWithFlags.disable(:chatgpt_integration, for_actor: user)
+
+      for {path, params, selector} <- [
+            {"/settings/security", %{}, "#manage-connections"},
+            {"/oauth/authorize", params, "header a[href='/settings/connections']"}
+          ] do
+        document =
+          build_conn()
+          |> log_in_user(user)
+          |> get(path, params)
+          |> html_response(200)
+          |> Floki.parse_document!()
+
+        links = Floki.find(document, selector)
+        assert links != [] == enabled
+      end
+
+      assert build_conn() |> log_in_user(user) |> get("/settings/connections") |> response(200)
+    end
+  end
+
+  test "callbacks append response fields without changing registered query bytes", %{user: user} do
+    for query <- [nil, "", "tag=first&tag=second&encoded=%2f%20&bare&empty="],
+        decision <- ["allow", "deny"] do
+      callback = "https://client.example/callback" <> if(query == nil, do: "", else: "?" <> query)
+      clients = Application.fetch_env!(:shroud, :mcp_clients)
+
+      Application.put_env(
+        :shroud,
+        :mcp_clients,
+        put_in(clients, ["test-client", "redirect_uris"], [callback])
+      )
+
+      {params, _} = authorization_params(["aliases:read"])
+      params = %{params | "redirect_uri" => callback, "state" => "state & + /"}
+
+      html =
+        build_conn() |> log_in_user(user) |> get("/oauth/authorize", params) |> html_response(200)
+
+      approval =
+        html
+        |> Floki.parse_document!()
+        |> Floki.find("input[name=approval]")
+        |> Floki.attribute("value")
+        |> hd()
+
+      location =
+        build_conn()
+        |> log_in_user(user)
+        |> post("/oauth/authorize", %{approval: approval, decision: decision})
+        |> redirected_to()
+        |> URI.parse()
+
+      response_query =
+        if query in [nil, ""] do
+          location.query
+        else
+          assert String.starts_with?(location.query, query <> "&")
+          String.replace_prefix(location.query, query <> "&", "")
+        end
+
+      response = URI.decode_query(response_query)
+      assert response["state"] == params["state"]
+      assert response["iss"] == Mcp.issuer()
+
+      if decision == "allow",
+        do: assert(response["code"] != nil),
+        else: assert(response["error"] == "access_denied")
+    end
+  end
+
+  test "consent keeps its isolated layout and settings use the account theme", %{
+    user: user
+  } do
+    {params, _} = authorization_params(["aliases:read"])
+
+    for theme <- [:dark, :light, :system] do
+      user =
+        Accounts.User
+        |> Repo.get!(user.id)
+        |> Accounts.User.theme_changeset(%{theme: theme})
+        |> Repo.update!()
+
+      for {path, params} <- [{"/settings/connections", %{}}, {"/oauth/authorize", params}] do
+        conn = build_conn() |> log_in_user(user) |> get(path, params)
+        document = conn |> html_response(200) |> Floki.parse_document!()
+        assert Floki.attribute(document, "meta[name=theme]", "content") == [to_string(theme)]
+
+        assert Floki.find(document, "meta[name=csrf-token]") != []
+        assert Floki.attribute(document, "body", "class") |> hd() =~ "dark:bg-gray-900"
+
+        if path == "/oauth/authorize" do
+          assert Floki.attribute(document, "html", "class") ==
+                   if(theme == :dark, do: ["dark"], else: [""])
+
+          assert Floki.attribute(document, "script", "src") == ["/assets/app.js"]
+          assert get_resp_header(conn, "cache-control") == ["no-store"]
+          assert get_resp_header(conn, "referrer-policy") == ["no-referrer"]
+          refute conn.resp_body =~ "chatwoot"
+          refute conn.resp_body =~ "betterstack"
+        else
+          assert Floki.find(document, "#settings-nav-security[aria-current=page]") != []
+          assert Floki.find(document, "#connections[phx-update=stream]") != []
+        end
+      end
+    end
+  end
+end

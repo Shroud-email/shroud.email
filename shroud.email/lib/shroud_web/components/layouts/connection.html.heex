@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en" class={if assigns[:current_user] && @current_user.theme == :dark, do: "dark"}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="referrer" content="no-referrer" />
+    <meta
+      name="theme"
+      content={if assigns[:current_user], do: to_string(@current_user.theme), else: "system"}
+    />
+    {csrf_meta_tag()}
+    <title>{@page_title} · Shroud.email</title>
+    <link rel="stylesheet" href={~p"/fonts/inter/inter.css"} />
+    <link rel="stylesheet" href={~p"/assets/app.css"} />
+    <link rel="icon" href={~p"/favicon.ico"} />
+    <script defer type="text/javascript" src={~p"/assets/app.js"}>
+    </script>
+  </head>
+  <body class="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+    <header class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-4">
+      <div class="max-w-xl mx-auto flex justify-between gap-4">
+        <.link href={~p"/"} class="font-semibold">Shroud.email</.link>
+        <.link
+          :if={
+            assigns[:current_user] &&
+              FunWithFlags.enabled?(:chatgpt_integration, for: @current_user)
+          }
+          href={~p"/settings/connections"}
+          class="text-sm underline"
+        >
+          Connected apps
+        </.link>
+      </div>
+    </header>
+    {@inner_content}
+  </body>
+</html>

@@ -75,6 +75,9 @@ defmodule ShroudWeb.Plugs.RateLimit do
        when path in [["users", "log_in"], ["users", "passkeys"], ["api", "v1", "token"]],
        do: [ip_policy(conn, :sign_in)]
 
+  defp policies(%{method: "POST", path_info: ["oauth", action]} = conn)
+       when action in ["token", "revoke"], do: [ip_policy(conn, :api)]
+
   defp policies(%{method: "POST", path_info: ["users", "totp"]} = conn) do
     account =
       with %{"email" => email} <- get_session(conn, :totp_pending_user_params),

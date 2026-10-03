@@ -1,7 +1,7 @@
 defmodule ShroudWeb.UserSettingsLive do
   use ShroudWeb, :live_view
 
-  alias Shroud.{Accounts, Billing, Repo}
+  alias Shroud.{Accounts, Billing, Mcp, Repo}
   alias Shroud.Accounts.{Passkeys, TOTP, User}
   alias ShroudWeb.Components.PopupAlert
 
@@ -29,9 +29,11 @@ defmodule ShroudWeb.UserSettingsLive do
         passkey_token: nil,
         passkey_pending: false,
         passkey_status: nil,
-        passkey_error: false
+        passkey_error: false,
+        connections_empty?: true
       )
       |> stream(:passkeys, [])
+      |> stream(:connections, [])
 
     {:ok, socket, layout: {ShroudWeb.Layouts, :settings}}
   end
@@ -45,23 +47,28 @@ defmodule ShroudWeb.UserSettingsLive do
         do: stream(socket, :passkeys, Accounts.list_passkeys(user), reset: true),
         else: socket |> cancel_passkey() |> assign(:passkey_dialog, nil)
 
+    socket =
+      if socket.assigns.live_action == :connections,
+        do: load_connections(socket),
+        else: socket
+
     billing_config = Application.get_env(:shroud, :billing, [])
     price_id = billing_config[:paddle_yearly_price_id]
     client_token = billing_config[:paddle_client_token]
 
-    title =
-      case socket.assigns.live_action do
-        :account -> "Account settings"
-        :security -> "Security settings"
-        :appearance -> "Appearance settings"
-        :billing -> "Billing settings"
-        :lifetime -> "Lifetime signup"
-      end
+    titles = %{
+      account: "Account settings",
+      security: "Security settings",
+      connections: "Connected apps",
+      appearance: "Appearance settings",
+      billing: "Billing settings",
+      lifetime: "Lifetime signup"
+    }
 
     {:noreply,
      assign(socket,
        current_user: user,
-       page_title: title,
+       page_title: titles[socket.assigns.live_action],
        email_preferences_enabled?: Accounts.email_preferences_enabled?(user),
        email_preferences_form: to_form(User.email_preferences_changeset(user, %{})),
        appearance_form: to_form(%{"theme" => to_string(user.theme)}),
@@ -77,6 +84,7 @@ defmodule ShroudWeb.UserSettingsLive do
     ~H"""
     <.account :if={@live_action == :account} {assigns} />
     <.security :if={@live_action == :security} {assigns} />
+    <.connections :if={@live_action == :connections} {assigns} />
     <.appearance :if={@live_action == :appearance} {assigns} />
     <.billing :if={@live_action == :billing} {assigns} />
     <.lifetime :if={@live_action == :lifetime} {assigns} />
@@ -84,6 +92,18 @@ defmodule ShroudWeb.UserSettingsLive do
   end
 
   @impl true
+  def handle_event("revoke_connection", %{"id" => id}, socket) do
+    with {id, ""} <- Integer.parse(id),
+         true <- Mcp.revoke(socket.assigns.current_user, id) do
+      {:noreply,
+       socket
+       |> load_connections()
+       |> put_notification(:info, "App disconnected.")}
+    else
+      _ -> {:noreply, put_notification(socket, :error, "Connection not found.")}
+    end
+  end
+
   def handle_event("update_email", %{"current_password" => password, "user" => params}, socket) do
     user = Repo.reload!(socket.assigns.current_user)
 
@@ -448,6 +468,14 @@ defmodule ShroudWeb.UserSettingsLive do
     />
     <span :for={error <- @field.errors} class="invalid-feedback">{translate_error(error)}</span>
     """
+  end
+
+  defp load_connections(socket) do
+    connections = Mcp.list_connections(socket.assigns.current_user)
+
+    socket
+    |> assign(:connections_empty?, connections == [])
+    |> stream(:connections, connections, reset: true)
   end
 
   defp configured?(value), do: is_binary(value) and value != ""

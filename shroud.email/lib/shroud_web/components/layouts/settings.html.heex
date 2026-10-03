@@ -5,23 +5,33 @@
     <aside class="px-2 sm:px-6 lg:px-0 lg:col-span-3">
       <nav class="space-y-1" aria-label="Settings">
         <.link
-          :for={{action, label, icon, path} <- [
-            {:account, "Account", :user_circle, ~p"/settings/account"},
-            {:security, "Security", :key, ~p"/settings/security"},
-            {:appearance, "Appearance", :paint_brush, ~p"/settings/appearance"},
-            {:billing, "Plan & Billing", :credit_card, ~p"/settings/billing"}
-          ]}
+          :for={
+            {action, label, icon, path} <- [
+              {:account, "Account", :user_circle, ~p"/settings/account"},
+              {:security, "Security", :key, ~p"/settings/security"},
+              {:appearance, "Appearance", :paint_brush, ~p"/settings/appearance"},
+              {:billing, "Plan & Billing", :credit_card, ~p"/settings/billing"}
+            ]
+          }
           id={"settings-nav-#{action}"}
           patch={path}
-          aria-current={if @live_action == action or (action == :billing and @live_action == :lifetime), do: "page"}
+          aria-current={
+            if @live_action == action or (action == :billing and @live_action == :lifetime) or
+                 (action == :security and @live_action == :connections),
+               do: "page"
+          }
           class={[
             "text-gray-900 hover:text-gray-900 hover:bg-gray-50 group rounded-md px-3 py-2 flex items-center text-sm font-medium dark:text-gray-100 dark:hover:text-gray-100 dark:hover:bg-gray-700",
-            (@live_action == action or (action == :billing and @live_action == :lifetime)) &&
+            (@live_action == action or (action == :billing and @live_action == :lifetime) or
+               (action == :security and @live_action == :connections)) &&
               "bg-gray-50 text-indigo-700 hover:text-indigo-700 hover:bg-white dark:bg-gray-700 dark:text-indigo-400 dark:hover:text-indigo-400 dark:hover:bg-gray-600"
           ]}
         >
-          <.icon name={icon} class={"text-gray-400 group-hover:text-gray-500 shrink-0 -ml-1 mr-3 h-6 w-6 " <>
-            if(@live_action == action or (action == :billing and @live_action == :lifetime), do: "text-indigo-500 group-hover:text-indigo-500", else: "")} />
+          <.icon
+            name={icon}
+            class={"text-gray-400 group-hover:text-gray-500 shrink-0 -ml-1 mr-3 h-6 w-6 " <>
+            if(@live_action == action or (action == :billing and @live_action == :lifetime) or (action == :security and @live_action == :connections), do: "text-indigo-500 group-hover:text-indigo-500", else: "")}
+          />
           <span class="truncate">{label}</span>
         </.link>
       </nav>

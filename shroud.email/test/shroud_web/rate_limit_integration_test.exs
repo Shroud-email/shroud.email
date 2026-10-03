@@ -53,6 +53,115 @@ defmodule ShroudWeb.RateLimitIntegrationTest do
     assert [_] = get_resp_header(response, "retry-after")
   end
 
+  test "MCP and OAuth routes inherit the global IP limit", %{conn: conn} do
+    seed(:http, {:ip, conn.remote_ip}, 600)
+
+    for {method, path} <- [
+          {:get, "/.well-known/oauth-authorization-server"},
+          {:get, "/.well-known/oauth-protected-resource/mcp"},
+          {:get, "/oauth/authorize"},
+          {:post, "/oauth/authorize"},
+          {:post, "/oauth/token"},
+          {:post, "/oauth/revoke"},
+          {:post, "/mcp"},
+          {:options, "/mcp"}
+        ] do
+      response = Phoenix.ConnTest.dispatch(conn, @endpoint, method, path, %{})
+      assert response.status == 429
+      assert [_] = get_resp_header(response, "retry-after")
+    end
+  end
+
+  test "OAuth token and revocation routes share an IP quota including encoded paths", %{
+    conn: conn
+  } do
+    seed(:api, {:ip, conn.remote_ip}, 119)
+    assert post(conn, "/oauth/token", %{}).status == 400
+
+    for path <- ["/oauth/token", "/oauth/revoke", "/oauth/%74oken", "/oauth/%72evoke"] do
+      response = post(conn, path, %{client_id: "different-client", token: "different-token"})
+      assert response.status == 429
+      assert [_] = get_resp_header(response, "retry-after")
+    end
+
+    assert post(build_conn(), "/oauth/token", %{}).status == 400
+  end
+
+  test "global MCP rejection preserves CORS for any origin on the MCP host and path", %{
+    conn: conn
+  } do
+    seed(:http, {:ip, conn.remote_ip}, 600)
+
+    for method <- [:post, :options], path <- ["/mcp", "/m%63p"] do
+      response =
+        conn
+        |> put_req_header("origin", "https://agent.example")
+        |> Phoenix.ConnTest.dispatch(@endpoint, method, Shroud.Mcp.issuer() <> path, %{})
+
+      assert response.status == 429
+      assert get_resp_header(response, "access-control-allow-origin") == ["https://agent.example"]
+      assert get_resp_header(response, "access-control-expose-headers") |> hd() =~ "Retry-After"
+      assert [_] = get_resp_header(response, "retry-after")
+    end
+
+    for {origin, url} <- [
+          {"https://chatgpt.com", "https://evil.example/mcp"},
+          {"https://chatgpt.com", Shroud.Mcp.issuer() <> "/oauth/token"}
+        ] do
+      rejected = conn |> put_req_header("origin", origin) |> post(url, %{})
+      assert rejected.status == 429
+      assert get_resp_header(rejected, "access-control-allow-origin") == []
+    end
+  end
+
+  test "MCP shares the REST account quota across connections and IPs", %{conn: conn} do
+    Shroud.McpFixtures.configure_clients()
+    %{user: user, tokens: tokens} = Shroud.McpFixtures.connection_fixture()
+    %{tokens: second} = Shroud.McpFixtures.connection_fixture(["aliases:read"], user)
+    %{tokens: other} = Shroud.McpFixtures.connection_fixture(["aliases:read"])
+    seed(:api, {:account, user.id}, 119)
+
+    assert mcp(conn, tokens.access_token).status == 200
+
+    rest_token = user |> Accounts.generate_user_session_token() |> Base.encode64()
+
+    assert conn
+           |> put_req_header("authorization", "Bearer #{rest_token}")
+           |> get("/api/v1/aliases")
+           |> json_response(429)
+
+    response = mcp(build_conn(), second.access_token)
+    assert response.status == 429
+    assert [_] = get_resp_header(response, "retry-after")
+    assert mcp(build_conn(), "invalid").status == 401
+    assert mcp(build_conn(), other.access_token).status == 200
+  end
+
+  test "exhausted MCP quota stops mutations while preserving browser CORS", %{conn: conn} do
+    Shroud.McpFixtures.configure_clients()
+    %{user: user, tokens: tokens} = Shroud.McpFixtures.connection_fixture()
+    email_alias = Shroud.AliasesFixtures.alias_fixture(%{user_id: user.id, enabled: true})
+    [session] = mcp(conn, tokens.access_token) |> get_resp_header("mcp-session-id")
+    seed(:api, {:account, user.id}, 120)
+
+    conn =
+      conn
+      |> put_req_header("origin", "https://chatgpt.com")
+      |> put_req_header("mcp-session-id", session)
+
+    response =
+      mcp(conn, tokens.access_token, "tools/call", %{
+        name: "edit_alias",
+        arguments: %{address: email_alias.address, enabled: false}
+      })
+
+    assert response.status == 429
+    assert get_resp_header(response, "access-control-allow-origin") == ["https://chatgpt.com"]
+    assert get_resp_header(response, "access-control-expose-headers") |> hd() =~ "Retry-After"
+    assert Repo.get!(Shroud.Aliases.EmailAlias, email_alias.id).enabled
+    assert options(conn, Shroud.Mcp.resource()).status == 204
+  end
+
   test "encoded routes cannot bypass their narrower policies", %{conn: conn} do
     seed(:sign_in, {:ip, conn.remote_ip}, 10)
 
@@ -328,6 +437,31 @@ defmodule ShroudWeb.RateLimitIntegrationTest do
       :ets.insert(ShroudWeb.TrustedProxies, {:snapshot, expires_at, addresses})
       state
     end)
+  end
+
+  defp mcp(
+         conn,
+         token,
+         method \\ "initialize",
+         params \\ %{
+           protocolVersion: "2025-11-25",
+           capabilities: %{},
+           clientInfo: %{name: "rate-limit-test", version: "1"}
+         }
+       ) do
+    conn
+    |> put_req_header("authorization", "Bearer " <> token)
+    |> put_req_header("content-type", "application/json")
+    |> put_req_header("accept", "application/json, text/event-stream")
+    |> post(
+      Shroud.Mcp.resource(),
+      Jason.encode!(%{
+        jsonrpc: "2.0",
+        id: System.unique_integer([:positive]),
+        method: method,
+        params: params
+      })
+    )
   end
 
   defp seed(policy, actor, count) do
