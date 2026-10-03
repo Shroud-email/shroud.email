@@ -7,8 +7,7 @@ defmodule ShroudWeb.Plugs.McpAuth do
   def call(%{path_info: [resource | _]} = conn, :cors) do
     with true <- URI.decode(resource) == "mcp",
          true <- conn.host == URI.parse(Mcp.issuer()).host,
-         [origin] <- get_req_header(conn, "origin"),
-         true <- allowed_origin?(origin) do
+         [origin] <- get_req_header(conn, "origin") do
       cors(conn, origin)
     else
       _ -> conn
@@ -19,11 +18,11 @@ defmodule ShroudWeb.Plugs.McpAuth do
 
   def call(conn, _opts) do
     if conn.host == URI.parse(Mcp.issuer()).host,
-      do: check_origin(conn),
+      do: authenticate_request(conn),
       else: conn |> send_resp(403, "Forbidden host") |> halt()
   end
 
-  defp check_origin(conn) do
+  defp authenticate_request(conn) do
     token =
       case get_req_header(conn, "authorization") do
         [authorization] ->
@@ -43,17 +42,12 @@ defmodule ShroudWeb.Plugs.McpAuth do
         authenticate(conn, token)
 
       [origin] ->
-        if allowed_origin?(origin),
-          do: conn |> cors(origin) |> authenticate_or_preflight(token),
-          else: conn |> send_resp(403, "Forbidden origin") |> halt()
+        conn |> cors(origin) |> authenticate_or_preflight(token)
 
       _ ->
         conn |> send_resp(403, "Forbidden origin") |> halt()
     end
   end
-
-  defp allowed_origin?(origin),
-    do: origin in [Mcp.issuer(), "https://chatgpt.com", "https://chat.openai.com"]
 
   defp cors(conn, origin) do
     conn

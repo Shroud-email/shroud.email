@@ -166,10 +166,16 @@ defmodule ShroudWeb.McpTest do
     end
   end
 
-  test "bearer-only MCP auth rejects browser sessions, REST tokens, refresh tokens and hostile origins" do
+  test "bearer-only MCP auth rejects browser sessions, REST tokens and refresh tokens" do
     %{user: user, tokens: tokens} = connection_fixture()
     assert rpc(nil, "tools/list") |> response(401)
-    conn = build_conn() |> log_in_user(user) |> get(Mcp.resource())
+
+    conn =
+      build_conn()
+      |> log_in_user(user)
+      |> put_req_header("origin", "https://agent.example")
+      |> get(Mcp.resource())
+
     assert response(conn, 401)
 
     assert get_resp_header(conn, "www-authenticate")
@@ -179,12 +185,6 @@ defmodule ShroudWeb.McpTest do
     rest_token = Accounts.generate_user_session_token(user) |> Base.encode64()
     assert rpc(rest_token, "tools/list") |> response(401)
     assert rpc(tokens.refresh_token, "tools/list") |> response(401)
-
-    assert rpc(tokens.access_token, "tools/list", %{}, [{"origin", "https://evil.example"}])
-           |> response(403)
-
-    assert rpc(tokens.access_token, "tools/list", %{}, [{"origin", "https://chatgpt.com"}])
-           |> json_response(200)
 
     conn =
       build_conn()
@@ -219,10 +219,16 @@ defmodule ShroudWeb.McpTest do
     end
   end
 
-  test "allowed browser origins receive preflight, challenge and MCP response CORS headers" do
+  test "any browser origin receives preflight, challenge and MCP response CORS headers" do
     %{tokens: tokens} = connection_fixture()
 
-    for origin <- [Mcp.issuer(), "https://chatgpt.com", "https://chat.openai.com"] do
+    for origin <- [
+          Mcp.issuer(),
+          "https://chatgpt.com",
+          "https://agent.example",
+          "http://localhost:5173",
+          "null"
+        ] do
       preflight =
         build_conn()
         |> put_req_header("origin", origin)
@@ -255,13 +261,16 @@ defmodule ShroudWeb.McpTest do
     end
 
     for path <- ["/mcp", "/mcp/nested"] do
-      rejected =
+      preflight =
         build_conn()
-        |> put_req_header("origin", "https://evil.example")
+        |> put_req_header("origin", "https://agent.example")
         |> options(Mcp.issuer() <> path)
 
-      assert response(rejected, 403)
-      assert get_resp_header(rejected, "access-control-allow-origin") == []
+      assert response(preflight, 204) == ""
+
+      assert get_resp_header(preflight, "access-control-allow-origin") == [
+               "https://agent.example"
+             ]
     end
 
     bad_host = %{build_conn() | host: "evil.example"}
@@ -725,9 +734,9 @@ defmodule ShroudWeb.McpTest do
 
     assert build_conn()
            |> put_req_header("authorization", "Bearer " <> tokens.access_token)
-           |> put_req_header("origin", "https://evil.example")
+           |> put_req_header("origin", "https://agent.example")
            |> get(Mcp.resource())
-           |> response(403)
+           |> response(405)
   end
 
   test "mutation tools advertise their required read permission and retain full responses" do

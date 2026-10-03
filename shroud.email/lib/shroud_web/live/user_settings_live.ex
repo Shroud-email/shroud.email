@@ -98,7 +98,7 @@ defmodule ShroudWeb.UserSettingsLive do
       {:noreply,
        socket
        |> load_connections()
-       |> put_notification(:info, "App disconnected. Your aliases are unchanged.")}
+       |> put_notification(:info, "App disconnected.")}
     else
       _ -> {:noreply, put_notification(socket, :error, "Connection not found.")}
     end

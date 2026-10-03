@@ -87,23 +87,24 @@ defmodule ShroudWeb.RateLimitIntegrationTest do
     assert post(build_conn(), "/oauth/token", %{}).status == 400
   end
 
-  test "global MCP rejection preserves CORS only for allowed origins and hosts", %{conn: conn} do
+  test "global MCP rejection preserves CORS for any origin on the MCP host and path", %{
+    conn: conn
+  } do
     seed(:http, {:ip, conn.remote_ip}, 600)
 
     for method <- [:post, :options], path <- ["/mcp", "/m%63p"] do
       response =
         conn
-        |> put_req_header("origin", "https://chatgpt.com")
+        |> put_req_header("origin", "https://agent.example")
         |> Phoenix.ConnTest.dispatch(@endpoint, method, Shroud.Mcp.issuer() <> path, %{})
 
       assert response.status == 429
-      assert get_resp_header(response, "access-control-allow-origin") == ["https://chatgpt.com"]
+      assert get_resp_header(response, "access-control-allow-origin") == ["https://agent.example"]
       assert get_resp_header(response, "access-control-expose-headers") |> hd() =~ "Retry-After"
       assert [_] = get_resp_header(response, "retry-after")
     end
 
     for {origin, url} <- [
-          {"https://evil.example", Shroud.Mcp.resource()},
           {"https://chatgpt.com", "https://evil.example/mcp"},
           {"https://chatgpt.com", Shroud.Mcp.issuer() <> "/oauth/token"}
         ] do
