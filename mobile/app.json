@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Shroud.email",
-    "slug": "shroud-mobile",
+    "slug": "shroudemail",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -36,6 +36,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "336c559a-14f0-4bee-95c3-ea33dc10183e"
+      }
+    },
+    "owner": "working-hypothesis"
   }
 }
