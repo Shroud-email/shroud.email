@@ -1,6 +1,7 @@
 defmodule ShroudWeb.McpTest do
   use ShroudWeb.ConnCase, async: false
   import Shroud.{McpFixtures, AliasesFixtures, DomainFixtures}
+  import Phoenix.LiveViewTest
   alias ExMCP.Content.SchemaPolicy
   alias Shroud.{Accounts, Aliases, Mcp, Repo}
   alias Shroud.Mcp.Tools
@@ -646,18 +647,24 @@ defmodule ShroudWeb.McpTest do
     assert tool(tokens, "edit_alias", %{address: untouched.address, enabled: false})["isError"]
     assert Repo.get!(Aliases.EmailAlias, untouched.id).enabled
 
-    wrong =
-      build_conn()
-      |> log_in_user(confirmed_user())
-      |> delete("/settings/connections/#{connection.id}")
+    {:ok, wrong, _} =
+      build_conn() |> log_in_user(confirmed_user()) |> live("/settings/connections")
 
-    assert redirected_to(wrong) == "/settings/connections"
+    assert has_element?(wrong, "#no-connections")
+    render_click(wrong, "revoke_connection", %{"id" => to_string(connection.id)})
+    assert has_element?(wrong, "#notification-source [data-kind=error]")
     assert rpc(tokens.access_token, "tools/list") |> json_response(200)
 
-    revoked =
-      build_conn() |> log_in_user(user) |> delete("/settings/connections/#{connection.id}")
+    {:ok, view, _} = build_conn() |> log_in_user(user) |> live("/settings/connections")
 
-    assert redirected_to(revoked) == "/settings/connections"
+    assert has_element?(view, "#settings-nav-security[aria-current=page]")
+    assert has_element?(view, "#revoke-#{connection.id}")
+    render_click(view, "revoke_connection", %{"id" => "invalid"})
+    assert has_element?(view, "#notification-source [data-kind=error]")
+    assert rpc(tokens.access_token, "tools/list") |> json_response(200)
+    view |> element("#revoke-#{connection.id}") |> render_click()
+    refute has_element?(view, "#revoke-#{connection.id}")
+    assert has_element?(view, "#notification-source [data-kind=info]")
     assert rpc(tokens.access_token, "tools/list") |> response(401)
 
     assert rpc(tokens.access_token, "tools/call", %{
@@ -667,15 +674,16 @@ defmodule ShroudWeb.McpTest do
            |> response(401)
 
     assert Repo.get!(Aliases.EmailAlias, email_alias.id).enabled
-    Mcp.revoke(user, Mcp.list_connections(user) |> hd() |> Map.fetch!(:id))
+    [remaining] = Mcp.list_connections(user)
+    assert has_element?(view, "#revoke-#{remaining.id}")
+    view |> element("#revoke-#{remaining.id}") |> render_click()
+    assert has_element?(view, "#no-connections")
+    refute has_element?(view, "#connections section")
+    assert rpc(read_only.access_token, "tools/list") |> response(401)
 
-    assert build_conn()
-           |> log_in_user(user)
-           |> get("/settings/connections")
-           |> html_response(200)
-           |> LazyHTML.from_document()
-           |> LazyHTML.query("#no-connections")
-           |> Enum.count() == 1
+    view |> element("#back-to-security") |> render_click()
+    assert_patch(view, "/settings/security")
+    assert has_element?(view, "#settings-nav-security[aria-current=page]")
   end
 
   test "SDK rejects invalid protocol versions, malformed requests and oversized bodies" do

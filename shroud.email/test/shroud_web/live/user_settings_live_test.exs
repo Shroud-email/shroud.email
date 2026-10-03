@@ -192,7 +192,7 @@ defmodule ShroudWeb.UserSettingsLiveTest do
 
   test "settings require a confirmed, authenticated user", %{conn: conn} do
     for path <-
-          ~w(/settings/account /settings/security /settings/appearance /settings/billing /settings/billing/lifetime) do
+          ~w(/settings/account /settings/security /settings/connections /settings/appearance /settings/billing /settings/billing/lifetime) do
       assert {:error, {:redirect, %{to: "/users/log_in"}}} = live(build_conn(), path)
       unconfirmed = user_fixture()
 

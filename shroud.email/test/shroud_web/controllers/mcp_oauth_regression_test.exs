@@ -16,7 +16,10 @@ defmodule ShroudWeb.McpOAuthRegressionTest do
         do: FunWithFlags.enable(:chatgpt_integration, for_actor: user),
         else: FunWithFlags.disable(:chatgpt_integration, for_actor: user)
 
-      for {path, params} <- [{"/settings/connections", %{}}, {"/oauth/authorize", params}] do
+      for {path, params, selector} <- [
+            {"/settings/security", %{}, "#manage-connections"},
+            {"/oauth/authorize", params, "header a[href='/settings/connections']"}
+          ] do
         document =
           build_conn()
           |> log_in_user(user)
@@ -24,9 +27,11 @@ defmodule ShroudWeb.McpOAuthRegressionTest do
           |> html_response(200)
           |> Floki.parse_document!()
 
-        links = Floki.find(document, "header a[href='/settings/connections']")
+        links = Floki.find(document, selector)
         assert links != [] == enabled
       end
+
+      assert build_conn() |> log_in_user(user) |> get("/settings/connections") |> response(200)
     end
   end
 
@@ -80,7 +85,7 @@ defmodule ShroudWeb.McpOAuthRegressionTest do
     end
   end
 
-  test "both browser pages keep the pipeline layout and initialize the account theme", %{
+  test "consent keeps its isolated layout and settings use the account theme", %{
     user: user
   } do
     {params, _} = authorization_params(["aliases:read"])
@@ -97,16 +102,22 @@ defmodule ShroudWeb.McpOAuthRegressionTest do
         document = conn |> html_response(200) |> Floki.parse_document!()
         assert Floki.attribute(document, "meta[name=theme]", "content") == [to_string(theme)]
 
-        assert Floki.attribute(document, "html", "class") ==
-                 if(theme == :dark, do: ["dark"], else: [""])
-
-        assert Floki.attribute(document, "script", "src") == ["/assets/app.js"]
         assert Floki.find(document, "meta[name=csrf-token]") != []
         assert Floki.attribute(document, "body", "class") |> hd() =~ "dark:bg-gray-900"
-        assert get_resp_header(conn, "cache-control") == ["no-store"]
-        assert get_resp_header(conn, "referrer-policy") == ["no-referrer"]
-        refute conn.resp_body =~ "chatwoot"
-        refute conn.resp_body =~ "betterstack"
+
+        if path == "/oauth/authorize" do
+          assert Floki.attribute(document, "html", "class") ==
+                   if(theme == :dark, do: ["dark"], else: [""])
+
+          assert Floki.attribute(document, "script", "src") == ["/assets/app.js"]
+          assert get_resp_header(conn, "cache-control") == ["no-store"]
+          assert get_resp_header(conn, "referrer-policy") == ["no-referrer"]
+          refute conn.resp_body =~ "chatwoot"
+          refute conn.resp_body =~ "betterstack"
+        else
+          assert Floki.find(document, "#settings-nav-security[aria-current=page]") != []
+          assert Floki.find(document, "#connections[phx-update=stream]") != []
+        end
       end
     end
   end

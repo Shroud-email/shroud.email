@@ -1,0 +1,42 @@
+<div class="space-y-6">
+  <div class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-md py-6 px-4 sm:p-6">
+    <h1 class="text-lg font-medium">Connected apps</h1>
+    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+      Disconnecting stops the app's access immediately. Your aliases stay unchanged.
+    </p>
+    <p :if={@connections_empty?} id="no-connections" class="mt-4 text-sm">
+      No active connections.
+    </p>
+  </div>
+  <div id="connections" phx-update="stream" class="space-y-6">
+    <section
+      :for={{id, connection} <- @streams.connections}
+      id={id}
+      class="bg-white dark:bg-gray-800 sm:rounded-md shadow-sm py-6 px-4 sm:p-6 space-y-4"
+    >
+      <h2 class="text-lg font-semibold">{Shroud.Mcp.client_name(connection.client_id)}</h2>
+      <ul class="list-disc pl-5 text-sm space-y-1">
+        <li :for={
+          permission <- Enum.map(connection.scopes, &Shroud.Mcp.permissions()[&1]) |> Enum.uniq()
+        }>
+          {permission}
+        </li>
+      </ul>
+      <p class="text-sm text-gray-600 dark:text-gray-300">
+        Expires {Calendar.strftime(connection.expires_at, "%d %b %Y")}
+      </p>
+      <button
+        id={"revoke-#{connection.id}"}
+        phx-click="revoke_connection"
+        phx-value-id={connection.id}
+        phx-disable-with="Disconnecting…"
+        class="btn btn-white"
+      >
+        Disconnect app
+      </button>
+    </section>
+  </div>
+  <.link patch={~p"/settings/security"} id="back-to-security" class="underline text-sm">
+    Back to security settings
+  </.link>
+</div>

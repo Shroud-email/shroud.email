@@ -64,8 +64,6 @@ defmodule ShroudWeb.Router do
     pipe_through(:connection_browser)
     get("/oauth/authorize", McpOAuthController, :authorize)
     post("/oauth/authorize", McpOAuthController, :consent)
-    get("/settings/connections", ConnectionController, :index)
-    delete("/settings/connections/:id", ConnectionController, :delete)
   end
 
   scope "/" do
@@ -177,6 +175,7 @@ defmodule ShroudWeb.Router do
     live_session :authenticated, on_mount: ShroudWeb.UserLiveAuth do
       live("/settings/account", UserSettingsLive, :account)
       live("/settings/security", UserSettingsLive, :security)
+      live("/settings/connections", UserSettingsLive, :connections)
       live("/settings/appearance", UserSettingsLive, :appearance)
       live("/settings/billing", UserSettingsLive, :billing)
       live("/settings/billing/lifetime", UserSettingsLive, :lifetime)
