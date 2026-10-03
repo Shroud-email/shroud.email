@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Erlang requires a UTF-8 locale for Unicode filenames during Elixir setup.
+export LANG=C.UTF-8 LC_ALL=C.UTF-8
+
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
