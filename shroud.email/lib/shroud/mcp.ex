@@ -108,14 +108,18 @@ defmodule Shroud.Mcp do
            true <- valid_connection?(connection),
            true <- params["client_id"] == connection.client_id,
            true <- params["resource"] == connection.resource,
-           true <- not Map.has_key?(params, "scope") or valid_scopes?(params["scope"]),
            true <- not Map.has_key?(params, "request") and not Map.has_key?(params, "request_uri") do
-        if grant == "refresh_token" and reused_refresh_token?(credential, params) do
-          revoke(%{id: connection.user_id}, connection.id)
-          {:error, :refresh_token_reused}
-        else
-          conn = oauth_conn(params) |> Plug.Conn.assign(:mcp_connection, connection)
-          Boruta.Oauth.token(conn, __MODULE__)
+        cond do
+          grant == "refresh_token" and reused_refresh_token?(credential) ->
+            revoke(%{id: connection.user_id}, connection.id)
+            {:error, :refresh_token_reused}
+
+          Map.has_key?(params, "scope") and not valid_scopes?(params["scope"]) ->
+            {:error, :invalid_grant}
+
+          true ->
+            conn = oauth_conn(params) |> Plug.Conn.assign(:mcp_connection, connection)
+            Boruta.Oauth.token(conn, __MODULE__)
         end
       else
         _ -> {:error, :invalid_grant}
@@ -245,14 +249,10 @@ defmodule Shroud.Mcp do
     end
   end
 
-  defp reused_refresh_token?(credential, params) do
+  defp reused_refresh_token?(credential) do
     # Read after acquiring the connection lock so a waiting exchange sees rotation.
     token = Repo.get_by!(Boruta.Ecto.Token, refresh_token: credential)
-    scopes = String.split(token.scope, " ", trim: true)
-
-    token.refresh_token_revoked_at != nil and
-      (not Map.has_key?(params, "scope") or
-         Enum.all?(String.split(params["scope"], " ", trim: true), &(&1 in scopes)))
+    token.refresh_token_revoked_at != nil
   end
 
   defp valid_scopes?(scope) when is_binary(scope) do

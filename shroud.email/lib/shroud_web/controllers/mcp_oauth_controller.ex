@@ -2,6 +2,7 @@ defmodule ShroudWeb.McpOAuthController do
   use ShroudWeb, :controller
   alias Shroud.Mcp
 
+  plug :put_root_layout, html: {ShroudWeb.Layouts, :connection}
   plug :put_private_headers
   plug ShroudWeb.Plugs.RateLimit, :routes when action in [:token, :revoke]
 

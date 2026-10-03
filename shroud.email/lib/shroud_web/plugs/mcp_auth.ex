@@ -61,7 +61,7 @@ defmodule ShroudWeb.Plugs.McpAuth do
 
   defp authenticate_or_preflight(%{method: "OPTIONS"} = conn, _token) do
     conn
-    |> put_resp_header("access-control-allow-methods", "GET, POST, DELETE, OPTIONS")
+    |> put_resp_header("access-control-allow-methods", "POST, DELETE, OPTIONS")
     |> put_resp_header(
       "access-control-allow-headers",
       "Authorization, Content-Type, Accept, MCP-Protocol-Version, MCP-Session-Id, MCP-Method, MCP-Name, Last-Event-ID"
@@ -79,7 +79,7 @@ defmodule ShroudWeb.Plugs.McpAuth do
     scope = if scope, do: Enum.join(Mcp.required_scopes(scope), " ")
     scope_part = if scope, do: ", scope=\"#{scope}\"", else: ""
 
-    ~s(Bearer resource_metadata="#{Mcp.issuer()}/.well-known/oauth-protected-resource", error="#{error}", error_description="Connect your Shroud account") <>
+    ~s(Bearer resource_metadata="#{Mcp.issuer()}/.well-known/oauth-protected-resource", error="#{error}", error_description="Connect your Shroud.email account") <>
       scope_part
   end
 

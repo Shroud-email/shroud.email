@@ -241,7 +241,11 @@ defmodule ShroudWeb.McpTest do
 
       assert response(preflight, 204) == ""
       assert get_resp_header(preflight, "access-control-allow-origin") == [origin]
-      assert get_resp_header(preflight, "access-control-allow-methods") |> hd() =~ "POST"
+
+      assert get_resp_header(preflight, "access-control-allow-methods") == [
+               "POST, DELETE, OPTIONS"
+             ]
+
       assert get_resp_header(preflight, "access-control-allow-headers") |> hd() =~ "Authorization"
       assert get_resp_header(preflight, "access-control-allow-headers") |> hd() =~ "MCP-Method"
       assert get_resp_header(preflight, "access-control-allow-headers") |> hd() =~ "MCP-Name"
@@ -295,6 +299,11 @@ defmodule ShroudWeb.McpTest do
     assert result["result"]["protocolVersion"] == "2025-11-25"
     assert result["result"]["capabilities"]["tools"] == %{"listChanged" => false}
     assert result["result"]["serverInfo"]["name"] == "shroud-email"
+
+    assert result["result"]["instructions"] =~
+             "Manage email aliases and verified domains in Shroud.email."
+
+    assert result["result"]["instructions"] =~ "Aliases are anonymous email addresses"
 
     tools =
       rpc(tokens.access_token, "tools/list") |> json_response(200) |> get_in(["result", "tools"])
@@ -545,6 +554,14 @@ defmodule ShroudWeb.McpTest do
     %{tokens: tokens} = connection_fixture(["aliases:read"])
     result = tool(tokens, "create_alias", %{title: "Not permitted"})
     assert result["isError"]
+
+    assert result["content"] == [
+             %{
+               "type" => "text",
+               "text" => "Reconnect your Shroud.email account with the required permission."
+             }
+           ]
+
     challenge = result["_meta"]["mcp/www_authenticate"] |> hd()
     assert challenge =~ "insufficient_scope"
     assert challenge =~ "aliases:create"

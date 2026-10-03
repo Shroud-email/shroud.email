@@ -103,9 +103,7 @@ defmodule Shroud.McpTest do
     for invalid <- [
           Map.put(params, "client_id", "other-client"),
           Map.put(params, "resource", "https://evil.example/mcp"),
-          Map.put(params, "refresh_token", "unknown"),
-          Map.put(params, "scope", "aliases:read aliases:edit"),
-          Map.put(params, "scope", "unknown")
+          Map.put(params, "refresh_token", "unknown")
         ] do
       assert {:error, :invalid_grant} = Mcp.exchange(invalid)
       assert :ok = Mcp.with_access(third.access_token, "aliases:read", fn _ -> :ok end)
@@ -118,23 +116,26 @@ defmodule Shroud.McpTest do
              Mcp.exchange(Map.put(params, "refresh_token", third.refresh_token))
   end
 
-  test "refresh replay revokes only its connection, not another grant for the same account" do
-    %{user: user, connection: connection, tokens: first} = connection_fixture(["aliases:read"])
-    %{connection: other, tokens: other_tokens} = connection_fixture(["aliases:read"], user)
+  test "refresh replay revokes only its connection regardless of requested scopes" do
+    for scope <- [nil, "aliases:read aliases:edit", "unknown"] do
+      %{user: user, connection: connection, tokens: first} = connection_fixture(["aliases:read"])
+      %{connection: other, tokens: other_tokens} = connection_fixture(["aliases:read"], user)
 
-    params = %{
-      "grant_type" => "refresh_token",
-      "client_id" => "test-client",
-      "resource" => Mcp.resource(),
-      "refresh_token" => first.refresh_token
-    }
+      params = %{
+        "grant_type" => "refresh_token",
+        "client_id" => "test-client",
+        "resource" => Mcp.resource(),
+        "refresh_token" => first.refresh_token
+      }
 
-    assert {:ok, second} = Mcp.exchange(params)
-    assert {:error, :invalid_grant} = Mcp.exchange(params)
-    assert Repo.get!(Connection, connection.id).revoked_at != nil
-    assert Repo.get!(Connection, other.id).revoked_at == nil
-    assert {:error, :invalid_token} = Mcp.with_access(second.access_token, nil, fn _ -> :ok end)
-    assert :ok = Mcp.with_access(other_tokens.access_token, nil, fn _ -> :ok end)
+      assert {:ok, second} = Mcp.exchange(params)
+      replay = if scope, do: Map.put(params, "scope", scope), else: params
+      assert {:error, :invalid_grant} = Mcp.exchange(replay)
+      assert Repo.get!(Connection, connection.id).revoked_at != nil
+      assert Repo.get!(Connection, other.id).revoked_at == nil
+      assert {:error, :invalid_token} = Mcp.with_access(second.access_token, nil, fn _ -> :ok end)
+      assert :ok = Mcp.with_access(other_tokens.access_token, nil, fn _ -> :ok end)
+    end
   end
 
   test "connections last 90 days and existing clients receive the longer refresh lifetime" do

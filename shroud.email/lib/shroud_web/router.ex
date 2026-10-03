@@ -37,17 +37,6 @@ defmodule ShroudWeb.Router do
     plug(ShroudWeb.Plugs.SentryContext)
   end
 
-  pipeline :connection_browser do
-    plug(:accepts, ["html"])
-    plug(:fetch_session)
-    plug(:fetch_live_flash)
-    plug(:put_root_layout, html: {ShroudWeb.Layouts, :connection})
-    plug(:protect_from_forgery)
-    plug(:put_secure_browser_headers)
-    plug(:fetch_current_user)
-    plug(:require_confirmed_user)
-  end
-
   pipeline :mcp do
     plug(ShroudWeb.Plugs.McpAuth)
   end
@@ -61,7 +50,7 @@ defmodule ShroudWeb.Router do
   end
 
   scope "/", ShroudWeb do
-    pipe_through(:connection_browser)
+    pipe_through([:browser, :require_confirmed_user])
     get("/oauth/authorize", McpOAuthController, :authorize)
     post("/oauth/authorize", McpOAuthController, :consent)
   end
