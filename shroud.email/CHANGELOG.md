@@ -1,5 +1,53 @@
 # Changelog
 
+## [1.4.0](https://github.com/Shroud-email/shroud.email/compare/v1.3.0...v1.4.0) (2026-10-03)
+
+
+### Features
+
+* add admin mailserver health diagnostics ([#181](https://github.com/Shroud-email/shroud.email/issues/181)) ([ae42dfd](https://github.com/Shroud-email/shroud.email/commit/ae42dfd88d0f6e49832b6f9883b9ba9512a122cf))
+* add alias API search, lookup, and updates ([#191](https://github.com/Shroud-email/shroud.email/issues/191)) ([495f619](https://github.com/Shroud-email/shroud.email/commit/495f619e4232042ec11b878a85c9ac5dd280af0a))
+* add cookieless analytics and paid signup tracking ([#232](https://github.com/Shroud-email/shroud.email/issues/232)) ([9188565](https://github.com/Shroud-email/shroud.email/commit/91885655c3fbba8226ced482afcccab38e2ab526))
+* add copy buttons to alias list ([#177](https://github.com/Shroud-email/shroud.email/issues/177)) ([4adebbd](https://github.com/Shroud-email/shroud.email/commit/4adebbd46d3e33c602393c856fd7f8ef8f58e0e7))
+* add hosted MCP tools with Boruta account connection ([#212](https://github.com/Shroud-email/shroud.email/issues/212)) ([0067c0e](https://github.com/Shroud-email/shroud.email/commit/0067c0e3a679dc7bd5ce5ee8627be77bf051d871))
+* add passkey authentication ([#182](https://github.com/Shroud-email/shroud.email/issues/182)) ([21cf08b](https://github.com/Shroud-email/shroud.email/commit/21cf08be0a0b90f57c885617bf42ace1f6161b9f))
+* add source-generated Starlight docs and Bunny deployment ([#201](https://github.com/Shroud-email/shroud.email/issues/201)) ([a95a3e3](https://github.com/Shroud-email/shroud.email/commit/a95a3e3bfcd0339ac169490e63fb74a1d0202f0d))
+* allow users to disable email branding ([#221](https://github.com/Shroud-email/shroud.email/issues/221)) ([7d95dc4](https://github.com/Shroud-email/shroud.email/commit/7d95dc4d6dfa56cec6c89167fb5f5c114b20b236))
+* enforce app-wide Hammer atomic rate limiting ([#208](https://github.com/Shroud-email/shroud.email/issues/208)) ([c9368b4](https://github.com/Shroud-email/shroud.email/commit/c9368b4d8213ad01c6504a500c9a389c7190ec0b))
+* generate random usernames for custom-domain aliases ([#220](https://github.com/Shroud-email/shroud.email/issues/220)) ([2f5ee8d](https://github.com/Shroud-email/shroud.email/commit/2f5ee8d70ee097ec0019899d62df54c6895fffd6))
+* make Sentry environment configurable ([#195](https://github.com/Shroud-email/shroud.email/issues/195)) ([4d5506e](https://github.com/Shroud-email/shroud.email/commit/4d5506e2624208ca471a585315c247c69ae25c42))
+* migrate billing from Stripe to Paddle ([#163](https://github.com/Shroud-email/shroud.email/issues/163)) ([4adebbd](https://github.com/Shroud-email/shroud.email/commit/4adebbd46d3e33c602393c856fd7f8ef8f58e0e7))
+* migrate settings pages to LiveView ([#193](https://github.com/Shroud-email/shroud.email/issues/193)) ([b0cc497](https://github.com/Shroud-email/shroud.email/commit/b0cc497a2e68449812907fe8d0cb933b0182b056))
+* notify users when a catch-all address fails validation ([#132](https://github.com/Shroud-email/shroud.email/issues/132)) ([356ae80](https://github.com/Shroud-email/shroud.email/commit/356ae80123cde134cff32710c0c316c822522123))
+* paginate the aliases list with LiveView ([#216](https://github.com/Shroud-email/shroud.email/issues/216)) ([c24b54f](https://github.com/Shroud-email/shroud.email/commit/c24b54f8c4b30c962275ded409cdd6835e1e0206))
+* sync user status to Loops ([#174](https://github.com/Shroud-email/shroud.email/issues/174)) ([4adebbd](https://github.com/Shroud-email/shroud.email/commit/4adebbd46d3e33c602393c856fd7f8ef8f58e0e7))
+* unify app notifications with persistent stacked toasts ([#224](https://github.com/Shroud-email/shroud.email/issues/224)) ([26ecd71](https://github.com/Shroud-email/shroud.email/commit/26ecd7145c23733f9b84102af00fe85ffbb6efba))
+* use Plausible for website and app analytics ([#226](https://github.com/Shroud-email/shroud.email/issues/226)) ([8df752f](https://github.com/Shroud-email/shroud.email/commit/8df752f62d6c324450dfd0e91d62236617618df7))
+
+
+### Bug Fixes
+
+* compare Paddle event timestamps chronologically ([#197](https://github.com/Shroud-email/shroud.email/issues/197)) ([0c4e6d9](https://github.com/Shroud-email/shroud.email/commit/0c4e6d9b4a612600d2ebc2f9b26a136495525140))
+* exclude rejected CSRF requests from Sentry ([#183](https://github.com/Shroud-email/shroud.email/issues/183)) ([4adebbd](https://github.com/Shroud-email/shroud.email/commit/4adebbd46d3e33c602393c856fd7f8ef8f58e0e7))
+* handle case-insensitive image proxy headers ([#228](https://github.com/Shroud-email/shroud.email/issues/228)) ([546bf1a](https://github.com/Shroud-email/shroud.email/commit/546bf1a2e6dc3b818aa02f8d33aacc9209a9e69f)), closes [#44](https://github.com/Shroud-email/shroud.email/issues/44)
+* **hosting:** make Cap, Sentry and Paddle optional ([#196](https://github.com/Shroud-email/shroud.email/issues/196)) ([c3a159e](https://github.com/Shroud-email/shroud.email/commit/c3a159e96e5b70619b6e99a6faa9ee1b71692b20))
+* initialize clipboard buttons through LiveView hooks ([#202](https://github.com/Shroud-email/shroud.email/issues/202)) ([48d1362](https://github.com/Shroud-email/shroud.email/commit/48d13627ceb4d051d51c9da9385a16ec3b48f3ed))
+* isolate incoming email retries per recipient ([#223](https://github.com/Shroud-email/shroud.email/issues/223)) ([7b8d25c](https://github.com/Shroud-email/shroud.email/commit/7b8d25c5eb6a2ffc55152174267262d3047ba4b6))
+* make alias search literal and require every term ([#214](https://github.com/Shroud-email/shroud.email/issues/214)) ([0c284f8](https://github.com/Shroud-email/shroud.email/commit/0c284f8df04a9608ea273bf2d379f0858c704a5b))
+* make orb setup complete reliably and reduce redundant work ([1018885](https://github.com/Shroud-email/shroud.email/commit/10188856ded1f14ec339ce30ca1a0d8a3d0a27fc))
+* prefill Paddle checkout customer email ([#210](https://github.com/Shroud-email/shroud.email/issues/210)) ([97b3efb](https://github.com/Shroud-email/shroud.email/commit/97b3efbf4c79f41b654e29ac4684a242c2deab45))
+* prevent unstyled page flashes in Firefox ([#218](https://github.com/Shroud-email/shroud.email/issues/218)) ([04dd7da](https://github.com/Shroud-email/shroud.email/commit/04dd7da691ec33a1a5ee66e3d16094aa47974fcf))
+* show password reset feedback on authentication forms ([#199](https://github.com/Shroud-email/shroud.email/issues/199)) ([53fa580](https://github.com/Shroud-email/shroud.email/commit/53fa58097e0daeb72da605d154dbc79524c44321))
+* show unverified domains in alias dropdown ([#227](https://github.com/Shroud-email/shroud.email/issues/227)) ([9db7b52](https://github.com/Shroud-email/shroud.email/commit/9db7b52ab9778b506244a256d8f49c0d78c03308))
+* speed up orb Erlang setup ([#180](https://github.com/Shroud-email/shroud.email/issues/180)) ([4adebbd](https://github.com/Shroud-email/shroud.email/commit/4adebbd46d3e33c602393c856fd7f8ef8f58e0e7))
+* use custom dialogs for all app alerts ([#230](https://github.com/Shroud-email/shroud.email/issues/230)) ([e695516](https://github.com/Shroud-email/shroud.email/commit/e6955160a7c396f89895c28f33fc691d24032e81))
+* use LiveView navigation in navbar ([#179](https://github.com/Shroud-email/shroud.email/issues/179)) ([4adebbd](https://github.com/Shroud-email/shroud.email/commit/4adebbd46d3e33c602393c856fd7f8ef8f58e0e7))
+
+
+### Reverts
+
+* undo plausible ([#229](https://github.com/Shroud-email/shroud.email/issues/229)) ([5c8a36a](https://github.com/Shroud-email/shroud.email/commit/5c8a36a614b8a8dc3ff69a3da3beca1060da777d))
+
 ## [1.3.0](https://github.com/Shroud-email/shroud.email/compare/v1.2.0...v1.3.0) (2026-07-25)
 
 
