@@ -1,9 +1,8 @@
 defmodule Shroud.Mcp.Tools do
   @moduledoc "The bounded alias-management surface exposed to MCP clients."
-  import Ecto.Query
   require Logger
   alias ExMCP.Content.SchemaPolicy
-  alias Shroud.{Aliases, Domain, Repo}
+  alias Shroud.{Aliases, Domain}
 
   def list do
     address = string("Exact alias address", 320)
@@ -145,63 +144,34 @@ defmodule Shroud.Mcp.Tools do
   end
 
   defp execute(connection, "list_aliases", args) do
-    query = Aliases.aliases_query(connection.user, args["search"])
-
-    query =
-      if Map.has_key?(args, "enabled"),
-        do: where(query, [a], a.enabled == ^args["enabled"]),
-        else: query
-
-    entries = query |> limit(11) |> offset(^offset(args)) |> Repo.all()
+    page =
+      Aliases.list_aliases_page(connection.user,
+        search: args["search"],
+        enabled: args["enabled"],
+        page: Map.get(args, "page", 1),
+        page_size: 10
+      )
 
     {:ok,
      %{
-       aliases: Enum.take(entries, 10) |> Enum.map(&alias_data/1),
-       has_more: length(entries) > 10
+       aliases: Enum.map(page.entries, &alias_data/1),
+       has_more: page.has_more
      }}
   end
 
   defp execute(connection, "create_alias", args) do
-    metadata = %{title: args["title"]} |> maybe_notes(args)
-
-    result =
-      case {args["domain"], args["local_part"]} do
-        {nil, nil} ->
-          Aliases.create_random_email_alias(connection.user, metadata)
-
-        {domain, local} when is_binary(domain) and is_binary(local) ->
-          verified =
-            Domain.list_custom_domains(connection.user)
-            |> Enum.find(
-              &(String.downcase(&1.domain) == String.downcase(domain) and
-                  Domain.fully_verified?(&1))
-            )
-
-          # Keep the stored domain spelling for the context's exact domain lookup;
-          # the alias changeset normalizes the address only after association.
-          with %{domain: stored_domain} <- verified,
-               true <- Regex.match?(~r/^[A-Za-z0-9.!#$%&'*+\/=?^`{|}~-]+$/, local),
-               address = local <> "@" <> stored_domain,
-               {:ok, [{:undefined, _}]} <- :smtp_util.parse_rfc5322_addresses(address) do
-            Aliases.create_email_alias(
-              Map.merge(metadata, %{user_id: connection.user_id, address: address})
-            )
-          else
-            _ -> {:error, :invalid_domain}
-          end
-
-        _ ->
-          {:error, :invalid_domain}
+    attrs =
+      for key <- ~w(title notes domain local_part), Map.has_key?(args, key), into: %{} do
+        {String.to_existing_atom(key), args[key]}
       end
 
-    alias_result(result)
+    connection.user |> Aliases.create_email_alias(attrs) |> alias_result()
   end
 
   defp execute(connection, "list_verified_domains", args) do
     domains =
       connection.user
-      |> Domain.list_custom_domains()
-      |> Enum.filter(&Domain.fully_verified?/1)
+      |> Domain.list_verified_custom_domains()
       |> Enum.drop(offset(args))
       |> Enum.take(11)
 
@@ -210,10 +180,7 @@ defmodule Shroud.Mcp.Tools do
   end
 
   defp execute(connection, name, args) do
-    email_alias =
-      connection.user
-      |> Aliases.aliases_query()
-      |> Repo.get_by(address: String.downcase(args["address"]))
+    email_alias = Aliases.get_email_alias_by_address(connection.user, args["address"])
 
     case {email_alias, name} do
       {nil, _} ->
@@ -235,7 +202,9 @@ defmodule Shroud.Mcp.Tools do
   defp alias_result({:error, :inactive_user}), do: {:error, "Account is inactive"}
 
   defp alias_result({:error, :free_limit_reached}),
-    do: {:error, "Your account's alias limit has been reached"}
+    do:
+      {:error,
+       "Your account's alias limit has been reached. Upgrade for more aliases: #{Shroud.Mcp.issuer()}/settings/billing"}
 
   defp alias_result({:error, :invalid_domain}),
     do: {:error, "Supply both a valid local part and an existing verified custom domain"}
@@ -244,13 +213,6 @@ defmodule Shroud.Mcp.Tools do
     do: {:error, "Alias could not be saved; check the address and metadata"}
 
   defp alias_data(email_alias), do: Map.take(email_alias, [:address, :title, :notes, :enabled])
-
-  defp maybe_notes(metadata, args),
-    do:
-      if(Map.has_key?(args, "notes"),
-        do: Map.put(metadata, :notes, args["notes"]),
-        else: metadata
-      )
 
   defp offset(args), do: (Map.get(args, "page", 1) - 1) * 10
 

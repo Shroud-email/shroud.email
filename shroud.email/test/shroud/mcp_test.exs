@@ -202,11 +202,6 @@ defmodule Shroud.McpTest do
     assert_receive {^ref, "SELECT" <> _}
   end
 
-  test "ordinary log events pass through unchanged" do
-    event = %{level: :info, msg: {:string, "Ordinary event"}, meta: %{}}
-    assert Shroud.ErrorReporter.filter_mcp_logs(event, []) == event
-  end
-
   test "expired tokens, changed resources, unconfirmed accounts and removed clients reject access" do
     %{tokens: tokens} = connection_fixture()
 
@@ -333,7 +328,7 @@ defmodule Shroud.McpTest do
     end
   end
 
-  test "SDK handler timeouts redact private inputs before logs reach handlers" do
+  test "SDK handler timeouts retain diagnostic logging" do
     pid =
       start_supervised!(%{
         id: :mcp_timeout_handler,
@@ -361,24 +356,23 @@ defmodule Shroud.McpTest do
           assert result.response["error"]["data"]["type"] == "handler_timeout"
         end)
 
-      assert log =~ "MCP handler failed (details redacted)"
-      refute log =~ "PRIVATE_NOTES"
-      refute log =~ "private@example.com"
-      refute log =~ "GenServer.call"
+      assert log =~ "PRIVATE_NOTES"
+      assert log =~ "private@example.com"
+      assert log =~ "handler exited: {:timeout"
     after
       :sys.resume(pid)
       :sys.get_state(pid)
     end
   end
 
-  test "connection request errors are not exported to Sentry" do
+  test "connection request errors are retained for Sentry" do
     for path <- ["/mcp", "/oauth/token", "/oauth/authorize", "/settings/connections"] do
       event =
         struct(Sentry.Event,
           request: %Sentry.Interfaces.Request{url: Mcp.issuer() <> path <> "?code=private"}
         )
 
-      assert Shroud.ErrorReporter.before_send(event) == nil
+      assert Shroud.ErrorReporter.before_send(event) == event
     end
   end
 

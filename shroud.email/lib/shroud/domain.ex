@@ -24,6 +24,10 @@ defmodule Shroud.Domain do
     Repo.all(from d in CustomDomain, where: d.user_id == ^user.id, order_by: [desc: :inserted_at])
   end
 
+  def list_verified_custom_domains(%User{} = user) do
+    user |> list_custom_domains() |> Enum.filter(&fully_verified?/1)
+  end
+
   @doc """
   Gets a single custom_domain.
 

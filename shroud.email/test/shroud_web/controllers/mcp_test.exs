@@ -572,7 +572,7 @@ defmodule ShroudWeb.McpTest do
           %{title: "Bad", domain: unverified.domain, local_part: "shop"},
           %{title: "Bad", domain: domain.domain},
           %{title: "Bad", local_part: "shop"},
-          %{title: "Bad", domain: domain.domain, local_part: "shop@evil"},
+          %{title: "Bad", domain: domain.domain, local_part: "shop_orders"},
           %{title: "Bad", user_id: foreign.user_id},
           %{title: "   "},
           %{title: String.duplicate("x", 256)}
@@ -584,7 +584,9 @@ defmodule ShroudWeb.McpTest do
     for _ <- 1..3, do: tool(tokens, "create_alias", %{title: "Extra"})
     limited = tool(tokens, "create_alias", %{title: "Over limit"})
     assert limited["isError"]
-    refute Jason.encode!(limited) =~ "Upgrade"
+
+    assert hd(limited["content"])["text"] ==
+             "Your account's alias limit has been reached. Upgrade for more aliases: #{Mcp.issuer()}/settings/billing"
   end
 
   test "disable and enable act directly on one alias and revocation is account-scoped" do

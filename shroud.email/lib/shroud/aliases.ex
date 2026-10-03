@@ -8,7 +8,7 @@ defmodule Shroud.Aliases do
 
   alias Shroud.Util
   alias Shroud.Domain.CustomDomain
-  alias Shroud.Accounts
+  alias Shroud.{Accounts, Domain}
   alias Shroud.Aliases.{EmailAlias, EmailMetric}
   alias Shroud.Accounts.User
 
@@ -23,6 +23,20 @@ defmodule Shroud.Aliases do
     user
     |> aliases_with_metrics(search_query)
     |> Repo.paginate(page: page_number, page_size: 20)
+  end
+
+  def list_aliases_page(%User{} = user, opts \\ []) do
+    page_size = Keyword.get(opts, :page_size, 20)
+    offset = (Keyword.get(opts, :page, 1) - 1) * page_size
+    query = aliases_query(user, opts[:search])
+
+    query =
+      if is_boolean(opts[:enabled]),
+        do: where(query, [a], a.enabled == ^opts[:enabled]),
+        else: query
+
+    entries = query |> limit(^(page_size + 1)) |> offset(^offset) |> Repo.all()
+    %{entries: Enum.take(entries, page_size), has_more: length(entries) > page_size}
   end
 
   def count_aliases(%User{} = user) do
@@ -52,6 +66,35 @@ defmodule Shroud.Aliases do
   end
 
   @free_alias_limit 5
+
+  def create_email_alias(%User{} = user, attrs) do
+    metadata = Map.take(attrs, [:title, :notes])
+
+    case {attrs[:domain], attrs[:local_part]} do
+      {nil, nil} ->
+        create_random_email_alias(user, metadata)
+
+      {domain, local} when is_binary(domain) and is_binary(local) ->
+        verified =
+          Domain.list_verified_custom_domains(user)
+          |> Enum.find(&(String.downcase(&1.domain) == String.downcase(domain)))
+
+        case verified do
+          %{domain: stored_domain} ->
+            # Domain association uses the stored spelling before the changeset
+            # normalizes the address.
+            create_email_alias(
+              Map.merge(metadata, %{user_id: user.id, address: local <> "@" <> stored_domain})
+            )
+
+          nil ->
+            {:error, :invalid_domain}
+        end
+
+      _ ->
+        {:error, :invalid_domain}
+    end
+  end
 
   @spec create_email_alias(map()) ::
           {:ok, EmailAlias.t()}
@@ -83,6 +126,10 @@ defmodule Shroud.Aliases do
 
   def get_email_alias!(id) do
     Repo.get!(EmailAlias, id)
+  end
+
+  def get_email_alias_by_address(%User{} = user, address) do
+    user |> aliases_query() |> Repo.get_by(address: String.downcase(address))
   end
 
   def get_email_alias_by_address(address) do
