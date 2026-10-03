@@ -8,6 +8,28 @@ defmodule ShroudWeb.McpOAuthRegressionTest do
     %{user: confirmed_user()}
   end
 
+  test "connection navigation is flagged without blocking browser connection pages", %{user: user} do
+    {params, _} = authorization_params(["aliases:read"])
+
+    for enabled <- [false, true, false] do
+      if enabled,
+        do: FunWithFlags.enable(:chatgpt_integration, for_actor: user),
+        else: FunWithFlags.disable(:chatgpt_integration, for_actor: user)
+
+      for {path, params} <- [{"/settings/connections", %{}}, {"/oauth/authorize", params}] do
+        document =
+          build_conn()
+          |> log_in_user(user)
+          |> get(path, params)
+          |> html_response(200)
+          |> Floki.parse_document!()
+
+        links = Floki.find(document, "header a[href='/settings/connections']")
+        assert links != [] == enabled
+      end
+    end
+  end
+
   test "callbacks append response fields without changing registered query bytes", %{user: user} do
     for query <- [nil, "", "tag=first&tag=second&encoded=%2f%20&bare&empty="],
         decision <- ["allow", "deny"] do
