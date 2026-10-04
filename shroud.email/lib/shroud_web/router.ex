@@ -45,6 +45,7 @@ defmodule ShroudWeb.Router do
     get("/.well-known/oauth-authorization-server", McpOAuthController, :metadata)
     get("/.well-known/oauth-protected-resource", McpOAuthController, :resource_metadata)
     get("/.well-known/oauth-protected-resource/mcp", McpOAuthController, :resource_metadata)
+    post("/oauth/register", McpOAuthController, :register)
     post("/oauth/token", McpOAuthController, :token)
     post("/oauth/revoke", McpOAuthController, :revoke)
   end

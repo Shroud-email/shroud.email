@@ -154,7 +154,7 @@ defmodule ShroudWeb.UserSettingsLiveTest do
     refute has_element?(view, "#settings-info, #settings-error")
   end
 
-  test "connected apps navigation follows the user's integration flag", %{conn: conn, user: user} do
+  test "connected apps navigation requires the integration flag", %{conn: conn, user: user} do
     {:ok, view, _} = live(conn, ~p"/settings/security")
     refute has_element?(view, "#manage-connections")
 

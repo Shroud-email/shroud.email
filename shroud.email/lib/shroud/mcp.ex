@@ -25,11 +25,12 @@ defmodule Shroud.Mcp do
 
   def issuer, do: ShroudWeb.Endpoint.url()
   def resource, do: issuer() <> "/mcp"
-  def clients, do: Application.get_env(:shroud, :mcp_clients, %{})
-  def client_name(id), do: get_in(clients(), [id, "name"]) || "Disconnected client"
+
+  def enabled?(user), do: FunWithFlags.enabled?(:chatgpt_integration, for: user)
 
   def validate_authorization(params) when is_map(params) do
-    with %{"name" => name, "redirect_uris" => redirects} <- clients()[params["client_id"]],
+    with %{"name" => name, "redirect_uris" => redirects} <-
+           Clients.metadata(params["client_id"]),
          true <- params["redirect_uri"] in redirects,
          true <- params["response_type"] == "code",
          true <- params["resource"] == resource(),
@@ -39,7 +40,12 @@ defmodule Shroud.Mcp do
          scopes = String.split(scope, " ", trim: true) |> Enum.uniq(),
          true <- valid_scopes?(scope),
          {:ok, _} <- Boruta.Oauth.preauthorize(oauth_conn(params), owner("consent"), __MODULE__) do
-      {:ok, %{name: name, scopes: scopes}}
+      {:ok,
+       %{
+         name: name,
+         scopes: scopes,
+         redirect_uri: params["redirect_uri"]
+       }}
     else
       _ -> {:error, :invalid_request}
     end
@@ -47,7 +53,7 @@ defmodule Shroud.Mcp do
 
   def authorize(user, params) do
     with {:ok, _} <- validate_authorization(params),
-         true <- not is_nil(user.confirmed_at) do
+         true <- not is_nil(user.confirmed_at) and enabled?(user) do
       conn = oauth_conn(params) |> Plug.Conn.assign(:mcp_user, user)
       Boruta.Oauth.authorize(conn, owner(to_string(user.id)), __MODULE__)
     else
@@ -168,9 +174,23 @@ defmodule Shroud.Mcp do
   def list_connections(user) do
     Repo.all(
       from c in connections_query(user),
+        left_join: client in Boruta.Ecto.Client,
+        on: client.name == c.client_id,
         where: is_nil(c.revoked_at) and c.expires_at > ^now(),
-        order_by: [desc: c.id]
+        order_by: [desc: c.id],
+        select: {c, client.metadata}
     )
+    |> Enum.map(fn {connection, metadata} ->
+      dynamic_name =
+        case metadata do
+          %{"mcp_dynamic" => true, "name" => name} -> name
+          _ -> nil
+        end
+
+      name = dynamic_name || "Disconnected client"
+
+      %{connection | client_name: name}
+    end)
   end
 
   def revoke(user, id) do
@@ -188,7 +208,7 @@ defmodule Shroud.Mcp do
       Repo.one(token_connections(:value, token)) ||
         Repo.one(token_connections(:refresh_token, token))
 
-    if connection && connection.client_id == client_id && Map.has_key?(clients(), client_id) do
+    if connection && connection.client_id == client_id && Clients.metadata(client_id) != nil do
       Boruta.Oauth.revoke(oauth_conn(%{"client_id" => client_id, "token" => token}), __MODULE__)
       revoke(%{id: connection.user_id}, connection.id)
     end
@@ -227,9 +247,9 @@ defmodule Shroud.Mcp do
     user = Repo.get(Shroud.Accounts.User, connection.user_id)
 
     is_nil(connection.revoked_at) and DateTime.compare(connection.expires_at, now()) == :gt and
-      connection.resource == resource() and Map.has_key?(clients(), connection.client_id) and
+      connection.resource == resource() and Clients.metadata(connection.client_id) != nil and
       valid_scopes?(Enum.join(connection.scopes, " ")) and
-      user != nil and user.confirmed_at != nil
+      user != nil and user.confirmed_at != nil and enabled?(user)
   end
 
   defp transact(fun) do

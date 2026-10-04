@@ -8,7 +8,6 @@ defmodule Shroud.McpConcurrencyTest do
   alias Shroud.{Mcp, Repo}
 
   setup do
-    configure_clients()
     original = Application.fetch_env!(:boruta, Boruta.Oauth)
     user = Sandbox.unboxed_run(Repo, &confirmed_user/0)
 
@@ -16,12 +15,13 @@ defmodule Shroud.McpConcurrencyTest do
       Application.put_env(:boruta, Boruta.Oauth, original)
 
       Sandbox.unboxed_run(Repo, fn ->
+        client_ids =
+          Repo.all(from t in Token, where: t.sub == ^to_string(user.id), select: t.client_id)
+
         Repo.delete_all(from t in Token, where: t.sub == ^to_string(user.id))
         Repo.delete!(user)
 
-        Repo.delete_all(
-          from c in Boruta.Ecto.Client, where: c.name in ["test-client", "other-client"]
-        )
+        Repo.delete_all(from c in Boruta.Ecto.Client, where: c.id in ^client_ids)
       end)
     end)
 
@@ -164,7 +164,7 @@ defmodule Shroud.McpConcurrencyTest do
 
     {%{
        "grant_type" => "refresh_token",
-       "client_id" => "test-client",
+       "client_id" => connection.client_id,
        "resource" => Mcp.resource(),
        "refresh_token" => tokens.refresh_token
      }, connection}

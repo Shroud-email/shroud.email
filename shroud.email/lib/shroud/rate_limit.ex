@@ -15,6 +15,7 @@ defmodule Shroud.RateLimit do
   def policy(:http), do: {:timer.minutes(1), 600}
   def policy(:live_mount), do: {:timer.minutes(1), 600}
   def policy(:sign_in), do: {:timer.minutes(1), 10}
+  def policy(:mcp_registration), do: {:timer.minutes(1), 10}
   def policy(:second_factor), do: {:timer.minutes(1), 5}
   def policy(:account_email), do: {:timer.minutes(15), 5}
   def policy(:credentials), do: {:timer.minutes(15), 5}

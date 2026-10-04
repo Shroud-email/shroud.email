@@ -4,51 +4,51 @@ defmodule ShroudWeb.McpOAuthRegressionTest do
   alias Shroud.{Accounts, Mcp, Repo}
 
   setup do
-    configure_clients()
     %{user: confirmed_user()}
   end
 
-  test "connection navigation is flagged without blocking browser connection pages", %{user: user} do
+  test "connection navigation and browser connection pages are available to flagged users", %{
+    user: user
+  } do
     {params, _} = authorization_params(["aliases:read"])
 
-    for enabled <- [false, true, false] do
-      if enabled,
-        do: FunWithFlags.enable(:chatgpt_integration, for_actor: user),
-        else: FunWithFlags.disable(:chatgpt_integration, for_actor: user)
+    for {path, params, selector} <- [
+          {"/settings/security", %{}, "#manage-connections"},
+          {"/oauth/authorize", params, "header a[href='/settings/connections']"}
+        ] do
+      document =
+        build_conn()
+        |> log_in_user(user)
+        |> get(path, params)
+        |> html_response(200)
+        |> Floki.parse_document!()
 
-      for {path, params, selector} <- [
-            {"/settings/security", %{}, "#manage-connections"},
-            {"/oauth/authorize", params, "header a[href='/settings/connections']"}
-          ] do
-        document =
-          build_conn()
-          |> log_in_user(user)
-          |> get(path, params)
-          |> html_response(200)
-          |> Floki.parse_document!()
-
-        links = Floki.find(document, selector)
-        assert links != [] == enabled
-      end
-
-      assert build_conn() |> log_in_user(user) |> get("/settings/connections") |> response(200)
+      links = Floki.find(document, selector)
+      assert links != []
     end
+
+    assert build_conn() |> log_in_user(user) |> get("/settings/connections") |> response(200)
+  end
+
+  test "unflagged users cannot access consent or Connected apps", %{user: user} do
+    {params, _} = authorization_params(["aliases:read"])
+    FunWithFlags.disable(:chatgpt_integration, for_actor: user)
+
+    conn = build_conn() |> log_in_user(user)
+    assert conn |> get("/oauth/authorize", params) |> response(404)
+    assert conn |> post("/oauth/authorize", %{}) |> response(404)
+    assert conn |> get("/settings/connections") |> redirected_to() == "/settings/security"
+
+    document = conn |> get("/settings/security") |> html_response(200) |> Floki.parse_document!()
+    assert Floki.find(document, "#manage-connections") == []
   end
 
   test "callbacks append response fields without changing registered query bytes", %{user: user} do
     for query <- [nil, "", "tag=first&tag=second&encoded=%2f%20&bare&empty="],
         decision <- ["allow", "deny"] do
       callback = "https://client.example/callback" <> if(query == nil, do: "", else: "?" <> query)
-      clients = Application.fetch_env!(:shroud, :mcp_clients)
-
-      Application.put_env(
-        :shroud,
-        :mcp_clients,
-        put_in(clients, ["test-client", "redirect_uris"], [callback])
-      )
-
-      {params, _} = authorization_params(["aliases:read"])
-      params = %{params | "redirect_uri" => callback, "state" => "state & + /"}
+      {params, _} = authorization_params(["aliases:read"], callback)
+      params = %{params | "state" => "state & + /"}
 
       html =
         build_conn() |> log_in_user(user) |> get("/oauth/authorize", params) |> html_response(200)

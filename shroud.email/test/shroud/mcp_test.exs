@@ -5,9 +5,41 @@ defmodule Shroud.McpTest do
   alias Shroud.{Accounts, Mcp, Repo}
   alias Shroud.Mcp.{Clients, Connection}
 
-  setup do
-    configure_clients()
-    :ok
+  test "the integration flag gates authorization, exchange, refresh and access" do
+    %{user: user, connection: connection, tokens: tokens} =
+      connection_fixture()
+
+    {params, verifier} = authorization_params(["aliases:read"])
+    {:ok, code} = Mcp.authorize(user, params)
+
+    exchange =
+      Map.merge(params, %{
+        "grant_type" => "authorization_code",
+        "code" => code,
+        "code_verifier" => verifier
+      })
+
+    FunWithFlags.disable(:chatgpt_integration, for_actor: user)
+
+    assert {:error, :invalid_request} = Mcp.authorize(user, params)
+
+    assert {:error, :invalid_grant} =
+             Mcp.exchange(exchange)
+
+    assert {:error, :invalid_grant} =
+             Mcp.exchange(%{
+               "grant_type" => "refresh_token",
+               "client_id" => connection.client_id,
+               "resource" => Mcp.resource(),
+               "refresh_token" => tokens.refresh_token
+             })
+
+    assert {:error, :invalid_token} =
+             Mcp.with_access(tokens.access_token, nil, fn _ -> flunk("flag bypass") end)
+
+    FunWithFlags.enable(:chatgpt_integration, for_actor: user)
+    assert :ok = Mcp.with_access(tokens.access_token, nil, fn _ -> :ok end)
+    assert {:ok, _} = Mcp.exchange(exchange)
   end
 
   test "only the configured MCP resource, exact redirects, permissions and S256 are accepted" do
@@ -51,7 +83,7 @@ defmodule Shroud.McpTest do
 
     for {key, value} <- [
           {"code_verifier", String.duplicate("b", 43)},
-          {"client_id", "other-client"},
+          {"client_id", client_fixture()},
           {"redirect_uri", "https://other.example/callback"},
           {"resource", "https://evil.example/mcp"}
         ] do
@@ -79,11 +111,11 @@ defmodule Shroud.McpTest do
   end
 
   test "Boruta rotates refresh tokens and cannot widen permissions" do
-    %{tokens: first} = connection_fixture(["aliases:read"])
+    %{tokens: first, connection: connection} = connection_fixture(["aliases:read"])
 
     params = %{
       "grant_type" => "refresh_token",
-      "client_id" => "test-client",
+      "client_id" => connection.client_id,
       "resource" => Mcp.resource(),
       "refresh_token" => first.refresh_token
     }
@@ -91,7 +123,7 @@ defmodule Shroud.McpTest do
     assert {:error, :invalid_grant} =
              Mcp.exchange(Map.put(params, "scope", "aliases:read aliases:edit"))
 
-    assert {:error, :invalid_grant} = Mcp.exchange(Map.put(params, "client_id", "other-client"))
+    assert {:error, :invalid_grant} = Mcp.exchange(Map.put(params, "client_id", client_fixture()))
     assert {:ok, second} = Mcp.exchange(params)
     refute first.refresh_token == second.refresh_token
     assert second.scope == "aliases:read"
@@ -101,7 +133,7 @@ defmodule Shroud.McpTest do
     assert third.resource == Mcp.resource()
 
     for invalid <- [
-          Map.put(params, "client_id", "other-client"),
+          Map.put(params, "client_id", client_fixture()),
           Map.put(params, "resource", "https://evil.example/mcp"),
           Map.put(params, "refresh_token", "unknown")
         ] do
@@ -123,7 +155,7 @@ defmodule Shroud.McpTest do
 
       params = %{
         "grant_type" => "refresh_token",
-        "client_id" => "test-client",
+        "client_id" => connection.client_id,
         "resource" => Mcp.resource(),
         "refresh_token" => first.refresh_token
       }
@@ -138,26 +170,21 @@ defmodule Shroud.McpTest do
     end
   end
 
-  test "connections last 90 days and existing clients receive the longer refresh lifetime" do
-    Clients.get_client("test-client")
-
-    Repo.get_by!(Boruta.Ecto.Client, name: "test-client")
-    |> Ecto.Changeset.change(refresh_token_ttl: 30 * 86_400)
-    |> Repo.update!()
-
+  test "connections and registered clients have a 90-day refresh lifetime" do
     %{connection: connection, tokens: tokens} = connection_fixture()
     assert DateTime.diff(connection.expires_at, connection.inserted_at) == 90 * 86_400
-    assert Repo.get_by!(Boruta.Ecto.Client, name: "test-client").refresh_token_ttl == 90 * 86_400
+    assert Repo.get!(Boruta.Ecto.Client, connection.client_id).refresh_token_ttl == 90 * 86_400
     assert tokens.expires_in in 3599..3600
   end
 
   test "narrowed refresh scopes restrict tools even though the consent granted more" do
-    %{tokens: first} = connection_fixture(["aliases:read", "aliases:edit"])
+    %{tokens: first, connection: connection} =
+      connection_fixture(["aliases:read", "aliases:edit"])
 
     assert {:ok, second} =
              Mcp.exchange(%{
                "grant_type" => "refresh_token",
-               "client_id" => "test-client",
+               "client_id" => connection.client_id,
                "resource" => Mcp.resource(),
                "refresh_token" => first.refresh_token,
                "scope" => "aliases:read"
@@ -169,37 +196,34 @@ defmodule Shroud.McpTest do
              end)
   end
 
-  test "matching client lookups are read-only but configured redirects are synchronized" do
-    client = Clients.get_client("test-client")
+  test "registered client lookups are read-only and other OAuth clients are rejected" do
+    id = client_fixture()
+    client = Clients.get_client(id)
     ref = trace_queries()
-    assert Clients.get_client("test-client").id == client.id
+    assert Clients.get_client(id).id == client.id
     assert Clients.get_client(client.id).id == client.id
     assert_receive {^ref, "SELECT" <> _}
     refute_received {^ref, "INSERT" <> _}
     refute_received {^ref, "UPDATE" <> _}
 
-    clients = Application.fetch_env!(:shroud, :mcp_clients)
-    redirects = ["https://client.example/new-callback"]
+    Repo.get!(Boruta.Ecto.Client, id)
+    |> Ecto.Changeset.change(metadata: %{})
+    |> Repo.update!()
 
-    Application.put_env(
-      :shroud,
-      :mcp_clients,
-      put_in(clients, ["test-client", "redirect_uris"], redirects)
-    )
-
-    assert Clients.get_client("test-client").redirect_uris == redirects
-    assert Repo.get_by!(Boruta.Ecto.Client, name: "test-client").redirect_uris == redirects
+    assert Clients.get_client(id) == nil
+    assert Clients.metadata(id) == nil
   end
 
   test "invalid revocation credentials do not reach the database" do
+    id = client_fixture()
     ref = trace_queries()
 
     for token <- [nil, "", String.duplicate("x", 1025)] do
-      assert :ok = Mcp.revoke_token(token, "test-client")
+      assert :ok = Mcp.revoke_token(token, id)
     end
 
     refute_received {^ref, _}
-    assert :ok = Mcp.revoke_token(String.duplicate("x", 1024), "test-client")
+    assert :ok = Mcp.revoke_token(String.duplicate("x", 1024), id)
     assert_receive {^ref, "SELECT" <> _}
   end
 
@@ -224,15 +248,15 @@ defmodule Shroud.McpTest do
     user |> Ecto.Changeset.change(confirmed_at: nil) |> Repo.update!()
     assert {:error, :invalid_token} = Mcp.with_access(tokens.access_token, nil, fn _ -> :ok end)
 
-    %{tokens: tokens} = connection_fixture()
-    Application.put_env(:shroud, :mcp_clients, %{})
+    %{tokens: tokens, connection: connection} = connection_fixture()
+    Repo.get!(Boruta.Ecto.Client, connection.client_id) |> Repo.delete!()
     assert {:error, :invalid_token} = Mcp.with_access(tokens.access_token, nil, fn _ -> :ok end)
   end
 
   test "only the owning account/client can revoke and disconnected tokens cannot refresh" do
     %{user: user, tokens: tokens, connection: connection} = connection_fixture()
     refute Mcp.revoke(confirmed_user(), connection.id)
-    Mcp.revoke_token(tokens.access_token, "other-client")
+    Mcp.revoke_token(tokens.access_token, client_fixture())
     assert :ok = Mcp.with_access(tokens.access_token, nil, fn _ -> :ok end)
     assert Mcp.revoke(user, connection.id)
     assert {:error, :invalid_token} = Mcp.with_access(tokens.access_token, nil, fn _ -> :ok end)
@@ -241,7 +265,7 @@ defmodule Shroud.McpTest do
     assert {:error, :invalid_grant} =
              Mcp.exchange(%{
                "grant_type" => "refresh_token",
-               "client_id" => "test-client",
+               "client_id" => connection.client_id,
                "resource" => Mcp.resource(),
                "refresh_token" => tokens.refresh_token
              })
@@ -281,7 +305,7 @@ defmodule Shroud.McpTest do
     assert {:ok, _} =
              Mcp.exchange(%{
                "grant_type" => "refresh_token",
-               "client_id" => "test-client",
+               "client_id" => active.client_id,
                "resource" => Mcp.resource(),
                "refresh_token" => tokens.refresh_token
              })
@@ -300,11 +324,11 @@ defmodule Shroud.McpTest do
 
       {params, _} = authorization_params(["aliases:read", mutation])
       assert {:ok, _} = Mcp.validate_authorization(params)
-      %{tokens: tokens} = connection_fixture(["aliases:read", mutation])
+      %{tokens: tokens, connection: connection} = connection_fixture(["aliases:read", mutation])
 
       refresh = %{
         "grant_type" => "refresh_token",
-        "client_id" => "test-client",
+        "client_id" => connection.client_id,
         "resource" => Mcp.resource(),
         "refresh_token" => tokens.refresh_token,
         "scope" => mutation
@@ -375,6 +399,44 @@ defmodule Shroud.McpTest do
 
       assert Shroud.ErrorReporter.before_send(event) == event
     end
+  end
+
+  test "registered connection names are loaded in one query" do
+    %{user: user, connection: connection} = connection_fixture(["aliases:read"])
+    connection_fixture(["aliases:read"])
+
+    for name <- ["Desktop agent", "Browser agent"] do
+      {:ok, registration} =
+        Clients.register(%{
+          "client_name" => name,
+          "redirect_uris" => ["https://agent.example/callback"]
+        })
+
+      {params, _verifier} = authorization_params(["aliases:read"])
+
+      params = %{
+        params
+        | "client_id" => registration.client_id,
+          "redirect_uri" => "https://agent.example/callback"
+      }
+
+      assert {:ok, _code} = Mcp.authorize(user, params)
+    end
+
+    ref = trace_queries()
+    connections = Mcp.list_connections(user)
+
+    assert Enum.map(connections, & &1.client_name) |> Enum.sort() ==
+             ["Browser agent", "Desktop agent", "Test client"]
+
+    assert_receive {^ref, query}
+    assert query =~ "LEFT OUTER JOIN"
+    refute_receive {^ref, _query}
+
+    Repo.get!(Boruta.Ecto.Client, connection.client_id) |> Repo.delete!()
+
+    assert Enum.map(Mcp.list_connections(user), & &1.client_name) |> Enum.sort() ==
+             ["Browser agent", "Desktop agent", "Disconnected client"]
   end
 
   defp past, do: DateTime.utc_now() |> DateTime.truncate(:second) |> DateTime.add(-1)
