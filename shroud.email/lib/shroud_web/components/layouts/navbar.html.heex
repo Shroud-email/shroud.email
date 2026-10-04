@@ -104,8 +104,8 @@
                     {%{
                       "x-ref" => "button",
                       "x-bind:aria-expanded" => "open.toString()",
-                      "@keydown.arrow-up.prevent" => "onArrowUp()",
-                      "@keydown.arrow-down.prevent" => "onArrowDown()"
+                      "x-on:keydown.arrow-up.prevent" => "onArrowUp()",
+                      "x-on:keydown.arrow-down.prevent" => "onArrowDown()"
                     }}
                   >
                     <span class="sr-only">Open user menu</span>

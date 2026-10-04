@@ -53,7 +53,7 @@ defmodule ShroudWeb.Components.Atoms do
 
     ~H"""
     <.link
-      :if={@href || @navigate || @patch}
+      :if={!@disabled && (@href || @navigate || @patch)}
       href={@href}
       navigate={@navigate}
       patch={@patch}
@@ -74,7 +74,7 @@ defmodule ShroudWeb.Components.Atoms do
       {render_slot(@inner_block)}
     </.link>
     <button
-      :if={!(@href || @navigate || @patch)}
+      :if={@disabled || !(@href || @navigate || @patch)}
       @click={@alpine_click}
       phx-click={@click}
       type={@type}

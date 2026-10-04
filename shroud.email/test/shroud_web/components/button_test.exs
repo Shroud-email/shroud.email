@@ -86,4 +86,51 @@ defmodule ShroudWeb.Components.ButtonTest do
     assert [_] = Floki.find(document, "a#aliases[href='/'][data-phx-link=redirect]")
     assert [] = Floki.find(document, "button")
   end
+
+  test "disabled navigation actions have no navigable target" do
+    assigns = %{}
+
+    html =
+      rendered_to_string(~H"""
+      <.button id="billing" href="/checkout/billing" disabled text="Billing" />
+      <.button id="connections" patch="/settings/connections" disabled text="Connections" />
+      <.button id="aliases" navigate="/" disabled text="Aliases" />
+      """)
+
+    document = Floki.parse_fragment!(html)
+
+    for id <- ["billing", "connections", "aliases"] do
+      assert [_] = Floki.find(document, "button##{id}[disabled]")
+    end
+
+    assert [] = Floki.find(document, "a, [href], [data-phx-link]")
+  end
+
+  test "dropdown components retain keyboard and pointer handlers" do
+    assigns = %{}
+
+    html =
+      rendered_to_string(~H"""
+      <ShroudWeb.Components.DropdownMenu.dropdown_menu>
+        <:button_content>Choose</:button_content>
+        <ShroudWeb.Components.DropdownItem.dropdown_item index={0} text="First" click="choose" />
+        <ShroudWeb.Components.DropdownItem.dropdown_item
+          index={1}
+          text="Unavailable"
+          click="choose"
+          disabled
+        />
+      </ShroudWeb.Components.DropdownMenu.dropdown_menu>
+      """)
+
+    document = Floki.parse_fragment!(html)
+    [trigger] = Floki.find(document, "button[aria-haspopup]")
+    assert Floki.attribute(trigger, "x-on:keydown.arrow-up.prevent") == ["onArrowUp()"]
+    assert Floki.attribute(trigger, "x-on:keydown.arrow-down.prevent") == ["onArrowDown()"]
+    [enabled, disabled] = Floki.find(document, "button[role=menuitem]")
+    assert Floki.attribute(enabled, "x-on:mouseenter") == ["activeIndex = 0"]
+    assert Floki.attribute(disabled, "x-on:mouseenter") == ["activeIndex = -1"]
+    assert Floki.attribute(enabled, "x-on:mouseleave") == ["activeIndex = -1"]
+    assert Floki.attribute(disabled, "x-on:mouseleave") == ["activeIndex = -1"]
+  end
 end

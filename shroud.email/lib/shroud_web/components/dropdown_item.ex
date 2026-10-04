@@ -34,10 +34,8 @@ defmodule ShroudWeb.Components.DropdownItem do
       }
       role="menuitem"
       tabindex="-1"
-      {%{
-        "@mouseenter" => if(@disabled, do: "activeIndex = -1", else: "activeIndex = #{@index}"),
-        "@mouseleave" => "activeIndex = -1"
-      }}
+      x-on:mouseenter={if(@disabled, do: "activeIndex = -1", else: "activeIndex = #{@index}")}
+      x-on:mouseleave="activeIndex = -1"
       alpine_click={if(!@disabled, do: "open = false; focusButton()")}
     >
       {@text}

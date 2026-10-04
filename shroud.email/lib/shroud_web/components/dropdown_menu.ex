@@ -29,10 +29,8 @@ defmodule ShroudWeb.Components.DropdownMenu do
           x-ref="button"
           alpine_click="onButtonClick()"
           x-bind:aria-expanded="open.toString()"
-          {%{
-            "@keydown.arrow-up.prevent" => "onArrowUp()",
-            "@keydown.arrow-down.prevent" => "onArrowDown()"
-          }}
+          x-on:keydown.arrow-up.prevent="onArrowUp()"
+          x-on:keydown.arrow-down.prevent="onArrowDown()"
         >
           <span class="sr-only">Open menu</span>
           {render_slot(@button_content)}
