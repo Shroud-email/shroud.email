@@ -3,6 +3,7 @@ defmodule ShroudWeb.Components.DropdownMenu do
 
   attr(:class, :string, default: "")
   attr(:button_class, :string, default: "")
+  attr(:intent, :atom, default: :primary)
   attr(:disabled, :boolean, default: false)
   slot(:inner_block, required: true)
   slot(:button_content, required: true)
@@ -17,21 +18,23 @@ defmodule ShroudWeb.Components.DropdownMenu do
       @click.away="onClickAway($event)"
     >
       <div>
-        <button
-          type="button"
+        <.button
+          intent={@intent}
+          shape={:right}
+          size={:icon}
           disabled={@disabled}
           class={@button_class}
           x-id="['button']"
           aria-haspopup="true"
           x-ref="button"
-          @click="onButtonClick()"
+          alpine_click="onButtonClick()"
           x-bind:aria-expanded="open.toString()"
-          @keydown.arrow-up.prevent="onArrowUp()"
-          @keydown.arrow-down.prevent="onArrowDown()"
+          x-on:keydown.arrow-up.prevent="onArrowUp()"
+          x-on:keydown.arrow-down.prevent="onArrowDown()"
         >
           <span class="sr-only">Open menu</span>
           {render_slot(@button_content)}
-        </button>
+        </.button>
       </div>
 
       <div

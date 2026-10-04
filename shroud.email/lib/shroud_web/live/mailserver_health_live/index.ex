@@ -56,15 +56,12 @@ defmodule ShroudWeb.MailserverHealthLive.Index do
             Read-only checks for {Application.fetch_env!(:shroud, :email_domain)}.
           </p>
         </div>
-        <button
+        <.button
           id="mailserver-refresh"
-          type="button"
-          phx-click="refresh"
+          click="refresh"
           disabled={@checking}
-          class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
-        >
-          {if @checking, do: "Checking…", else: "Refresh checks"}
-        </button>
+          text={if @checking, do: "Checking…", else: "Refresh checks"}
+        />
       </div>
 
       <p class="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">

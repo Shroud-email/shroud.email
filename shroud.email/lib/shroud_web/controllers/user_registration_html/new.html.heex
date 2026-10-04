@@ -41,7 +41,12 @@
         <.cap_widget />
 
         <div>
-          <%= submit "Sign up", disabled: Application.fetch_env!(:shroud, :disable_signups), class: "w-full btn btn-primary disabled:cursor-not-allowed disabled:opacity-50" %>
+          <.button
+            type="submit"
+            disabled={Application.fetch_env!(:shroud, :disable_signups)}
+            class="w-full"
+            text="Sign up"
+          />
           <p class="text-sm mt-3 text-center">
             By signing up for Shroud.email, you agree to our <a href="https://shroud.email/terms/" target="_blank" class="underline">terms of use</a>.
           </p>

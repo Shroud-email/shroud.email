@@ -1,7 +1,7 @@
 defmodule ShroudWeb.Components.Atoms do
   alias Shroud.Accounts.Logging
 
-  use Phoenix.Component
+  use Phoenix.Component, global_prefixes: ~w(x-)
 
   attr(:name, :atom, required: true)
   attr(:outline, :boolean, default: true)
@@ -12,50 +12,123 @@ defmodule ShroudWeb.Components.Atoms do
     apply(Heroicons, assigns.name, [assigns])
   end
 
-  attr(:text, :string, required: true)
+  attr(:text, :string, default: nil)
   attr(:icon, :atom, required: false, default: nil)
   attr(:intent, :atom, default: :primary)
   attr(:type, :string, default: "button")
   attr(:disabled, :boolean, default: false)
   attr(:click, :any, required: false, default: nil)
   attr(:alpine_click, :string, required: false, default: nil)
-  attr(:rest, :global)
+  attr(:class, :any, default: nil)
+  attr(:href, :any, default: nil)
+  attr(:navigate, :string, default: nil)
+  attr(:patch, :string, default: nil)
+  attr(:size, :atom, default: :normal, values: [:normal, :icon, :compact])
+  attr(:shape, :atom, default: :default, values: [:default, :left, :right, :top_right])
+  attr(:rest, :global, include: ~w(name value form target download rel))
+  slot(:inner_block)
 
   def button(assigns) do
-    class =
-      case assigns.intent do
-        :primary ->
-          "text-white bg-indigo-600 enabled:hover:bg-indigo-700"
-
-        :secondary ->
-          "text-indigo-700 bg-indigo-100 enabled:hover:bg-indigo-200 dark:text-indigo-300 dark:bg-indigo-900/50 dark:enabled:hover:bg-indigo-900/70"
-
-        :danger ->
-          "text-red-700 bg-red-100 enabled:hover:bg-red-200 dark:text-red-300 dark:bg-red-900/50 dark:enabled:hover:bg-red-900/70"
-
-        :white ->
-          "border-gray-300 text-gray-700 bg-white enabled:hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:bg-gray-700 dark:enabled:hover:bg-gray-600"
+    radius =
+      case assigns.shape do
+        :default -> if assigns.intent != :unstyled, do: "rounded-button"
+        :left -> "rounded-l-button"
+        :right -> "rounded-r-button"
+        :top_right -> "rounded-tr-button"
       end
 
-    assigns = assign(assigns, :class, class)
+    assigns = assign(assigns, :button_class, button_colors(assigns.intent))
+    assigns = assign(assigns, :padding, button_padding(assigns.size, assigns.intent))
+    assigns = assign(assigns, :radius, radius)
+
+    assigns =
+      assign(
+        assigns,
+        :base_class,
+        if(assigns.intent != :unstyled,
+          do:
+            "inline-flex items-center justify-center border text-sm font-medium focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-900"
+        )
+      )
 
     ~H"""
-    <button
-      @click={@alpine_click}
-      phx-click={@click}
-      type={@type}
-      disabled={@disabled}
-      class={@class <>
-        " inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-xs focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 justify-center disabled:opacity-50 disabled:cursor-not-allowed dark:focus:ring-offset-gray-900"}
+    <.link
+      :if={!@disabled && (@href || @navigate || @patch)}
+      href={@href}
+      navigate={@navigate}
+      patch={@patch}
+      class={[
+        @base_class,
+        @intent not in [:text, :danger_text, :unstyled] && "shadow-xs",
+        @button_class,
+        @padding,
+        @radius,
+        @class
+      ]}
       {@rest}
     >
       <span :if={@icon} class="-ml-1 mr-2 h-5 w-5">
         <.icon name={@icon} />
       </span>
       {@text}
+      {render_slot(@inner_block)}
+    </.link>
+    <button
+      :if={@disabled || !(@href || @navigate || @patch)}
+      @click={@alpine_click}
+      phx-click={@click}
+      type={@type}
+      disabled={@disabled}
+      class={[
+        @base_class,
+        "disabled:opacity-50 disabled:cursor-not-allowed",
+        @intent not in [:text, :danger_text, :unstyled] && "shadow-xs",
+        @button_class,
+        @padding,
+        @radius,
+        @class
+      ]}
+      {@rest}
+    >
+      <span :if={@icon} class="-ml-1 mr-2 h-5 w-5">
+        <.icon name={@icon} />
+      </span>
+      {@text}
+      {render_slot(@inner_block)}
     </button>
     """
   end
+
+  defp button_colors(intent) do
+    case intent do
+      :primary ->
+        "border-transparent text-white bg-indigo-600 not-disabled:hover:bg-indigo-700 dark:bg-indigo-500 dark:not-disabled:hover:bg-indigo-400"
+
+      :secondary ->
+        "border-transparent text-indigo-700 bg-indigo-100 not-disabled:hover:bg-indigo-200 dark:text-indigo-300 dark:bg-indigo-900/50 dark:not-disabled:hover:bg-indigo-900/70"
+
+      :danger ->
+        "border-transparent text-red-700 bg-red-100 not-disabled:hover:bg-red-200 dark:text-red-300 dark:bg-red-900/50 dark:not-disabled:hover:bg-red-900/70"
+
+      :white ->
+        "border-gray-300 text-gray-700 bg-white not-disabled:hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:bg-gray-700 dark:not-disabled:hover:bg-gray-600"
+
+      :text ->
+        "border-0 shadow-none bg-transparent text-indigo-600 not-disabled:hover:text-indigo-500 dark:text-indigo-400 dark:not-disabled:hover:text-indigo-400"
+
+      :danger_text ->
+        "border-0 shadow-none bg-transparent text-red-700 not-disabled:hover:text-red-500 dark:text-red-400 dark:not-disabled:hover:text-red-500"
+
+      :unstyled ->
+        nil
+    end
+  end
+
+  defp button_padding(:icon, _intent), do: "p-2"
+  defp button_padding(:compact, _intent), do: "p-1"
+  defp button_padding(:normal, :unstyled), do: nil
+  defp button_padding(:normal, intent) when intent in [:text, :danger_text], do: "p-0"
+  defp button_padding(:normal, _intent), do: "px-4 py-2"
 
   attr(:title, :string, required: true)
   attr(:description, :string, required: false)
@@ -110,7 +183,7 @@ defmodule ShroudWeb.Components.Atoms do
 
     [button_class, toggle_class] =
       if assigns.on do
-        [button_class <> " bg-indigo-600", toggle_class <> " translate-x-5"]
+        [button_class <> " bg-indigo-600 dark:bg-indigo-500", toggle_class <> " translate-x-5"]
       else
         [button_class <> " bg-gray-200 dark:bg-gray-600", toggle_class <> " translate-x-0"]
       end
@@ -122,12 +195,12 @@ defmodule ShroudWeb.Components.Atoms do
     assigns = assign(assigns, :sr_text, sr_text)
 
     ~H"""
-    <button type="button" class={@button_class} role="switch" aria-checked={@on} phx-click={@click}>
+    <.button intent={:unstyled} class={@button_class} role="switch" aria-checked={@on} click={@click}>
       <span class="sr-only">
         {@sr_text}
       </span>
       <span aria-hidden="true" class={@toggle_class} />
-    </button>
+    </.button>
     """
   end
 

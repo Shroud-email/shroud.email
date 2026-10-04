@@ -11,7 +11,8 @@ defmodule ShroudWeb.UserRegistrationControllerTest do
       conn = get(conn, ~p"/users/register")
       response = html_response(conn, 200)
       assert response =~ "Sign up"
-      assert response =~ "Log in</a>"
+      login_links = response |> Floki.parse_document!() |> Floki.find("a[href='/users/log_in']")
+      assert Enum.any?(login_links, &(Floki.text(&1) |> String.trim() == "Log in"))
     end
 
     test "redirects if already logged in", %{conn: conn} do

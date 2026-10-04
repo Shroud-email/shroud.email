@@ -48,40 +48,44 @@
               <% end %>
               <div class="ml-3 relative" x-data="AlpineComponents.menu({ open: false })" x-init="init()" @keydown.escape.stop="open = false; focusButton()" @click.away="onClickAway($event)">
                 <div>
-                  <button
+                  <.button
+                    intent={:unstyled}
                     type="button"
-                    class="max-w-xs bg-gray-800 rounded-full flex items-center text-sm text-gray-300 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white"
+                    class="max-w-xs bg-gray-800 rounded-button flex items-center text-sm text-gray-300 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white"
                     id="user-menu-button"
                     aria-haspopup="true"
-                    x-ref="button"
-                    @click="onButtonClick()"
-                    @keydown.arrow-up.prevent="onArrowUp()"
-                    @keydown.arrow-down.prevent="onArrowDown()"
-                    x-bind:aria-expanded="open.toString()"
+                    alpine_click="onButtonClick()"
+                    {%{
+                      "x-ref" => "button",
+                      "x-bind:aria-expanded" => "open.toString()",
+                      "x-on:keydown.arrow-up.prevent" => "onArrowUp()",
+                      "x-on:keydown.arrow-down.prevent" => "onArrowDown()"
+                    }}
                   >
                     <span class="sr-only">Open user menu</span>
                     <%!-- HeroIcons user-cirle --%>
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                  </button>
+                  </.button>
                 </div>
 
                 <.user_menu_desktop {assigns} />
               </div>
             <% else %>
-              <.link href={~p"/users/log_in"} class="btn btn-primary">Log in</.link>
+              <.button href={~p"/users/log_in"} text="Log in" />
             <% end %>
           </div>
         </div>
         <div class="-mr-2 flex md:hidden">
           <%!-- Mobile menu button --%>
-          <button
-            @click="open = !open"
+          <.button
+            intent={:unstyled}
+            alpine_click="open = !open"
             type="button"
-            class="bg-gray-800 inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white"
+            class="bg-gray-800 inline-flex items-center justify-center p-2 rounded-button text-gray-400 hover:text-white hover:bg-gray-700 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white"
             aria-controls="mobile-menu"
-            x-bind:aria-expanded="open.toString()"
+            {%{"x-bind:aria-expanded" => "open.toString()"}}
           >
             <span class="sr-only">Open main menu</span>
             <%!--
@@ -100,7 +104,7 @@
             <svg class="hidden h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
-          </button>
+          </.button>
         </div>
       </div>
     </div>

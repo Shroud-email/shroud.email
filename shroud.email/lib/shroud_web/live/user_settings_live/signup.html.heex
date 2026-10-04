@@ -79,21 +79,17 @@
         </span>
       </div>
       <div class="mt-6">
-        <div class="rounded-md shadow-sm">
-          <button
+        <div>
+          <.button
             type="button"
             id="upgrade-button"
-            disabled
-            class={[
-              "flex items-center justify-center w-full px-5 py-3 border border-transparent text-base font-medium rounded-md text-white",
-              @paddle_checkout_available? && "bg-gray-800 hover:bg-gray-900 dark:bg-indigo-600 dark:hover:bg-indigo-700 cursor-pointer disabled:cursor-wait disabled:opacity-70",
-              !@paddle_checkout_available? && "bg-gray-400 dark:bg-gray-600 cursor-not-allowed"
-            ]}
+            disabled={true}
+            intent={if @paddle_checkout_available?, do: :primary, else: :white}
+            class="w-full"
+            text={if @paddle_checkout_available?, do: "Upgrade", else: "Payments unavailable"}
             data-paddle-checkout={@paddle_checkout_available? && "true"}
             data-paddle-checkout-url={@paddle_checkout_available? && ~p"/checkout/paddle"}
-          >
-            {if @paddle_checkout_available?, do: "Upgrade", else: "Payments unavailable"}
-          </button>
+          />
         </div>
       </div>
     </div>

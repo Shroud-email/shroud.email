@@ -100,13 +100,14 @@
               Going forward, this alias will block emails from this sender.
             </p>
           <% else %>
-            <button
-              phx-click="block_sender"
+            <.button
+              click="block_sender"
               phx-value-sender={spam_email.from}
               phx-value-alias={spam_email.email_alias.address}
               x-tooltip="blockTooltip"
-              type="button"
-              class="relative inline-flex items-center p-2 border border-gray-50 dark:border-gray-700 shadow-sm text-sm font-medium rounded-md text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-600 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              intent={:white}
+              size={:icon}
+              class="relative"
             >
               <span class="sr-only">Block {spam_email.from}</span>
               <svg
@@ -121,15 +122,16 @@
                   clip-rule="evenodd"
                 />
               </svg>
-            </button>
+            </.button>
           <% end %>
-          <button
+          <.button
             id={"delete-spam-button-#{spam_email.id}"}
-            phx-click="open_delete_modal"
+            click="open_delete_modal"
             phx-value-id={spam_email.id}
             x-tooltip="deleteTooltip"
-            type="button"
-            class="relative inline-flex items-center p-2 border border-gray-50 dark:border-gray-700 shadow-sm text-sm font-medium rounded-md text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-600 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            intent={:white}
+            size={:icon}
+            class="relative"
           >
             <span class="sr-only">Delete email</span>
             <svg
@@ -144,7 +146,7 @@
                 clip-rule="evenodd"
               />
             </svg>
-          </button>
+          </.button>
         </div>
       </div>
     </div>

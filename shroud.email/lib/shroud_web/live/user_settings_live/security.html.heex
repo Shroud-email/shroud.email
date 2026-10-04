@@ -47,9 +47,7 @@
       </div>
     </div>
     <div class="px-4 py-3 bg-gray-50 dark:bg-gray-700 text-right sm:px-6">
-      <button type="submit" class="btn btn-primary" phx-disable-with="Saving…">
-        Change password
-      </button>
+      <.button type="submit" phx-disable-with="Saving…" text="Change password" />
     </div>
   </div>
 </.form>
@@ -73,13 +71,11 @@
     <%= cond do %>
       <% !@current_user.totp_enabled and is_nil(@otp_qr_code) -> %>
         <div class="text-right">
-          <button
+          <.button
             id="generate_totp_secret"
-            phx-click="generate_totp_secret"
-            class="btn btn-primary"
-          >
-            Enable two-factor authentication
-          </button>
+            click="generate_totp_secret"
+            text="Enable two-factor authentication"
+          />
         </div>
       <% not is_nil(@otp_qr_code) -> %>
         <p class="mt-1">
@@ -103,9 +99,11 @@
             />
           </div>
           <div class="text-right mt-6">
-            <button type="submit" class="btn btn-primary" phx-disable-with="Activating…">
-              Activate two-factor authentication
-            </button>
+            <.button
+              type="submit"
+              phx-disable-with="Activating…"
+              text="Activate two-factor authentication"
+            />
           </div>
         </.form>
       <% @totp_backup_codes -> %>
@@ -120,22 +118,19 @@
             </div>
           </div>
           <div class="text-right space-x-3">
-            <button
+            <.button
               id="copy-backup-codes"
               phx-hook="CopyToClipboard"
               data-clipboard-text={Enum.join(@totp_backup_codes, "\n")}
               data-copy-error-event="backup_copy_failed"
-              class="btn btn-primary"
-            >
-              Copy backup codes
-            </button>
-            <button
+              text="Copy backup codes"
+            />
+            <.button
               id="dismiss-backup-codes"
-              phx-click="dismiss_backup_codes"
-              class="btn btn-secondary"
-            >
-              I've saved my backup codes
-            </button>
+              click="dismiss_backup_codes"
+              intent={:secondary}
+              text="I've saved my backup codes"
+            />
           </div>
           <.live_component
             module={PopupAlert}
@@ -160,16 +155,21 @@
             required
           />
           <div class="mt-6 text-right">
-            <button type="submit" class="btn btn-primary" phx-disable-with="Disabling…">
-              Disable two-factor authentication
-            </button>
+            <.button
+              type="submit"
+              phx-disable-with="Disabling…"
+              text="Disable two-factor authentication"
+            />
           </div>
         </.form>
       <% true -> %>
         <div class="text-right">
-          <button id="show-disable-totp" phx-click="show_disable_totp" class="btn btn-white">
-            Disable two-factor authentication
-          </button>
+          <.button
+            id="show-disable-totp"
+            click="show_disable_totp"
+            intent={:white}
+            text="Disable two-factor authentication"
+          />
         </div>
     <% end %>
   </div>
@@ -194,33 +194,28 @@
       <span class="text-sm text-gray-900 dark:text-gray-100">
         {key.label || "Passkey"} · added {Calendar.strftime(key.inserted_at, "%b %d, %Y")}
       </span>
-      <button
+      <.button
         id={"remove-passkey-button-#{key.id}"}
-        type="button"
-        phx-click={
+        click={
           Phoenix.LiveView.JS.push_focus() |> Phoenix.LiveView.JS.push("open_passkey_dialog")
         }
         phx-value-action="remove"
         phx-value-id={key.id}
-        class="cursor-pointer text-sm font-medium text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400"
-      >
-        Remove
-      </button>
+        intent={:danger_text}
+        text="Remove"
+      />
     </div>
   </div>
 
   <div :if={@passkey_supported} class="mt-6 text-right">
-    <button
+    <.button
       id="add-passkey-button"
-      type="button"
-      phx-click={
+      click={
         Phoenix.LiveView.JS.push_focus() |> Phoenix.LiveView.JS.push("open_passkey_dialog")
       }
       phx-value-action="add"
-      class="btn btn-primary"
-    >
-      Add passkey
-    </button>
+      text="Add passkey"
+    />
   </div>
 
   <.form
@@ -338,15 +333,16 @@
   </p>
 </section>
 
-<section
-  :if={Shroud.Mcp.enabled?(@current_user)}
-  class="bg-white dark:bg-gray-800 shadow-sm rounded-md p-6"
->
+<section :if={Shroud.Mcp.enabled?(@current_user)} class="bg-white dark:bg-gray-800 shadow-sm rounded-md p-6">
   <h3 class="text-lg font-medium">Connected apps</h3>
   <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
     Manage and revoke apps connected to your account.
   </p>
-  <.link patch={~p"/settings/connections"} id="manage-connections" class="btn btn-white mt-4">
-    Manage connections
-  </.link>
+  <.button
+    patch={~p"/settings/connections"}
+    id="manage-connections"
+    intent={:white}
+    class="mt-4"
+    text="Manage connections"
+  />
 </section>

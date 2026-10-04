@@ -25,15 +25,14 @@
       <p class="text-sm text-gray-600 dark:text-gray-300">
         Expires {Calendar.strftime(connection.expires_at, "%d %b %Y")}
       </p>
-      <button
+      <.button
         id={"revoke-#{connection.id}"}
-        phx-click="revoke_connection"
+        click="revoke_connection"
         phx-value-id={connection.id}
         phx-disable-with="Disconnecting…"
-        class="btn btn-white"
-      >
-        Disconnect app
-      </button>
+        intent={:white}
+        text="Disconnect app"
+      />
     </section>
   </div>
   <.link patch={~p"/settings/security"} id="back-to-security" class="underline text-sm">

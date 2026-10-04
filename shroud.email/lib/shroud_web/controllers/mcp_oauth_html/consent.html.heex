@@ -13,8 +13,8 @@
     <p class="text-sm text-gray-600 dark:text-gray-300">Disconnect anytime in Connected apps. Access expires after 90 days.</p>
     <.form for={to_form(%{"approval" => @approval})} action={~p"/oauth/authorize"} id="connection-consent" class="flex flex-wrap gap-3">
       <input type="hidden" name="approval" value={@approval} />
-      <button name="decision" value="allow" class="btn btn-primary">Connect</button>
-      <button name="decision" value="deny" class="btn btn-white">Cancel</button>
+      <.button type="submit" name="decision" value="allow" text="Connect" />
+      <.button type="submit" name="decision" value="deny" intent={:white} text="Cancel" />
     </.form>
   </section>
 </main>
