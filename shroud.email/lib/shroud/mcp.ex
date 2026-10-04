@@ -26,6 +26,8 @@ defmodule Shroud.Mcp do
   def issuer, do: ShroudWeb.Endpoint.url()
   def resource, do: issuer() <> "/mcp"
 
+  def enabled?(user), do: FunWithFlags.enabled?(:chatgpt_integration, for: user)
+
   def validate_authorization(params) when is_map(params) do
     with %{"name" => name, "redirect_uris" => redirects} <-
            Clients.metadata(params["client_id"]),
@@ -51,7 +53,7 @@ defmodule Shroud.Mcp do
 
   def authorize(user, params) do
     with {:ok, _} <- validate_authorization(params),
-         true <- not is_nil(user.confirmed_at) do
+         true <- not is_nil(user.confirmed_at) and enabled?(user) do
       conn = oauth_conn(params) |> Plug.Conn.assign(:mcp_user, user)
       Boruta.Oauth.authorize(conn, owner(to_string(user.id)), __MODULE__)
     else
@@ -247,7 +249,7 @@ defmodule Shroud.Mcp do
     is_nil(connection.revoked_at) and DateTime.compare(connection.expires_at, now()) == :gt and
       connection.resource == resource() and Clients.metadata(connection.client_id) != nil and
       valid_scopes?(Enum.join(connection.scopes, " ")) and
-      user != nil and user.confirmed_at != nil
+      user != nil and user.confirmed_at != nil and enabled?(user)
   end
 
   defp transact(fun) do

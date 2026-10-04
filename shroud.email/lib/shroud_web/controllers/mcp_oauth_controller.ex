@@ -5,6 +5,13 @@ defmodule ShroudWeb.McpOAuthController do
   plug :put_root_layout, html: {ShroudWeb.Layouts, :connection}
   plug :put_private_headers
   plug ShroudWeb.Plugs.RateLimit, :routes when action in [:register, :token, :revoke]
+  plug :require_mcp_enabled when action in [:authorize, :consent]
+
+  defp require_mcp_enabled(conn, _opts) do
+    if Mcp.enabled?(conn.assigns.current_user),
+      do: conn,
+      else: conn |> send_resp(404, "Not found") |> halt()
+  end
 
   def register(conn, _params) do
     case Mcp.Clients.register(conn.body_params) do

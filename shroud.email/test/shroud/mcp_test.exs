@@ -5,6 +5,43 @@ defmodule Shroud.McpTest do
   alias Shroud.{Accounts, Mcp, Repo}
   alias Shroud.Mcp.{Clients, Connection}
 
+  test "the integration flag gates authorization, exchange, refresh and access" do
+    %{user: user, connection: connection, tokens: tokens} =
+      connection_fixture()
+
+    {params, verifier} = authorization_params(["aliases:read"])
+    {:ok, code} = Mcp.authorize(user, params)
+
+    exchange =
+      Map.merge(params, %{
+        "grant_type" => "authorization_code",
+        "code" => code,
+        "code_verifier" => verifier
+      })
+
+    FunWithFlags.disable(:chatgpt_integration, for_actor: user)
+
+    assert {:error, :invalid_request} = Mcp.authorize(user, params)
+
+    assert {:error, :invalid_grant} =
+             Mcp.exchange(exchange)
+
+    assert {:error, :invalid_grant} =
+             Mcp.exchange(%{
+               "grant_type" => "refresh_token",
+               "client_id" => connection.client_id,
+               "resource" => Mcp.resource(),
+               "refresh_token" => tokens.refresh_token
+             })
+
+    assert {:error, :invalid_token} =
+             Mcp.with_access(tokens.access_token, nil, fn _ -> flunk("flag bypass") end)
+
+    FunWithFlags.enable(:chatgpt_integration, for_actor: user)
+    assert :ok = Mcp.with_access(tokens.access_token, nil, fn _ -> :ok end)
+    assert {:ok, _} = Mcp.exchange(exchange)
+  end
+
   test "only the configured MCP resource, exact redirects, permissions and S256 are accepted" do
     {params, _} = authorization_params()
     assert {:ok, _} = Mcp.validate_authorization(params)

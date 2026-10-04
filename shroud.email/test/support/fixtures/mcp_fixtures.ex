@@ -30,7 +30,9 @@ defmodule Shroud.McpFixtures do
   end
 
   def confirmed_user do
-    user_fixture() |> Accounts.User.confirm_changeset() |> Repo.update!()
+    user = user_fixture() |> Accounts.User.confirm_changeset() |> Repo.update!()
+    FunWithFlags.enable(:chatgpt_integration, for_actor: user)
+    user
   end
 
   def connection_fixture(scopes \\ Map.keys(Mcp.permissions()), user \\ confirmed_user()) do
