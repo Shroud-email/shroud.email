@@ -9,7 +9,7 @@ export type Pending = {
   created: number;
 };
 export type Tokens = { access: string; refresh: string; expires: number };
-export type Account = { id: string; email: string };
+export type Account = { email: string };
 type Store = {
   get(key: string): Promise<string | null>;
   set(key: string, value: string): Promise<void>;
@@ -194,9 +194,9 @@ export class AuthService {
           return response.json();
         },
       );
-      if (typeof account.id !== "string" || typeof account.email !== "string")
+      if (typeof account.email !== "string")
         throw new Error("Invalid account response.");
-      return { id: account.id, email: account.email };
+      return { email: account.email };
     });
   }
   logout() {

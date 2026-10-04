@@ -11,20 +11,18 @@ defmodule ShroudWeb.Api.V1.ProfileController do
     operation_id: "getProfile",
     tags: ["Account"],
     summary: "Get the authenticated account identity",
-    description:
-      "OAuth clients need the profile:read scope. Returns only the account ID and email address.",
+    description: "OAuth clients need the profile:read scope. Returns only the email address.",
     responses: [
       ok:
         {"Account identity", "application/json",
          %Schema{
            title: "Profile",
            type: :object,
-           required: [:id, :email],
+           required: [:email],
            properties: %{
-             id: %Schema{type: :string},
              email: %Schema{type: :string, format: :email}
            },
-           example: %{id: "123", email: "user@example.com"}
+           example: %{email: "user@example.com"}
          }},
       unauthorized: {"Invalid token", "application/json", Schemas.error()},
       forbidden:
@@ -36,7 +34,6 @@ defmodule ShroudWeb.Api.V1.ProfileController do
     conn
     |> put_resp_header("cache-control", "no-store")
     |> json(%{
-      id: to_string(conn.assigns.current_user.id),
       email: conn.assigns.current_user.email
     })
   end

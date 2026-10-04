@@ -249,7 +249,7 @@ test("concurrent refreshes serialize and persist rotated token before any subseq
         JSON.parse(await storage.get("tokens")).refresh,
         `rotated-${used.length}`,
       );
-      return response({ id: "server-id", email: "server@example.com" });
+      return response({ email: "server@example.com" });
     },
     () => now,
   );
@@ -258,7 +258,7 @@ test("concurrent refreshes serialize and persist rotated token before any subseq
     service.account(),
     service.account(),
   ]);
-  assert.equal(accounts[0].id, "server-id");
+  assert.deepEqual(accounts, Array(3).fill({ email: "server@example.com" }));
   assert.deepEqual(used, ["original"]);
   now += 3600_000;
   await Promise.all([service.account(), service.account()]);

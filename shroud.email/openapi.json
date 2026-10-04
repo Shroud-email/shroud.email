@@ -197,8 +197,7 @@
       },
       "Profile": {
         "example": {
-          "email": "user@example.com",
-          "id": "123"
+          "email": "user@example.com"
         },
         "properties": {
           "email": {
@@ -206,15 +205,9 @@
             "type": "string",
             "x-struct": null,
             "x-validate": null
-          },
-          "id": {
-            "type": "string",
-            "x-struct": null,
-            "x-validate": null
           }
         },
         "required": [
-          "id",
           "email"
         ],
         "title": "Profile",
@@ -1549,7 +1542,7 @@
     "/api/v1/me": {
       "get": {
         "callbacks": {},
-        "description": "OAuth clients need the profile:read scope. Returns only the account ID and email address.",
+        "description": "OAuth clients need the profile:read scope. Returns only the email address.",
         "operationId": "getProfile",
         "parameters": [],
         "responses": {
@@ -1558,8 +1551,7 @@
               "application/json": {
                 "schema": {
                   "example": {
-                    "email": "user@example.com",
-                    "id": "123"
+                    "email": "user@example.com"
                   },
                   "properties": {
                     "email": {
@@ -1567,15 +1559,9 @@
                       "type": "string",
                       "x-struct": null,
                       "x-validate": null
-                    },
-                    "id": {
-                      "type": "string",
-                      "x-struct": null,
-                      "x-validate": null
                     }
                   },
                   "required": [
-                    "id",
                     "email"
                   ],
                   "title": "Profile",

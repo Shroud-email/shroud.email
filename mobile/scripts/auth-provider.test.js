@@ -22,7 +22,7 @@ function provider(platform = "android") {
   });
   let exchanges = 0;
   let identityResponse;
-  const account = { id: "account-id", email: "person@example.com" };
+  const account = { email: "person@example.com" };
   const react = {
     createContext: () => ({ Provider: "provider" }),
     createElement: (_type, props) => {

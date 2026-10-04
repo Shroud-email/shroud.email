@@ -22,7 +22,7 @@ defmodule Shroud.Mcp do
     do:
       Map.merge(@permissions, %{
         "aliases:delete" => "Delete aliases",
-        "profile:read" => "View your account identity (including your email address)"
+        "profile:read" => "View your email address"
       })
 
   def permissions(resource) do

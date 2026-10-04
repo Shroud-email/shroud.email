@@ -14,13 +14,6 @@
       </li>
     </ul>
     <p class="text-sm text-gray-600 dark:text-gray-300">
-      <%= if "profile:read" in @details.scopes do %>
-        Your email address is shared for account identification. Your emails and account settings stay private.
-      <% else %>
-        Your emails, real inbox address and account settings stay private.
-      <% end %>
-    </p>
-    <p class="text-sm text-gray-600 dark:text-gray-300">
       Disconnect anytime in Connected apps. Access expires after 90 days.
     </p>
     <.form

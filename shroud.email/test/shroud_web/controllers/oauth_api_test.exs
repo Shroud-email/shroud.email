@@ -71,7 +71,7 @@ defmodule ShroudWeb.OAuthApiTest do
     assert get_resp_header(conn, "cache-control") == ["no-store"]
 
     assert bearer(tokens["access_token"]) |> get("/api/v1/me") |> json_response(200) ==
-             %{"id" => to_string(user.id), "email" => user.email}
+             %{"email" => user.email}
   end
 
   test "REST scope checks use narrowed token scopes, not the original consent" do
@@ -133,7 +133,7 @@ defmodule ShroudWeb.OAuthApiTest do
     assert tokens.resource == Mcp.api_resource()
 
     assert bearer(tokens.access_token) |> get("/api/v1/me") |> json_response(200) ==
-             %{"id" => to_string(user.id), "email" => user.email}
+             %{"email" => user.email}
 
     assert bearer(tokens.access_token) |> get("/api/v1/aliases") |> json_response(200)
     assert bearer(tokens.access_token) |> get(Mcp.resource()) |> response(401)
@@ -142,7 +142,7 @@ defmodule ShroudWeb.OAuthApiTest do
       build_conn() |> log_in_user(user) |> get("/oauth/authorize", params) |> html_response(200)
 
     refute html =~ "id=\"unverified-client\""
-    assert html =~ "View your account identity"
+    assert html =~ "View your email address"
     assert build_conn() |> log_in_user(user) |> get("/settings/connections") |> response(200)
 
     refresh = %{
