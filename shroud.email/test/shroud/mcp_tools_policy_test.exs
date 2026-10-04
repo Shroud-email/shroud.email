@@ -15,9 +15,9 @@ defmodule Shroud.McpToolsPolicyTest do
   test "schema mismatches remain input errors without logging private values", context do
     log =
       capture_log(fn ->
-        assert {:error, "Invalid tool arguments"} =
+        assert {:error, "Invalid tool arguments", %{error_code: "INVALID_ARGUMENT"}} =
                  Tools.call(context.connection, "create_alias", %{
-                   "title" => "PRIVATE_LABEL",
+                   "title" => "PRIVATE_TITLE",
                    "unexpected" => "PRIVATE_VALUE"
                  })
       end)
@@ -28,16 +28,17 @@ defmodule Shroud.McpToolsPolicyTest do
 
   test "validator policy failures are retryable, sanitized and never execute the tool", context do
     Application.put_env(:ex_mcp, :json_schema, validation_timeout_ms: -1)
-    args = %{"title" => "PRIVATE_LABEL", "notes" => "PRIVATE_NOTES"}
+    args = %{"title" => "PRIVATE_TITLE", "notes" => "PRIVATE_NOTES"}
 
     log =
       capture_log(fn ->
-        assert {:error, "Tool unavailable; please try again."} =
+        assert {:error, "Tool unavailable; please try again.",
+                %{error_code: "SERVICE_UNAVAILABLE"}} =
                  Tools.call(context.connection, "create_alias", args)
       end)
 
     assert log =~ "MCP schema validation unavailable (invalid_schema_policy_option)"
-    refute log =~ "PRIVATE_LABEL"
+    refute log =~ "PRIVATE_TITLE"
     refute log =~ "PRIVATE_NOTES"
     assert Repo.aggregate(Aliases.EmailAlias, :count) == 0
     Application.put_env(:ex_mcp, :json_schema, context.original)

@@ -132,7 +132,14 @@ defmodule ShroudWeb.Plugs.McpAuth do
       _ ->
         conn
         |> put_resp_header("www-authenticate", challenge())
-        |> send_resp(401, "Authentication required")
+        |> put_resp_content_type("application/json")
+        |> send_resp(
+          401,
+          Jason.encode!(%{
+            error_code: "AUTHENTICATION_REQUIRED",
+            error: "Authentication required"
+          })
+        )
         |> halt()
     end
   end

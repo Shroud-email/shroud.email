@@ -63,9 +63,18 @@ defmodule ShroudWeb.Plugs.RateLimit do
   defp reject(conn, status, message) do
     {content_type, body} =
       case Enum.map(conn.path_info, &URI.decode/1) do
-        ["api" | _] -> {"application/json", Jason.encode!(%{error: message})}
-        ["checkout", "paddle"] -> {"application/json", Jason.encode!(%{error: message})}
-        _ -> {"text/plain", message}
+        ["api" | _] ->
+          {"application/json", Jason.encode!(%{error: message})}
+
+        ["checkout", "paddle"] ->
+          {"application/json", Jason.encode!(%{error: message})}
+
+        ["mcp" | _] ->
+          code = if status == 429, do: "RATE_LIMITED", else: "SERVICE_UNAVAILABLE"
+          {"application/json", Jason.encode!(%{error_code: code, error: message})}
+
+        _ ->
+          {"text/plain", message}
       end
 
     conn |> put_resp_content_type(content_type) |> send_resp(status, body) |> halt()

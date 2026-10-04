@@ -95,7 +95,10 @@ defmodule ShroudWeb.McpRegistrationTest do
         )
         |> json_response(200)
 
-      assert result["result"]["structuredContent"] == %{"aliases" => [], "has_more" => false}
+      assert result["result"]["structuredContent"] == %{
+               "aliases" => [],
+               "has_more" => false
+             }
 
       refresh = %{
         "client_id" => registration["client_id"],

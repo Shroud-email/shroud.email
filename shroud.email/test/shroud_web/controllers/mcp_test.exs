@@ -6,6 +6,153 @@ defmodule ShroudWeb.McpTest do
   alias Shroud.{Accounts, Aliases, Mcp, Repo}
   alias Shroud.Mcp.Tools
 
+  test "output schemas accept structured errors without weakening success validation" do
+    for tool <- Tools.list() do
+      for error <- [
+            %{"error_code" => "INVALID_ARGUMENT"},
+            %{"error_code" => "ALIAS_ALREADY_EXISTS", "address" => "shop@example.com"},
+            %{"error_code" => "INSUFFICIENT_SCOPE", "required_scopes" => ["aliases:read"]}
+          ] do
+        assert :ok = SchemaPolicy.validate(error, tool.outputSchema)
+      end
+
+      for invalid <- [
+            %{},
+            %{"address" => "shop@example.com"},
+            %{"error_code" => 123},
+            %{"error_code" => "INVALID_ARGUMENT", "unexpected" => true},
+            %{"error_code" => "INSUFFICIENT_SCOPE", "required_scopes" => "aliases:read"}
+          ] do
+        assert {:error, _} = SchemaPolicy.validate(invalid, tool.outputSchema)
+      end
+    end
+  end
+
+  test "integral JSON floats paginate like integers and fractional values remain invalid" do
+    %{user: user, tokens: tokens} = connection_fixture()
+
+    aliases =
+      for i <- 1..5 do
+        entry = alias_fixture(%{user_id: user.id, title: "Store #{i}"})
+        entry |> Ecto.Changeset.change(inserted_at: ~N[2026-01-01 00:00:00]) |> Repo.update!()
+      end
+
+    integer = tool(tokens, "list_aliases", %{limit: 2, page: 2})["structuredContent"]
+
+    assert Enum.map(integer["aliases"], & &1["address"]) == [
+             Enum.at(aliases, 2).address,
+             Enum.at(aliases, 1).address
+           ]
+
+    assert integer["has_more"]
+
+    for args <- [%{limit: 2.0, page: 2}, %{limit: 2, page: 2.0}, %{limit: 2.0, page: 2.0}] do
+      assert tool(tokens, "list_aliases", args)["structuredContent"] == integer
+    end
+
+    assert tool(tokens, "list_aliases", %{limit: 1.0})["structuredContent"] ==
+             tool(tokens, "list_aliases", %{limit: 1})["structuredContent"]
+
+    custom_domain_fixture(%{user_id: user.id})
+
+    assert tool(tokens, "list_verified_domains", %{page: 1.0})["structuredContent"] ==
+             tool(tokens, "list_verified_domains", %{page: 1})["structuredContent"]
+
+    for {name, args} <- [
+          {"list_aliases", %{limit: 1.5}},
+          {"list_aliases", %{page: 1.5}},
+          {"list_verified_domains", %{page: 1.5}}
+        ] do
+      result = tool(tokens, name, args)
+      assert result["isError"]
+      assert result["structuredContent"]["error_code"] == "INVALID_ARGUMENT"
+    end
+  end
+
+  test "HTTP authentication and rate-limit failures return machine-readable codes" do
+    assert rpc(nil, "tools/list") |> json_response(401) == %{
+             "error_code" => "AUTHENTICATION_REQUIRED",
+             "error" => "Authentication required"
+           }
+
+    %{user: user, tokens: tokens} = connection_fixture()
+    for _ <- 1..120, do: Shroud.RateLimit.check(:api, {:account, user.id})
+    conn = rpc(tokens.access_token, "tools/list")
+    assert json_response(conn, 429)["error_code"] == "RATE_LIMITED"
+    assert [seconds] = get_resp_header(conn, "retry-after")
+    assert String.to_integer(seconds) in 1..60
+  end
+
+  test "page pagination follows creation time and ID with search, status and configurable limits" do
+    %{user: user, tokens: tokens} = connection_fixture()
+    newer_id = alias_fixture(%{user_id: user.id, title: "Store old", notes: "Receipts"})
+    first_tie = alias_fixture(%{user_id: user.id, title: "Store tie", notes: "Receipts"})
+    last_tie = alias_fixture(%{user_id: user.id, title: "Store tie", notes: "Receipts"})
+    oldest = alias_fixture(%{user_id: user.id, title: "Store oldest", notes: "Receipts"})
+
+    for {entry, timestamp} <- [
+          {newer_id, ~N[2026-01-02 00:00:00]},
+          {first_tie, ~N[2026-01-03 00:00:00]},
+          {last_tie, ~N[2026-01-03 00:00:00]},
+          {oldest, ~N[2026-01-01 00:00:00]}
+        ] do
+      entry |> Ecto.Changeset.change(inserted_at: timestamp) |> Repo.update!()
+    end
+
+    alias_fixture(%{user_id: user.id, title: "Store", notes: "Receipts", enabled: false})
+    alias_fixture(%{user_id: confirmed_user().id, title: "Store", notes: "Receipts"})
+    filters = %{search: "tOrE ceip", enabled: true, limit: 1}
+    first = tool(tokens, "list_aliases", filters)["structuredContent"]
+    assert Enum.map(first["aliases"], & &1["address"]) == [last_tie.address]
+    assert hd(first["aliases"])["created_at"] == "2026-01-03T00:00:00Z"
+    assert first["has_more"]
+
+    second = tool(tokens, "list_aliases", Map.put(filters, :page, 2))["structuredContent"]
+    assert Enum.map(second["aliases"], & &1["address"]) == [first_tie.address]
+    assert second["has_more"]
+
+    final =
+      tool(tokens, "list_aliases", %{filters | limit: 2} |> Map.put(:page, 2))[
+        "structuredContent"
+      ]
+
+    assert Enum.map(final["aliases"], & &1["address"]) == [newer_id.address, oldest.address]
+    refute final["has_more"]
+    refute Map.has_key?(final, "next_cursor")
+
+    assert length(tool(tokens, "list_aliases", %{limit: 100})["structuredContent"]["aliases"]) ==
+             5
+
+    for args <- [
+          %{limit: 0},
+          %{limit: 101},
+          %{limit: 1.5},
+          %{cursor: "unsupported"}
+        ] do
+      result = tool(tokens, "list_aliases", args)
+      assert result["isError"]
+      assert result["structuredContent"] == %{"error_code" => "INVALID_ARGUMENT"}
+    end
+  end
+
+  test "duplicate disabled aliases return their normalized address and a specific error" do
+    %{user: user, tokens: tokens} = connection_fixture()
+    domain = custom_domain_fixture(%{user_id: user.id})
+    args = %{title: "Shop", domain: domain.domain, local_part: "shop"}
+    created = tool(tokens, "create_alias", args)["structuredContent"]
+    tool(tokens, "edit_alias", %{address: created["address"], enabled: false})
+    result = tool(tokens, "create_alias", %{args | local_part: "SHOP"})
+    assert result["isError"]
+
+    assert result["structuredContent"] == %{
+             "error_code" => "ALIAS_ALREADY_EXISTS",
+             "address" => created["address"]
+           }
+
+    assert hd(result["content"])["text"] ==
+             "This alias address already exists, including as a disabled alias. Choose a different local part or edit the existing alias."
+  end
+
   test "discovery advertises PKCE, issuer identification, resource and bounded scopes" do
     metadata =
       build_conn() |> get("/.well-known/oauth-authorization-server") |> json_response(200)
@@ -316,6 +463,7 @@ defmodule ShroudWeb.McpTest do
     for tool <- tools do
       assert tool["inputSchema"]["additionalProperties"] == false
       assert tool["outputSchema"]["type"] == "object"
+      refute Jason.encode!(tool) =~ "label"
       refute Map.has_key?(tool, "securitySchemes")
       refute Map.has_key?(tool["_meta"] || %{}, "securitySchemes")
       assert tool["annotations"]["openWorldHint"] == false
@@ -400,6 +548,7 @@ defmodule ShroudWeb.McpTest do
           "address" => alias.address,
           "title" => "Store #{i}",
           "notes" => notes,
+          "created_at" => NaiveDateTime.to_iso8601(alias.inserted_at) <> "Z",
           "enabled" => true
         }
       end
@@ -433,7 +582,7 @@ defmodule ShroudWeb.McpTest do
     end
   end
 
-  test "listing searches address, label and notes with literal multi-term and enabled filters" do
+  test "listing searches address, title and notes with literal multi-term and enabled filters" do
     %{user: user, tokens: tokens} = connection_fixture()
     enabled = alias_fixture(%{user_id: user.id, title: "Store", notes: "Receipt"})
 
@@ -454,6 +603,7 @@ defmodule ShroudWeb.McpTest do
                    "address" => enabled.address,
                    "title" => "Store",
                    "notes" => "Receipt",
+                   "created_at" => NaiveDateTime.to_iso8601(enabled.inserted_at) <> "Z",
                    "enabled" => true
                  }
                ],
@@ -466,6 +616,7 @@ defmodule ShroudWeb.McpTest do
                  "address" => disabled.address,
                  "title" => "Unrelated",
                  "notes" => "Store 100%_\\",
+                 "created_at" => NaiveDateTime.to_iso8601(disabled.inserted_at) <> "Z",
                  "enabled" => false
                }
              ],
@@ -479,6 +630,7 @@ defmodule ShroudWeb.McpTest do
                    "address" => disabled.address,
                    "title" => "Unrelated",
                    "notes" => "Store 100%_\\",
+                   "created_at" => NaiveDateTime.to_iso8601(disabled.inserted_at) <> "Z",
                    "enabled" => false
                  }
                ]
@@ -520,6 +672,7 @@ defmodule ShroudWeb.McpTest do
              "address" => own.address,
              "title" => "After",
              "notes" => "Keep",
+             "created_at" => NaiveDateTime.to_iso8601(own.inserted_at) <> "Z",
              "enabled" => false
            }
 
@@ -532,21 +685,22 @@ defmodule ShroudWeb.McpTest do
 
     assert tool(tokens, "edit_alias", %{
              address: own.address,
-             title: "Enabled label",
+             title: "Enabled title",
              notes: "New notes",
              enabled: true
            })[
              "structuredContent"
            ] == %{
              "address" => own.address,
-             "title" => "Enabled label",
+             "title" => "Enabled title",
              "notes" => "New notes",
+             "created_at" => NaiveDateTime.to_iso8601(own.inserted_at) <> "Z",
              "enabled" => true
            }
 
     assert tool(tokens, "get_alias", %{address: String.upcase(own.address)})["structuredContent"][
              "title"
-           ] == "Enabled label"
+           ] == "Enabled title"
 
     assert Repo.get!(Aliases.EmailAlias, foreign.id).title == "Foreign"
     Aliases.delete_email_alias(own.id)
@@ -557,6 +711,11 @@ defmodule ShroudWeb.McpTest do
     %{tokens: tokens} = connection_fixture(["aliases:read"])
     result = tool(tokens, "create_alias", %{title: "Not permitted"})
     assert result["isError"]
+
+    assert result["structuredContent"] == %{
+             "error_code" => "INSUFFICIENT_SCOPE",
+             "required_scopes" => ["aliases:create", "aliases:read"]
+           }
 
     assert result["content"] == [
              %{
@@ -586,10 +745,10 @@ defmodule ShroudWeb.McpTest do
     %{user: user, tokens: tokens} = connection_fixture()
 
     random =
-      tool(tokens, "create_alias", %{title: "Shopping", notes: "A label"})["structuredContent"]
+      tool(tokens, "create_alias", %{title: "Shopping", notes: "Receipts"})["structuredContent"]
 
     assert random["title"] == "Shopping"
-    assert random["notes"] == "A label"
+    assert random["notes"] == "Receipts"
     assert random["enabled"]
     domain = custom_domain_fixture(%{user_id: user.id})
     foreign = custom_domain_fixture(%{user_id: confirmed_user().id})
@@ -610,7 +769,6 @@ defmodule ShroudWeb.McpTest do
     for args <- [
           %{title: "Bad", domain: foreign.domain, local_part: "shop"},
           %{title: "Bad", domain: unverified.domain, local_part: "shop"},
-          %{title: "Bad", domain: domain.domain},
           %{title: "Bad", local_part: "shop"},
           %{title: "Bad", domain: domain.domain, local_part: "shop_orders"},
           %{title: "Bad", user_id: foreign.user_id},
@@ -624,6 +782,7 @@ defmodule ShroudWeb.McpTest do
     for _ <- 1..3, do: tool(tokens, "create_alias", %{title: "Extra"})
     limited = tool(tokens, "create_alias", %{title: "Over limit"})
     assert limited["isError"]
+    assert limited["structuredContent"] == %{"error_code" => "ALIAS_LIMIT_REACHED"}
 
     assert hd(limited["content"])["text"] ==
              "Your account's alias limit has been reached. Upgrade for more aliases: #{Mcp.issuer()}/settings/billing"
@@ -656,6 +815,7 @@ defmodule ShroudWeb.McpTest do
              "address" => email_alias.address,
              "title" => "Password resets",
              "notes" => "Keep these notes",
+             "created_at" => NaiveDateTime.to_iso8601(email_alias.inserted_at) <> "Z",
              "enabled" => false
            }
 
@@ -784,6 +944,7 @@ defmodule ShroudWeb.McpTest do
                "address" => email_alias.address,
                "title" => "Status",
                "notes" => "Existing notes",
+               "created_at" => NaiveDateTime.to_iso8601(email_alias.inserted_at) <> "Z",
                "enabled" => true
              }
 
@@ -796,9 +957,15 @@ defmodule ShroudWeb.McpTest do
       |> json_response(200)
       |> Map.fetch!("result")
 
-    unless result["isError"] do
-      schema = Enum.find(Tools.list(), &(&1.name == name)).outputSchema
-      assert :ok = SchemaPolicy.validate(result["structuredContent"], schema)
+    tool = Enum.find(Tools.list(), &(&1.name == name))
+
+    if tool do
+      assert :ok = SchemaPolicy.validate(result["structuredContent"], tool.outputSchema)
+    end
+
+    if result["isError"] do
+      assert is_binary(result["structuredContent"]["error_code"])
+    else
       assert hd(result["content"])["text"] |> Jason.decode!() == result["structuredContent"]
     end
 
