@@ -212,7 +212,7 @@ defmodule Shroud.Mcp do
     )
     |> Enum.map(fn {connection, metadata} ->
       name =
-        case Map.get(Clients.official_clients(), connection.client_id, metadata) do
+        case metadata do
           %{"name" => name} -> name
           _ -> "Disconnected client"
         end

@@ -131,6 +131,8 @@ defmodule ShroudWeb.McpRegistrationTest do
   end
 
   test "registration validates callbacks and public-client metadata without accepting supplied policy" do
+    count = Repo.aggregate(Boruta.Ecto.Client, :count)
+
     for callback <- [
           "http://agent.example/callback",
           "http://localhost.evil.example/callback",
@@ -168,7 +170,7 @@ defmodule ShroudWeb.McpRegistrationTest do
       assert response["error"] == "invalid_client_metadata"
     end
 
-    assert Repo.aggregate(Boruta.Ecto.Client, :count) == 0
+    assert Repo.aggregate(Boruta.Ecto.Client, :count) == count
 
     registration =
       register(%{
@@ -223,6 +225,7 @@ defmodule ShroudWeb.McpRegistrationTest do
   end
 
   test "registration limits database growth per source IP" do
+    count = Repo.aggregate(Boruta.Ecto.Client, :count)
     conn = build_conn()
 
     for _ <- 1..10 do
@@ -234,7 +237,7 @@ defmodule ShroudWeb.McpRegistrationTest do
     denied = conn |> post("/oauth/register", %{redirect_uris: ["https://agent.example/callback"]})
     assert response(denied, 429)
     assert get_resp_header(denied, "retry-after") != []
-    assert Repo.aggregate(Boruta.Ecto.Client, :count) == 10
+    assert Repo.aggregate(Boruta.Ecto.Client, :count) == count + 10
   end
 
   defp register(attrs) do

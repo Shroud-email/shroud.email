@@ -37,8 +37,8 @@ settings on that same host. Without `APP_DOMAIN`, development uses plain HTTP on
 database migrations before enabling passkey enrollment.
 
 Mobile and extension clients use OAuth Authorization Code with PKCE.
-Official IDs and exact callbacks are defined in
-[`Shroud.Mcp.Clients`](lib/shroud/mcp/clients.ex) and are available automatically.
+Official client IDs, exact callbacks, and security settings are stored in the
+database. Run `mix ecto.migrate` to provision the mobile and ChatGPT clients.
 For the published ChatGPT plugin, configure predefined public client ID
 `7b705cee-124c-4abe-827f-d61c030c32c0`. Its callback is
 `https://chatgpt.com/connector_platform_oauth_redirect`, documented for servers

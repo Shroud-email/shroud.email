@@ -4,31 +4,13 @@ defmodule Shroud.Mcp.Clients do
   alias Shroud.Repo
   import Boruta.Ecto.OauthMapper, only: [to_oauth_schema: 1]
 
-  # Official registrations use stable IDs and exact callbacks on every instance.
-  @official_clients %{
-    "3dab4011-1a87-453f-9b6d-c8e12a41c892" => %{
-      "name" => "Shroud.email mobile",
-      "resource_path" => "/api/v1",
-      "registered" => true,
-      "redirect_uris" => ["https://app.shroud.email/oauth/callback"]
-    },
-    "7b705cee-124c-4abe-827f-d61c030c32c0" => %{
-      "name" => "ChatGPT",
-      "resource_path" => "/mcp",
-      "registered" => true,
-      "redirect_uris" => ["https://chatgpt.com/connector_platform_oauth_redirect"]
-    }
-  }
-
-  def official_clients, do: @official_clients
-
   def metadata(id) when is_binary(id) do
     case find_client(id) do
-      %Boruta.Ecto.Client{id: uuid, metadata: metadata, redirect_uris: redirects} ->
+      %Boruta.Ecto.Client{metadata: metadata, redirect_uris: redirects} ->
         metadata
         |> Map.put("redirect_uris", redirects)
         |> Map.put_new("resource_path", "/mcp")
-        |> Map.put("registered", Map.has_key?(@official_clients, uuid))
+        |> Map.put_new("registered", false)
 
       _ ->
         nil
@@ -107,26 +89,10 @@ defmodule Shroud.Mcp.Clients do
   defp find_client(id) do
     case Ecto.UUID.cast(id) do
       {:ok, uuid} ->
-        case @official_clients[uuid] do
-          nil ->
-            case Repo.get(Boruta.Ecto.Client, uuid) do
-              %Boruta.Ecto.Client{metadata: %{"mcp_dynamic" => true}} = client -> client
-              _ -> nil
-            end
-
-          metadata ->
-            client =
-              public_client(uuid, metadata["redirect_uris"])
-              |> Map.put(:id, uuid)
-              |> Map.put(:metadata, Map.delete(metadata, "redirect_uris"))
-              |> Map.put(:authorized_scopes, [])
-
-            # Boruta's code/token foreign keys require a row; policy comes from the catalog.
-            if is_nil(Repo.get(Boruta.Ecto.Client, uuid)) do
-              Repo.insert!(client, on_conflict: :nothing, conflict_target: [:id])
-            end
-
-            client
+        case Repo.get(Boruta.Ecto.Client, uuid) do
+          %Boruta.Ecto.Client{metadata: %{"mcp_dynamic" => true}} = client -> client
+          %Boruta.Ecto.Client{metadata: %{"registered" => true}} = client -> client
+          _ -> nil
         end
 
       _ ->

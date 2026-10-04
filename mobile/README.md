@@ -9,8 +9,8 @@ npm start
 
 ## Native sign-in
 
-The app uses public client ID `3dab4011-1a87-453f-9b6d-c8e12a41c892`, defined in
-the server's official client catalog. There is no client secret or client-ID
+The app uses public client ID `3dab4011-1a87-453f-9b6d-c8e12a41c892`, provisioned
+in the server's database by migrations. There is no client secret or client-ID
 environment variable. The callback is `https://app.shroud.email/oauth/callback`,
 the resource is `https://app.shroud.email/api/v1`, and the scopes are
 `profile:read aliases:read aliases:create aliases:edit aliases:delete domains:read`.
