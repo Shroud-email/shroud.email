@@ -270,7 +270,7 @@ defmodule Shroud.Accounts do
     Ecto.Multi.new()
     |> Ecto.Multi.update(:user, changeset)
     |> Ecto.Multi.delete_all(:tokens, UserToken.user_and_contexts_query(user, :all))
-    |> Ecto.Multi.delete_all(:mcp_connections, Shroud.Mcp.connections_query(user))
+    |> Ecto.Multi.delete_all(:oauth_connections, Shroud.OAuth.connections_query(user))
     |> Repo.transaction()
     |> case do
       {:ok, %{user: user}} -> {:ok, user}
@@ -444,7 +444,7 @@ defmodule Shroud.Accounts do
     Ecto.Multi.new()
     |> Ecto.Multi.update(:user, User.password_changeset(user, attrs))
     |> Ecto.Multi.delete_all(:tokens, UserToken.user_and_contexts_query(user, :all))
-    |> Ecto.Multi.delete_all(:mcp_connections, Shroud.Mcp.connections_query(user))
+    |> Ecto.Multi.delete_all(:oauth_connections, Shroud.OAuth.connections_query(user))
     |> Repo.transaction()
     |> case do
       {:ok, %{user: user}} -> {:ok, user}

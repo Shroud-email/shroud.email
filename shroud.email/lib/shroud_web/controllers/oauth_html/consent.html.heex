@@ -1,21 +1,20 @@
 <main class="max-w-xl mx-auto px-4 py-10">
   <section class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 space-y-5">
     <h1 class="text-2xl font-semibold">Connect {@details.name}?</h1>
-    <div id="unverified-client" class="text-sm space-y-2">
+    <div :if={!@details.registered} id="unverified-client" class="text-sm space-y-2">
       <p>Shroud.email has not verified this app's identity. Only connect an app you trust.</p>
       <p>Callback URL: <span class="break-all">{@details.redirect_uri}</span></p>
     </div>
     <p>{@details.name} will be able to:</p>
     <ul id="connection-permissions" class="list-disc pl-5 space-y-2">
       <li :for={
-        permission <- Enum.map(@details.scopes, &Shroud.Mcp.permissions()[&1]) |> Enum.uniq()
+        permission <-
+          Enum.map(@details.scopes, &Shroud.OAuth.permissions(@details.resource)[&1])
+          |> Enum.uniq()
       }>
         {permission}
       </li>
     </ul>
-    <p class="text-sm text-gray-600 dark:text-gray-300">
-      Your emails, real inbox address and account settings stay private.
-    </p>
     <p class="text-sm text-gray-600 dark:text-gray-300">
       Disconnect anytime in Connected apps. Access expires after 90 days.
     </p>

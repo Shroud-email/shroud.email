@@ -511,9 +511,9 @@ defmodule ShroudWeb.Api.V1.EmailAliasControllerTest do
       email_alias: email_alias
     } do
       path = ~p"/api/v1/aliases/#{email_alias.address}"
-      assert conn |> get(path) |> json_response(403) == %{"error" => "Invalid token"}
+      assert conn |> get(path) |> json_response(401) == %{"error" => "Invalid token"}
 
-      assert conn |> patch(path, %{"enabled" => false}) |> json_response(403) ==
+      assert conn |> patch(path, %{"enabled" => false}) |> json_response(401) ==
                %{"error" => "Invalid token"}
 
       unconfirmed = user_fixture()

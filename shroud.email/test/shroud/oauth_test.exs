@@ -1,16 +1,16 @@
-defmodule Shroud.McpTest do
+defmodule Shroud.OAuthTest do
   use Shroud.DataCase, async: false
-  import Shroud.McpFixtures
+  import Shroud.OAuthFixtures
   alias Boruta.Ecto.Token
-  alias Shroud.{Accounts, Mcp, Repo}
-  alias Shroud.Mcp.{Clients, Connection}
+  alias Shroud.{Accounts, OAuth, Repo}
+  alias Shroud.OAuth.{Clients, Connection}
 
   test "the integration flag gates authorization, exchange, refresh and access" do
     %{user: user, connection: connection, tokens: tokens} =
       connection_fixture()
 
     {params, verifier} = authorization_params(["aliases:read"])
-    {:ok, code} = Mcp.authorize(user, params)
+    {:ok, code} = OAuth.authorize(user, params)
 
     exchange =
       Map.merge(params, %{
@@ -21,35 +21,40 @@ defmodule Shroud.McpTest do
 
     FunWithFlags.disable(:chatgpt_integration, for_actor: user)
 
-    assert {:error, :invalid_request} = Mcp.authorize(user, params)
+    assert {:error, :invalid_request} = OAuth.authorize(user, params)
 
     assert {:error, :invalid_grant} =
-             Mcp.exchange(exchange)
+             OAuth.exchange(exchange)
 
     assert {:error, :invalid_grant} =
-             Mcp.exchange(%{
+             OAuth.exchange(%{
                "grant_type" => "refresh_token",
                "client_id" => connection.client_id,
-               "resource" => Mcp.resource(),
+               "resource" => OAuth.resource(:mcp),
                "refresh_token" => tokens.refresh_token
              })
 
     assert {:error, :invalid_token} =
-             Mcp.with_access(tokens.access_token, nil, fn _ -> flunk("flag bypass") end)
+             OAuth.with_access(tokens.access_token, OAuth.resource(:mcp), nil, fn _ ->
+               flunk("flag bypass")
+             end)
 
     FunWithFlags.enable(:chatgpt_integration, for_actor: user)
-    assert :ok = Mcp.with_access(tokens.access_token, nil, fn _ -> :ok end)
-    assert {:ok, _} = Mcp.exchange(exchange)
+
+    assert :ok =
+             OAuth.with_access(tokens.access_token, OAuth.resource(:mcp), nil, fn _ -> :ok end)
+
+    assert {:ok, _} = OAuth.exchange(exchange)
   end
 
   test "only the configured MCP resource, exact redirects, permissions and S256 are accepted" do
     {params, _} = authorization_params()
-    assert {:ok, _} = Mcp.validate_authorization(params)
+    assert {:ok, _} = OAuth.validate_authorization(params)
 
     for {key, value} <- [
           {"client_id", "unknown"},
           {"redirect_uri", "https://client.example/callback?next=evil"},
-          {"resource", Mcp.issuer() <> "/api/v1"},
+          {"resource", OAuth.issuer() <> "/api/v1"},
           {"scope", "aliases:read emails:read"},
           {"scope", "openid"},
           {"scope", ""},
@@ -58,17 +63,18 @@ defmodule Shroud.McpTest do
           {"request", "unsigned-request-object"},
           {"request_uri", "https://evil.example/request"}
         ] do
-      assert {:error, :invalid_request} = Mcp.validate_authorization(Map.put(params, key, value))
+      assert {:error, :invalid_request} =
+               OAuth.validate_authorization(Map.put(params, key, value))
     end
 
     assert {:error, :invalid_request} =
-             Mcp.authorize(Shroud.AccountsFixtures.user_fixture(), params)
+             OAuth.authorize(Shroud.AccountsFixtures.user_fixture(), params)
   end
 
   test "Boruta issues codes and verifies PKCE, client, redirect and expiration" do
     user = confirmed_user()
     {params, verifier} = authorization_params(["aliases:read"])
-    {:ok, code} = Mcp.authorize(user, params)
+    {:ok, code} = OAuth.authorize(user, params)
     stored = Repo.get_by!(Token, value: code)
     assert stored.type == "code"
     assert stored.code_challenge_method == "S256"
@@ -87,27 +93,31 @@ defmodule Shroud.McpTest do
           {"redirect_uri", "https://other.example/callback"},
           {"resource", "https://evil.example/mcp"}
         ] do
-      assert {:error, :invalid_grant} = Mcp.exchange(Map.put(exchange, key, value))
+      assert {:error, :invalid_grant} = OAuth.exchange(Map.put(exchange, key, value))
     end
 
-    assert {:ok, tokens} = Mcp.exchange(exchange)
+    assert {:ok, tokens} = OAuth.exchange(exchange)
     assert Repo.get_by!(Token, value: tokens.access_token).type == "access_token"
-    assert :ok = Mcp.with_access(tokens.access_token, "aliases:read", fn _ -> :ok end)
+
+    assert :ok =
+             OAuth.with_access(tokens.access_token, OAuth.resource(:mcp), "aliases:read", fn _ ->
+               :ok
+             end)
 
     assert {:error, :insufficient_scope} =
-             Mcp.with_access(tokens.access_token, "aliases:edit", fn _ ->
+             OAuth.with_access(tokens.access_token, OAuth.resource(:mcp), "aliases:edit", fn _ ->
                flunk("unauthorized")
              end)
 
-    assert {:error, :invalid_grant} = Mcp.exchange(exchange)
+    assert {:error, :invalid_grant} = OAuth.exchange(exchange)
 
-    {:ok, expired_code} = Mcp.authorize(user, params)
+    {:ok, expired_code} = OAuth.authorize(user, params)
 
     Repo.get_by!(Token, value: expired_code)
     |> Ecto.Changeset.change(expires_at: 0)
     |> Repo.update!()
 
-    assert {:error, :invalid_grant} = Mcp.exchange(Map.put(exchange, "code", expired_code))
+    assert {:error, :invalid_grant} = OAuth.exchange(Map.put(exchange, "code", expired_code))
   end
 
   test "Boruta rotates refresh tokens and cannot widen permissions" do
@@ -116,36 +126,48 @@ defmodule Shroud.McpTest do
     params = %{
       "grant_type" => "refresh_token",
       "client_id" => connection.client_id,
-      "resource" => Mcp.resource(),
+      "resource" => OAuth.resource(:mcp),
       "refresh_token" => first.refresh_token
     }
 
     assert {:error, :invalid_grant} =
-             Mcp.exchange(Map.put(params, "scope", "aliases:read aliases:edit"))
+             OAuth.exchange(Map.put(params, "scope", "aliases:read aliases:edit"))
 
-    assert {:error, :invalid_grant} = Mcp.exchange(Map.put(params, "client_id", client_fixture()))
-    assert {:ok, second} = Mcp.exchange(params)
+    assert {:error, :invalid_grant} =
+             OAuth.exchange(Map.put(params, "client_id", client_fixture()))
+
+    assert {:ok, second} = OAuth.exchange(params)
     refute first.refresh_token == second.refresh_token
     assert second.scope == "aliases:read"
-    assert :ok = Mcp.with_access(second.access_token, "aliases:read", fn _ -> :ok end)
 
-    assert {:ok, third} = Mcp.exchange(Map.put(params, "refresh_token", second.refresh_token))
-    assert third.resource == Mcp.resource()
+    assert :ok =
+             OAuth.with_access(second.access_token, OAuth.resource(:mcp), "aliases:read", fn _ ->
+               :ok
+             end)
+
+    assert {:ok, third} = OAuth.exchange(Map.put(params, "refresh_token", second.refresh_token))
+    assert third.resource == OAuth.resource(:mcp)
 
     for invalid <- [
           Map.put(params, "client_id", client_fixture()),
           Map.put(params, "resource", "https://evil.example/mcp"),
           Map.put(params, "refresh_token", "unknown")
         ] do
-      assert {:error, :invalid_grant} = Mcp.exchange(invalid)
-      assert :ok = Mcp.with_access(third.access_token, "aliases:read", fn _ -> :ok end)
+      assert {:error, :invalid_grant} = OAuth.exchange(invalid)
+
+      assert :ok =
+               OAuth.with_access(third.access_token, OAuth.resource(:mcp), "aliases:read", fn _ ->
+                 :ok
+               end)
     end
 
-    assert {:error, :invalid_grant} = Mcp.exchange(params)
-    assert {:error, :invalid_token} = Mcp.with_access(third.access_token, nil, fn _ -> :ok end)
+    assert {:error, :invalid_grant} = OAuth.exchange(params)
+
+    assert {:error, :invalid_token} =
+             OAuth.with_access(third.access_token, OAuth.resource(:mcp), nil, fn _ -> :ok end)
 
     assert {:error, :invalid_grant} =
-             Mcp.exchange(Map.put(params, "refresh_token", third.refresh_token))
+             OAuth.exchange(Map.put(params, "refresh_token", third.refresh_token))
   end
 
   test "refresh replay revokes only its connection regardless of requested scopes" do
@@ -156,17 +178,23 @@ defmodule Shroud.McpTest do
       params = %{
         "grant_type" => "refresh_token",
         "client_id" => connection.client_id,
-        "resource" => Mcp.resource(),
+        "resource" => OAuth.resource(:mcp),
         "refresh_token" => first.refresh_token
       }
 
-      assert {:ok, second} = Mcp.exchange(params)
+      assert {:ok, second} = OAuth.exchange(params)
       replay = if scope, do: Map.put(params, "scope", scope), else: params
-      assert {:error, :invalid_grant} = Mcp.exchange(replay)
+      assert {:error, :invalid_grant} = OAuth.exchange(replay)
       assert Repo.get!(Connection, connection.id).revoked_at != nil
       assert Repo.get!(Connection, other.id).revoked_at == nil
-      assert {:error, :invalid_token} = Mcp.with_access(second.access_token, nil, fn _ -> :ok end)
-      assert :ok = Mcp.with_access(other_tokens.access_token, nil, fn _ -> :ok end)
+
+      assert {:error, :invalid_token} =
+               OAuth.with_access(second.access_token, OAuth.resource(:mcp), nil, fn _ -> :ok end)
+
+      assert :ok =
+               OAuth.with_access(other_tokens.access_token, OAuth.resource(:mcp), nil, fn _ ->
+                 :ok
+               end)
     end
   end
 
@@ -182,16 +210,16 @@ defmodule Shroud.McpTest do
       connection_fixture(["aliases:read", "aliases:edit"])
 
     assert {:ok, second} =
-             Mcp.exchange(%{
+             OAuth.exchange(%{
                "grant_type" => "refresh_token",
                "client_id" => connection.client_id,
-               "resource" => Mcp.resource(),
+               "resource" => OAuth.resource(:mcp),
                "refresh_token" => first.refresh_token,
                "scope" => "aliases:read"
              })
 
     assert {:error, :insufficient_scope} =
-             Mcp.with_access(second.access_token, "aliases:edit", fn _ ->
+             OAuth.with_access(second.access_token, OAuth.resource(:mcp), "aliases:edit", fn _ ->
                flunk("scope widened")
              end)
   end
@@ -219,11 +247,11 @@ defmodule Shroud.McpTest do
     ref = trace_queries()
 
     for token <- [nil, "", String.duplicate("x", 1025)] do
-      assert :ok = Mcp.revoke_token(token, id)
+      assert :ok = OAuth.revoke_token(token, id)
     end
 
     refute_received {^ref, _}
-    assert :ok = Mcp.revoke_token(String.duplicate("x", 1024), id)
+    assert :ok = OAuth.revoke_token(String.duplicate("x", 1024), id)
     assert_receive {^ref, "SELECT" <> _}
   end
 
@@ -234,7 +262,8 @@ defmodule Shroud.McpTest do
     |> Ecto.Changeset.change(expires_at: 0)
     |> Repo.update!()
 
-    assert {:error, :invalid_token} = Mcp.with_access(tokens.access_token, nil, fn _ -> :ok end)
+    assert {:error, :invalid_token} =
+             OAuth.with_access(tokens.access_token, OAuth.resource(:mcp), nil, fn _ -> :ok end)
 
     %{tokens: tokens, connection: connection} = connection_fixture()
 
@@ -242,31 +271,42 @@ defmodule Shroud.McpTest do
     |> Ecto.Changeset.change(resource: "https://elsewhere.example/mcp")
     |> Repo.update!()
 
-    assert {:error, :invalid_token} = Mcp.with_access(tokens.access_token, nil, fn _ -> :ok end)
+    assert {:error, :invalid_token} =
+             OAuth.with_access(tokens.access_token, OAuth.resource(:mcp), nil, fn _ -> :ok end)
 
     %{tokens: tokens, user: user} = connection_fixture()
     user |> Ecto.Changeset.change(confirmed_at: nil) |> Repo.update!()
-    assert {:error, :invalid_token} = Mcp.with_access(tokens.access_token, nil, fn _ -> :ok end)
+
+    assert {:error, :invalid_token} =
+             OAuth.with_access(tokens.access_token, OAuth.resource(:mcp), nil, fn _ -> :ok end)
 
     %{tokens: tokens, connection: connection} = connection_fixture()
     Repo.get!(Boruta.Ecto.Client, connection.client_id) |> Repo.delete!()
-    assert {:error, :invalid_token} = Mcp.with_access(tokens.access_token, nil, fn _ -> :ok end)
+
+    assert {:error, :invalid_token} =
+             OAuth.with_access(tokens.access_token, OAuth.resource(:mcp), nil, fn _ -> :ok end)
   end
 
   test "only the owning account/client can revoke and disconnected tokens cannot refresh" do
     %{user: user, tokens: tokens, connection: connection} = connection_fixture()
-    refute Mcp.revoke(confirmed_user(), connection.id)
-    Mcp.revoke_token(tokens.access_token, client_fixture())
-    assert :ok = Mcp.with_access(tokens.access_token, nil, fn _ -> :ok end)
-    assert Mcp.revoke(user, connection.id)
-    assert {:error, :invalid_token} = Mcp.with_access(tokens.access_token, nil, fn _ -> :ok end)
-    assert Mcp.list_connections(user) == []
+    refute OAuth.revoke(confirmed_user(), connection.id)
+    OAuth.revoke_token(tokens.access_token, client_fixture())
+
+    assert :ok =
+             OAuth.with_access(tokens.access_token, OAuth.resource(:mcp), nil, fn _ -> :ok end)
+
+    assert OAuth.revoke(user, connection.id)
+
+    assert {:error, :invalid_token} =
+             OAuth.with_access(tokens.access_token, OAuth.resource(:mcp), nil, fn _ -> :ok end)
+
+    assert OAuth.list_connections(user) == []
 
     assert {:error, :invalid_grant} =
-             Mcp.exchange(%{
+             OAuth.exchange(%{
                "grant_type" => "refresh_token",
                "client_id" => connection.client_id,
-               "resource" => Mcp.resource(),
+               "resource" => OAuth.resource(:mcp),
                "refresh_token" => tokens.refresh_token
              })
   end
@@ -281,7 +321,8 @@ defmodule Shroud.McpTest do
                password_confirmation: password
              })
 
-    assert {:error, :invalid_token} = Mcp.with_access(tokens.access_token, nil, fn _ -> :ok end)
+    assert {:error, :invalid_token} =
+             OAuth.with_access(tokens.access_token, OAuth.resource(:mcp), nil, fn _ -> :ok end)
   end
 
   test "pruning connections retains active connections and usable refresh tokens" do
@@ -298,15 +339,15 @@ defmodule Shroud.McpTest do
     )
     |> Repo.update!()
 
-    Mcp.prune()
+    OAuth.prune()
     refute Repo.get(Connection, expired.id)
     assert Repo.get(Connection, active.id)
 
     assert {:ok, _} =
-             Mcp.exchange(%{
+             OAuth.exchange(%{
                "grant_type" => "refresh_token",
                "client_id" => active.client_id,
-               "resource" => Mcp.resource(),
+               "resource" => OAuth.resource(:mcp),
                "refresh_token" => tokens.refresh_token
              })
   end
@@ -314,40 +355,52 @@ defmodule Shroud.McpTest do
   test "connection expiry also rejects fresh Boruta tokens" do
     %{tokens: tokens, connection: connection} = connection_fixture()
     connection |> Ecto.Changeset.change(expires_at: past()) |> Repo.update!()
-    assert {:error, :invalid_token} = Mcp.with_access(tokens.access_token, nil, fn _ -> :ok end)
+
+    assert {:error, :invalid_token} =
+             OAuth.with_access(tokens.access_token, OAuth.resource(:mcp), nil, fn _ -> :ok end)
   end
 
   test "mutation grants require reads at authorization, refresh and access" do
     for mutation <- ~w(aliases:create aliases:edit) do
       {params, _} = authorization_params([mutation])
-      assert {:error, :invalid_request} = Mcp.validate_authorization(params)
+      assert {:error, :invalid_request} = OAuth.validate_authorization(params)
 
       {params, _} = authorization_params(["aliases:read", mutation])
-      assert {:ok, _} = Mcp.validate_authorization(params)
+      assert {:ok, _} = OAuth.validate_authorization(params)
       %{tokens: tokens, connection: connection} = connection_fixture(["aliases:read", mutation])
 
       refresh = %{
         "grant_type" => "refresh_token",
         "client_id" => connection.client_id,
-        "resource" => Mcp.resource(),
+        "resource" => OAuth.resource(:mcp),
         "refresh_token" => tokens.refresh_token,
         "scope" => mutation
       }
 
-      assert {:error, :invalid_grant} = Mcp.exchange(refresh)
+      assert {:error, :invalid_grant} = OAuth.exchange(refresh)
 
       assert {:ok, refreshed} =
-               Mcp.exchange(Map.put(refresh, "scope", "aliases:read " <> mutation))
+               OAuth.exchange(Map.put(refresh, "scope", "aliases:read " <> mutation))
 
-      assert :ok = Mcp.with_access(refreshed.access_token, "aliases:read", fn _ -> :ok end)
-      assert :ok = Mcp.with_access(refreshed.access_token, mutation, fn _ -> :ok end)
+      assert :ok =
+               OAuth.with_access(
+                 refreshed.access_token,
+                 OAuth.resource(:mcp),
+                 "aliases:read",
+                 fn _ -> :ok end
+               )
+
+      assert :ok =
+               OAuth.with_access(refreshed.access_token, OAuth.resource(:mcp), mutation, fn _ ->
+                 :ok
+               end)
 
       Repo.get_by!(Token, value: refreshed.access_token)
       |> Ecto.Changeset.change(scope: mutation)
       |> Repo.update!()
 
       assert {:error, :invalid_token} =
-               Mcp.with_access(refreshed.access_token, mutation, fn _ ->
+               OAuth.with_access(refreshed.access_token, OAuth.resource(:mcp), mutation, fn _ ->
                  flunk("mutation-only")
                end)
     end
@@ -394,7 +447,7 @@ defmodule Shroud.McpTest do
     for path <- ["/mcp", "/oauth/token", "/oauth/authorize", "/settings/connections"] do
       event =
         struct(Sentry.Event,
-          request: %Sentry.Interfaces.Request{url: Mcp.issuer() <> path <> "?code=private"}
+          request: %Sentry.Interfaces.Request{url: OAuth.issuer() <> path <> "?code=private"}
         )
 
       assert Shroud.ErrorReporter.before_send(event) == event
@@ -420,11 +473,11 @@ defmodule Shroud.McpTest do
           "redirect_uri" => "https://agent.example/callback"
       }
 
-      assert {:ok, _code} = Mcp.authorize(user, params)
+      assert {:ok, _code} = OAuth.authorize(user, params)
     end
 
     ref = trace_queries()
-    connections = Mcp.list_connections(user)
+    connections = OAuth.list_connections(user)
 
     assert Enum.map(connections, & &1.client_name) |> Enum.sort() ==
              ["Browser agent", "Desktop agent", "Test client"]
@@ -435,7 +488,7 @@ defmodule Shroud.McpTest do
 
     Repo.get!(Boruta.Ecto.Client, connection.client_id) |> Repo.delete!()
 
-    assert Enum.map(Mcp.list_connections(user), & &1.client_name) |> Enum.sort() ==
+    assert Enum.map(OAuth.list_connections(user), & &1.client_name) |> Enum.sort() ==
              ["Browser agent", "Desktop agent", "Disconnected client"]
   end
 

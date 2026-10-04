@@ -1,7 +1,7 @@
-defmodule Shroud.Mcp.ResourceOwners do
+defmodule Shroud.OAuth.ResourceOwners do
   @moduledoc "Boruta's account adapter; browser authentication stays with Shroud."
   @behaviour Boruta.Oauth.ResourceOwners
-  alias Shroud.{Accounts, Mcp, Repo}
+  alias Shroud.{Accounts, OAuth, Repo}
 
   @impl true
   def get_by(sub: sub) do
@@ -21,6 +21,8 @@ defmodule Shroud.Mcp.ResourceOwners do
 
   @impl true
   def authorized_scopes(_owner) do
-    Enum.map(Mcp.permissions(), fn {name, _} -> %Boruta.Oauth.Scope{name: name} end)
+    Enum.map(OAuth.permissions(OAuth.resource(:api)), fn {name, _} ->
+      %Boruta.Oauth.Scope{name: name}
+    end)
   end
 end

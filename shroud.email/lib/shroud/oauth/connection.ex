@@ -1,7 +1,7 @@
-defmodule Shroud.Mcp.Connection do
+defmodule Shroud.OAuth.Connection do
   use Ecto.Schema
 
-  schema "mcp_connections" do
+  schema "oauth_connections" do
     belongs_to :user, Shroud.Accounts.User
     field :client_id, :string
     field :client_name, :string, virtual: true

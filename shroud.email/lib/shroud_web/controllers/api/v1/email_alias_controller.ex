@@ -7,13 +7,19 @@ defmodule ShroudWeb.Api.V1.EmailAliasController do
   alias Shroud.Domain.CustomDomain
   alias Shroud.Repo
   alias ShroudWeb.Api.V1.Schemas
+  import ShroudWeb.UserApiAuth, only: [require_api_scope: 2]
+
+  plug :require_api_scope, "aliases:read" when action in [:index, :show]
+  plug :require_api_scope, "aliases:create" when action == :create
+  plug :require_api_scope, "aliases:edit" when action == :update
+  plug :require_api_scope, "aliases:delete" when action == :delete
 
   tags(["Aliases"])
 
   operation(:index,
     operation_id: "listAliases",
     summary: "List email aliases",
-    description: "Lists your non-deleted email aliases, newest first.",
+    description: "Lists your non-deleted email aliases, newest first. OAuth scope: aliases:read.",
     parameters:
       Schemas.pagination_parameters() ++
         [
@@ -33,7 +39,9 @@ defmodule ShroudWeb.Api.V1.EmailAliasController do
         ],
     responses: [
       ok: {"Email aliases", "application/json", Schemas.aliases_page()},
-      forbidden: {"Invalid token or unconfirmed account", "application/json", Schemas.error()},
+      unauthorized: {"Invalid token", "application/json", Schemas.error()},
+      forbidden:
+        {"Insufficient scope or unconfirmed account", "application/json", Schemas.error()},
       unprocessable_entity:
         {"Invalid search or enabled filter", "application/json", Schemas.error(),
          example: %{error: "Invalid search or enabled filter"}}
@@ -75,11 +83,13 @@ defmodule ShroudWeb.Api.V1.EmailAliasController do
   operation(:show,
     operation_id: "getAlias",
     summary: "Get an alias",
-    description: "Fetches a single alias.",
+    description: "Fetches a single alias. OAuth scope: aliases:read.",
     parameters: Schemas.address_parameter(),
     responses: [
       ok: {"Email alias", "application/json", Schemas.email_alias()},
-      forbidden: {"Invalid token or unconfirmed account", "application/json", Schemas.error()},
+      unauthorized: {"Invalid token", "application/json", Schemas.error()},
+      forbidden:
+        {"Insufficient scope or unconfirmed account", "application/json", Schemas.error()},
       not_found:
         {"Alias not found", "application/json", Schemas.error(),
          example: %{error: "Alias not found"}}
@@ -96,13 +106,15 @@ defmodule ShroudWeb.Api.V1.EmailAliasController do
   operation(:update,
     operation_id: "updateAlias",
     summary: "Update an alias",
-    description: "Updates an alias's settings.",
+    description: "Updates an alias's settings. OAuth scope: aliases:edit.",
     parameters: Schemas.address_parameter(),
     request_body:
       {"Fields to update", "application/json", Schemas.update_alias(), required: false},
     responses: [
       ok: {"Updated alias", "application/json", Schemas.email_alias()},
-      forbidden: {"Invalid token or unconfirmed account", "application/json", Schemas.error()},
+      unauthorized: {"Invalid token", "application/json", Schemas.error()},
+      forbidden:
+        {"Insufficient scope or unconfirmed account", "application/json", Schemas.error()},
       not_found:
         {"Alias not found", "application/json", Schemas.error(),
          example: %{error: "Alias not found"}},
@@ -129,6 +141,7 @@ defmodule ShroudWeb.Api.V1.EmailAliasController do
     description: """
     Creates an enabled alias with a random or custom address. Random addresses use
     the default shared domain (`@fog.shroud.email` on hosted Shroud.email).
+    OAuth scope: aliases:create.
     """,
     request_body:
       {"Optional alias settings", "application/json", Schemas.create_alias(), required: false},
@@ -144,8 +157,9 @@ defmodule ShroudWeb.Api.V1.EmailAliasController do
            blocked_addresses: [],
            enabled: true
          }},
+      unauthorized: {"Invalid token", "application/json", Schemas.error()},
       forbidden:
-        {"Invalid token, unconfirmed/inactive account, or free plan alias limit reached",
+        {"Insufficient scope, unconfirmed/inactive account, or free plan alias limit reached",
          "application/json", Schemas.error()},
       unprocessable_entity:
         {"Invalid metadata, address, or domain", "application/json", Schemas.error(),
@@ -189,11 +203,14 @@ defmodule ShroudWeb.Api.V1.EmailAliasController do
     Deletes an alias from your account.
     Prefer disabling an alias if you may need it again. Deleted aliases on shared
     Shroud domains cannot be recreated; custom-domain addresses can be recreated.
+    OAuth scope: aliases:delete.
     """,
     parameters: Schemas.address_parameter(),
     responses: [
       no_content: "Alias deleted",
-      forbidden: {"Invalid token or unconfirmed account", "application/json", Schemas.error()},
+      unauthorized: {"Invalid token", "application/json", Schemas.error()},
+      forbidden:
+        {"Insufficient scope or unconfirmed account", "application/json", Schemas.error()},
       unprocessable_entity:
         {"Alias not found", "application/json", Schemas.error(),
          example: %{error: "Alias not found"}}

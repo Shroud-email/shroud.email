@@ -1,20 +1,34 @@
-defmodule ShroudWeb.McpOAuthController do
+defmodule ShroudWeb.OAuthController do
   use ShroudWeb, :controller
-  alias Shroud.Mcp
+  alias Shroud.OAuth
 
   plug :put_root_layout, html: {ShroudWeb.Layouts, :connection}
   plug :put_private_headers
   plug ShroudWeb.Plugs.RateLimit, :routes when action in [:register, :token, :revoke]
-  plug :require_mcp_enabled when action in [:authorize, :consent]
+  plug :require_resource_enabled when action in [:authorize, :consent]
 
-  defp require_mcp_enabled(conn, _opts) do
-    if Mcp.enabled?(conn.assigns.current_user),
+  defp require_resource_enabled(conn, _opts) do
+    params = conn.params
+
+    target =
+      case params do
+        %{"approval" => approval} ->
+          case Phoenix.Token.verify(ShroudWeb.Endpoint, "mcp-consent", approval, max_age: 600) do
+            {:ok, {_id, request}} -> request["resource"]
+            _ -> nil
+          end
+
+        _ ->
+          params["resource"]
+      end
+
+    if OAuth.enabled?(conn.assigns.current_user, target || OAuth.resource(:mcp)),
       do: conn,
       else: conn |> send_resp(404, "Not found") |> halt()
   end
 
   def register(conn, _params) do
-    case Mcp.Clients.register(conn.body_params) do
+    case OAuth.Clients.register(conn.body_params) do
       {:ok, client} -> conn |> put_status(201) |> json(client)
       {:error, error} -> conn |> put_status(400) |> json(%{error: error})
     end
@@ -22,32 +36,37 @@ defmodule ShroudWeb.McpOAuthController do
 
   def metadata(conn, _params) do
     json(conn, %{
-      issuer: Mcp.issuer(),
-      authorization_endpoint: Mcp.issuer() <> "/oauth/authorize",
-      token_endpoint: Mcp.issuer() <> "/oauth/token",
-      registration_endpoint: Mcp.issuer() <> "/oauth/register",
-      revocation_endpoint: Mcp.issuer() <> "/oauth/revoke",
+      issuer: OAuth.issuer(),
+      authorization_endpoint: OAuth.issuer() <> "/oauth/authorize",
+      token_endpoint: OAuth.issuer() <> "/oauth/token",
+      registration_endpoint: OAuth.issuer() <> "/oauth/register",
+      revocation_endpoint: OAuth.issuer() <> "/oauth/revoke",
       response_types_supported: ["code"],
       grant_types_supported: ["authorization_code", "refresh_token"],
       token_endpoint_auth_methods_supported: ["none"],
       revocation_endpoint_auth_methods_supported: ["none"],
       code_challenge_methods_supported: ["S256"],
       authorization_response_iss_parameter_supported: true,
-      scopes_supported: Map.keys(Mcp.permissions())
+      scopes_supported: Map.keys(OAuth.permissions(OAuth.resource(:api)))
     })
   end
 
   def resource_metadata(conn, _params) do
+    target =
+      if conn.request_path == "/.well-known/oauth-protected-resource/api/v1",
+        do: OAuth.resource(:api),
+        else: OAuth.resource(:mcp)
+
     json(conn, %{
-      resource: Mcp.resource(),
-      authorization_servers: [Mcp.issuer()],
-      scopes_supported: Map.keys(Mcp.permissions()),
+      resource: target,
+      authorization_servers: [OAuth.issuer()],
+      scopes_supported: Map.keys(OAuth.permissions(target)),
       bearer_methods_supported: ["header"]
     })
   end
 
   def authorize(conn, params) do
-    case Mcp.validate_authorization(params) do
+    case OAuth.validate_authorization(params) do
       {:ok, details} ->
         approval =
           Phoenix.Token.sign(
@@ -68,10 +87,10 @@ defmodule ShroudWeb.McpOAuthController do
     with {:ok, {user_id, params}} <-
            Phoenix.Token.verify(ShroudWeb.Endpoint, "mcp-consent", approval, max_age: 600),
          true <- user_id == conn.assigns.current_user.id,
-         {:ok, _} <- Mcp.validate_authorization(params) do
+         {:ok, _} <- OAuth.validate_authorization(params) do
       case decision do
         "allow" ->
-          case Mcp.authorize(conn.assigns.current_user, params) do
+          case OAuth.authorize(conn.assigns.current_user, params) do
             {:ok, code} -> callback(conn, params, %{code: code})
             _ -> invalid(conn)
           end
@@ -91,7 +110,7 @@ defmodule ShroudWeb.McpOAuthController do
 
   def token(conn, _params) do
     # OAuth credentials belong in the POST body, never the URL or browser session.
-    case Mcp.exchange(conn.body_params) do
+    case OAuth.exchange(conn.body_params) do
       {:ok, tokens} -> json(conn, tokens)
       {:error, :invalid_request} -> conn |> put_status(400) |> json(%{error: "invalid_request"})
       {:error, _} -> conn |> put_status(400) |> json(%{error: "invalid_grant"})
@@ -99,8 +118,15 @@ defmodule ShroudWeb.McpOAuthController do
   end
 
   def revoke(conn, _params) do
-    Mcp.revoke_token(conn.body_params["token"], conn.body_params["client_id"])
+    OAuth.revoke_token(conn.body_params["token"], conn.body_params["client_id"])
     send_resp(conn, 200, "")
+  end
+
+  def callback_fallback(conn, _params) do
+    text(
+      conn,
+      "Open this link with the Shroud.email mobile app to complete sign-in. If the app is not installed, sign in on the website instead."
+    )
   end
 
   defp callback(conn, params, result) do
@@ -108,7 +134,7 @@ defmodule ShroudWeb.McpOAuthController do
 
     response_query =
       result
-      |> Map.merge(%{state: params["state"], iss: Mcp.issuer()})
+      |> Map.merge(%{state: params["state"], iss: OAuth.issuer()})
       |> URI.encode_query()
 
     query =
@@ -124,7 +150,7 @@ defmodule ShroudWeb.McpOAuthController do
     do:
       conn
       |> put_status(400)
-      |> text("Invalid or expired connection request. Start again from your MCP client.")
+      |> text("Invalid or expired connection request. Start again from your app.")
 
   defp put_private_headers(conn, _opts),
     do:

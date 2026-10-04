@@ -8,9 +8,24 @@
     "scheme": "shroud",
     "userInterfaceStyle": "automatic",
     "ios": {
+      "bundleIdentifier": "email.shroud.app",
+      "associatedDomains": ["applinks:app.shroud.email"],
       "icon": "./assets/images/icon.png"
     },
     "android": {
+      "package": "email.shroud.app",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "category": ["BROWSABLE", "DEFAULT"],
+          "data": [
+            { "scheme": "https", "host": "app.shroud.email", "path": "/" },
+            { "scheme": "https", "host": "app.shroud.email", "path": "/explore" },
+            { "scheme": "https", "host": "app.shroud.email", "path": "/oauth/callback" }
+          ]
+        }
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#151726",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

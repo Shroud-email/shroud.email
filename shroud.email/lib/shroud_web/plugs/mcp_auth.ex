@@ -1,50 +1,12 @@
 defmodule ShroudWeb.Plugs.McpAuth do
   import Plug.Conn
-  alias Shroud.Mcp
+  import ShroudWeb.Plugs.OAuthCors, only: [put_headers: 2]
+  alias Shroud.OAuth
 
   def init(opts), do: opts
 
-  def call(%{path_info: path} = conn, :cors)
-      when path in [
-             ["oauth", "register"],
-             ["oauth", "token"],
-             ["oauth", "revoke"],
-             [".well-known", "oauth-authorization-server"],
-             [".well-known", "oauth-protected-resource"],
-             [".well-known", "oauth-protected-resource", "mcp"]
-           ] do
-    with true <- conn.host == URI.parse(Mcp.issuer()).host,
-         [origin] <- get_req_header(conn, "origin") do
-      conn = cors(conn, origin)
-
-      if conn.method == "OPTIONS" do
-        conn
-        |> put_resp_header("access-control-allow-methods", "GET, POST, OPTIONS")
-        |> put_resp_header("access-control-allow-headers", "Content-Type, Accept")
-        |> send_resp(204, "")
-        |> halt()
-      else
-        conn
-      end
-    else
-      _ -> conn
-    end
-  end
-
-  def call(%{path_info: [resource | _]} = conn, :cors) do
-    with true <- URI.decode(resource) == "mcp",
-         true <- conn.host == URI.parse(Mcp.issuer()).host,
-         [origin] <- get_req_header(conn, "origin") do
-      cors(conn, origin)
-    else
-      _ -> conn
-    end
-  end
-
-  def call(conn, :cors), do: conn
-
   def call(conn, _opts) do
-    if conn.host == URI.parse(Mcp.issuer()).host,
+    if conn.host == URI.parse(OAuth.issuer()).host,
       do: authenticate_request(conn),
       else: conn |> send_resp(403, "Forbidden host") |> halt()
   end
@@ -69,21 +31,11 @@ defmodule ShroudWeb.Plugs.McpAuth do
         authenticate(conn, token)
 
       [origin] ->
-        conn |> cors(origin) |> authenticate_or_preflight(token)
+        conn |> put_headers(origin) |> authenticate_or_preflight(token)
 
       _ ->
         conn |> send_resp(403, "Forbidden origin") |> halt()
     end
-  end
-
-  defp cors(conn, origin) do
-    conn
-    |> put_resp_header("vary", "Origin")
-    |> put_resp_header("access-control-allow-origin", origin)
-    |> put_resp_header(
-      "access-control-expose-headers",
-      "WWW-Authenticate, MCP-Session-Id, MCP-Protocol-Version, Retry-After"
-    )
   end
 
   defp authenticate_or_preflight(%{method: "OPTIONS"} = conn, _token) do
@@ -103,15 +55,17 @@ defmodule ShroudWeb.Plugs.McpAuth do
 
   def challenge(reason \\ :invalid_token, scope \\ nil) do
     error = if reason == :insufficient_scope, do: "insufficient_scope", else: "invalid_token"
-    scope = if scope, do: Enum.join(Mcp.required_scopes(scope), " ")
+    scope = if scope, do: Enum.join(OAuth.required_scopes(scope), " ")
     scope_part = if scope, do: ", scope=\"#{scope}\"", else: ""
 
-    ~s(Bearer resource_metadata="#{Mcp.issuer()}/.well-known/oauth-protected-resource", error="#{error}", error_description="Connect your Shroud.email account") <>
+    ~s(Bearer resource_metadata="#{OAuth.issuer()}/.well-known/oauth-protected-resource", error="#{error}", error_description="Connect your Shroud.email account") <>
       scope_part
   end
 
   defp authenticate(conn, token) do
-    case Mcp.with_access(token, nil, fn connection -> {:ok, connection.user_id} end) do
+    case OAuth.with_access(token, OAuth.resource(:mcp), nil, fn connection ->
+           {:ok, connection.user_id}
+         end) do
       {:ok, user_id} ->
         conn = ShroudWeb.Plugs.RateLimit.enforce(conn, :api, {:account, user_id})
 

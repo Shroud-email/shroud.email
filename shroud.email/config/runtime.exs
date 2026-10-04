@@ -21,6 +21,15 @@ config :shroud,
     |> String.split(",", trim: true)
     |> Enum.map(&String.trim/1)
 
+config :shroud, :mobile_associations,
+  apple_team_id: System.get_env("MOBILE_APPLE_TEAM_ID"),
+  android_sha256_cert_fingerprints:
+    System.get_env("MOBILE_ANDROID_SHA256_CERT_FINGERPRINTS", "")
+    |> String.split(",", trim: true)
+    |> Enum.map(&String.trim/1)
+    |> Enum.reject(&(&1 == ""))
+    |> Enum.map(&String.upcase/1)
+
 # Optional: Chatwoot support widget. Set CHATWOOT_BASE_URL to the URL of
 # your Chatwoot server to enable the widget. When unset (e.g. for
 # self-hosted deployments), the widget is not loaded at all.

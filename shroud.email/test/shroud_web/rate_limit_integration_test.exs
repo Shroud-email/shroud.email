@@ -96,7 +96,7 @@ defmodule ShroudWeb.RateLimitIntegrationTest do
       response =
         conn
         |> put_req_header("origin", "https://agent.example")
-        |> Phoenix.ConnTest.dispatch(@endpoint, method, Shroud.Mcp.issuer() <> path, %{})
+        |> Phoenix.ConnTest.dispatch(@endpoint, method, Shroud.OAuth.issuer() <> path, %{})
 
       assert response.status == 429
       assert get_resp_header(response, "access-control-allow-origin") == ["https://agent.example"]
@@ -106,7 +106,7 @@ defmodule ShroudWeb.RateLimitIntegrationTest do
 
     for {origin, url} <- [
           {"https://chatgpt.com", "https://evil.example/mcp"},
-          {"https://chatgpt.com", Shroud.Mcp.issuer() <> "/users/log_in"}
+          {"https://chatgpt.com", Shroud.OAuth.issuer() <> "/users/log_in"}
         ] do
       rejected = conn |> put_req_header("origin", origin) |> post(url, %{})
       assert rejected.status == 429
@@ -115,9 +115,9 @@ defmodule ShroudWeb.RateLimitIntegrationTest do
   end
 
   test "MCP shares the REST account quota across connections and IPs", %{conn: conn} do
-    %{user: user, tokens: tokens} = Shroud.McpFixtures.connection_fixture()
-    %{tokens: second} = Shroud.McpFixtures.connection_fixture(["aliases:read"], user)
-    %{tokens: other} = Shroud.McpFixtures.connection_fixture(["aliases:read"])
+    %{user: user, tokens: tokens} = Shroud.OAuthFixtures.connection_fixture()
+    %{tokens: second} = Shroud.OAuthFixtures.connection_fixture(["aliases:read"], user)
+    %{tokens: other} = Shroud.OAuthFixtures.connection_fixture(["aliases:read"])
     seed(:api, {:account, user.id}, 119)
 
     assert mcp(conn, tokens.access_token).status == 200
@@ -137,7 +137,7 @@ defmodule ShroudWeb.RateLimitIntegrationTest do
   end
 
   test "exhausted MCP quota stops mutations while preserving browser CORS", %{conn: conn} do
-    %{user: user, tokens: tokens} = Shroud.McpFixtures.connection_fixture()
+    %{user: user, tokens: tokens} = Shroud.OAuthFixtures.connection_fixture()
     email_alias = Shroud.AliasesFixtures.alias_fixture(%{user_id: user.id, enabled: true})
     [session] = mcp(conn, tokens.access_token) |> get_resp_header("mcp-session-id")
     seed(:api, {:account, user.id}, 120)
@@ -157,7 +157,7 @@ defmodule ShroudWeb.RateLimitIntegrationTest do
     assert get_resp_header(response, "access-control-allow-origin") == ["https://chatgpt.com"]
     assert get_resp_header(response, "access-control-expose-headers") |> hd() =~ "Retry-After"
     assert Repo.get!(Shroud.Aliases.EmailAlias, email_alias.id).enabled
-    assert options(conn, Shroud.Mcp.resource()).status == 204
+    assert options(conn, Shroud.OAuth.resource(:mcp)).status == 204
   end
 
   test "encoded routes cannot bypass their narrower policies", %{conn: conn} do
@@ -454,7 +454,7 @@ defmodule ShroudWeb.RateLimitIntegrationTest do
     |> put_req_header("content-type", "application/json")
     |> put_req_header("accept", "application/json, text/event-stream")
     |> post(
-      Shroud.Mcp.resource(),
+      Shroud.OAuth.resource(:mcp),
       Jason.encode!(%{
         jsonrpc: "2.0",
         id: System.unique_integer([:positive]),

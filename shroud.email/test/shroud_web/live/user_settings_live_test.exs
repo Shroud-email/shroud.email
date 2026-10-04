@@ -154,9 +154,12 @@ defmodule ShroudWeb.UserSettingsLiveTest do
     refute has_element?(view, "#settings-info, #settings-error")
   end
 
-  test "connected apps navigation requires the integration flag", %{conn: conn, user: user} do
+  test "connected apps navigation is independent of the MCP integration flag", %{
+    conn: conn,
+    user: user
+  } do
     {:ok, view, _} = live(conn, ~p"/settings/security")
-    refute has_element?(view, "#manage-connections")
+    assert has_element?(view, "#manage-connections")
 
     FunWithFlags.enable(:chatgpt_integration, for_actor: user)
     {:ok, view, _} = live(conn, ~p"/settings/security")
@@ -165,11 +168,11 @@ defmodule ShroudWeb.UserSettingsLiveTest do
     other_user = user_fixture()
     other_user = other_user |> User.confirm_changeset() |> Repo.update!()
     {:ok, view, _} = build_conn() |> log_in_user(other_user) |> live(~p"/settings/security")
-    refute has_element?(view, "#manage-connections")
+    assert has_element?(view, "#manage-connections")
 
     FunWithFlags.disable(:chatgpt_integration, for_actor: user)
     {:ok, view, _} = live(conn, ~p"/settings/security")
-    refute has_element?(view, "#manage-connections")
+    assert has_element?(view, "#manage-connections")
   end
 
   test "patches between settings pages and updates the active navigation", %{conn: conn} do

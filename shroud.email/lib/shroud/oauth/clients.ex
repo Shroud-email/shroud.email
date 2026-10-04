@@ -1,13 +1,16 @@
-defmodule Shroud.Mcp.Clients do
-  @moduledoc "Public MCP OAuth clients registered through RFC 7591."
+defmodule Shroud.OAuth.Clients do
+  @moduledoc "Official public OAuth clients and dynamic MCP clients registered through RFC 7591."
   @behaviour Boruta.Oauth.Clients
   alias Shroud.Repo
   import Boruta.Ecto.OauthMapper, only: [to_oauth_schema: 1]
 
   def metadata(id) when is_binary(id) do
-    case dynamic_client(id) do
+    case find_client(id) do
       %Boruta.Ecto.Client{metadata: metadata, redirect_uris: redirects} ->
-        Map.put(metadata, "redirect_uris", redirects)
+        metadata
+        |> Map.put("redirect_uris", redirects)
+        |> Map.put_new("resource_path", "/mcp")
+        |> Map.put_new("registered", false)
 
       _ ->
         nil
@@ -21,8 +24,7 @@ defmodule Shroud.Mcp.Clients do
     name = Map.get(params, "client_name", "MCP client")
 
     cond do
-      not (is_list(redirects) and length(redirects) in 1..10 and
-               Enum.all?(redirects, &valid_redirect?/1)) ->
+      not valid_redirects?(redirects) ->
         {:error, :invalid_redirect_uri}
 
       not valid_name?(name) or
@@ -55,6 +57,11 @@ defmodule Shroud.Mcp.Clients do
 
   def register(_params), do: {:error, :invalid_client_metadata}
 
+  defp valid_redirects?(redirects) when is_list(redirects),
+    do: length(redirects) in 1..10 and Enum.all?(redirects, &valid_redirect?/1)
+
+  defp valid_redirects?(_redirects), do: false
+
   defp valid_name?(name) when is_binary(name) and byte_size(name) in 1..255,
     do: String.trim(name) != ""
 
@@ -79,13 +86,17 @@ defmodule Shroud.Mcp.Clients do
 
   defp valid_redirect?(_uri), do: false
 
-  defp dynamic_client(id) do
-    with {:ok, uuid} <- Ecto.UUID.cast(id),
-         %Boruta.Ecto.Client{metadata: %{"mcp_dynamic" => true}} = client <-
-           Repo.get(Boruta.Ecto.Client, uuid) do
-      client
-    else
-      _ -> nil
+  defp find_client(id) do
+    case Ecto.UUID.cast(id) do
+      {:ok, uuid} ->
+        case Repo.get(Boruta.Ecto.Client, uuid) do
+          %Boruta.Ecto.Client{metadata: %{"mcp_dynamic" => true}} = client -> client
+          %Boruta.Ecto.Client{metadata: %{"registered" => true}} = client -> client
+          _ -> nil
+        end
+
+      _ ->
+        nil
     end
   end
 
@@ -108,7 +119,7 @@ defmodule Shroud.Mcp.Clients do
 
   @impl true
   def get_client(id) do
-    case dynamic_client(id) do
+    case find_client(id) do
       nil -> nil
       client -> to_oauth_schema(client)
     end
