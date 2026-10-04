@@ -13,6 +13,7 @@ defmodule ShroudWeb.ApiSpecTest do
 
     assert Map.new(operations) == %{
              {"/api/v1/token", :post} => "createToken",
+             {"/api/v1/me", :get} => "getProfile",
              {"/api/v1/aliases", :get} => "listAliases",
              {"/api/v1/aliases", :post} => "createAlias",
              {"/api/v1/aliases/{address}", :get} => "getAlias",

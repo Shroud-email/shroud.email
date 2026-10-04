@@ -17,7 +17,8 @@
       <h2 class="text-lg font-semibold">{connection.client_name}</h2>
       <ul class="list-disc pl-5 text-sm space-y-1">
         <li :for={
-          permission <- Enum.map(connection.scopes, &Shroud.Mcp.permissions()[&1]) |> Enum.uniq()
+          permission <-
+            Enum.map(connection.scopes, &Shroud.Mcp.api_permissions()[&1]) |> Enum.uniq()
         }>
           {permission}
         </li>

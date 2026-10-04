@@ -53,13 +53,13 @@ defmodule ShroudWeb.Api.V1.DomainControllerTest do
       assert length(json_response(conn, 200)["domains"]) == 1
     end
 
-    test "returns 403 (not 500) for a malformed, non-base64 bearer token", %{conn: conn} do
+    test "returns 401 for a malformed bearer token", %{conn: conn} do
       conn =
         conn
         |> put_req_header("authorization", "Bearer not-valid-base64!!")
         |> get(~p"/api/v1/domains")
 
-      assert json_response(conn, 403) == %{"error" => "Invalid token"}
+      assert json_response(conn, 401) == %{"error" => "Invalid token"}
     end
   end
 

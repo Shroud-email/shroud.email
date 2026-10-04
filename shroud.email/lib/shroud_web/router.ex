@@ -45,6 +45,10 @@ defmodule ShroudWeb.Router do
     get("/.well-known/oauth-authorization-server", McpOAuthController, :metadata)
     get("/.well-known/oauth-protected-resource", McpOAuthController, :resource_metadata)
     get("/.well-known/oauth-protected-resource/mcp", McpOAuthController, :resource_metadata)
+    get("/.well-known/oauth-protected-resource/api/v1", McpOAuthController, :resource_metadata)
+    get("/.well-known/apple-app-site-association", MobileAssociationController, :apple)
+    get("/.well-known/assetlinks.json", MobileAssociationController, :android)
+    get("/oauth/callback", McpOAuthController, :callback_fallback)
     post("/oauth/register", McpOAuthController, :register)
     post("/oauth/token", McpOAuthController, :token)
     post("/oauth/revoke", McpOAuthController, :revoke)
@@ -86,6 +90,7 @@ defmodule ShroudWeb.Router do
   scope "/api/v1", ShroudWeb.Api.V1 do
     pipe_through([:api, :require_confirmed_api_user])
 
+    get("/me", ProfileController, :show)
     resources("/aliases", EmailAliasController, only: [:index, :create])
     get("/aliases/:address", EmailAliasController, :show)
     patch("/aliases/:address", EmailAliasController, :update)

@@ -36,6 +36,10 @@ settings on that same host. Without `APP_DOMAIN`, development uses plain HTTP on
 `localhost`; passkeys enrolled on one host cannot be used on another. Apply
 database migrations before enabling passkey enrollment.
 
+Mobile and extension clients use OAuth Authorization Code with PKCE. See
+[OAuth clients](docs/oauth-clients.md) for registration, API scopes, mobile HTTPS
+domain associations, and ChatGPT MCP publication configuration.
+
 To send test emails, use e.g. [Swaks](https://www.jetmore.org/john/code/swaks/):
 ```
 swaks --to test@example.com --server 127.0.0.1 --port 2525

@@ -48,11 +48,9 @@ defmodule ShroudWeb.UserSettingsLive do
         else: socket |> cancel_passkey() |> assign(:passkey_dialog, nil)
 
     socket =
-      cond do
-        socket.assigns.live_action != :connections -> socket
-        Mcp.enabled?(user) -> load_connections(socket)
-        true -> push_navigate(socket, to: ~p"/settings/security")
-      end
+      if socket.assigns.live_action == :connections,
+        do: load_connections(socket),
+        else: socket
 
     billing_config = Application.get_env(:shroud, :billing, [])
     price_id = billing_config[:paddle_yearly_price_id]
@@ -95,8 +93,7 @@ defmodule ShroudWeb.UserSettingsLive do
 
   @impl true
   def handle_event("revoke_connection", %{"id" => id}, socket) do
-    with true <- Mcp.enabled?(socket.assigns.current_user),
-         {id, ""} <- Integer.parse(id),
+    with {id, ""} <- Integer.parse(id),
          true <- Mcp.revoke(socket.assigns.current_user, id) do
       {:noreply,
        socket

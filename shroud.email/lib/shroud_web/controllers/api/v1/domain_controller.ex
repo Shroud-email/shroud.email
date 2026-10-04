@@ -5,6 +5,9 @@ defmodule ShroudWeb.Api.V1.DomainController do
   alias Shroud.Domain.CustomDomain
   alias Shroud.Repo
   alias ShroudWeb.Api.V1.Schemas
+  import ShroudWeb.UserApiAuth, only: [require_api_scope: 2]
+
+  plug :require_api_scope, "domains:read"
 
   operation(:index,
     operation_id: "listDomains",
@@ -13,11 +16,14 @@ defmodule ShroudWeb.Api.V1.DomainController do
     description: """
     Lists your custom domains with valid DNS records (all verification checks within
     the last day).
+    OAuth scope: domains:read.
     """,
     parameters: Schemas.pagination_parameters(),
     responses: [
       ok: {"Custom domains", "application/json", Schemas.domains_page()},
-      forbidden: {"Invalid token or unconfirmed account", "application/json", Schemas.error()}
+      unauthorized: {"Invalid token", "application/json", Schemas.error()},
+      forbidden:
+        {"Insufficient scope or unconfirmed account", "application/json", Schemas.error()}
     ]
   )
 

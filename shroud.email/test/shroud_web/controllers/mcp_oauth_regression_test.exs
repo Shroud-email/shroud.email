@@ -30,17 +30,17 @@ defmodule ShroudWeb.McpOAuthRegressionTest do
     assert build_conn() |> log_in_user(user) |> get("/settings/connections") |> response(200)
   end
 
-  test "unflagged users cannot access consent or Connected apps", %{user: user} do
+  test "the MCP flag gates MCP consent but not connection management", %{user: user} do
     {params, _} = authorization_params(["aliases:read"])
     FunWithFlags.disable(:chatgpt_integration, for_actor: user)
 
     conn = build_conn() |> log_in_user(user)
     assert conn |> get("/oauth/authorize", params) |> response(404)
     assert conn |> post("/oauth/authorize", %{}) |> response(404)
-    assert conn |> get("/settings/connections") |> redirected_to() == "/settings/security"
+    assert conn |> get("/settings/connections") |> response(200)
 
     document = conn |> get("/settings/security") |> html_response(200) |> Floki.parse_document!()
-    assert Floki.find(document, "#manage-connections") == []
+    assert Floki.find(document, "#manage-connections") != []
   end
 
   test "callbacks append response fields without changing registered query bytes", %{user: user} do

@@ -1,5 +1,5 @@
 import * as Device from "expo-device";
-import { Platform, StyleSheet } from "react-native";
+import { Button, Platform, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AnimatedIcon } from "@/components/animated-icon";
@@ -8,6 +8,7 @@ import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { WebBadge } from "@/components/web-badge";
 import { BottomTabInset, MaxContentWidth, Spacing } from "@/constants/theme";
+import { unsupported, useAuth } from "@/auth/context";
 
 function getDevMenuHint() {
   if (Platform.OS === "web") {
@@ -29,13 +30,14 @@ function getDevMenuHint() {
 }
 
 export default function HomeScreen() {
+  const auth = useAuth();
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <ThemedView style={styles.heroSection}>
           <AnimatedIcon />
           <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
+            Welcome to Shroud.email
           </ThemedText>
         </ThemedView>
 
@@ -44,6 +46,34 @@ export default function HomeScreen() {
         </ThemedText>
 
         <ThemedView type="backgroundElement" style={styles.stepContainer}>
+          <ThemedText>
+            {auth.account
+              ? `Signed in as ${auth.account.email}`
+              : 'Sign in securely through Shroud.email.'}
+          </ThemedText>
+          {(unsupported || auth.message) && (
+            <ThemedText accessibilityLiveRegion="polite">
+              {unsupported || auth.message}
+            </ThemedText>
+          )}
+          <Button
+            title={
+              auth.busy ? 'Please wait…' : auth.account ? 'Sign out' : 'Sign in'
+            }
+            disabled={!!unsupported || auth.busy}
+            onPress={() => {
+              void (auth.account ? auth.signOut() : auth.signIn());
+            }}
+          />
+          {!unsupported && !auth.account && (
+            <Button
+              title="Clear session / sign out"
+              disabled={auth.busy}
+              onPress={() => {
+                void auth.signOut();
+              }}
+            />
+          )}
           <HintRow
             title="Try editing"
             hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}

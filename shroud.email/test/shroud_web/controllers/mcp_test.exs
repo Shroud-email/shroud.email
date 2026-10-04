@@ -340,7 +340,7 @@ defmodule ShroudWeb.McpTest do
       |> put_req_header("authorization", "Bearer " <> tokens.access_token)
       |> get("/api/v1/aliases")
 
-    assert json_response(conn, 403) == %{"error" => "Invalid token"}
+    assert json_response(conn, 401) == %{"error" => "Invalid token"}
   end
 
   test "bearer scheme accepts case variants and multiple spaces but not malformed credentials" do

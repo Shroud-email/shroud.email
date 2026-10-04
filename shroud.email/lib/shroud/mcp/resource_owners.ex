@@ -21,6 +21,6 @@ defmodule Shroud.Mcp.ResourceOwners do
 
   @impl true
   def authorized_scopes(_owner) do
-    Enum.map(Mcp.permissions(), fn {name, _} -> %Boruta.Oauth.Scope{name: name} end)
+    Enum.map(Mcp.api_permissions(), fn {name, _} -> %Boruta.Oauth.Scope{name: name} end)
   end
 end

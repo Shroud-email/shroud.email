@@ -1,5 +1,5 @@
 defmodule Shroud.Mcp do
-  @moduledoc "Browser consent and MCP policy around Boruta's OAuth server."
+  @moduledoc "Browser consent and resource-specific MCP and REST policies around Boruta's OAuth server."
   @behaviour Boruta.Oauth.AuthorizeApplication
   @behaviour Boruta.Oauth.TokenApplication
   @behaviour Boruta.Oauth.RevokeApplication
@@ -18,31 +18,57 @@ defmodule Shroud.Mcp do
 
   def permissions, do: @permissions
 
-  def required_scopes(scope) when scope in ["aliases:create", "aliases:edit"],
+  def api_permissions,
+    do:
+      Map.merge(@permissions, %{
+        "aliases:delete" => "Delete aliases",
+        "profile:read" => "View your account identity (including your email address)"
+      })
+
+  def permissions(resource) do
+    cond do
+      resource == resource() -> permissions()
+      resource == api_resource() -> api_permissions()
+      true -> %{}
+    end
+  end
+
+  def required_scopes(scope) when scope in ["aliases:create", "aliases:edit", "aliases:delete"],
     do: [scope, "aliases:read"]
 
   def required_scopes(scope), do: [scope]
 
   def issuer, do: ShroudWeb.Endpoint.url()
   def resource, do: issuer() <> "/mcp"
+  def api_resource, do: issuer() <> "/api/v1"
 
   def enabled?(user), do: FunWithFlags.enabled?(:chatgpt_integration, for: user)
 
+  def enabled?(user, target),
+    do: target == api_resource() or (target == resource() and enabled?(user))
+
   def validate_authorization(params) when is_map(params) do
-    with %{"name" => name, "redirect_uris" => redirects} <-
+    with %{
+           "name" => name,
+           "redirect_uris" => redirects,
+           "resource_path" => path,
+           "registered" => registered
+         } <-
            Clients.metadata(params["client_id"]),
          true <- params["redirect_uri"] in redirects,
          true <- params["response_type"] == "code",
-         true <- params["resource"] == resource(),
+         true <- params["resource"] == issuer() <> path,
          true <- params["code_challenge_method"] == "S256",
          true <- not Map.has_key?(params, "request") and not Map.has_key?(params, "request_uri"),
          scope when is_binary(scope) <- params["scope"],
          scopes = String.split(scope, " ", trim: true) |> Enum.uniq(),
-         true <- valid_scopes?(scope),
+         true <- valid_scopes?(scope, params["resource"]),
          {:ok, _} <- Boruta.Oauth.preauthorize(oauth_conn(params), owner("consent"), __MODULE__) do
       {:ok,
        %{
          name: name,
+         registered: registered,
+         resource: params["resource"],
          scopes: scopes,
          redirect_uri: params["redirect_uri"]
        }}
@@ -53,7 +79,7 @@ defmodule Shroud.Mcp do
 
   def authorize(user, params) do
     with {:ok, _} <- validate_authorization(params),
-         true <- not is_nil(user.confirmed_at) and enabled?(user) do
+         true <- not is_nil(user.confirmed_at) and enabled?(user, params["resource"]) do
       conn = oauth_conn(params) |> Plug.Conn.assign(:mcp_user, user)
       Boruta.Oauth.authorize(conn, owner(to_string(user.id)), __MODULE__)
     else
@@ -76,7 +102,7 @@ defmodule Shroud.Mcp do
     Repo.insert!(%Connection{
       user_id: conn.assigns.mcp_user.id,
       client_id: params["client_id"],
-      resource: resource(),
+      resource: params["resource"],
       scopes: String.split(params["scope"], " ", trim: true) |> Enum.uniq(),
       code_id: code.id,
       expires_at: DateTime.add(now(), 90 * 86_400)
@@ -120,7 +146,8 @@ defmodule Shroud.Mcp do
             revoke(%{id: connection.user_id}, connection.id)
             {:error, :refresh_token_reused}
 
-          Map.has_key?(params, "scope") and not valid_scopes?(params["scope"]) ->
+          Map.has_key?(params, "scope") and
+              not valid_scopes?(params["scope"], connection.resource) ->
             {:error, :invalid_grant}
 
           true ->
@@ -151,15 +178,18 @@ defmodule Shroud.Mcp do
        token_type: response.token_type,
        expires_in: response.expires_in,
        scope: response.token.scope,
-       resource: resource()
+       resource: conn.assigns.mcp_connection.resource
      }}
   end
 
-  def with_access(token, scope, fun) when is_binary(token) do
+  def with_access(token, scope, fun), do: with_access(token, resource(), scope, fun)
+
+  def with_access(token, target, scope, fun) when is_binary(token) do
     with %Connection{} = connection <- Repo.one(token_connections(:value, token)),
+         true <- connection.resource == target,
          true <- valid_connection?(connection),
          {:ok, oauth_token} <- AccessToken.authorize(value: token),
-         true <- valid_scopes?(oauth_token.scope),
+         true <- valid_scopes?(oauth_token.scope, target),
          true <- oauth_token.sub == to_string(connection.user_id) do
       if scope == nil or scope in String.split(oauth_token.scope, " ", trim: true),
         do: fun.(Repo.preload(connection, :user)),
@@ -169,7 +199,7 @@ defmodule Shroud.Mcp do
     end
   end
 
-  def with_access(_token, _scope, _fun), do: {:error, :invalid_token}
+  def with_access(_token, _target, _scope, _fun), do: {:error, :invalid_token}
 
   def list_connections(user) do
     Repo.all(
@@ -183,7 +213,7 @@ defmodule Shroud.Mcp do
     |> Enum.map(fn {connection, metadata} ->
       dynamic_name =
         case metadata do
-          %{"mcp_dynamic" => true, "name" => name} -> name
+          %{"name" => name} -> name
           _ -> nil
         end
 
@@ -245,11 +275,12 @@ defmodule Shroud.Mcp do
 
   defp valid_connection?(connection) do
     user = Repo.get(Shroud.Accounts.User, connection.user_id)
+    metadata = Clients.metadata(connection.client_id)
 
     is_nil(connection.revoked_at) and DateTime.compare(connection.expires_at, now()) == :gt and
-      connection.resource == resource() and Clients.metadata(connection.client_id) != nil and
-      valid_scopes?(Enum.join(connection.scopes, " ")) and
-      user != nil and user.confirmed_at != nil and enabled?(user)
+      metadata != nil and connection.resource == issuer() <> metadata["resource_path"] and
+      valid_scopes?(Enum.join(connection.scopes, " "), connection.resource) and
+      user != nil and user.confirmed_at != nil and enabled?(user, connection.resource)
   end
 
   defp transact(fun) do
@@ -275,17 +306,17 @@ defmodule Shroud.Mcp do
     token.refresh_token_revoked_at != nil
   end
 
-  defp valid_scopes?(scope) when is_binary(scope) do
+  defp valid_scopes?(scope, target) when is_binary(scope) do
     scopes = String.split(scope, " ", trim: true)
 
     scopes != [] and
       Enum.all?(scopes, fn permission ->
-        Map.has_key?(@permissions, permission) and
+        Map.has_key?(permissions(target), permission) and
           Enum.all?(required_scopes(permission), &(&1 in scopes))
       end)
   end
 
-  defp valid_scopes?(_scope), do: false
+  defp valid_scopes?(_scope, _target), do: false
 
   defp oauth_conn(params) do
     client = Clients.get_client(params["client_id"])

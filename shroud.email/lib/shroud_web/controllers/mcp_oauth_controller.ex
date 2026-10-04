@@ -8,7 +8,21 @@ defmodule ShroudWeb.McpOAuthController do
   plug :require_mcp_enabled when action in [:authorize, :consent]
 
   defp require_mcp_enabled(conn, _opts) do
-    if Mcp.enabled?(conn.assigns.current_user),
+    params = conn.params
+
+    target =
+      case params do
+        %{"approval" => approval} ->
+          case Phoenix.Token.verify(ShroudWeb.Endpoint, "mcp-consent", approval, max_age: 600) do
+            {:ok, {_id, request}} -> request["resource"]
+            _ -> nil
+          end
+
+        _ ->
+          params["resource"]
+      end
+
+    if Mcp.enabled?(conn.assigns.current_user, target || Mcp.resource()),
       do: conn,
       else: conn |> send_resp(404, "Not found") |> halt()
   end
@@ -33,15 +47,20 @@ defmodule ShroudWeb.McpOAuthController do
       revocation_endpoint_auth_methods_supported: ["none"],
       code_challenge_methods_supported: ["S256"],
       authorization_response_iss_parameter_supported: true,
-      scopes_supported: Map.keys(Mcp.permissions())
+      scopes_supported: Map.keys(Mcp.api_permissions())
     })
   end
 
   def resource_metadata(conn, _params) do
+    target =
+      if conn.request_path == "/.well-known/oauth-protected-resource/api/v1",
+        do: Mcp.api_resource(),
+        else: Mcp.resource()
+
     json(conn, %{
-      resource: Mcp.resource(),
+      resource: target,
       authorization_servers: [Mcp.issuer()],
-      scopes_supported: Map.keys(Mcp.permissions()),
+      scopes_supported: Map.keys(Mcp.permissions(target)),
       bearer_methods_supported: ["header"]
     })
   end
@@ -103,6 +122,13 @@ defmodule ShroudWeb.McpOAuthController do
     send_resp(conn, 200, "")
   end
 
+  def callback_fallback(conn, _params) do
+    text(
+      conn,
+      "Open this link with the Shroud.email mobile app to complete sign-in. If the app is not installed, sign in on the website instead."
+    )
+  end
+
   defp callback(conn, params, result) do
     uri = URI.parse(params["redirect_uri"])
 
@@ -124,7 +150,7 @@ defmodule ShroudWeb.McpOAuthController do
     do:
       conn
       |> put_status(400)
-      |> text("Invalid or expired connection request. Start again from your MCP client.")
+      |> text("Invalid or expired connection request. Start again from your app.")
 
   defp put_private_headers(conn, _opts),
     do:
