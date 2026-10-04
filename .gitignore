@@ -1,6 +1,7 @@
 # Shared tooling; project build outputs are ignored by each project.
 npm-debug.log
 node_modules/
+.lefthook/
 
 /_build/
 /deps/

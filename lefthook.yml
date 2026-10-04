@@ -1,0 +1,37 @@
+glob_matcher: doublestar
+
+pre-commit:
+  piped: true
+  commands:
+    prettier:
+      priority: 1
+      glob: "**/*.{js,jsx,mjs,cjs,ts,tsx,mts,cts}"
+      run: mise exec -- npx --no -- prettier --write {staged_files}
+      stage_fixed: true
+    phoenix-format:
+      priority: 1
+      root: shroud.email/
+      glob: "shroud.email/**/*.{ex,exs,heex}"
+      run: mise exec -- mix format {staged_files}
+      stage_fixed: true
+    phoenix-format-check:
+      priority: 2
+      root: shroud.email/
+      run: mise exec -- mix format --check-formatted
+    credo:
+      priority: 3
+      root: shroud.email/
+      run: mise exec -- mix credo
+
+commit-msg:
+  commands:
+    commitlint:
+      run: mise exec -- npx --no -- commitlint --edit {1}
+
+prepare-commit-msg:
+  commands:
+    commitizen:
+      run: |
+        if [ -z "{2}" ] && [ -t 0 ] && [ -x shroud.email/assets/node_modules/.bin/cz ]; then
+          shroud.email/assets/node_modules/.bin/cz --hook || true
+        fi

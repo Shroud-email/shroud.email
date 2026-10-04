@@ -1,4 +1,4 @@
-const defaultTheme = require("tailwindcss/defaultTheme")
+const defaultTheme = require("tailwindcss/defaultTheme");
 
 module.exports = {
   content: [
@@ -12,9 +12,9 @@ module.exports = {
         display: ["Newsreader", ...defaultTheme.fontFamily.serif],
       },
       maxWidth: {
-        '8xl': '88rem',
+        "8xl": "88rem",
       },
     },
   },
-  plugins: [require("@tailwindcss/forms"), require("@tailwindcss/typography")]
+  plugins: [require("@tailwindcss/forms"), require("@tailwindcss/typography")],
 };

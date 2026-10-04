@@ -194,7 +194,12 @@ test("an early checkout request waits for Paddle initialization", async () => {
     {
       transactionId: "txn_123",
       customer: { email: "account@example.com" },
-      settings: { displayMode: "overlay", theme: "light", locale: "en", allowLogout: false },
+      settings: {
+        displayMode: "overlay",
+        theme: "light",
+        locale: "en",
+        allowLogout: false,
+      },
     },
   ]);
 });
@@ -214,15 +219,24 @@ test("prefills returning customers by ID instead of passing an email", async () 
         }),
       }),
     },
-    initializePaddle: async () => ({ Checkout: { open: (options) => opened.push(options) } }),
+    initializePaddle: async () => ({
+      Checkout: { open: (options) => opened.push(options) },
+    }),
   });
   await listeners.click({ target: button });
 
-  assert.deepEqual(opened, [{
-    transactionId: "txn_returning",
-    customer: { id: "ctm_returning" },
-    settings: { displayMode: "overlay", theme: "light", locale: "en", allowLogout: false },
-  }]);
+  assert.deepEqual(opened, [
+    {
+      transactionId: "txn_returning",
+      customer: { id: "ctm_returning" },
+      settings: {
+        displayMode: "overlay",
+        theme: "light",
+        locale: "en",
+        allowLogout: false,
+      },
+    },
+  ]);
 });
 
 test("missing configuration leaves checkout unavailable", async () => {
@@ -300,13 +314,17 @@ test("disposing during Paddle initialization cancels the pending checkout", asyn
   const checkout = setupPaddleCheckout({
     document,
     window: {
-      fetch: async () => { requests++; },
+      fetch: async () => {
+        requests++;
+      },
     },
     initializePaddle: () => initialization.promise,
   });
   const click = listeners.click({ target: button });
   checkout.dispose();
-  initialization.resolve({ Checkout: { open: (options) => opened.push(options) } });
+  initialization.resolve({
+    Checkout: { open: (options) => opened.push(options) },
+  });
   await click;
   assert.equal(requests, 0);
   assert.deepEqual(opened, []);
@@ -325,13 +343,18 @@ test("disposing during transaction creation prevents opening checkout on another
         return transaction.promise;
       },
     },
-    initializePaddle: async () => ({ Checkout: { open: (options) => opened.push(options) } }),
+    initializePaddle: async () => ({
+      Checkout: { open: (options) => opened.push(options) },
+    }),
   });
   await checkout;
   const click = listeners.click({ target: button });
   await requested.promise;
   checkout.dispose();
-  transaction.resolve({ ok: true, json: async () => ({ transaction_id: "txn_123" }) });
+  transaction.resolve({
+    ok: true,
+    json: async () => ({ transaction_id: "txn_123" }),
+  });
   await click;
   assert.deepEqual(opened, []);
 });
@@ -343,7 +366,9 @@ test("checkout completion reports once without passing Paddle customer data", as
   const timers = [];
   const window = {
     location: { href: "" },
-    setTimeout(fn, delay) { timers.push({ fn, delay }); },
+    setTimeout(fn, delay) {
+      timers.push({ fn, delay });
+    },
   };
   await setupPaddleCheckout({
     document,
@@ -362,7 +387,10 @@ test("checkout completion reports once without passing Paddle customer data", as
 
   const completed = {
     name: "checkout.completed",
-    data: { customer: { email: "private@example.com" }, transaction_id: "txn_private" },
+    data: {
+      customer: { email: "private@example.com" },
+      transaction_id: "txn_private",
+    },
   };
   callback(completed);
   callback(completed);
@@ -378,12 +406,18 @@ test("disposed checkout does not report completion or schedule a redirect", asyn
   let callback;
   const checkout = setupPaddleCheckout({
     document,
-    window: { setTimeout() { assert.fail("unexpected redirect"); } },
+    window: {
+      setTimeout() {
+        assert.fail("unexpected redirect");
+      },
+    },
     initializePaddle: async ({ eventCallback }) => {
       callback = eventCallback;
       return { Checkout: { open() {} } };
     },
-    onCheckoutCompleted() { assert.fail("unexpected conversion"); },
+    onCheckoutCompleted() {
+      assert.fail("unexpected conversion");
+    },
   });
   await checkout;
   checkout.dispose();

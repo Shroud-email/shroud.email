@@ -10,7 +10,11 @@ const dkim = require('./lib/dkim')
 
 const { DKIMVerifyStream, DKIMSignStream } = dkim
 // Keep connection acquisition and query waits below Haraka's hook timeout.
-const pool = new Pool({ max: 10, connectionTimeoutMillis: 5000, query_timeout: 5000 })
+const pool = new Pool({
+  max: 10,
+  connectionTimeoutMillis: 5000,
+  query_timeout: 5000,
+})
 let pool_error_logger
 
 pool.on('error', (err) => {
@@ -157,8 +161,12 @@ exports.get_sign_properties = async function (connection) {
     }
 
     if (email_domain) {
-      props.private_key = this.load_key(path.join('dkim', email_domain, 'private'))
-      props.selector = this.load_key(path.join('dkim', email_domain, 'selector')).trim()
+      props.private_key = this.load_key(
+        path.join('dkim', email_domain, 'private'),
+      )
+      props.selector = this.load_key(
+        path.join('dkim', email_domain, 'selector'),
+      ).trim()
     }
     return props
   }

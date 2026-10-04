@@ -1,5 +1,6 @@
 [tools]
 actionlint = "1.7.12"
+lefthook = "2.1.16"
 node = "24.8.0"
 pinact = "4.1.0"
 zizmor = "1.25.2"

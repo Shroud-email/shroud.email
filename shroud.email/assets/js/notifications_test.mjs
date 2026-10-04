@@ -1,9 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { LiveToast, NotificationSource, initializeFlashNotifications } from "./notifications.mjs";
+import {
+  LiveToast,
+  NotificationSource,
+  initializeFlashNotifications,
+} from "./notifications.mjs";
 import { createLiveToastHook } from "../vendor/live_toast.ts";
 
-test("controller flashes get status semantics and local dismissal, LiveViews keep their own handler", context => {
+test("controller flashes get status semantics and local dismissal, LiveViews keep their own handler", (context) => {
   const listeners = {};
   function flash(kind, live) {
     const attributes = {};
@@ -11,14 +15,26 @@ test("controller flashes get status semantics and local dismissal, LiveViews kee
     const element = {
       dataset: { kind },
       style: {},
-      setAttribute(key, value) { attributes[key] = value; },
-      closest() { return live ? {} : null; },
-      querySelector() { return button; },
-      remove() { this.removed = true; },
+      setAttribute(key, value) {
+        attributes[key] = value;
+      },
+      closest() {
+        return live ? {} : null;
+      },
+      querySelector() {
+        return button;
+      },
+      remove() {
+        this.removed = true;
+      },
     };
     const button = {
-      setAttribute(key, value) { buttonAttributes[key] = value; },
-      closest(selector) { return selector === "[data-phx-main]" ? element.closest() : element; },
+      setAttribute(key, value) {
+        buttonAttributes[key] = value;
+      },
+      closest(selector) {
+        return selector === "[data-phx-main]" ? element.closest() : element;
+      },
     };
     return { element, button, attributes, buttonAttributes };
   }
@@ -36,7 +52,9 @@ test("controller flashes get status semantics and local dismissal, LiveViews kee
   globalThis.window = { matchMedia: () => ({ matches: false }) };
   globalThis.document = {
     querySelectorAll: () => [info.element, error.element, live.element],
-    addEventListener: (name, listener) => { listeners[name] = listener; },
+    addEventListener: (name, listener) => {
+      listeners[name] = listener;
+    },
   };
 
   initializeFlashNotifications();
@@ -57,16 +75,31 @@ test("controller flashes get status semantics and local dismissal, LiveViews kee
 });
 
 function liveFixture(context, template) {
-  const originals = Object.fromEntries(["window", "document", "ResizeObserver"].map(key => [key, globalThis[key]]));
+  const originals = Object.fromEntries(
+    ["window", "document", "ResizeObserver"].map((key) => [
+      key,
+      globalThis[key],
+    ]),
+  );
   const media = new EventTarget();
   media.matches = true;
   const win = new EventTarget();
-  Object.assign(win, { matchMedia: () => media, setTimeout, clearTimeout, setInterval, clearInterval });
+  Object.assign(win, {
+    matchMedia: () => media,
+    setTimeout,
+    clearTimeout,
+    setInterval,
+    clearInterval,
+  });
   globalThis.window = win;
   globalThis.ResizeObserver = class {
-    constructor(callback) { this.callback = callback; }
+    constructor(callback) {
+      this.callback = callback;
+    }
     observe() {}
-    disconnect() { this.disconnected = true; }
+    disconnect() {
+      this.disconnected = true;
+    }
   };
   const toasts = [];
   const groupElement = new EventTarget();
@@ -75,7 +108,7 @@ function liveFixture(context, template) {
     querySelectorAll: () => toasts,
   });
   globalThis.document = {
-    getElementById: id => id === "toast-group" ? groupElement : null,
+    getElementById: (id) => (id === "toast-group" ? groupElement : null),
     querySelectorAll: () => toasts,
   };
   const pushes = [];
@@ -85,17 +118,25 @@ function liveFixture(context, template) {
     return { finished: Promise.resolve() };
   };
   function mount(element) {
-    const hook = template ? { ...template, animateToast: animate } : createLiveToastHook(8000, 3, animate);
+    const hook = template
+      ? { ...template, animateToast: animate }
+      : createLiveToastHook(8000, 3, animate);
     Object.assign(hook, {
       el: element,
       handleEvent(name, callback) {
-        const listener = event => callback(event.detail);
+        const listener = (event) => callback(event.detail);
         win.addEventListener(`phx:${name}`, listener);
         return { name, listener };
       },
-      removeHandleEvent({ name, listener }) { win.removeEventListener(`phx:${name}`, listener); },
-      pushEvent(name, payload) { pushes.push({ element, name, payload }); },
-      pushEventTo(target, name, payload) { pushes.push({ element, target, name, payload }); },
+      removeHandleEvent({ name, listener }) {
+        win.removeEventListener(`phx:${name}`, listener);
+      },
+      pushEvent(name, payload) {
+        pushes.push({ element, name, payload });
+      },
+      pushEventTo(target, name, payload) {
+        pushes.push({ element, target, name, payload });
+      },
     });
     hook.mounted();
     return hook;
@@ -133,7 +174,7 @@ function liveFixture(context, template) {
   return { media, win, group, toasts, pushes, toast, destroy };
 }
 
-test("one group acknowledges flashes after repeated toast destruction and none after navigation", context => {
+test("one group acknowledges flashes after repeated toast destruction and none after navigation", (context) => {
   const fixture = liveFixture(context);
   for (let n = 0; n < 10; n++) {
     const toast = fixture.toast(`toast-${n}`, 60);
@@ -141,19 +182,28 @@ test("one group acknowledges flashes after repeated toast destruction and none a
     assert.equal(toast.resizeObserver.disconnected, true);
   }
   const active = fixture.toast("toast-active", 60);
-  fixture.win.dispatchEvent(new CustomEvent("phx:clear-flash", { detail: { key: "info" } }));
-  assert.deepEqual(fixture.pushes.map(({ name, payload }) => ({ name, payload })), [
-    { name: "lv:clear-flash", payload: { key: "info" } },
-  ]);
+  fixture.win.dispatchEvent(
+    new CustomEvent("phx:clear-flash", { detail: { key: "info" } }),
+  );
+  assert.deepEqual(
+    fixture.pushes.map(({ name, payload }) => ({ name, payload })),
+    [{ name: "lv:clear-flash", payload: { key: "info" } }],
+  );
   fixture.destroy(active);
   fixture.destroy(fixture.group);
-  fixture.win.dispatchEvent(new CustomEvent("phx:clear-flash", { detail: { key: "error" } }));
-  fixture.win.dispatchEvent(new CustomEvent("phx:live-toast-dismiss", { detail: { id: "toast-active" } }));
+  fixture.win.dispatchEvent(
+    new CustomEvent("phx:clear-flash", { detail: { key: "error" } }),
+  );
+  fixture.win.dispatchEvent(
+    new CustomEvent("phx:live-toast-dismiss", {
+      detail: { id: "toast-active" },
+    }),
+  );
   assert.equal(fixture.pushes.length, 1);
   assert.equal(fixture.group.resizeObserver.disconnected, true);
 });
 
-test("stack offsets use current asymmetric heights on resize and stay correct after mobile DOM patches", context => {
+test("stack offsets use current asymmetric heights on resize and stay correct after mobile DOM patches", (context) => {
   const fixture = liveFixture(context);
   const first = fixture.toast("toast-first", 37);
   const second = fixture.toast("toast-second", 83);
@@ -183,7 +233,7 @@ test("stack offsets use current asymmetric heights on resize and stay correct af
   assert.equal(first.el.lastAnimation.transform.at(-1), "translateY(-301px)");
 });
 
-test("unchanged layouts do not restart animation or reorder existing notifications", context => {
+test("unchanged layouts do not restart animation or reorder existing notifications", (context) => {
   const fixture = liveFixture(context);
   const created = fixture.toast("created", 81);
   const disabled = fixture.toast("disabled", 49);
@@ -191,16 +241,26 @@ test("unchanged layouts do not restart animation or reorder existing notificatio
   assert.equal(created.el.targetDestination, "146px");
   assert.equal(disabled.el.targetDestination, "82px");
   assert.equal(enabled.el.targetDestination, "0px");
-  const counts = [created, disabled, enabled].map(hook => hook.el.animationCount);
+  const counts = [created, disabled, enabled].map(
+    (hook) => hook.el.animationCount,
+  );
   for (let n = 0; n < 10; n++) {
     fixture.group.layout();
     created.updated();
   }
-  assert.deepEqual([created, disabled, enabled].map(hook => hook.el.animationCount), counts);
+  assert.deepEqual(
+    [created, disabled, enabled].map((hook) => hook.el.animationCount),
+    counts,
+  );
 });
 
-test("page sources queue before the persistent group mounts and forward each ID only once", context => {
-  let messages = [{ dataset: { id: "created", kind: "success", duration: "8000" }, textContent: "Created alias." }];
+test("page sources queue before the persistent group mounts and forward each ID only once", (context) => {
+  let messages = [
+    {
+      dataset: { id: "created", kind: "success", duration: "8000" },
+      textContent: "Created alias.",
+    },
+  ];
   const acknowledgements = [];
   const source = {
     ...NotificationSource,
@@ -212,32 +272,53 @@ test("page sources queue before the persistent group mounts and forward each ID 
   const fixture = liveFixture(context, LiveToast);
   assert.equal(fixture.pushes.length, 1);
   assert.deepEqual(fixture.pushes[0].payload, {
-    kind: "success", message: "Created alias.", options: { duration: 8000 },
+    kind: "success",
+    message: "Created alias.",
+    options: { duration: 8000 },
   });
-  messages = [{ dataset: { id: "enabled-1", kind: "info", duration: "8000" }, textContent: "Enabled alias." }];
+  messages = [
+    {
+      dataset: { id: "enabled-1", kind: "info", duration: "8000" },
+      textContent: "Enabled alias.",
+    },
+  ];
   source.updated();
   source.updated();
-  messages = [{ dataset: { id: "enabled-2", kind: "info", duration: "8000" }, textContent: "Enabled alias." }];
+  messages = [
+    {
+      dataset: { id: "enabled-2", kind: "info", duration: "8000" },
+      textContent: "Enabled alias.",
+    },
+  ];
   source.updated();
   // A new page's source shares the same surviving sink, including persistent errors.
-  messages = [{ dataset: { id: "error", kind: "error", duration: "0" }, textContent: "Failed." }];
+  messages = [
+    {
+      dataset: { id: "error", kind: "error", duration: "0" },
+      textContent: "Failed.",
+    },
+  ];
   const nextPage = { ...source, ...NotificationSource };
   nextPage.mounted();
-  assert.deepEqual(fixture.pushes.map(({ payload }) => payload.message), [
-    "Created alias.", "Enabled alias.", "Enabled alias.", "Failed.",
-  ]);
+  assert.deepEqual(
+    fixture.pushes.map(({ payload }) => payload.message),
+    ["Created alias.", "Enabled alias.", "Enabled alias.", "Failed."],
+  );
   assert.equal(fixture.pushes.at(-1).payload.options.duration, 0);
   assert.equal(acknowledgements.length, 4);
 });
 
-test("overflow removal timers are not duplicated by reflows and are cancelled on navigation", context => {
+test("overflow removal timers are not duplicated by reflows and are cancelled on navigation", (context) => {
   context.mock.timers.enable({ apis: ["setTimeout"] });
   const fixture = liveFixture(context);
   for (let n = 0; n < 5; n++) fixture.toast(`toast-${n}`, 40 + n * 10);
   for (let n = 0; n < 10; n++) fixture.group.layout();
   assert.equal(fixture.group.overflowTimers.size, 2);
   context.mock.timers.tick(8005);
-  assert.deepEqual(fixture.pushes.map(({ payload }) => payload.id).sort(), ["toast-0", "toast-1"]);
+  assert.deepEqual(fixture.pushes.map(({ payload }) => payload.id).sort(), [
+    "toast-0",
+    "toast-1",
+  ]);
 
   fixture.group.layout();
   fixture.destroy(fixture.group);

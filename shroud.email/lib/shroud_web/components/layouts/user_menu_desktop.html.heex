@@ -31,7 +31,9 @@
     @mouseenter="activeIndex = 0"
     @mouseleave="activeIndex = -1"
     @click="open = false; focusButton()"
-  >Settings</a>
+  >
+    Settings
+  </a>
   <.link
     href={~p"/users/log_out"}
     method="delete"
@@ -39,5 +41,7 @@
     role="menuitem"
     tabindex="-1"
     id="user-menu-item-1"
-  >Log out</.link>
+  >
+    Log out
+  </.link>
 </div>

@@ -1,6 +1,8 @@
 <div class="max-w-md mx-auto space-y-8">
   <div>
-    <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-gray-100">Sign up for a lifetime account</h2>
+    <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-gray-100">
+      Sign up for a lifetime account
+    </h2>
   </div>
   <.form for={@lifetime_form} id="lifetime-form" phx-submit="lifetime_signup" class="mt-8">
     <.input field={@lifetime_form[:lifetime_code]} label="Code" required />

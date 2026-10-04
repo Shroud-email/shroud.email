@@ -18,9 +18,20 @@ own runtime configuration and dependencies; this is not a shared npm workspace.
 Install [mise](https://mise.jdx.dev/), trust the root and project `mise.toml` files,
 and run `mise install` in the project you are working on.
 
-Run `npm ci` at the root to install commitlint and Git hooks. App development
-instructions are in [shroud.email/README.md](shroud.email/README.md), and agent
-guidance starts in [AGENTS.md](AGENTS.md).
+Run `mise exec -- npm ci` at the root to install Prettier, commitlint, and the
+root Lefthook Git hooks. Lefthook is pinned in `mise.toml`. The pre-commit hook
+formats staged JavaScript, TypeScript, Elixir, and HEEx files and stages the
+formatted changes while preserving unstaged edits. It also checks Phoenix
+formatting and runs Credo.
+
+Run `npm run format` at the root to format JavaScript and TypeScript across all
+projects, or `npm run format:check` to check them without changing files.
+Generated files and dependencies are excluded in `.prettierignore`.
+Run `mise exec -- mix format` from `shroud.email/` to format Elixir and HEEx.
+CI checks both formatters.
+
+App development instructions are in [shroud.email/README.md](shroud.email/README.md),
+and agent guidance starts in [AGENTS.md](AGENTS.md).
 
 ## Automation and development orbs
 

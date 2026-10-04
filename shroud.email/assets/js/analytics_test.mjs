@@ -16,7 +16,9 @@ test("retains pageviews but redacts bearer tokens from URL and referrer properti
         $current_url: `https://app.shroud.email${route}/SECRET-token?source=email#form`,
         $pathname: `${route}/SECRET-token`,
         $referrer: `https://app.shroud.email${route}/OTHER-token`,
-        $set_once: { $initial_current_url: `https://app.shroud.email${route}/FIRST-token` },
+        $set_once: {
+          $initial_current_url: `https://app.shroud.email${route}/FIRST-token`,
+        },
         $process_person_profile: false,
       },
     };
@@ -27,7 +29,9 @@ test("retains pageviews but redacts bearer tokens from URL and referrer properti
         $current_url: `https://app.shroud.email${route}/${placeholder}?source=email#form`,
         $pathname: `${route}/${placeholder}`,
         $referrer: `https://app.shroud.email${route}/${placeholder}`,
-        $set_once: { $initial_current_url: `https://app.shroud.email${route}/${placeholder}` },
+        $set_once: {
+          $initial_current_url: `https://app.shroud.email${route}/${placeholder}`,
+        },
         $process_person_profile: false,
       },
     });
@@ -40,15 +44,20 @@ test("preserves regular page tracking and paid signup events without filtering",
     {
       event: "$pageview",
       properties: {
-        $current_url: "https://app.shroud.email/users/reset_password?source=nav",
+        $current_url:
+          "https://app.shroud.email/users/reset_password?source=nav",
         $pathname: "/users/confirm",
         $referrer: "https://shroud.email/pricing/?campaign=summer",
         paths: ["/aliases", "/domains"],
       },
     },
-    { event: "paid plan signed up", properties: { $process_person_profile: false } },
+    {
+      event: "paid plan signed up",
+      properties: { $process_person_profile: false },
+    },
   ];
-  for (const event of events) assert.deepEqual(sanitizeAnalyticsEvent(event), event);
+  for (const event of events)
+    assert.deepEqual(sanitizeAnalyticsEvent(event), event);
 });
 
 test("groups alias and domain visits by route without sending identifying path segments", () => {
@@ -64,7 +73,9 @@ test("groups alias and domain visits by route without sending identifying path s
         $current_url: `https://app.shroud.email/${route}/${value}?tab=settings#form`,
         $pathname: `/${route}/${value}`,
         $referrer: `https://app.shroud.email/${route}/${value}/`,
-        $set_once: { $initial_current_url: `https://app.shroud.email/${route}/${value}` },
+        $set_once: {
+          $initial_current_url: `https://app.shroud.email/${route}/${value}`,
+        },
         paths: [`/api/v1/${route}/${value}`],
       },
     };
@@ -74,7 +85,9 @@ test("groups alias and domain visits by route without sending identifying path s
         $current_url: `https://app.shroud.email/${route}/${placeholder}?tab=settings#form`,
         $pathname: `/${route}/${placeholder}`,
         $referrer: `https://app.shroud.email/${route}/${placeholder}/`,
-        $set_once: { $initial_current_url: `https://app.shroud.email/${route}/${placeholder}` },
+        $set_once: {
+          $initial_current_url: `https://app.shroud.email/${route}/${placeholder}`,
+        },
         paths: [`/api/v1/${route}/${placeholder}`],
       },
     });

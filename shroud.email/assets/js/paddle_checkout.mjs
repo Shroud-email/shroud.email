@@ -70,7 +70,11 @@ export function setupPaddleCheckout({
         ? "sandbox"
         : undefined,
     eventCallback: (data) => {
-      if (data.name === "checkout.completed" && !disposed && !checkoutCompleted) {
+      if (
+        data.name === "checkout.completed" &&
+        !disposed &&
+        !checkoutCompleted
+      ) {
         checkoutCompleted = true;
         onCheckoutCompleted();
         window.setTimeout(() => {
@@ -89,7 +93,10 @@ export function setupPaddleCheckout({
     })
     .catch((error) => {
       logger.error("Paddle.js initialization failed", error);
-      markUnavailable(button, "Checkout couldn't load. Please try again later.");
+      markUnavailable(
+        button,
+        "Checkout couldn't load. Please try again later.",
+      );
       markPriceUnavailable(price);
       return null;
     });
@@ -119,16 +126,23 @@ export function setupPaddleCheckout({
         },
       );
 
-      if (!response.ok) throw new Error(`checkout request failed: ${response.status}`);
+      if (!response.ok)
+        throw new Error(`checkout request failed: ${response.status}`);
 
       const { transaction_id: transactionId, customer } = await response.json();
-      if (!transactionId) throw new Error("checkout response omitted transaction_id");
+      if (!transactionId)
+        throw new Error("checkout response omitted transaction_id");
       if (disposed) return;
 
       paddle.Checkout.open({
         transactionId,
         customer,
-        settings: { displayMode: "overlay", theme: "light", locale: "en", allowLogout: false },
+        settings: {
+          displayMode: "overlay",
+          theme: "light",
+          locale: "en",
+          allowLogout: false,
+        },
       });
 
       clickedButton.textContent = "Upgrade";

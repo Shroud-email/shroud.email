@@ -24,7 +24,11 @@ import topbar from "../vendor/topbar";
 import "../vendor/components";
 import "@cap.js/widget";
 import { CopyToClipboard, Modal } from "./hooks";
-import { LiveToast, NotificationSource, initializeFlashNotifications } from "./notifications.mjs";
+import {
+  LiveToast,
+  NotificationSource,
+  initializeFlashNotifications,
+} from "./notifications.mjs";
 
 import { initTheme, setTheme } from "./theme";
 import Alpine from "alpinejs";
@@ -35,7 +39,9 @@ import { PasskeyRegistration, PasskeyLogin } from "./passkeys.mjs";
 import posthog from "posthog-js";
 import { sanitizeAnalyticsEvent } from "./analytics.mjs";
 
-const posthogToken = document.querySelector('meta[name="posthog-token"]')?.content;
+const posthogToken = document.querySelector(
+  'meta[name="posthog-token"]',
+)?.content;
 if (posthogToken) {
   posthog.init(posthogToken, {
     api_host: document.querySelector('meta[name="posthog-host"]').content,
@@ -66,7 +72,9 @@ Alpine.start();
 initTheme();
 window.setTheme = setTheme;
 
-window.addEventListener("phx:set-theme", (event) => setTheme(event.detail.theme));
+window.addEventListener("phx:set-theme", (event) =>
+  setTheme(event.detail.theme),
+);
 initializeFlashNotifications();
 let csrfToken = document
   .querySelector("meta[name='csrf-token']")

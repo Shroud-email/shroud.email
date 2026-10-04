@@ -1,4 +1,5 @@
-const tokenPath = /(\/(?:users\/(?:reset_password|confirm)|settings\/confirm_email)\/)[^/?#\s]+/g;
+const tokenPath =
+  /(\/(?:users\/(?:reset_password|confirm)|settings\/confirm_email)\/)[^/?#\s]+/g;
 const reportPath = /(\/email-report\/)[^/?#\s]+/g;
 const aliasPath = /(\/alias(?:es)?\/)[^/?#\s]+/g;
 const domainPath = /(\/domains?\/)[^/?#\s]+/g;
@@ -14,7 +15,10 @@ function redactPaths(value) {
   if (Array.isArray(value)) return value.map(redactPaths);
   if (value && typeof value === "object") {
     return Object.fromEntries(
-      Object.entries(value).map(([key, property]) => [key, redactPaths(property)]),
+      Object.entries(value).map(([key, property]) => [
+        key,
+        redactPaths(property),
+      ]),
     );
   }
   return value;

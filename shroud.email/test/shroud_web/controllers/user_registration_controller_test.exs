@@ -38,8 +38,13 @@ defmodule ShroudWeb.UserRegistrationControllerTest do
       conn = get(conn, "/users/confirm")
       response = html_response(conn, 200)
       assert response =~ email
-      assert response =~ "Settings</a>"
-      assert response =~ "Log out</a>"
+      document = LazyHTML.from_document(response)
+
+      assert document |> LazyHTML.query("#user-menu-item-0") |> LazyHTML.text() |> String.trim() ==
+               "Settings"
+
+      assert document |> LazyHTML.query("#user-menu-item-1") |> LazyHTML.text() |> String.trim() ==
+               "Log out"
     end
 
     test "render errors for invalid data", %{conn: conn} do
