@@ -1,4 +1,5 @@
 import * as BunnySDK from "https://esm.sh/@bunny.net/edgescript-sdk@0.13.0";
+import { trackTextRequest } from "./analytics.ts";
 import {
   disableHtmlRanges,
   repairDirectoryNotFound,
@@ -10,4 +11,5 @@ BunnySDK.net.http
   .servePullZone({ url: "https://shroud.email/" })
   .onOriginRequest(disableHtmlRanges)
   .onOriginResponse(rewritePricing)
-  .onClientResponse(repairDirectoryNotFound);
+  .onClientResponse(repairDirectoryNotFound)
+  .onClientResponse(trackTextRequest);

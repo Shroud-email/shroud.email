@@ -3,8 +3,8 @@
   "tasks": {
     "build": "mkdir -p dist && deno run -A build.mjs",
     "check": "deno check src/main.ts",
-    "test": "deno test src/pricing_test.ts",
-    "dev": "deno run --allow-net --allow-read src/main.ts"
+    "test": "deno test --allow-env=POSTHOG_CAPTURE_MODE src/",
+    "dev": "deno run --allow-net --allow-read --allow-env=POSTHOG_CAPTURE_MODE src/main.ts"
   },
   "lint": {
     "rules": {
