@@ -7,7 +7,7 @@ defmodule Shroud.Mcp.Tools do
 
   def list do
     address = string("Exact alias address", 320)
-    title = string("Alias label", 255)
+    title = string("Alias title", 255)
     notes = string("Alias notes", 2000, 0)
 
     page = %{
@@ -22,30 +22,47 @@ defmodule Shroud.Mcp.Tools do
           address: %{type: "string"},
           title: %{type: ["string", "null"]},
           notes: %{type: ["string", "null"]},
-          enabled: %{type: "boolean"}
+          enabled: %{type: "boolean"},
+          created_at: %{type: "string", format: "date-time", description: "Creation time in UTC"}
         },
-        [:address, :title, :notes, :enabled]
+        [:address, :title, :notes, :enabled, :created_at]
       )
 
     [
       tool(
         "list_aliases",
         "List aliases",
-        "Search aliases by their address or label or notes.",
+        "List or search aliases, ordered by creation time, newest first (ties use descending ID). Returns UTC creation timestamps and pagination information. Search uses case-insensitive literal substring matching: every whitespace-separated word must match address, title, or notes, possibly in different fields. Empty search lists all aliases. Use next_cursor with the same search and enabled filters to continue without shifts from newly created aliases; do not combine cursor and page.",
         object(
           %{
-            search: string("Search address, label or notes; omit to list all aliases", 255, 0),
+            search: string("Search address, title or notes; omit to list all aliases", 255, 0),
             enabled: %{type: "boolean", description: "Filter enabled or disabled aliases"},
-            page: page
+            page: %{
+              page
+              | description: "Page number, starting at 1; cannot be combined with cursor"
+            },
+            limit: %{
+              type: "integer",
+              minimum: 1,
+              maximum: 100,
+              default: 10,
+              description: "Results per page"
+            },
+            cursor:
+              string(
+                "Opaque next_cursor from the previous result; keep search and enabled unchanged",
+                512
+              )
           },
           []
         ),
         object(
           %{
             aliases: %{type: "array", items: alias_output},
-            has_more: %{type: "boolean"}
+            has_more: %{type: "boolean"},
+            next_cursor: %{type: ["string", "null"]}
           },
-          [:aliases, :has_more]
+          [:aliases, :has_more, :next_cursor]
         ),
         true,
         false
@@ -53,7 +70,7 @@ defmodule Shroud.Mcp.Tools do
       tool(
         "get_alias",
         "Get an alias",
-        "Get an alias's address, label, notes and enabled status.",
+        "Get an alias's address, title, notes, enabled status and creation timestamp.",
         object(%{address: address}, [:address]),
         alias_output,
         true,
@@ -61,14 +78,19 @@ defmodule Shroud.Mcp.Tools do
       ),
       tool(
         "create_alias",
-        "Create a labelled alias",
-        "Create an alias with a label and optional notes. For a custom domain, supply both domain and local_part.",
+        "Create an alias",
+        "Create a forwarding alias with a title and optional notes. Omit domain to use a Shroud-managed domain. Supply a verified custom domain to use it. Omit local_part to generate a random address; supply it with a custom domain to choose an address.",
         object(
           %{
             title: title,
             notes: notes,
             domain: string("Existing verified custom domain", 253),
-            local_part: string("Local part without @, spaces or underscores", 64)
+            local_part:
+              Map.put(
+                string("Local part without @, spaces or underscores", 64),
+                :pattern,
+                "^[^@\\s_]+$"
+              )
           },
           [:title]
         ),
@@ -79,11 +101,11 @@ defmodule Shroud.Mcp.Tools do
       tool(
         "edit_alias",
         "Edit an alias",
-        "Update an alias's label, notes or enabled status. An empty string clears a label or notes. Disabling stops forwarding immediately, including password-reset emails.",
+        "Update an alias's title, notes or forwarding status. Omitted fields remain unchanged. An empty string clears the title or notes. Disabling immediately stops forwarding, including password-reset emails.",
         object(
           %{
             address: address,
-            title: string("Replacement label; empty clears it", 255, 0),
+            title: string("Replacement title; empty clears it", 255, 0),
             notes: notes,
             enabled: %{type: "boolean", description: "Enable or disable forwarding"}
           },
@@ -117,13 +139,19 @@ defmodule Shroud.Mcp.Tools do
   def call(connection, name, arguments) do
     with tool when not is_nil(tool) <- Enum.find(list(), &(&1.name == name)),
          :ok <- SchemaPolicy.validate(arguments, tool.inputSchema) do
+      arguments =
+        Map.new(arguments, fn
+          {key, value} when key in ["page", "limit"] and is_float(value) -> {key, trunc(value)}
+          entry -> entry
+        end)
+
       execute(connection, name, arguments)
     else
       nil ->
-        {:error, "Unknown tool"}
+        error("UNKNOWN_TOOL", "Unknown tool")
 
       {:error, errors} when is_list(errors) ->
-        {:error, "Invalid tool arguments"}
+        error("INVALID_ARGUMENT", "Invalid tool arguments")
 
       {:error, reason} ->
         category =
@@ -134,7 +162,7 @@ defmodule Shroud.Mcp.Tools do
           end
 
         Logger.warning("MCP schema validation unavailable (#{category})")
-        {:error, "Tool unavailable; please try again."}
+        error("SERVICE_UNAVAILABLE", "Tool unavailable; please try again.")
     end
   end
 
@@ -146,18 +174,24 @@ defmodule Shroud.Mcp.Tools do
         do: where(query, [a], a.enabled == ^args["enabled"]),
         else: query
 
-    page =
-      Repo.paginate(query,
-        page: Map.get(args, "page", 1),
-        page_size: 10,
-        options: [allow_overflow_page_number: true]
-      )
+    with {:ok, query} <- after_cursor(query, args) do
+      size = Map.get(args, "limit", 10)
 
-    {:ok,
-     %{
-       aliases: Enum.map(page.entries, &alias_data/1),
-       has_more: page.page_number < page.total_pages
-     }}
+      entries =
+        Repo.all(
+          from(a in query, limit: ^(size + 1), offset: ^((Map.get(args, "page", 1) - 1) * size))
+        )
+
+      aliases = Enum.take(entries, size)
+      has_more = length(entries) > size
+
+      {:ok,
+       %{
+         aliases: Enum.map(aliases, &alias_data/1),
+         has_more: has_more,
+         next_cursor: if(has_more, do: encode_cursor(List.last(aliases)), else: nil)
+       }}
+    end
   end
 
   defp execute(connection, "create_alias", args) do
@@ -171,29 +205,32 @@ defmodule Shroud.Mcp.Tools do
         {nil, nil} ->
           Aliases.create_random_email_alias(connection.user, attrs)
 
-        {domain, local} when is_binary(domain) and is_binary(local) ->
-          verified =
+        {domain, local} when is_binary(domain) ->
+          owned =
             Domain.list_custom_domains(connection.user)
-            |> Enum.find(
-              &(String.downcase(&1.domain) == String.downcase(domain) and
-                  Domain.fully_verified?(&1))
-            )
+            |> Enum.find(&(String.downcase(&1.domain) == String.downcase(domain)))
 
-          case verified do
-            %{domain: stored_domain} ->
+          cond do
+            is_nil(owned) ->
+              error("DOMAIN_NOT_FOUND", "Supply an existing custom domain owned by your account")
+
+            not Domain.fully_verified?(owned) ->
+              error("DOMAIN_NOT_VERIFIED", "Verify the custom domain before creating an alias")
+
+            true ->
+              stored_domain = owned.domain
+              local = local || Aliases.generate_alias_name(String.downcase(stored_domain))
+
               Aliases.create_email_alias(
                 Map.merge(attrs, %{
                   user_id: connection.user.id,
                   address: local <> "@" <> stored_domain
                 })
               )
-
-            nil ->
-              {:error, :invalid_domain}
           end
 
         _ ->
-          {:error, :invalid_domain}
+          error("INVALID_ARGUMENT", "Supply a verified custom domain when choosing a local part")
       end
 
     alias_result(result)
@@ -219,7 +256,7 @@ defmodule Shroud.Mcp.Tools do
 
     case {email_alias, name} do
       {nil, _} ->
-        {:error, "Alias not found"}
+        error("ALIAS_NOT_FOUND", "Alias not found")
 
       {email_alias, "get_alias"} ->
         {:ok, alias_data(email_alias)}
@@ -228,26 +265,74 @@ defmodule Shroud.Mcp.Tools do
         attrs = Map.take(args, ["title", "notes", "enabled"])
 
         if map_size(attrs) == 0,
-          do: {:error, "Supply a label, notes or enabled status to edit"},
+          do: error("INVALID_ARGUMENT", "Supply a title, notes or enabled status to edit"),
           else: alias_result(Aliases.update_email_alias(email_alias, attrs))
     end
   end
 
+  defp after_cursor(_query, %{"cursor" => _, "page" => _}),
+    do: error("INVALID_ARGUMENT", "Supply cursor or page, not both")
+
+  defp after_cursor(query, %{"cursor" => cursor}) do
+    with {:ok, json} <- Base.url_decode64(cursor, padding: false),
+         {:ok, [timestamp, id]} <- Jason.decode(json),
+         true <-
+           is_binary(timestamp) and is_integer(id) and id > 0 and id <= 9_223_372_036_854_775_807,
+         {:ok, created_at} <- NaiveDateTime.from_iso8601(timestamp) do
+      {:ok,
+       where(
+         query,
+         [a],
+         a.inserted_at < ^created_at or (a.inserted_at == ^created_at and a.id < ^id)
+       )}
+    else
+      _ -> error("INVALID_ARGUMENT", "Invalid alias cursor")
+    end
+  end
+
+  defp after_cursor(query, _args), do: {:ok, query}
+
+  defp encode_cursor(email_alias) do
+    Jason.encode!([NaiveDateTime.to_iso8601(email_alias.inserted_at), email_alias.id])
+    |> Base.url_encode64(padding: false)
+  end
+
   defp alias_result({:ok, email_alias}), do: {:ok, alias_data(email_alias)}
-  defp alias_result({:error, :inactive_user}), do: {:error, "Account is inactive"}
+
+  defp alias_result({:error, :inactive_user}),
+    do: error("ACCOUNT_INACTIVE", "Account is inactive")
 
   defp alias_result({:error, :free_limit_reached}),
     do:
-      {:error,
-       "Your account's alias limit has been reached. Upgrade for more aliases: #{Shroud.Mcp.issuer()}/settings/billing"}
+      error(
+        "ALIAS_LIMIT_REACHED",
+        "Your account's alias limit has been reached. Upgrade for more aliases: #{Shroud.Mcp.issuer()}/settings/billing"
+      )
 
-  defp alias_result({:error, :invalid_domain}),
-    do: {:error, "Supply both a valid local part and an existing verified custom domain"}
+  defp alias_result({:error, %Ecto.Changeset{} = changeset}) do
+    if Enum.any?(changeset.errors, fn {field, {_message, opts}} ->
+         field == :address and opts[:constraint] == :unique
+       end) do
+      error(
+        "ALIAS_ALREADY_EXISTS",
+        "This alias address already exists, including as a disabled alias. Choose a different local part or edit the existing alias.",
+        %{address: Ecto.Changeset.get_field(changeset, :address)}
+      )
+    else
+      error("INVALID_ARGUMENT", "Alias could not be saved; check the address and metadata")
+    end
+  end
 
-  defp alias_result({:error, %Ecto.Changeset{}}),
-    do: {:error, "Alias could not be saved; check the address and metadata"}
+  defp alias_result({:error, _, _} = result), do: result
 
-  defp alias_data(email_alias), do: Map.take(email_alias, [:address, :title, :notes, :enabled])
+  defp alias_data(email_alias) do
+    email_alias
+    |> Map.take([:address, :title, :notes, :enabled])
+    |> Map.put(:created_at, NaiveDateTime.to_iso8601(email_alias.inserted_at) <> "Z")
+  end
+
+  defp error(code, message, details \\ %{}),
+    do: {:error, message, Map.put(details, :error_code, code)}
 
   defp offset(args), do: (Map.get(args, "page", 1) - 1) * 10
 
@@ -265,12 +350,22 @@ defmodule Shroud.Mcp.Tools do
     }
 
   defp tool(name, title, description, input, output, read_only, destructive) do
+    error_output =
+      object(
+        %{
+          error_code: %{type: "string", minLength: 1},
+          address: %{type: "string"},
+          required_scopes: %{type: "array", items: %{type: "string"}}
+        },
+        [:error_code]
+      )
+
     %{
       name: name,
       title: title,
       description: description,
       inputSchema: input,
-      outputSchema: output,
+      outputSchema: %{type: "object", anyOf: [output, error_output]},
       annotations: %{readOnlyHint: read_only, destructiveHint: destructive, openWorldHint: false}
     }
   end
