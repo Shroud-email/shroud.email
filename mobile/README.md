@@ -9,11 +9,12 @@ npm start
 
 ## Native sign-in
 
-Set `EXPO_PUBLIC_OAUTH_CLIENT_ID` to the backend's pre-registered public client
-UUID before starting Metro or building. There is no client secret. The client
-must permit `https://app.shroud.email/oauth/callback`, resource
-`https://app.shroud.email/api/v1`, and scopes `profile:read aliases:read
-aliases:create aliases:edit aliases:delete domains:read`.
+The app uses public client ID `3dab4011-1a87-453f-9b6d-c8e12a41c892`, defined in
+the server's official client catalog. There is no client secret or client-ID
+environment variable. The callback is `https://app.shroud.email/oauth/callback`,
+the resource is `https://app.shroud.email/api/v1`, and the scopes are
+`profile:read aliases:read aliases:create aliases:edit aliases:delete domains:read`.
+The app connects to the hosted server; instance selection is not supported.
 
 Use an installed native build with the existing `email.shroud.app` identity and
 verified HTTPS links (including the server's Apple/Android association files).

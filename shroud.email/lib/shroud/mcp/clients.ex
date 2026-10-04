@@ -1,16 +1,34 @@
 defmodule Shroud.Mcp.Clients do
-  @moduledoc "Public OAuth clients provisioned by administrators or registered for MCP through RFC 7591."
+  @moduledoc "Official public OAuth clients and dynamic MCP clients registered through RFC 7591."
   @behaviour Boruta.Oauth.Clients
   alias Shroud.Repo
   import Boruta.Ecto.OauthMapper, only: [to_oauth_schema: 1]
 
+  # Official registrations use stable IDs and exact callbacks on every instance.
+  @official_clients %{
+    "3dab4011-1a87-453f-9b6d-c8e12a41c892" => %{
+      "name" => "Shroud.email mobile",
+      "resource_path" => "/api/v1",
+      "registered" => true,
+      "redirect_uris" => ["https://app.shroud.email/oauth/callback"]
+    },
+    "7b705cee-124c-4abe-827f-d61c030c32c0" => %{
+      "name" => "ChatGPT",
+      "resource_path" => "/mcp",
+      "registered" => true,
+      "redirect_uris" => ["https://chatgpt.com/connector_platform_oauth_redirect"]
+    }
+  }
+
+  def official_clients, do: @official_clients
+
   def metadata(id) when is_binary(id) do
     case find_client(id) do
-      %Boruta.Ecto.Client{metadata: metadata, redirect_uris: redirects} ->
+      %Boruta.Ecto.Client{id: uuid, metadata: metadata, redirect_uris: redirects} ->
         metadata
         |> Map.put("redirect_uris", redirects)
         |> Map.put_new("resource_path", "/mcp")
-        |> Map.put_new("registered", false)
+        |> Map.put("registered", Map.has_key?(@official_clients, uuid))
 
       _ ->
         nil
@@ -18,38 +36,6 @@ defmodule Shroud.Mcp.Clients do
   end
 
   def metadata(_id), do: nil
-
-  def provision!(id, name, resource_path, redirects) do
-    unless match?({:ok, _}, Ecto.UUID.cast(id)) and valid_name?(name) and
-             resource_path in ["/mcp", "/api/v1"] and valid_redirects?(redirects) do
-      raise ArgumentError, "Invalid public OAuth client configuration"
-    end
-
-    Repo.transaction(fn ->
-      existing = Repo.get(Boruta.Ecto.Client, id)
-
-      if existing && existing.metadata["registered"] != true do
-        raise ArgumentError, "Client ID belongs to an unrelated client"
-      end
-
-      attrs =
-        public_client(id, redirects)
-        |> Map.from_struct()
-        |> Map.drop([:__meta__, :id, :inserted_at, :updated_at, :authorized_scopes])
-
-      attrs =
-        Map.put(attrs, :metadata, %{
-          "name" => name,
-          "registered" => true,
-          "resource_path" => resource_path
-        })
-
-      (existing || %Boruta.Ecto.Client{id: id})
-      |> Ecto.Changeset.change(attrs)
-      |> Repo.insert_or_update!()
-    end)
-    |> elem(1)
-  end
 
   def register(params) when is_map(params) do
     redirects = params["redirect_uris"]
@@ -119,12 +105,32 @@ defmodule Shroud.Mcp.Clients do
   defp valid_redirect?(_uri), do: false
 
   defp find_client(id) do
-    with {:ok, uuid} <- Ecto.UUID.cast(id),
-         %Boruta.Ecto.Client{metadata: metadata} = client <- Repo.get(Boruta.Ecto.Client, uuid),
-         true <- metadata["mcp_dynamic"] == true or metadata["registered"] == true do
-      client
-    else
-      _ -> nil
+    case Ecto.UUID.cast(id) do
+      {:ok, uuid} ->
+        case @official_clients[uuid] do
+          nil ->
+            case Repo.get(Boruta.Ecto.Client, uuid) do
+              %Boruta.Ecto.Client{metadata: %{"mcp_dynamic" => true}} = client -> client
+              _ -> nil
+            end
+
+          metadata ->
+            client =
+              public_client(uuid, metadata["redirect_uris"])
+              |> Map.put(:id, uuid)
+              |> Map.put(:metadata, Map.delete(metadata, "redirect_uris"))
+              |> Map.put(:authorized_scopes, [])
+
+            # Boruta's code/token foreign keys require a row; policy comes from the catalog.
+            if is_nil(Repo.get(Boruta.Ecto.Client, uuid)) do
+              Repo.insert!(client, on_conflict: :nothing, conflict_target: [:id])
+            end
+
+            client
+        end
+
+      _ ->
+        nil
     end
   end
 

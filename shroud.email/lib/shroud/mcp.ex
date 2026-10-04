@@ -211,13 +211,11 @@ defmodule Shroud.Mcp do
         select: {c, client.metadata}
     )
     |> Enum.map(fn {connection, metadata} ->
-      dynamic_name =
-        case metadata do
+      name =
+        case Map.get(Clients.official_clients(), connection.client_id, metadata) do
           %{"name" => name} -> name
-          _ -> nil
+          _ -> "Disconnected client"
         end
-
-      name = dynamic_name || "Disconnected client"
 
       %{connection | client_name: name}
     end)

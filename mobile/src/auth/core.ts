@@ -1,6 +1,7 @@
 export const issuer = 'https://app.shroud.email';
 export const resource = `${issuer}/api/v1`;
 export const redirectUri = `${issuer}/oauth/callback`;
+export const clientId = '3dab4011-1a87-453f-9b6d-c8e12a41c892';
 export type Pending = {
   state: string;
   verifier: string;

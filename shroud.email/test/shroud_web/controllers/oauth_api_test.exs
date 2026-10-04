@@ -4,15 +4,16 @@ defmodule ShroudWeb.OAuthApiTest do
   import Shroud.AliasesFixtures
   alias Shroud.{Mcp, Repo}
 
+  @mobile_id "3dab4011-1a87-453f-9b6d-c8e12a41c892"
+  @chatgpt_id "7b705cee-124c-4abe-827f-d61c030c32c0"
+
   defp api_tokens(scopes, user \\ confirmed_user()) do
-    id = Ecto.UUID.generate()
     callback = "https://app.shroud.email/oauth/callback"
-    Mcp.Clients.provision!(id, "Shroud mobile", "/api/v1", [callback])
     {params, verifier} = authorization_params(["aliases:read"])
 
     params =
       Map.merge(params, %{
-        "client_id" => id,
+        "client_id" => @mobile_id,
         "redirect_uri" => callback,
         "resource" => Mcp.api_resource(),
         "scope" => Enum.join(scopes, " ")
@@ -228,21 +229,115 @@ defmodule ShroudWeb.OAuthApiTest do
     assert bearer(tokens.access_token) |> get("/api/v1/aliases") |> response(401)
   end
 
-  test "provisioning is idempotent and cannot replace an unrelated client" do
-    id = Ecto.UUID.generate()
-    callback = "https://app.shroud.email/oauth/callback"
-    first = Mcp.Clients.provision!(id, "Mobile", "/api/v1", [callback])
-    assert Mcp.Clients.provision!(id, "Mobile", "/api/v1", [callback]).id == first.id
-    client = Mcp.Clients.get_client(id)
+  test "official clients are available without provisioning and materialized once" do
+    assert Repo.get(Boruta.Ecto.Client, @mobile_id) == nil
+    client = Mcp.Clients.get_client(@mobile_id)
+    assert client.id == @mobile_id
     assert client.pkce and client.public_refresh_token and client.public_revoke
-    assert Mcp.Clients.metadata(id)["resource_path"] == "/api/v1"
+    assert client.token_endpoint_auth_methods == ["none"]
+    assert Mcp.Clients.get_client(@mobile_id).id == client.id
+    assert Repo.aggregate(Boruta.Ecto.Client, :count) == 1
+    assert Mcp.Clients.metadata(String.upcase(@mobile_id))["registered"]
 
-    assert_raise ArgumentError, fn ->
-      Mcp.Clients.provision!(client_fixture(), "Impostor", "/api/v1", [callback])
+    assert Mcp.Clients.metadata(@mobile_id)["redirect_uris"] == [
+             "https://app.shroud.email/oauth/callback"
+           ]
+
+    assert Mcp.Clients.get_client(Ecto.UUID.generate()) == nil
+    assert Repo.aggregate(Boruta.Ecto.Client, :count) == 1
+  end
+
+  test "the catalog controls official callbacks, name and security policy instead of stored metadata" do
+    %{params: params, tokens: tokens, user: user} = api_tokens(["aliases:read"])
+
+    Repo.get!(Boruta.Ecto.Client, @mobile_id)
+    |> Ecto.Changeset.change(
+      redirect_uris: ["https://evil.example/callback"],
+      pkce: false,
+      metadata: %{"name" => "Impostor", "registered" => false, "resource_path" => "/mcp"}
+    )
+    |> Repo.update!()
+
+    assert Mcp.Clients.get_client(@mobile_id).pkce
+    assert Mcp.Clients.metadata(@mobile_id)["name"] == "Shroud.email mobile"
+    assert [%{client_name: "Shroud.email mobile"}] = Mcp.list_connections(user)
+    assert bearer(tokens.access_token) |> get("/api/v1/aliases") |> response(200)
+    assert {:ok, _} = Mcp.validate_authorization(params)
+
+    for callback <- [
+          "https://evil.example/callback",
+          "https://app.shroud.email/oauth/callback/",
+          "https://app.shroud.email/oauth/callback?extra=1"
+        ] do
+      assert {:error, :invalid_request} =
+               Mcp.validate_authorization(%{params | "redirect_uri" => callback})
+    end
+  end
+
+  test "dynamic registrations cannot impersonate an official ID or approve themselves" do
+    {:ok, registration} =
+      Mcp.Clients.register(%{
+        "client_id" => @mobile_id,
+        "client_name" => "Shroud.email mobile",
+        "redirect_uris" => ["https://app.shroud.email/oauth/callback"],
+        "metadata" => %{"registered" => true, "resource_path" => "/api/v1"}
+      })
+
+    refute registration.client_id == @mobile_id
+    refute Mcp.Clients.metadata(registration.client_id)["registered"]
+    assert Mcp.Clients.metadata(registration.client_id)["resource_path"] == "/mcp"
+
+    row = Repo.get!(Boruta.Ecto.Client, registration.client_id)
+
+    row
+    |> Ecto.Changeset.change(metadata: Map.put(row.metadata, "registered", true))
+    |> Repo.update!()
+
+    refute Mcp.Clients.metadata(registration.client_id)["registered"]
+
+    row
+    |> Ecto.Changeset.change(metadata: %{"registered" => true, "name" => "Impostor"})
+    |> Repo.update!()
+
+    assert Mcp.Clients.get_client(registration.client_id) == nil
+  end
+
+  test "predefined ChatGPT uses only the official stable callback and MCP resource" do
+    user = confirmed_user()
+    {params, verifier} = authorization_params(["aliases:read"])
+
+    params = %{
+      params
+      | "client_id" => @chatgpt_id,
+        "redirect_uri" => "https://chatgpt.com/connector_platform_oauth_redirect"
+    }
+
+    conn = build_conn() |> log_in_user(user) |> get("/oauth/authorize", params)
+    refute html_response(conn, 200) =~ "id=\"unverified-client\""
+    assert {:ok, code} = Mcp.authorize(user, params)
+
+    assert {:ok, tokens} =
+             Mcp.exchange(
+               Map.merge(params, %{
+                 "grant_type" => "authorization_code",
+                 "code" => code,
+                 "code_verifier" => verifier
+               })
+             )
+
+    assert tokens.resource == Mcp.resource()
+    assert {:ok, ^user} = Mcp.with_access(tokens.access_token, "aliases:read", &{:ok, &1.user})
+    assert bearer(tokens.access_token) |> get("/api/v1/aliases") |> response(401)
+
+    for callback <- [
+          "https://chatgpt.com/connector/oauth/attacker",
+          "https://evil.example/connector_platform_oauth_redirect"
+        ] do
+      assert {:error, :invalid_request} =
+               Mcp.validate_authorization(%{params | "redirect_uri" => callback})
     end
 
-    assert_raise ArgumentError, fn ->
-      Mcp.Clients.provision!(id, "Mobile", "/api/v1", ["https://evil.example/#fragment"])
-    end
+    assert {:error, :invalid_request} =
+             Mcp.validate_authorization(%{params | "resource" => Mcp.api_resource()})
   end
 end

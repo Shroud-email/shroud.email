@@ -81,8 +81,12 @@ function provider(platform = 'android') {
     );
     return exports;
   };
-  const core = load('../src/auth/core.ts', {}, async (url) => {
+  const core = load('../src/auth/core.ts', {}, async (url, options) => {
     if (url.endsWith('/oauth/token')) {
+      assert.equal(
+        new URLSearchParams(options.body).get('client_id'),
+        '3dab4011-1a87-453f-9b6d-c8e12a41c892'
+      );
       exchanges++;
       return Response.json({
         access_token: 'access',

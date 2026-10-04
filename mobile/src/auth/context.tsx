@@ -15,13 +15,15 @@ import React, {
 } from 'react';
 import { AppState, Platform } from 'react-native';
 
-import { Account, AuthService, issuer, redirectUri, resource } from './core';
+import {
+  Account,
+  AuthService,
+  clientId,
+  issuer,
+  redirectUri,
+  resource,
+} from './core';
 
-const clientId = process.env.EXPO_PUBLIC_OAUTH_CLIENT_ID ?? '';
-const configured =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-    clientId
-  );
 const iosVersion = String(Platform.Version).split('.').map(Number);
 export const unsupported =
   Platform.OS === 'web'
@@ -30,9 +32,7 @@ export const unsupported =
         (iosVersion[0] < 17 ||
           (iosVersion[0] === 17 && (iosVersion[1] ?? 0) < 4))
       ? 'Secure HTTPS sign-in requires iOS 17.4 or later.'
-      : !configured
-        ? 'Set EXPO_PUBLIC_OAUTH_CLIENT_ID to your registered public client UUID and rebuild.'
-        : null;
+      : null;
 const service = new AuthService(
   {
     get: (key) =>
