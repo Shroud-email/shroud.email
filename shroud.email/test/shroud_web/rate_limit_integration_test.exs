@@ -318,6 +318,7 @@ defmodule ShroudWeb.RateLimitIntegrationTest do
   } do
     %{conn: conn, user: user} = register_and_log_in_user(%{conn: conn})
     {:ok, view, _} = live(conn, "/settings/security")
+    render_hook(view, "passkey_supported", %{supported: true})
     view |> element("#add-passkey-button") |> render_click()
 
     for _ <- 1..120, do: render_hook(view, "passkey_supported", %{supported: false})
@@ -343,6 +344,7 @@ defmodule ShroudWeb.RateLimitIntegrationTest do
         session: %{"csrf" => get_session(conn, :_csrf_token)}
       )
 
+    render_hook(view, "passkey_supported", %{supported: true})
     seed(:passkey_challenge, {:ip, conn.remote_ip}, 10)
     render_hook(view, "passkey_options")
     assert_reply(view, %{error: message, retry_after: seconds})
