@@ -10,9 +10,10 @@ defmodule ShroudWeb.Components.DropdownItem do
 
   def dropdown_item(assigns) do
     ~H"""
-    <button
+    <.button
+      intent={:unstyled}
       id={@id}
-      phx-click={if(!@disabled, do: @click)}
+      click={if(!@disabled, do: @click)}
       phx-value-text={@text}
       type="button"
       class={[
@@ -33,12 +34,14 @@ defmodule ShroudWeb.Components.DropdownItem do
       }
       role="menuitem"
       tabindex="-1"
-      @mouseenter={if(@disabled, do: "activeIndex = -1", else: "activeIndex = #{@index}")}
-      @mouseleave="activeIndex = -1"
-      @click={if(!@disabled, do: "open = false; focusButton()")}
+      {%{
+        "@mouseenter" => if(@disabled, do: "activeIndex = -1", else: "activeIndex = #{@index}"),
+        "@mouseleave" => "activeIndex = -1"
+      }}
+      alpine_click={if(!@disabled, do: "open = false; focusButton()")}
     >
       {@text}
-    </button>
+    </.button>
     """
   end
 end

@@ -22,7 +22,7 @@
         <.text_input name="alias_name" placeholder="john.doe" />
         <span class="ml-3 text-sm text-gray-700 dark:text-gray-300">{@custom_alias_domain}</span>
       </div>
-      <p id="custom-alias-error" :if={@custom_alias_error != ""} class="text-red-600 mt-1 text-sm">
+      <p :if={@custom_alias_error != ""} id="custom-alias-error" class="text-red-600 mt-1 text-sm">
         {@custom_alias_error}
       </p>
     </div>
@@ -73,10 +73,10 @@
             type="text"
             name="query"
             id="query"
-            class="shadow-xs focus:ring-indigo-500 focus:border-indigo-500 block w-full text-sm border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400 px-4 rounded-full"
+            class="shadow-xs focus:ring-indigo-500 focus:border-indigo-500 block w-full text-sm border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400 px-4 rounded-button"
             placeholder="Search aliases"
           />
-          <button type="submit" class="sr-only">Search aliases</button>
+          <.button type="submit" intent={:unstyled} class="sr-only" text="Search aliases" />
         </form>
       </div>
       <.new_alias_button at_free_limit={@at_free_limit} custom_domains={@custom_domains} />
@@ -230,7 +230,7 @@
           :if={@page_number > 1}
           id="alias-page-previous"
           patch={aliases_path(@page_number - 1, @filter_query)}
-          class="px-3 py-2 rounded-md text-indigo-600 dark:text-indigo-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+          class="px-3 py-2 rounded-button text-indigo-600 dark:text-indigo-400 hover:bg-gray-100 dark:hover:bg-gray-700"
         >
           Previous
         </.link>
@@ -259,7 +259,7 @@
                   id={"alias-page-#{number}"}
                   aria-current="page"
                   aria-label={"Page #{number}"}
-                  class="px-3 py-2 rounded-md bg-indigo-600 text-white"
+                  class="px-3 py-2 rounded-button bg-indigo-600 text-white dark:bg-indigo-500"
                 >
                   {number}
                 </span>
@@ -268,7 +268,7 @@
                   id={"alias-page-#{number}"}
                   patch={aliases_path(number, @filter_query)}
                   aria-label={"Go to page #{number}"}
-                  class="px-3 py-2 rounded-md text-indigo-600 dark:text-indigo-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  class="px-3 py-2 rounded-button text-indigo-600 dark:text-indigo-400 hover:bg-gray-100 dark:hover:bg-gray-700"
                 >
                   {number}
                 </.link>
@@ -279,7 +279,7 @@
           :if={@page_number < @total_pages}
           id="alias-page-next"
           patch={aliases_path(@page_number + 1, @filter_query)}
-          class="px-3 py-2 rounded-md text-indigo-600 dark:text-indigo-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+          class="px-3 py-2 rounded-button text-indigo-600 dark:text-indigo-400 hover:bg-gray-100 dark:hover:bg-gray-700"
         >
           Next
         </.link>

@@ -3,43 +3,81 @@
     <div class="bg-white dark:bg-gray-800 py-6 px-4 space-y-6 sm:p-6">
       <div>
         <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100">Email</h3>
-        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Update your email. All emails to your aliases will be sent here!</p>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          Update your email. All emails to your aliases will be sent here!
+        </p>
       </div>
       <div class="grid grid-cols-3 gap-x-6">
         <div class="col-span-3">
           <.input field={@email_form[:email]} label="Email" type="email" required />
         </div>
         <div class="col-span-3 mt-6">
-          <.input field={@email_form[:current_password]} label="Current password" type="password" name="current_password" id="current_password_for_email" autocomplete="current-password" required />
+          <.input
+            field={@email_form[:current_password]}
+            label="Current password"
+            type="password"
+            name="current_password"
+            id="current_password_for_email"
+            autocomplete="current-password"
+            required
+          />
         </div>
       </div>
     </div>
     <div class="px-4 py-3 bg-gray-50 dark:bg-gray-700 text-right sm:px-6">
-      <button type="submit" class="btn btn-primary" phx-disable-with="Sending…">Change email</button>
+      <.button type="submit" phx-disable-with="Sending…" text="Change email" />
     </div>
   </div>
 </.form>
 
-<.form :if={@email_preferences_enabled?} for={@email_preferences_form} phx-submit="update_email_preferences" id="email-preferences-form" class="mt-6">
+<.form
+  :if={@email_preferences_enabled?}
+  for={@email_preferences_form}
+  phx-submit="update_email_preferences"
+  id="email-preferences-form"
+  class="mt-6"
+>
   <div class="shadow-sm dark:shadow-gray-900/50 sm:rounded-md sm:overflow-hidden">
     <div class="bg-white dark:bg-gray-800 py-6 px-4 space-y-6 sm:p-6">
       <div>
-        <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100">Email branding</h3>
+        <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100">
+          Email branding
+        </h3>
         <p id="email-branding-description" class="mt-1 text-sm text-gray-500 dark:text-gray-400">
           Show a Shroud.email footer in emails and “via Shroud.email” in sender names. Turning this off does not affect tracker removal or private reply addresses.
         </p>
       </div>
       <div>
         <input type="hidden" name={@email_preferences_form[:email_branding].name} value="false" />
-        <label for="user_email_branding" class="flex items-center gap-3 text-sm font-medium text-gray-700 dark:text-gray-300">
-          <input type="checkbox" id="user_email_branding" name={@email_preferences_form[:email_branding].name} value="true" checked={Phoenix.HTML.Form.normalize_value("checkbox", @email_preferences_form[:email_branding].value)} aria-describedby="email-branding-description" class="rounded-sm border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600" />
-          Show Shroud.email branding
+        <label
+          for="user_email_branding"
+          class="flex items-center gap-3 text-sm font-medium text-gray-700 dark:text-gray-300"
+        >
+          <input
+            type="checkbox"
+            id="user_email_branding"
+            name={@email_preferences_form[:email_branding].name}
+            value="true"
+            checked={
+              Phoenix.HTML.Form.normalize_value(
+                "checkbox",
+                @email_preferences_form[:email_branding].value
+              )
+            }
+            aria-describedby="email-branding-description"
+            class="rounded-sm border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600"
+          /> Show Shroud.email branding
         </label>
-        <span :for={error <- @email_preferences_form[:email_branding].errors} class="invalid-feedback">{translate_error(error)}</span>
+        <span
+          :for={error <- @email_preferences_form[:email_branding].errors}
+          class="invalid-feedback"
+        >
+          {translate_error(error)}
+        </span>
       </div>
     </div>
     <div class="px-4 py-3 bg-gray-50 dark:bg-gray-700 text-right sm:px-6">
-      <button type="submit" class="btn btn-primary" phx-disable-with="Saving…">Save preferences</button>
+      <.button type="submit" phx-disable-with="Saving…" text="Save preferences" />
     </div>
   </div>
 </.form>

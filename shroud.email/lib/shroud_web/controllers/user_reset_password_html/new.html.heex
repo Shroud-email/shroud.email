@@ -5,24 +5,40 @@
     </h2>
     <p class="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
       Or
-      <.link href={~p"/users/log_in"} class="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-400">sign in</.link>
+      <.link
+        href={~p"/users/log_in"}
+        class="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-400"
+      >
+        sign in
+      </.link>
     </p>
   </div>
 
   <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
     <div class="bg-white dark:bg-gray-800 py-8 px-4 shadow-sm dark:shadow-gray-900/50 sm:rounded-lg sm:px-10">
-      <.form :let={f} for={%{}} as={:user} id="reset-password-form" action={~p"/users/reset_password"} class="space-y-6">
+      <.form
+        :let={f}
+        for={%{}}
+        as={:user}
+        id="reset-password-form"
+        action={~p"/users/reset_password"}
+        class="space-y-6"
+      >
         <div>
-          <%= label f, :email, class: "block text-sm font-medium text-gray-700 dark:text-gray-300" %>
+          {label(f, :email, class: "block text-sm font-medium text-gray-700 dark:text-gray-300")}
           <div class="mt-1">
-            <%= email_input f, :email, required: true, class: "appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-xs placeholder-gray-400 focus:outline-hidden focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400" %>
+            {email_input(f, :email,
+              required: true,
+              class:
+                "appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-xs placeholder-gray-400 focus:outline-hidden focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
+            )}
           </div>
         </div>
 
         <.cap_widget />
 
         <div>
-          <%= submit "Send instructions to reset password", class: "btn btn-primary w-full" %>
+          <.button type="submit" class="w-full" text="Send instructions to reset password" />
         </div>
       </.form>
     </div>

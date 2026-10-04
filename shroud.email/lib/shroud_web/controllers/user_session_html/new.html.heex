@@ -82,7 +82,7 @@
         <.cap_widget />
 
         <div>
-          {submit("Sign in", class: "btn btn-primary w-full")}
+          <.button type="submit" class="w-full" text="Sign in" />
         </div>
       </.form>
       {Phoenix.Component.live_render(@conn, ShroudWeb.PasskeyLoginLive,

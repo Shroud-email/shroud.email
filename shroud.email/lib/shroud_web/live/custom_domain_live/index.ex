@@ -26,7 +26,7 @@ defmodule ShroudWeb.CustomDomainLive.Index do
         description="Custom domains are available on paid plans. Upgrade to create aliases on your own domain."
         icon={:globe_alt}
       >
-        <.link href={~p"/settings/billing"} class="btn btn-primary">Upgrade</.link>
+        <.button href={~p"/settings/billing"} text="Upgrade" />
       </.empty_state>
     <% else %>
       <%= if Enum.empty?(@domains) do %>

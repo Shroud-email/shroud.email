@@ -10,6 +10,8 @@ defmodule ShroudWeb.PasskeyLoginLive do
   alias Shroud.Accounts.Passkeys
   alias ShroudWeb.PasskeyChallengeToken
 
+  import ShroudWeb.Components.Atoms, only: [button: 1]
+
   @fields ~w(token rawId userHandle authenticatorData signature clientDataJSON)
 
   @impl true
@@ -88,9 +90,12 @@ defmodule ShroudWeb.PasskeyLoginLive do
         id="passkey-login-controls"
         class="mt-5 border-t border-gray-200 pt-5 dark:border-gray-700"
       >
-        <button id="passkey-login-button" type="button" class="btn btn-white w-full">
-          Sign in with a passkey
-        </button>
+        <.button
+          id="passkey-login-button"
+          intent={:white}
+          class="w-full"
+          text="Sign in with a passkey"
+        />
         <p
           id="passkey-login-status"
           role="status"

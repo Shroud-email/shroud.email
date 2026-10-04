@@ -260,7 +260,7 @@ defmodule ShroudWeb.McpTest do
         html
         |> LazyHTML.from_document()
         |> LazyHTML.query("#connection-permissions li")
-        |> Enum.map(&LazyHTML.text/1)
+        |> Enum.map(&(LazyHTML.text(&1) |> String.trim()))
 
       assert labels == expected
 

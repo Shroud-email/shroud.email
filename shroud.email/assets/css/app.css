@@ -1,7 +1,7 @@
 /* This file is for your main application CSS */
 @import 'tailwindcss';
 
-@import './components.css' layer(utilities);
+@import './components.css' layer(components);
 @import '../vendor/tippy.css' layer(utilities);
 
 @plugin '@tailwindcss/forms';
@@ -16,6 +16,26 @@
 @theme {
   --font-sans: 'Inter var', ui-sans-serif, system-ui, sans-serif,
     'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  --radius: var(--radius-md);
+  --radius-lg: var(--radius-md);
+  --radius-button: var(--radius-md);
+}
+
+@layer base {
+  /* Dark surfaces and text share the marketing site's slate palette. */
+  .dark {
+    color-scheme: dark;
+    --color-gray-50: var(--color-slate-50);
+    --color-gray-100: var(--color-slate-100);
+    --color-gray-200: var(--color-slate-200);
+    --color-gray-300: var(--color-slate-300);
+    --color-gray-400: var(--color-slate-400);
+    --color-gray-500: var(--color-slate-500);
+    --color-gray-600: var(--color-slate-700);
+    --color-gray-700: var(--color-slate-800);
+    --color-gray-800: var(--color-slate-900);
+    --color-gray-900: var(--color-slate-950);
+  }
 }
 
 /*
@@ -80,8 +100,8 @@
 }
 
 .dark .phx-modal-content {
-  background-color: #1f2937;
-  border-color: #4b5563;
+  background-color: var(--color-gray-800);
+  border-color: var(--color-gray-600);
 }
 
 .phx-modal-close {

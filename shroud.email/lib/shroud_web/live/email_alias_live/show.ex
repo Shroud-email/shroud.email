@@ -50,23 +50,23 @@ defmodule ShroudWeb.EmailAliasLive.Show do
               text={@address}
             />
             <div class="hidden sm:block ml-auto">
-              <button
+              <.button
                 id="delete-alias-desktop"
-                phx-click="open_delete_modal"
-                class="text-xs font-semibold uppercase text-red-700 hover:text-red-500"
-              >
-                Delete
-              </button>
+                click="open_delete_modal"
+                intent={:danger_text}
+                class="text-xs font-semibold uppercase"
+                text="Delete"
+              />
             </div>
           </div>
           <div class="flex justify-end sm:justify-between items-center mt-2">
-            <button
+            <.button
               id="delete-alias-mobile"
-              phx-click="open_delete_modal"
-              class="sm:hidden text-xs font-semibold uppercase text-red-700 hover:text-red-500"
-            >
-              Delete
-            </button>
+              click="open_delete_modal"
+              intent={:danger_text}
+              class="sm:hidden text-xs font-semibold uppercase"
+              text="Delete"
+            />
           </div>
         </div>
         <div class="border-t border-gray-200 dark:border-gray-700">
@@ -101,21 +101,18 @@ defmodule ShroudWeb.EmailAliasLive.Show do
                     {@alias.title || "No title yet"}
                   </span>
                   <span class="ml-4 shrink-0">
-                    <button
-                      @click="editingTitle = true"
+                    <.button
+                      alpine_click="editingTitle = true"
                       x-show="!editingTitle"
-                      type="button"
-                      class="bg-white dark:bg-gray-800 rounded-md font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-400 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                    >
-                      Update
-                    </button>
-                    <button
+                      intent={:text}
+                      text="Update"
+                    />
+                    <.button
                       type="submit"
                       x-show="editingTitle"
-                      class="bg-white dark:bg-gray-800 rounded-md font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-400 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                    >
-                      Save
-                    </button>
+                      intent={:text}
+                      text="Save"
+                    />
                   </span>
                 </dd>
               </div>
@@ -134,21 +131,18 @@ defmodule ShroudWeb.EmailAliasLive.Show do
                     {@alias.notes || "No notes"}
                   </span>
                   <span class="ml-4 shrink-0">
-                    <button
-                      @click="editingNotes = true"
+                    <.button
+                      alpine_click="editingNotes = true"
                       x-show="!editingNotes"
-                      type="button"
-                      class="bg-white dark:bg-transparent rounded-md font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-400 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                    >
-                      Update
-                    </button>
-                    <button
+                      intent={:text}
+                      text="Update"
+                    />
+                    <.button
                       type="submit"
                       x-show="editingNotes"
-                      class="bg-white dark:bg-transparent rounded-md font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-400 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                    >
-                      Save
-                    </button>
+                      intent={:text}
+                      text="Save"
+                    />
                   </span>
                 </dd>
               </div>
@@ -164,8 +158,8 @@ defmodule ShroudWeb.EmailAliasLive.Show do
                 <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100 sm:mt-0 sm:col-span-2">
                   <form phx-submit="update_recipient">
                     <fieldset class="bg-white dark:bg-gray-800">
-                      <div class="mt-1 rounded-md shadow-xs -space-y-px">
-                        <div class="mt-1 flex rounded-t-md shadow-xs">
+                      <div class="mt-1 rounded-button shadow-xs -space-y-px">
+                        <div class="mt-1 flex rounded-t-button shadow-xs">
                           <div class="relative flex items-stretch grow focus-within:z-10">
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                               <.icon name={:at_symbol} solid class="h-5 w-5 text-gray-400" />
@@ -174,18 +168,19 @@ defmodule ShroudWeb.EmailAliasLive.Show do
                               type="email"
                               name="recipient"
                               id="recipient"
-                              class="focus:ring-indigo-500 focus:border-indigo-500 block w-full rounded-none rounded-tl-md pl-10 sm:text-sm border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
+                              class="focus:ring-indigo-500 focus:border-indigo-500 block w-full rounded-none rounded-tl-button pl-10 sm:text-sm border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
                               placeholder="Who do you want to email?"
                             />
                           </div>
-                          <button
+                          <.button
                             type="submit"
-                            class="-ml-px relative inline-flex items-center space-x-2 px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-tr-md text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 focus:outline-hidden focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-                          >
-                            Generate
-                          </button>
+                            intent={:white}
+                            shape={:top_right}
+                            class="-ml-px relative"
+                            text="Generate"
+                          />
                         </div>
-                        <div class="rounded-b-md sm:text-sm bg-gray-50 dark:bg-gray-700 border p-2 border-gray-300 dark:border-gray-600 dark:text-gray-100 flex items-center">
+                        <div class="rounded-b-button sm:text-sm bg-gray-50 dark:bg-gray-700 border p-2 border-gray-300 dark:border-gray-600 dark:text-gray-100 flex items-center">
                           <%= if @reverse_alias_recipient == "" do %>
                             <span class="pl-2">-</span>
                           <% else %>
@@ -249,14 +244,12 @@ defmodule ShroudWeb.EmailAliasLive.Show do
                       </span>
                     </div>
                     <div class="ml-4 shrink-0">
-                      <button
-                        phx-click="unblock_sender"
+                      <.button
+                        click="unblock_sender"
                         phx-value-sender={blocked_sender}
-                        type="button"
-                        class="font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-400"
-                      >
-                        Unblock
-                      </button>
+                        intent={:text}
+                        text="Unblock"
+                      />
                     </div>
                   </li>
                 </ul>
@@ -264,7 +257,7 @@ defmodule ShroudWeb.EmailAliasLive.Show do
                 <form phx-submit="block_sender">
                   <div>
                     <label for="sender" class="sr-only">Block an address</label>
-                    <div class="mt-1 flex rounded-md shadow-xs">
+                    <div class="mt-1 flex rounded-button shadow-xs">
                       <div class="relative flex items-stretch grow focus-within:z-10">
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                           <.icon name={:no_symbol} solid class="h-5 w-5 text-gray-400" />
@@ -273,16 +266,17 @@ defmodule ShroudWeb.EmailAliasLive.Show do
                           type="email"
                           name="sender"
                           id="sender"
-                          class="focus:ring-indigo-500 focus:border-indigo-500 block w-full rounded-none rounded-l-md pl-10 sm:text-sm border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
+                          class="focus:ring-indigo-500 focus:border-indigo-500 block w-full rounded-none rounded-l-button pl-10 sm:text-sm border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
                           placeholder="spammer@example.com"
                         />
                       </div>
-                      <button
+                      <.button
                         type="submit"
-                        class="-ml-px relative inline-flex items-center space-x-2 px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-r-md text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 focus:outline-hidden focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-                      >
-                        Block
-                      </button>
+                        intent={:white}
+                        shape={:right}
+                        class="-ml-px relative"
+                        text="Block"
+                      />
                     </div>
                   </div>
                   <span :if={@blocked_sender_error} class="invalid-feedback">
