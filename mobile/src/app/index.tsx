@@ -49,7 +49,7 @@ export default function HomeScreen() {
           <ThemedText>
             {auth.account
               ? `Signed in as ${auth.account.email}`
-              : 'Sign in securely through Shroud.email.'}
+              : "Sign in securely through Shroud.email."}
           </ThemedText>
           {(unsupported || auth.message) && (
             <ThemedText accessibilityLiveRegion="polite">
@@ -58,14 +58,14 @@ export default function HomeScreen() {
           )}
           <Button
             title={
-              auth.busy ? 'Please wait…' : auth.account ? 'Sign out' : 'Sign in'
+              auth.busy ? "Please wait…" : auth.account ? "Sign out" : "Sign in"
             }
             disabled={!!unsupported || auth.busy}
             onPress={() => {
               void (auth.account ? auth.signOut() : auth.signIn());
             }}
           />
-          {Platform.OS !== 'web' && !auth.account && (
+          {Platform.OS !== "web" && !auth.account && (
             <Button
               title="Clear session / sign out"
               disabled={auth.busy}

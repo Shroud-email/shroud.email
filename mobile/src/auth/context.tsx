@@ -2,18 +2,18 @@ import {
   AuthRequest,
   CodeChallengeMethod,
   ResponseType,
-} from 'expo-auth-session';
-import * as Linking from 'expo-linking';
-import * as SecureStore from 'expo-secure-store';
-import * as WebBrowser from 'expo-web-browser';
+} from "expo-auth-session";
+import * as Linking from "expo-linking";
+import * as SecureStore from "expo-secure-store";
+import * as WebBrowser from "expo-web-browser";
 import React, {
   createContext,
   useContext,
   useEffect,
   useRef,
   useState,
-} from 'react';
-import { AppState, Platform } from 'react-native';
+} from "react";
+import { AppState, Platform } from "react-native";
 
 import {
   Account,
@@ -22,30 +22,30 @@ import {
   issuer,
   redirectUri,
   resource,
-} from './core';
+} from "./core";
 
-const iosVersion = String(Platform.Version).split('.').map(Number);
+const iosVersion = String(Platform.Version).split(".").map(Number);
 export const unsupported =
-  Platform.OS === 'web'
-    ? 'Native sign-in is not supported in this web preview.'
-    : Platform.OS === 'ios' &&
+  Platform.OS === "web"
+    ? "Native sign-in is not supported in this web preview."
+    : Platform.OS === "ios" &&
         (iosVersion[0] < 17 ||
           (iosVersion[0] === 17 && (iosVersion[1] ?? 0) < 4))
-      ? 'Secure HTTPS sign-in requires iOS 17.4 or later.'
+      ? "Secure HTTPS sign-in requires iOS 17.4 or later."
       : null;
 const service = new AuthService(
   {
     get: (key) =>
-      Platform.OS === 'web'
+      Platform.OS === "web"
         ? Promise.resolve(null)
         : SecureStore.getItemAsync(key),
     set: (key, value) => SecureStore.setItemAsync(key, value),
     remove: (key) =>
-      Platform.OS === 'web'
+      Platform.OS === "web"
         ? Promise.resolve()
         : SecureStore.deleteItemAsync(key),
   },
-  clientId
+  clientId,
 );
 type Auth = {
   account: Account | null;
@@ -68,7 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const verify = async (url?: string | null) => {
       const current = ++generation.current;
       try {
-        if (url && new URL(url).pathname === '/oauth/callback')
+        if (url && new URL(url).pathname === "/oauth/callback")
           await service.callback(url);
         const next = await service.account();
         if (active && current === generation.current) {
@@ -79,17 +79,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (active && current === generation.current) {
           setAccount(null);
           setMessage(
-            error instanceof Error ? error.message : 'Sign-in failed.'
+            error instanceof Error ? error.message : "Sign-in failed.",
           );
         }
       }
     };
     void Linking.getInitialURL().then((url) => verify(url));
-    const links = Linking.addEventListener('url', (event) => {
+    const links = Linking.addEventListener("url", (event) => {
       void verify(event.url);
     });
-    const state = AppState.addEventListener('change', (value) => {
-      if (value === 'active') void verify();
+    const state = AppState.addEventListener("change", (value) => {
+      if (value === "active") void verify();
       else {
         generation.current++;
         setAccount(null);
@@ -119,12 +119,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         usePKCE: true,
         codeChallengeMethod: CodeChallengeMethod.S256,
         scopes: [
-          'profile:read',
-          'aliases:read',
-          'aliases:create',
-          'aliases:edit',
-          'aliases:delete',
-          'domains:read',
+          "profile:read",
+          "aliases:read",
+          "aliases:create",
+          "aliases:edit",
+          "aliases:delete",
+          "domains:read",
         ],
         extraParams: { resource },
       });
@@ -132,7 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         authorizationEndpoint: `${issuer}/oauth/authorize`,
       });
       if (!request.codeVerifier)
-        throw new Error('Unable to create PKCE transaction.');
+        throw new Error("Unable to create PKCE transaction.");
       await service.savePending({
         state: request.state,
         verifier: request.codeVerifier,
@@ -142,15 +142,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const result = await WebBrowser.openAuthSessionAsync(url, redirectUri, {
         preferUniversalLinks: true,
       });
-      if (result.type === 'success') await service.callback(result.url);
+      if (result.type === "success") await service.callback(result.url);
       // Android can report dismissal before delivering the HTTPS Linking callback.
-      else if (Platform.OS !== 'android' || result.type !== 'dismiss') {
+      else if (Platform.OS !== "android" || result.type !== "dismiss") {
         await service.cancelPending();
-        setMessage('Sign-in cancelled. You can try again.');
+        setMessage("Sign-in cancelled. You can try again.");
       }
       setAccount(await service.account());
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Sign-in failed.');
+      setMessage(error instanceof Error ? error.message : "Sign-in failed.");
     } finally {
       setBusy(false);
     }
@@ -164,7 +164,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await service.logout();
     } catch (error) {
       setMessage(
-        error instanceof Error ? error.message : 'Unable to revoke connection.'
+        error instanceof Error ? error.message : "Unable to revoke connection.",
       );
     } finally {
       setBusy(false);
