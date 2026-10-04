@@ -34,19 +34,13 @@ defmodule Shroud.SchedulerTest do
 
       Scheduler.verify_custom_domains()
 
-      assert_enqueued(
-        worker: DnsChecker,
-        args: %{custom_domain_id: domain_1.id},
-        scheduled_at: DateTime.utc_now()
-      )
+      assert [%{state: "available", scheduled_at: unverified_scheduled_at}] =
+               all_enqueued(worker: DnsChecker, args: %{custom_domain_id: domain_1.id})
 
-      refute_enqueued(
-        worker: DnsChecker,
-        args: %{custom_domain_id: domain_2.id},
-        scheduled_at: DateTime.utc_now()
-      )
+      assert [%{state: "scheduled", scheduled_at: verified_scheduled_at}] =
+               all_enqueued(worker: DnsChecker, args: %{custom_domain_id: domain_2.id})
 
-      assert_enqueued(worker: DnsChecker, args: %{custom_domain_id: domain_2.id})
+      assert DateTime.compare(unverified_scheduled_at, verified_scheduled_at) == :lt
     end
   end
 end
