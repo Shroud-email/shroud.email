@@ -7,6 +7,8 @@ import ui from "@nuxt/ui/vite";
 import mdx from "@astrojs/mdx";
 import starlight from "@astrojs/starlight";
 import starlightOpenAPI, { openAPISidebarGroups } from "starlight-openapi";
+import llms from "astro-llms-md";
+import { SITE } from "./src/config";
 
 // https://astro.build/config
 export default defineConfig({
@@ -74,6 +76,27 @@ export default defineConfig({
       ],
     }),
     mdx(),
+    llms({
+      name: SITE.title,
+      description: SITE.description,
+      titleSelector: "head > title",
+      exclude: [
+        "docs/api/aliases",
+        "docs/api/domains",
+        "blog/[0-9]*/**",
+        "newsletter-success",
+      ],
+      excludeSelectors: [
+        "nav",
+        "footer",
+        "form",
+        ".right-sidebar",
+        ".sl-anchor-link",
+        ".copy",
+        ".sl-openapi-snippet-picker",
+        "[aria-hidden='true']",
+      ],
+    }),
   ],
 
   vite: {

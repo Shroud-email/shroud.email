@@ -1,0 +1,25 @@
+diff --git a/dist/index.js b/dist/index.js
+index 42fb9fa5e668e80d889cd4e25fba60a016ab5c02..59ec6e305690e48d182b6b74bb687cd6154dfacf 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -242,8 +242,19 @@ export async function processHtml(html, llmsConfig) {
+         });
+         addTableRule(turndownService);
+         addBlockInLinkRule(turndownService);
++        turndownService.addRule("expressiveCode", {
++            filter: (node) => node.nodeName === "PRE" && !!node.querySelector(".ec-line"),
++            replacement: (_content, node) => {
++                const code = Array.from(node.querySelectorAll(".ec-line .code"))
++                    .map((line) => line.textContent.replace(/\n$/, ""))
++                    .join("\n");
++                const fence = "`".repeat(Math.max(3, ...Array.from(code.matchAll(/`+/g), (match) => match[0].length + 1)));
++                const language = node.getAttribute("data-language") || "";
++                return `\n\n${fence}${language}\n${code}\n${fence}\n\n`;
++            },
++        });
+         turndownService.addRule("removeChrome", {
+-            filter: ["nav", "footer", "header", "aside"],
++            filter: ["nav", "footer"],
+             replacement: () => "",
+         });
+         content = turndownService.turndown(contentElement.innerHTML);

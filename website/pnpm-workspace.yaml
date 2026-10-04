@@ -3,3 +3,5 @@ allowBuilds:
   esbuild: true
   sharp: true
   vue-demi: true
+patchedDependencies:
+  astro-llms-md@3.0.2: patches/astro-llms-md@3.0.2.patch
