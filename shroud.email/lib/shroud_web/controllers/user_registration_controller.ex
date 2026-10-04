@@ -22,9 +22,7 @@ defmodule ShroudWeb.UserRegistrationController do
             &url(~p"/users/confirm/#{&1}")
           )
 
-        conn
-        |> put_flash(:info, "User created successfully.")
-        |> UserAuth.log_in_user(user)
+        UserAuth.log_in_user(conn, user)
 
       {:error, %Ecto.Changeset{} = changeset} ->
         render(conn, "new.html",

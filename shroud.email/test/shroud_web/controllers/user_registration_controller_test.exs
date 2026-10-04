@@ -33,12 +33,18 @@ defmodule ShroudWeb.UserRegistrationControllerTest do
 
       assert get_session(conn, :user_token)
       assert redirected_to(conn) == "/users/confirm"
+      refute Flash.get(conn.assigns.flash, :info)
 
       # Now do a logged in request and assert on the menu
       conn = get(conn, "/users/confirm")
       response = html_response(conn, 200)
       assert response =~ email
       document = LazyHTML.from_document(response)
+
+      assert document |> LazyHTML.query("p.prose") |> LazyHTML.text() =~
+               "We sent you an email with a confirmation link."
+
+      assert document |> LazyHTML.query("#flash-info") |> Enum.empty?()
 
       assert document |> LazyHTML.query("#user-menu-item-0") |> LazyHTML.text() |> String.trim() ==
                "Settings"
