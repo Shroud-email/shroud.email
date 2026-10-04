@@ -1,7 +1,7 @@
 defmodule ShroudWeb.McpHandler do
   use ExMCP.Server.Handler
-  alias Shroud.Mcp
   alias Shroud.Mcp.Tools
+  alias Shroud.OAuth
 
   @impl true
   def init(opts), do: {:ok, %{token: Keyword.fetch!(opts, :token)}}
@@ -36,7 +36,12 @@ defmodule ShroudWeb.McpHandler do
     # message and token-bearing state; contain tool failures without logging them.
     result =
       try do
-        Mcp.with_access(state.token, Tools.scope(name), &Tools.call(&1, name, args))
+        OAuth.with_access(
+          state.token,
+          OAuth.resource(:mcp),
+          Tools.scope(name),
+          &Tools.call(&1, name, args)
+        )
       rescue
         _ -> {:error, "Tool unavailable; try again later", %{error_code: "SERVICE_UNAVAILABLE"}}
       catch
@@ -54,7 +59,7 @@ defmodule ShroudWeb.McpHandler do
           }
 
         {:error, :insufficient_scope} ->
-          scopes = Mcp.required_scopes(Tools.scope(name)) |> Enum.join(" ")
+          scopes = OAuth.required_scopes(Tools.scope(name)) |> Enum.join(" ")
 
           %{
             content: [
@@ -66,7 +71,7 @@ defmodule ShroudWeb.McpHandler do
             ],
             structuredContent: %{
               error_code: "INSUFFICIENT_SCOPE",
-              required_scopes: Mcp.required_scopes(Tools.scope(name))
+              required_scopes: OAuth.required_scopes(Tools.scope(name))
             },
             isError: true
           }

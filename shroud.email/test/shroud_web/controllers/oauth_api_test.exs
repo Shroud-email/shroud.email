@@ -1,8 +1,8 @@
 defmodule ShroudWeb.OAuthApiTest do
   use ShroudWeb.ConnCase, async: false
-  import Shroud.McpFixtures
+  import Shroud.OAuthFixtures
   import Shroud.AliasesFixtures
-  alias Shroud.{Mcp, Repo}
+  alias Shroud.{OAuth, Repo}
 
   @mobile_id "3dab4011-1a87-453f-9b6d-c8e12a41c892"
   @chatgpt_id "7b705cee-124c-4abe-827f-d61c030c32c0"
@@ -15,11 +15,11 @@ defmodule ShroudWeb.OAuthApiTest do
       Map.merge(params, %{
         "client_id" => @mobile_id,
         "redirect_uri" => callback,
-        "resource" => Mcp.api_resource(),
+        "resource" => OAuth.resource(:api),
         "scope" => Enum.join(scopes, " ")
       })
 
-    {:ok, code} = Mcp.authorize(user, params)
+    {:ok, code} = OAuth.authorize(user, params)
 
     exchange =
       Map.merge(params, %{
@@ -28,7 +28,7 @@ defmodule ShroudWeb.OAuthApiTest do
         "code_verifier" => verifier
       })
 
-    {:ok, tokens} = Mcp.exchange(exchange)
+    {:ok, tokens} = OAuth.exchange(exchange)
     %{tokens: tokens, user: user, params: params, exchange: exchange}
   end
 
@@ -59,7 +59,7 @@ defmodule ShroudWeb.OAuthApiTest do
     assert URI.to_string(%{callback | query: nil}) == "https://app.shroud.email/oauth/callback"
     query = URI.decode_query(callback.query)
     assert query["state"] == "user-supplied-state"
-    assert query["iss"] == Mcp.issuer()
+    assert query["iss"] == OAuth.issuer()
 
     conn =
       build_conn()
@@ -67,7 +67,7 @@ defmodule ShroudWeb.OAuthApiTest do
       |> post("/oauth/token", URI.encode_query(%{exchange | "code" => query["code"]}))
 
     tokens = json_response(conn, 200)
-    assert tokens["resource"] == Mcp.api_resource()
+    assert tokens["resource"] == OAuth.resource(:api)
     assert get_resp_header(conn, "cache-control") == ["no-store"]
 
     assert bearer(tokens["access_token"]) |> get("/api/v1/me") |> json_response(200) ==
@@ -79,10 +79,10 @@ defmodule ShroudWeb.OAuthApiTest do
     own = alias_fixture(%{user_id: user.id})
 
     {:ok, narrowed} =
-      Mcp.exchange(%{
+      OAuth.exchange(%{
         "grant_type" => "refresh_token",
         "client_id" => params["client_id"],
-        "resource" => Mcp.api_resource(),
+        "resource" => OAuth.resource(:api),
         "refresh_token" => tokens.refresh_token,
         "scope" => "aliases:read"
       })
@@ -103,7 +103,7 @@ defmodule ShroudWeb.OAuthApiTest do
     conn =
       build_conn()
       |> put_req_header("origin", origin)
-      |> options(Mcp.api_resource() <> "/aliases")
+      |> options(OAuth.resource(:api) <> "/aliases")
 
     assert response(conn, 204) == ""
     assert get_resp_header(conn, "access-control-allow-origin") == [origin]
@@ -119,7 +119,7 @@ defmodule ShroudWeb.OAuthApiTest do
     conn =
       bearer(tokens.access_token)
       |> put_req_header("origin", origin)
-      |> get(Mcp.api_resource() <> "/aliases")
+      |> get(OAuth.resource(:api) <> "/aliases")
 
     assert json_response(conn, 200)["email_aliases"] == []
     assert get_resp_header(conn, "access-control-allow-origin") == [origin]
@@ -130,13 +130,13 @@ defmodule ShroudWeb.OAuthApiTest do
     user = confirmed_user()
     FunWithFlags.disable(:chatgpt_integration, for_actor: user)
     %{tokens: tokens, params: params} = api_tokens(["profile:read", "aliases:read"], user)
-    assert tokens.resource == Mcp.api_resource()
+    assert tokens.resource == OAuth.resource(:api)
 
     assert bearer(tokens.access_token) |> get("/api/v1/me") |> json_response(200) ==
              %{"email" => user.email}
 
     assert bearer(tokens.access_token) |> get("/api/v1/aliases") |> json_response(200)
-    assert bearer(tokens.access_token) |> get(Mcp.resource()) |> response(401)
+    assert bearer(tokens.access_token) |> get(OAuth.resource(:mcp)) |> response(401)
 
     html =
       build_conn() |> log_in_user(user) |> get("/oauth/authorize", params) |> html_response(200)
@@ -148,13 +148,15 @@ defmodule ShroudWeb.OAuthApiTest do
     refresh = %{
       "grant_type" => "refresh_token",
       "client_id" => params["client_id"],
-      "resource" => Mcp.api_resource(),
+      "resource" => OAuth.resource(:api),
       "refresh_token" => tokens.refresh_token
     }
 
-    assert {:error, :invalid_grant} = Mcp.exchange(%{refresh | "resource" => Mcp.resource()})
-    assert {:ok, successor} = Mcp.exchange(refresh)
-    assert {:error, :invalid_grant} = Mcp.exchange(refresh)
+    assert {:error, :invalid_grant} =
+             OAuth.exchange(%{refresh | "resource" => OAuth.resource(:mcp)})
+
+    assert {:ok, successor} = OAuth.exchange(refresh)
+    assert {:error, :invalid_grant} = OAuth.exchange(refresh)
     assert bearer(successor.access_token) |> get("/api/v1/aliases") |> response(401)
   end
 
@@ -205,16 +207,16 @@ defmodule ShroudWeb.OAuthApiTest do
     {params, _} = authorization_params(["aliases:read"])
 
     assert {:error, :invalid_request} =
-             Mcp.validate_authorization(%{params | "resource" => Mcp.api_resource()})
+             OAuth.validate_authorization(%{params | "resource" => OAuth.resource(:api)})
 
     assert {:error, :invalid_request} =
-             Mcp.validate_authorization(%{params | "scope" => "profile:read"})
+             OAuth.validate_authorization(%{params | "scope" => "profile:read"})
   end
 
   test "revocation, expiration and account confirmation are checked on REST requests" do
     %{tokens: tokens, user: user} = api_tokens(["aliases:read"])
-    [connection] = Mcp.list_connections(user)
-    assert Mcp.revoke(user, connection.id)
+    [connection] = OAuth.list_connections(user)
+    assert OAuth.revoke(user, connection.id)
     assert bearer(tokens.access_token) |> get("/api/v1/aliases") |> response(401)
 
     %{tokens: tokens} = api_tokens(["aliases:read"], user)
@@ -234,25 +236,25 @@ defmodule ShroudWeb.OAuthApiTest do
     assert Repo.get!(Boruta.Ecto.Client, @mobile_id).metadata["registered"]
     assert Repo.get!(Boruta.Ecto.Client, @chatgpt_id).metadata["registered"]
     count = Repo.aggregate(Boruta.Ecto.Client, :count)
-    client = Mcp.Clients.get_client(@mobile_id)
+    client = OAuth.Clients.get_client(@mobile_id)
     assert client.id == @mobile_id
     assert client.pkce and client.public_refresh_token and client.public_revoke
     assert client.token_endpoint_auth_methods == ["none"]
     assert client.authorization_code_ttl == 300
     assert client.access_token_ttl == 3600
     assert client.refresh_token_ttl == 90 * 86_400
-    assert Mcp.Clients.get_client(@mobile_id).id == client.id
-    assert Mcp.Clients.metadata(String.upcase(@mobile_id))["registered"]
+    assert OAuth.Clients.get_client(@mobile_id).id == client.id
+    assert OAuth.Clients.metadata(String.upcase(@mobile_id))["registered"]
 
-    assert Mcp.Clients.metadata(@mobile_id)["redirect_uris"] == [
+    assert OAuth.Clients.metadata(@mobile_id)["redirect_uris"] == [
              "https://app.shroud.email/oauth/callback"
            ]
 
-    assert Mcp.Clients.get_client(Ecto.UUID.generate()) == nil
+    assert OAuth.Clients.get_client(Ecto.UUID.generate()) == nil
     assert Repo.aggregate(Boruta.Ecto.Client, :count) == count
 
     Repo.get!(Boruta.Ecto.Client, @mobile_id) |> Repo.delete!()
-    assert Mcp.Clients.get_client(@mobile_id) == nil
+    assert OAuth.Clients.get_client(@mobile_id) == nil
     assert Repo.get(Boruta.Ecto.Client, @mobile_id) == nil
   end
 
@@ -268,11 +270,11 @@ defmodule ShroudWeb.OAuthApiTest do
     )
     |> Repo.update!()
 
-    assert Mcp.Clients.get_client(@mobile_id).access_token_ttl == 600
-    assert Mcp.Clients.metadata(@mobile_id)["name"] == "Official app"
-    assert [%{client_name: "Official app"}] = Mcp.list_connections(user)
+    assert OAuth.Clients.get_client(@mobile_id).access_token_ttl == 600
+    assert OAuth.Clients.metadata(@mobile_id)["name"] == "Official app"
+    assert [%{client_name: "Official app"}] = OAuth.list_connections(user)
     assert bearer(tokens.access_token) |> get("/api/v1/aliases") |> response(200)
-    assert {:ok, _} = Mcp.validate_authorization(%{params | "redirect_uri" => callback})
+    assert {:ok, _} = OAuth.validate_authorization(%{params | "redirect_uri" => callback})
 
     for callback <- [
           "https://evil.example/callback",
@@ -281,13 +283,13 @@ defmodule ShroudWeb.OAuthApiTest do
           callback <> "?extra=1"
         ] do
       assert {:error, :invalid_request} =
-               Mcp.validate_authorization(%{params | "redirect_uri" => callback})
+               OAuth.validate_authorization(%{params | "redirect_uri" => callback})
     end
   end
 
   test "dynamic registrations cannot impersonate an official ID or approve themselves" do
     {:ok, registration} =
-      Mcp.Clients.register(%{
+      OAuth.Clients.register(%{
         "client_id" => @mobile_id,
         "client_name" => "Shroud.email mobile",
         "redirect_uris" => ["https://app.shroud.email/oauth/callback"],
@@ -297,8 +299,8 @@ defmodule ShroudWeb.OAuthApiTest do
       })
 
     refute registration.client_id == @mobile_id
-    refute Mcp.Clients.metadata(registration.client_id)["registered"]
-    assert Mcp.Clients.metadata(registration.client_id)["resource_path"] == "/mcp"
+    refute OAuth.Clients.metadata(registration.client_id)["registered"]
+    assert OAuth.Clients.metadata(registration.client_id)["resource_path"] == "/mcp"
 
     user = confirmed_user()
     {params, _verifier} = authorization_params(["aliases:read"])
@@ -315,7 +317,7 @@ defmodule ShroudWeb.OAuthApiTest do
     assert html =~ "id=\"unverified-client\""
 
     assert {:error, :invalid_request} =
-             Mcp.validate_authorization(%{params | "resource" => Mcp.api_resource()})
+             OAuth.validate_authorization(%{params | "resource" => OAuth.resource(:api)})
   end
 
   test "database registration approves clients without a predefined ID" do
@@ -328,8 +330,8 @@ defmodule ShroudWeb.OAuthApiTest do
     )
     |> Repo.update!()
 
-    params = %{params | "resource" => Mcp.api_resource()}
-    assert {:ok, %{registered: true, name: "Approved app"}} = Mcp.validate_authorization(params)
+    params = %{params | "resource" => OAuth.resource(:api)}
+    assert {:ok, %{registered: true, name: "Approved app"}} = OAuth.validate_authorization(params)
 
     html =
       build_conn() |> log_in_user(user) |> get("/oauth/authorize", params) |> html_response(200)
@@ -349,10 +351,10 @@ defmodule ShroudWeb.OAuthApiTest do
 
     conn = build_conn() |> log_in_user(user) |> get("/oauth/authorize", params)
     refute html_response(conn, 200) =~ "id=\"unverified-client\""
-    assert {:ok, code} = Mcp.authorize(user, params)
+    assert {:ok, code} = OAuth.authorize(user, params)
 
     assert {:ok, tokens} =
-             Mcp.exchange(
+             OAuth.exchange(
                Map.merge(params, %{
                  "grant_type" => "authorization_code",
                  "code" => code,
@@ -360,8 +362,16 @@ defmodule ShroudWeb.OAuthApiTest do
                })
              )
 
-    assert tokens.resource == Mcp.resource()
-    assert {:ok, ^user} = Mcp.with_access(tokens.access_token, "aliases:read", &{:ok, &1.user})
+    assert tokens.resource == OAuth.resource(:mcp)
+
+    assert {:ok, ^user} =
+             OAuth.with_access(
+               tokens.access_token,
+               OAuth.resource(:mcp),
+               "aliases:read",
+               &{:ok, &1.user}
+             )
+
     assert bearer(tokens.access_token) |> get("/api/v1/aliases") |> response(401)
 
     for callback <- [
@@ -369,10 +379,10 @@ defmodule ShroudWeb.OAuthApiTest do
           "https://evil.example/connector_platform_oauth_redirect"
         ] do
       assert {:error, :invalid_request} =
-               Mcp.validate_authorization(%{params | "redirect_uri" => callback})
+               OAuth.validate_authorization(%{params | "redirect_uri" => callback})
     end
 
     assert {:error, :invalid_request} =
-             Mcp.validate_authorization(%{params | "resource" => Mcp.api_resource()})
+             OAuth.validate_authorization(%{params | "resource" => OAuth.resource(:api)})
   end
 end

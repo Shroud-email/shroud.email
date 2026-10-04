@@ -1,8 +1,8 @@
-defmodule ShroudWeb.McpRegistrationTest do
+defmodule ShroudWeb.OAuthRegistrationTest do
   use ShroudWeb.ConnCase, async: false
-  import Shroud.McpFixtures
+  import Shroud.OAuthFixtures
   import Phoenix.LiveViewTest
-  alias Shroud.{Mcp, Repo}
+  alias Shroud.{OAuth, Repo}
 
   test "an unknown client can register, obtain consent, call tools, refresh and revoke" do
     for callback <- ["https://agent.example/callback", "http://127.0.0.1:49123/callback"] do
@@ -18,10 +18,10 @@ defmodule ShroudWeb.McpRegistrationTest do
       params = %{params | "client_id" => registration["client_id"], "redirect_uri" => callback}
 
       assert {:error, :invalid_request} =
-               Mcp.validate_authorization(%{params | "redirect_uri" => callback <> "/other"})
+               OAuth.validate_authorization(%{params | "redirect_uri" => callback <> "/other"})
 
       assert {:error, :invalid_request} =
-               Mcp.validate_authorization(Map.delete(params, "code_challenge"))
+               OAuth.validate_authorization(Map.delete(params, "code_challenge"))
 
       html =
         build_conn() |> log_in_user(user) |> get("/oauth/authorize", params) |> html_response(200)
@@ -54,7 +54,7 @@ defmodule ShroudWeb.McpRegistrationTest do
              |> json_response(400)
 
       tokens = build_conn() |> post("/oauth/token", exchange) |> json_response(200)
-      assert [%{client_name: "Independent agent"}] = Mcp.list_connections(user)
+      assert [%{client_name: "Independent agent"}] = OAuth.list_connections(user)
       {:ok, view, _html} = build_conn() |> log_in_user(user) |> live("/settings/connections")
       assert has_element?(view, "#connections h2", "Independent agent")
 
@@ -63,7 +63,7 @@ defmodule ShroudWeb.McpRegistrationTest do
         |> put_req_header("authorization", "Bearer " <> tokens["access_token"])
         |> put_req_header("content-type", "application/json")
         |> post(
-          Mcp.resource(),
+          OAuth.resource(:mcp),
           Jason.encode!(%{
             jsonrpc: "2.0",
             id: 0,
@@ -85,7 +85,7 @@ defmodule ShroudWeb.McpRegistrationTest do
         |> put_req_header("mcp-session-id", session)
         |> put_req_header("content-type", "application/json")
         |> post(
-          Mcp.resource(),
+          OAuth.resource(:mcp),
           Jason.encode!(%{
             jsonrpc: "2.0",
             id: 1,
@@ -102,7 +102,7 @@ defmodule ShroudWeb.McpRegistrationTest do
 
       refresh = %{
         "client_id" => registration["client_id"],
-        "resource" => Mcp.resource(),
+        "resource" => OAuth.resource(:mcp),
         "grant_type" => "refresh_token",
         "refresh_token" => tokens["refresh_token"]
       }
@@ -122,7 +122,9 @@ defmodule ShroudWeb.McpRegistrationTest do
              |> response(200)
 
       assert {:error, :invalid_token} =
-               Mcp.with_access(rotated["access_token"], nil, fn _ -> :ok end)
+               OAuth.with_access(rotated["access_token"], OAuth.resource(:mcp), nil, fn _ ->
+                 :ok
+               end)
 
       assert build_conn()
              |> post("/oauth/token", %{refresh | "refresh_token" => rotated["refresh_token"]})
@@ -181,8 +183,8 @@ defmodule ShroudWeb.McpRegistrationTest do
       })
 
     refute registration["client_id"] == "test-client"
-    assert Mcp.Clients.get_client(registration["client_id"]).pkce
-    assert Mcp.Clients.metadata(registration["client_id"])["mcp_dynamic"]
+    assert OAuth.Clients.get_client(registration["client_id"]).pkce
+    assert OAuth.Clients.metadata(registration["client_id"])["mcp_dynamic"]
 
     # An arbitrary Boruta client is not an MCP registration.
     client =
@@ -190,8 +192,8 @@ defmodule ShroudWeb.McpRegistrationTest do
       |> Ecto.Changeset.change(metadata: %{})
       |> Repo.update!()
 
-    assert Mcp.Clients.metadata(client.id) == nil
-    assert Mcp.Clients.get_client(client.id) == nil
+    assert OAuth.Clients.metadata(client.id) == nil
+    assert OAuth.Clients.get_client(client.id) == nil
   end
 
   test "browser clients can discover, register and exchange across origins without cookies" do
@@ -205,7 +207,7 @@ defmodule ShroudWeb.McpRegistrationTest do
       conn =
         build_conn()
         |> put_req_header("origin", "https://agent.example")
-        |> options(Mcp.issuer() <> path)
+        |> options(OAuth.issuer() <> path)
 
       assert response(conn, 204) == ""
       assert get_resp_header(conn, "access-control-allow-origin") == ["https://agent.example"]
@@ -216,7 +218,7 @@ defmodule ShroudWeb.McpRegistrationTest do
     conn =
       build_conn()
       |> put_req_header("origin", "https://agent.example")
-      |> post(Mcp.issuer() <> "/oauth/register", %{
+      |> post(OAuth.issuer() <> "/oauth/register", %{
         redirect_uris: ["https://agent.example/callback"]
       })
 

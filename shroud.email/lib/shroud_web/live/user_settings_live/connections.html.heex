@@ -18,7 +18,8 @@
       <ul class="list-disc pl-5 text-sm space-y-1">
         <li :for={
           permission <-
-            Enum.map(connection.scopes, &Shroud.Mcp.api_permissions()[&1]) |> Enum.uniq()
+            Enum.map(connection.scopes, &Shroud.OAuth.permissions(connection.resource)[&1])
+            |> Enum.uniq()
         }>
           {permission}
         </li>

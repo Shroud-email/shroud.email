@@ -1,7 +1,7 @@
 defmodule ShroudWeb.UserSettingsLive do
   use ShroudWeb, :live_view
 
-  alias Shroud.{Accounts, Billing, Mcp, Repo}
+  alias Shroud.{Accounts, Billing, OAuth, Repo}
   alias Shroud.Accounts.{Passkeys, TOTP, User}
   alias ShroudWeb.Components.PopupAlert
 
@@ -94,7 +94,7 @@ defmodule ShroudWeb.UserSettingsLive do
   @impl true
   def handle_event("revoke_connection", %{"id" => id}, socket) do
     with {id, ""} <- Integer.parse(id),
-         true <- Mcp.revoke(socket.assigns.current_user, id) do
+         true <- OAuth.revoke(socket.assigns.current_user, id) do
       {:noreply,
        socket
        |> load_connections()
@@ -471,7 +471,7 @@ defmodule ShroudWeb.UserSettingsLive do
   end
 
   defp load_connections(socket) do
-    connections = Mcp.list_connections(socket.assigns.current_user)
+    connections = OAuth.list_connections(socket.assigns.current_user)
 
     socket
     |> assign(:connections_empty?, connections == [])

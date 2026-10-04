@@ -2,7 +2,7 @@ defmodule ShroudWeb.UserApiAuth do
   import Plug.Conn
   import Phoenix.Controller
 
-  alias Shroud.{Accounts, Mcp}
+  alias Shroud.{Accounts, OAuth}
 
   def fetch_current_api_user(conn, _opts) do
     {user_token, conn} = ensure_api_token(conn)
@@ -13,7 +13,7 @@ defmodule ShroudWeb.UserApiAuth do
     else
       token = bearer_token(conn)
 
-      case Mcp.with_access(token, Mcp.api_resource(), nil, fn connection ->
+      case OAuth.with_access(token, OAuth.resource(:api), nil, fn connection ->
              {:ok, connection.user}
            end) do
         {:ok, user} -> conn |> assign(:current_user, user) |> assign(:oauth_token, token)
@@ -24,7 +24,7 @@ defmodule ShroudWeb.UserApiAuth do
 
   def require_api_scope(conn, scope) do
     if token = conn.assigns[:oauth_token] do
-      case Mcp.with_access(token, Mcp.api_resource(), scope, fn _ -> :ok end) do
+      case OAuth.with_access(token, OAuth.resource(:api), scope, fn _ -> :ok end) do
         :ok -> conn
         {:error, :insufficient_scope} -> oauth_error(conn, 403, "insufficient_scope", scope)
         _ -> oauth_error(conn, 401, "invalid_token", scope)
@@ -35,12 +35,12 @@ defmodule ShroudWeb.UserApiAuth do
   end
 
   defp oauth_error(conn, status, error, scope) do
-    scopes = if scope, do: ~s(, scope="#{Enum.join(Mcp.required_scopes(scope), " ")}"), else: ""
+    scopes = if scope, do: ~s(, scope="#{Enum.join(OAuth.required_scopes(scope), " ")}"), else: ""
 
     conn
     |> put_resp_header(
       "www-authenticate",
-      ~s(Bearer resource_metadata="#{Mcp.issuer()}/.well-known/oauth-protected-resource/api/v1", error="#{error}") <>
+      ~s(Bearer resource_metadata="#{OAuth.issuer()}/.well-known/oauth-protected-resource/api/v1", error="#{error}") <>
         scopes
     )
     |> put_resp_header("cache-control", "no-store")

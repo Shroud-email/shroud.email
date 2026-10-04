@@ -1,11 +1,11 @@
-defmodule Shroud.McpConcurrencyTest do
+defmodule Shroud.OAuthConcurrencyTest do
   use ExUnit.Case, async: false
   import Ecto.Query
   import Mox
-  import Shroud.McpFixtures
+  import Shroud.OAuthFixtures
   alias Boruta.Ecto.{AccessTokens, Token}
   alias Ecto.Adapters.SQL.Sandbox
-  alias Shroud.{Mcp, Repo}
+  alias Shroud.{OAuth, Repo}
 
   setup do
     original = Application.fetch_env!(:boruta, Boruta.Oauth)
@@ -73,23 +73,31 @@ defmodule Shroud.McpConcurrencyTest do
           assert token_count(context.user) == before + 1
 
           assert Repo.aggregate(
-                   from(l in "mcp_connection_tokens", where: l.connection_id == ^connection.id),
+                   from(l in "oauth_connection_tokens", where: l.connection_id == ^connection.id),
                    :count
                  ) == before + 1
 
           if grant == "refresh_token" do
-            assert Repo.get!(Mcp.Connection, connection.id).revoked_at != nil
+            assert Repo.get!(OAuth.Connection, connection.id).revoked_at != nil
 
             assert {:error, :invalid_token} =
-                     Mcp.with_access(winner.access_token, nil, fn _ -> :ok end)
+                     OAuth.with_access(winner.access_token, OAuth.resource(:mcp), nil, fn _ ->
+                       :ok
+                     end)
 
             assert {:error, :invalid_grant} =
-                     Mcp.exchange(Map.put(params, "refresh_token", winner.refresh_token))
+                     OAuth.exchange(Map.put(params, "refresh_token", winner.refresh_token))
           else
-            assert :ok = Mcp.with_access(winner.access_token, "aliases:read", fn _ -> :ok end)
+            assert :ok =
+                     OAuth.with_access(
+                       winner.access_token,
+                       OAuth.resource(:mcp),
+                       "aliases:read",
+                       fn _ -> :ok end
+                     )
           end
 
-          assert {:error, :invalid_grant} = Mcp.exchange(params)
+          assert {:error, :invalid_grant} = OAuth.exchange(params)
         end)
       after
         send(first_task.pid, :create)
@@ -126,12 +134,12 @@ defmodule Shroud.McpConcurrencyTest do
     Application.put_env(:boruta, Boruta.Oauth, config)
 
     Sandbox.unboxed_run(Repo, fn ->
-      assert {:error, :invalid_grant} = Mcp.exchange(params)
+      assert {:error, :invalid_grant} = OAuth.exchange(params)
       assert token_count(context.user) == before
       predecessor = Repo.get_by!(Token, refresh_token: params["refresh_token"])
       assert predecessor.refresh_token_revoked_at == nil
       Application.put_env(:boruta, Boruta.Oauth, context.config)
-      assert {:ok, _} = Mcp.exchange(params)
+      assert {:ok, _} = OAuth.exchange(params)
     end)
   end
 
@@ -140,14 +148,14 @@ defmodule Shroud.McpConcurrencyTest do
       {params, connection} = credential(context.user, "authorization_code")
       Repo.delete!(connection)
       assert Repo.get_by(Token, value: params["code"])
-      assert {:error, :invalid_grant} = Mcp.exchange(params)
+      assert {:error, :invalid_grant} = OAuth.exchange(params)
       assert token_count(context.user) == 0
     end)
   end
 
   defp credential(user, "authorization_code") do
     {params, verifier} = authorization_params(["aliases:read"])
-    {:ok, code} = Mcp.authorize(user, params)
+    {:ok, code} = OAuth.authorize(user, params)
 
     params =
       Map.merge(params, %{
@@ -156,7 +164,7 @@ defmodule Shroud.McpConcurrencyTest do
         "code_verifier" => verifier
       })
 
-    {params, hd(Mcp.list_connections(user))}
+    {params, hd(OAuth.list_connections(user))}
   end
 
   defp credential(user, "refresh_token") do
@@ -165,7 +173,7 @@ defmodule Shroud.McpConcurrencyTest do
     {%{
        "grant_type" => "refresh_token",
        "client_id" => connection.client_id,
-       "resource" => Mcp.resource(),
+       "resource" => OAuth.resource(:mcp),
        "refresh_token" => tokens.refresh_token
      }, connection}
   end
@@ -180,7 +188,7 @@ defmodule Shroud.McpConcurrencyTest do
             Sandbox.unboxed_run(Repo, fn ->
               [[backend]] = Repo.query!("SELECT pg_backend_pid()").rows
               send(parent, {:started, self(), backend})
-              Mcp.exchange(params)
+              OAuth.exchange(params)
             end)
         end
       end)

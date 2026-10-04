@@ -8,7 +8,9 @@
     <p>{@details.name} will be able to:</p>
     <ul id="connection-permissions" class="list-disc pl-5 space-y-2">
       <li :for={
-        permission <- Enum.map(@details.scopes, &Shroud.Mcp.api_permissions()[&1]) |> Enum.uniq()
+        permission <-
+          Enum.map(@details.scopes, &Shroud.OAuth.permissions(@details.resource)[&1])
+          |> Enum.uniq()
       }>
         {permission}
       </li>

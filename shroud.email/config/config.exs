@@ -15,8 +15,8 @@ config :boruta, Boruta.Oauth,
   contexts: [
     access_tokens: Boruta.Ecto.AccessTokens,
     codes: Boruta.Ecto.Codes,
-    clients: Shroud.Mcp.Clients,
-    resource_owners: Shroud.Mcp.ResourceOwners,
+    clients: Shroud.OAuth.Clients,
+    resource_owners: Shroud.OAuth.ResourceOwners,
     scopes: Boruta.Ecto.Scopes
   ]
 
@@ -61,7 +61,7 @@ config :shroud, Shroud.Scheduler,
   jobs: [
     # Daily at midnight
     {"@daily", {Shroud.Scheduler, :update_trackers, []}},
-    {"@daily", {Shroud.Mcp, :prune, []}},
+    {"@daily", {Shroud.OAuth, :prune, []}},
     {"@hourly", {Shroud.Scheduler, :delete_spam_emails, []}},
     {"@hourly", {Shroud.Scheduler, :verify_custom_domains, []}}
   ]

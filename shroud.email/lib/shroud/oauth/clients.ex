@@ -1,4 +1,4 @@
-defmodule Shroud.Mcp.Clients do
+defmodule Shroud.OAuth.Clients do
   @moduledoc "Official public OAuth clients and dynamic MCP clients registered through RFC 7591."
   @behaviour Boruta.Oauth.Clients
   alias Shroud.Repo

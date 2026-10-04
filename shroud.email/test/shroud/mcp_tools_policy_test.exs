@@ -1,6 +1,6 @@
 defmodule Shroud.McpToolsPolicyTest do
   use Shroud.DataCase, async: false
-  import Shroud.McpFixtures
+  import Shroud.OAuthFixtures
   import ExUnit.CaptureLog
   alias Shroud.{Aliases, Repo}
   alias Shroud.Mcp.Tools

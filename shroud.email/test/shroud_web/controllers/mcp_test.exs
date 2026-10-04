@@ -1,9 +1,9 @@
 defmodule ShroudWeb.McpTest do
   use ShroudWeb.ConnCase, async: false
-  import Shroud.{McpFixtures, AliasesFixtures, DomainFixtures}
+  import Shroud.{OAuthFixtures, AliasesFixtures, DomainFixtures}
   import Phoenix.LiveViewTest
   alias ExMCP.Content.SchemaPolicy
-  alias Shroud.{Accounts, Aliases, Mcp, Repo}
+  alias Shroud.{Accounts, Aliases, OAuth, Repo}
   alias Shroud.Mcp.Tools
 
   test "output schemas accept structured errors without weakening success validation" do
@@ -157,17 +157,17 @@ defmodule ShroudWeb.McpTest do
     metadata =
       build_conn() |> get("/.well-known/oauth-authorization-server") |> json_response(200)
 
-    assert metadata["issuer"] == Mcp.issuer()
+    assert metadata["issuer"] == OAuth.issuer()
     assert metadata["authorization_response_iss_parameter_supported"]
     assert metadata["code_challenge_methods_supported"] == ["S256"]
     assert metadata["token_endpoint_auth_methods_supported"] == ["none"]
-    assert metadata["registration_endpoint"] == Mcp.issuer() <> "/oauth/register"
+    assert metadata["registration_endpoint"] == OAuth.issuer() <> "/oauth/register"
 
     resource =
       build_conn() |> get("/.well-known/oauth-protected-resource/mcp") |> json_response(200)
 
-    assert resource["resource"] == Mcp.resource()
-    assert resource["authorization_servers"] == [Mcp.issuer()]
+    assert resource["resource"] == OAuth.resource(:mcp)
+    assert resource["authorization_servers"] == [OAuth.issuer()]
     refute "email" in resource["scopes_supported"]
   end
 
@@ -176,7 +176,7 @@ defmodule ShroudWeb.McpTest do
     conn = build_conn() |> get("/oauth/authorize", params)
     assert redirected_to(conn) == "/users/log_in"
     assert get_session(conn, :user_return_to) |> String.starts_with?("/oauth/authorize?")
-    assert Repo.aggregate(Mcp.Connection, :count) == 0
+    assert Repo.aggregate(OAuth.Connection, :count) == 0
   end
 
   test "browser consent shows only requested permissions and binds the account and signed request" do
@@ -199,7 +199,7 @@ defmodule ShroudWeb.McpTest do
     assert get_resp_header(conn, "cache-control") == ["no-store"]
     assert get_resp_header(conn, "referrer-policy") == ["no-referrer"]
     approval = hidden(html, "approval")
-    assert Repo.aggregate(Mcp.Connection, :count) == 0
+    assert Repo.aggregate(OAuth.Connection, :count) == 0
 
     wrong_user =
       build_conn()
@@ -224,7 +224,7 @@ defmodule ShroudWeb.McpTest do
     assert callback.host == "client.example"
     query = URI.decode_query(callback.query)
     assert query["state"] == params["state"]
-    assert query["iss"] == Mcp.issuer()
+    assert query["iss"] == OAuth.issuer()
 
     conn =
       build_conn()
@@ -269,7 +269,7 @@ defmodule ShroudWeb.McpTest do
       |> post("/oauth/authorize", %{approval: hidden(html, "approval"), decision: "allow"})
       |> redirected_to()
 
-      assert hd(Mcp.list_connections(user)).scopes == scopes
+      assert hd(OAuth.list_connections(user)).scopes == scopes
     end
   end
 
@@ -289,11 +289,11 @@ defmodule ShroudWeb.McpTest do
 
     assert query == %{
              "state" => params["state"],
-             "iss" => Mcp.issuer(),
+             "iss" => OAuth.issuer(),
              "error" => "access_denied"
            }
 
-    assert Repo.aggregate(Mcp.Connection, :count) == 0
+    assert Repo.aggregate(OAuth.Connection, :count) == 0
 
     conn =
       build_conn()
@@ -323,7 +323,7 @@ defmodule ShroudWeb.McpTest do
       build_conn()
       |> log_in_user(user)
       |> put_req_header("origin", "https://agent.example")
-      |> get(Mcp.resource())
+      |> get(OAuth.resource(:mcp))
 
     assert response(conn, 401)
 
@@ -350,7 +350,7 @@ defmodule ShroudWeb.McpTest do
       conn =
         build_conn()
         |> put_req_header("authorization", scheme <> tokens.access_token)
-        |> get(Mcp.resource())
+        |> get(OAuth.resource(:mcp))
 
       assert response(conn, 405)
     end
@@ -363,7 +363,7 @@ defmodule ShroudWeb.McpTest do
         ] do
       assert build_conn()
              |> put_req_header("authorization", header)
-             |> get(Mcp.resource())
+             |> get(OAuth.resource(:mcp))
              |> response(401)
     end
   end
@@ -372,7 +372,7 @@ defmodule ShroudWeb.McpTest do
     %{tokens: tokens} = connection_fixture()
 
     for origin <- [
-          Mcp.issuer(),
+          OAuth.issuer(),
           "https://chatgpt.com",
           "https://agent.example",
           "http://localhost:5173",
@@ -386,7 +386,7 @@ defmodule ShroudWeb.McpTest do
           "access-control-request-headers",
           "authorization, mcp-protocol-version, mcp-method, mcp-name"
         )
-        |> options(Mcp.resource())
+        |> options(OAuth.resource(:mcp))
 
       assert response(preflight, 204) == ""
       assert get_resp_header(preflight, "access-control-allow-origin") == [origin]
@@ -417,7 +417,7 @@ defmodule ShroudWeb.McpTest do
       preflight =
         build_conn()
         |> put_req_header("origin", "https://agent.example")
-        |> options(Mcp.issuer() <> path)
+        |> options(OAuth.issuer() <> path)
 
       assert response(preflight, 204) == ""
 
@@ -483,7 +483,7 @@ defmodule ShroudWeb.McpTest do
       |> put_req_header("accept", "application/json, text/event-stream")
       |> put_req_header("mcp-session-id", session_id(tokens.access_token))
       |> post(
-        Mcp.resource(),
+        OAuth.resource(:mcp),
         Jason.encode!(%{jsonrpc: "2.0", method: "notifications/initialized"})
       )
 
@@ -785,7 +785,7 @@ defmodule ShroudWeb.McpTest do
     assert limited["structuredContent"] == %{"error_code" => "ALIAS_LIMIT_REACHED"}
 
     assert hd(limited["content"])["text"] ==
-             "Your account's alias limit has been reached. Upgrade for more aliases: #{Mcp.issuer()}/settings/billing"
+             "Your account's alias limit has been reached. Upgrade for more aliases: #{OAuth.issuer()}/settings/billing"
   end
 
   test "disable and enable act directly on one alias and revocation is account-scoped" do
@@ -873,7 +873,7 @@ defmodule ShroudWeb.McpTest do
            |> response(401)
 
     assert Repo.get!(Aliases.EmailAlias, email_alias.id).enabled
-    [remaining] = Mcp.list_connections(user)
+    [remaining] = OAuth.list_connections(user)
     assert has_element?(view, "#revoke-#{remaining.id}")
     view |> element("#revoke-#{remaining.id}") |> render_click()
     assert has_element?(view, "#no-connections")
@@ -897,8 +897,8 @@ defmodule ShroudWeb.McpTest do
       |> put_req_header("content-type", "application/json")
       |> put_req_header("accept", "application/json, text/event-stream")
 
-    assert conn |> post(Mcp.resource(), "{") |> response(400)
-    assert conn |> post(Mcp.resource(), String.duplicate("x", 65_537)) |> response(413)
+    assert conn |> post(OAuth.resource(:mcp), "{") |> response(400)
+    assert conn |> post(OAuth.resource(:mcp), String.duplicate("x", 65_537)) |> response(413)
   end
 
   test "unsupported streaming returns 405 without invalidating the authenticated session" do
@@ -910,7 +910,7 @@ defmodule ShroudWeb.McpTest do
       |> put_req_header("authorization", "Bearer " <> tokens.access_token)
       |> put_req_header("accept", "text/event-stream")
       |> put_req_header("mcp-session-id", session)
-      |> get(Mcp.resource())
+      |> get(OAuth.resource(:mcp))
 
     assert response(conn, 405)
     assert get_resp_header(conn, "allow") == ["POST, DELETE"]
@@ -920,12 +920,12 @@ defmodule ShroudWeb.McpTest do
            |> get_in(["result", "tools"])
            |> length() == 5
 
-    assert build_conn() |> get(Mcp.resource()) |> response(401)
+    assert build_conn() |> get(OAuth.resource(:mcp)) |> response(401)
 
     assert build_conn()
            |> put_req_header("authorization", "Bearer " <> tokens.access_token)
            |> put_req_header("origin", "https://agent.example")
-           |> get(Mcp.resource())
+           |> get(OAuth.resource(:mcp))
            |> response(405)
   end
 
@@ -934,7 +934,7 @@ defmodule ShroudWeb.McpTest do
     email_alias = alias_fixture(%{user_id: user.id, title: "Status", notes: "Existing notes"})
 
     for name <- ~w(create_alias edit_alias) do
-      assert Mcp.required_scopes(Tools.scope(name)) == [Tools.scope(name), "aliases:read"]
+      assert OAuth.required_scopes(Tools.scope(name)) == [Tools.scope(name), "aliases:read"]
     end
 
     assert tool(tokens, "edit_alias", %{address: email_alias.address, enabled: true})[
@@ -1009,7 +1009,7 @@ defmodule ShroudWeb.McpTest do
 
     post(
       conn,
-      Mcp.resource(),
+      OAuth.resource(:mcp),
       Jason.encode!(%{
         jsonrpc: "2.0",
         id: System.unique_integer([:positive]),

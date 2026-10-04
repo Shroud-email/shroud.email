@@ -1,12 +1,12 @@
-defmodule Shroud.Mcp do
-  @moduledoc "Browser consent and resource-specific MCP and REST policies around Boruta's OAuth server."
+defmodule Shroud.OAuth do
+  @moduledoc "Shared OAuth consent, tokens, connections, and resource policies around Boruta."
   @behaviour Boruta.Oauth.AuthorizeApplication
   @behaviour Boruta.Oauth.TokenApplication
   @behaviour Boruta.Oauth.RevokeApplication
   import Ecto.Query
   alias Boruta.Ecto.Admin.Tokens
   alias Boruta.Oauth.Authorization.AccessToken
-  alias Shroud.Mcp.{Clients, Connection}
+  alias Shroud.OAuth.{Clients, Connection}
   alias Shroud.Repo
 
   @permissions %{
@@ -16,20 +16,19 @@ defmodule Shroud.Mcp do
     "domains:read" => "View custom domains"
   }
 
-  def permissions, do: @permissions
-
-  def api_permissions,
-    do:
-      Map.merge(@permissions, %{
-        "aliases:delete" => "Delete aliases",
-        "profile:read" => "View your email address"
-      })
-
-  def permissions(resource) do
+  def permissions(target) do
     cond do
-      resource == resource() -> permissions()
-      resource == api_resource() -> api_permissions()
-      true -> %{}
+      target == resource(:mcp) ->
+        @permissions
+
+      target == resource(:api) ->
+        Map.merge(@permissions, %{
+          "aliases:delete" => "Delete aliases",
+          "profile:read" => "View your email address"
+        })
+
+      true ->
+        %{}
     end
   end
 
@@ -39,13 +38,13 @@ defmodule Shroud.Mcp do
   def required_scopes(scope), do: [scope]
 
   def issuer, do: ShroudWeb.Endpoint.url()
-  def resource, do: issuer() <> "/mcp"
-  def api_resource, do: issuer() <> "/api/v1"
-
-  def enabled?(user), do: FunWithFlags.enabled?(:chatgpt_integration, for: user)
+  def resource(:mcp), do: issuer() <> "/mcp"
+  def resource(:api), do: issuer() <> "/api/v1"
 
   def enabled?(user, target),
-    do: target == api_resource() or (target == resource() and enabled?(user))
+    do:
+      target == resource(:api) or
+        (target == resource(:mcp) and FunWithFlags.enabled?(:chatgpt_integration, for: user))
 
   def validate_authorization(params) when is_map(params) do
     with %{
@@ -80,7 +79,7 @@ defmodule Shroud.Mcp do
   def authorize(user, params) do
     with {:ok, _} <- validate_authorization(params),
          true <- not is_nil(user.confirmed_at) and enabled?(user, params["resource"]) do
-      conn = oauth_conn(params) |> Plug.Conn.assign(:mcp_user, user)
+      conn = oauth_conn(params) |> Plug.Conn.assign(:oauth_user, user)
       Boruta.Oauth.authorize(conn, owner(to_string(user.id)), __MODULE__)
     else
       _ -> {:error, :invalid_request}
@@ -96,11 +95,11 @@ defmodule Shroud.Mcp do
 
   @impl true
   def authorize_success(conn, response) do
-    params = conn.assigns.mcp_params
+    params = conn.assigns.oauth_params
     code = Repo.get_by!(Boruta.Ecto.Token, value: response.code)
 
     Repo.insert!(%Connection{
-      user_id: conn.assigns.mcp_user.id,
+      user_id: conn.assigns.oauth_user.id,
       client_id: params["client_id"],
       resource: params["resource"],
       scopes: String.split(params["scope"], " ", trim: true) |> Enum.uniq(),
@@ -136,7 +135,8 @@ defmodule Shroud.Mcp do
           token_connections(:refresh_token, credential)
         end
 
-      with %Connection{} = connection <- Repo.one(from c in query, lock: "FOR UPDATE OF m0"),
+      with %Connection{} = connection <-
+             Repo.one(from c in query, lock: fragment("FOR UPDATE OF ?", c)),
            true <- valid_connection?(connection),
            true <- params["client_id"] == connection.client_id,
            true <- params["resource"] == connection.resource,
@@ -151,7 +151,7 @@ defmodule Shroud.Mcp do
             {:error, :invalid_grant}
 
           true ->
-            conn = oauth_conn(params) |> Plug.Conn.assign(:mcp_connection, connection)
+            conn = oauth_conn(params) |> Plug.Conn.assign(:oauth_connection, connection)
             Boruta.Oauth.token(conn, __MODULE__)
         end
       else
@@ -167,8 +167,8 @@ defmodule Shroud.Mcp do
   def token_success(conn, response) do
     token = Repo.get_by!(Boruta.Ecto.Token, value: response.access_token)
 
-    Repo.insert_all("mcp_connection_tokens", [
-      %{connection_id: conn.assigns.mcp_connection.id, token_id: Ecto.UUID.dump!(token.id)}
+    Repo.insert_all("oauth_connection_tokens", [
+      %{connection_id: conn.assigns.oauth_connection.id, token_id: Ecto.UUID.dump!(token.id)}
     ])
 
     {:ok,
@@ -178,11 +178,9 @@ defmodule Shroud.Mcp do
        token_type: response.token_type,
        expires_in: response.expires_in,
        scope: response.token.scope,
-       resource: conn.assigns.mcp_connection.resource
+       resource: conn.assigns.oauth_connection.resource
      }}
   end
-
-  def with_access(token, scope, fun), do: with_access(token, resource(), scope, fun)
 
   def with_access(token, target, scope, fun) when is_binary(token) do
     with %Connection{} = connection <- Repo.one(token_connections(:value, token)),
@@ -264,7 +262,7 @@ defmodule Shroud.Mcp do
 
   defp token_connections(field, token) do
     from c in Connection,
-      join: link in "mcp_connection_tokens",
+      join: link in "oauth_connection_tokens",
       on: link.connection_id == c.id,
       join: t in Boruta.Ecto.Token,
       on: t.id == type(link.token_id, Ecto.UUID),
@@ -319,7 +317,12 @@ defmodule Shroud.Mcp do
   defp oauth_conn(params) do
     client = Clients.get_client(params["client_id"])
     translated = Map.put(params, "client_id", client.id)
-    %Plug.Conn{query_params: translated, body_params: translated, assigns: %{mcp_params: params}}
+
+    %Plug.Conn{
+      query_params: translated,
+      body_params: translated,
+      assigns: %{oauth_params: params}
+    }
   end
 
   defp owner(sub), do: %Boruta.Oauth.ResourceOwner{sub: sub}

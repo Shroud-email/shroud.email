@@ -270,7 +270,7 @@ defmodule Shroud.Mcp.Tools do
     do:
       error(
         "ALIAS_LIMIT_REACHED",
-        "Your account's alias limit has been reached. Upgrade for more aliases: #{Shroud.Mcp.issuer()}/settings/billing"
+        "Your account's alias limit has been reached. Upgrade for more aliases: #{ShroudWeb.Endpoint.url()}/settings/billing"
       )
 
   defp alias_result({:error, %Ecto.Changeset{} = changeset}) do

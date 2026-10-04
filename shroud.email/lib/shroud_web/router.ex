@@ -42,22 +42,22 @@ defmodule ShroudWeb.Router do
   end
 
   scope "/", ShroudWeb do
-    get("/.well-known/oauth-authorization-server", McpOAuthController, :metadata)
-    get("/.well-known/oauth-protected-resource", McpOAuthController, :resource_metadata)
-    get("/.well-known/oauth-protected-resource/mcp", McpOAuthController, :resource_metadata)
-    get("/.well-known/oauth-protected-resource/api/v1", McpOAuthController, :resource_metadata)
+    get("/.well-known/oauth-authorization-server", OAuthController, :metadata)
+    get("/.well-known/oauth-protected-resource", OAuthController, :resource_metadata)
+    get("/.well-known/oauth-protected-resource/mcp", OAuthController, :resource_metadata)
+    get("/.well-known/oauth-protected-resource/api/v1", OAuthController, :resource_metadata)
     get("/.well-known/apple-app-site-association", MobileAssociationController, :apple)
     get("/.well-known/assetlinks.json", MobileAssociationController, :android)
-    get("/oauth/callback", McpOAuthController, :callback_fallback)
-    post("/oauth/register", McpOAuthController, :register)
-    post("/oauth/token", McpOAuthController, :token)
-    post("/oauth/revoke", McpOAuthController, :revoke)
+    get("/oauth/callback", OAuthController, :callback_fallback)
+    post("/oauth/register", OAuthController, :register)
+    post("/oauth/token", OAuthController, :token)
+    post("/oauth/revoke", OAuthController, :revoke)
   end
 
   scope "/", ShroudWeb do
     pipe_through([:browser, :require_confirmed_user])
-    get("/oauth/authorize", McpOAuthController, :authorize)
-    post("/oauth/authorize", McpOAuthController, :consent)
+    get("/oauth/authorize", OAuthController, :authorize)
+    post("/oauth/authorize", OAuthController, :consent)
   end
 
   scope "/" do

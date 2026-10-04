@@ -1,7 +1,7 @@
-defmodule ShroudWeb.McpOAuthRegressionTest do
+defmodule ShroudWeb.OAuthRegressionTest do
   use ShroudWeb.ConnCase, async: false
-  import Shroud.McpFixtures
-  alias Shroud.{Accounts, Mcp, Repo}
+  import Shroud.OAuthFixtures
+  alias Shroud.{Accounts, OAuth, Repo}
 
   setup do
     %{user: confirmed_user()}
@@ -77,7 +77,7 @@ defmodule ShroudWeb.McpOAuthRegressionTest do
 
       response = URI.decode_query(response_query)
       assert response["state"] == params["state"]
-      assert response["iss"] == Mcp.issuer()
+      assert response["iss"] == OAuth.issuer()
 
       if decision == "allow",
         do: assert(response["code"] != nil),
