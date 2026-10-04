@@ -171,17 +171,17 @@ defmodule Shroud.Mcp.Tools do
         do: where(query, [a], a.enabled == ^args["enabled"]),
         else: query
 
-    size = Map.get(args, "limit", 10)
-
-    entries =
-      Repo.all(
-        from(a in query, limit: ^(size + 1), offset: ^((Map.get(args, "page", 1) - 1) * size))
+    page =
+      Repo.paginate(query,
+        page: Map.get(args, "page", 1),
+        page_size: Map.get(args, "limit", 10),
+        options: [allow_overflow_page_number: true]
       )
 
     {:ok,
      %{
-       aliases: Enum.map(Enum.take(entries, size), &alias_data/1),
-       has_more: length(entries) > size
+       aliases: Enum.map(page.entries, &alias_data/1),
+       has_more: page.page_number < page.total_pages
      }}
   end
 
