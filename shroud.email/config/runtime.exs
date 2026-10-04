@@ -27,6 +27,7 @@ config :shroud, :mobile_associations,
     System.get_env("MOBILE_ANDROID_SHA256_CERT_FINGERPRINTS", "")
     |> String.split(",", trim: true)
     |> Enum.map(&String.trim/1)
+    |> Enum.reject(&(&1 == ""))
     |> Enum.map(&String.upcase/1)
 
 # Optional: Chatwoot support widget. Set CHATWOOT_BASE_URL to the URL of

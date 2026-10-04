@@ -78,6 +78,27 @@ defmodule ShroudWeb.MobileAssociationControllerTest do
     assert request(:apple).status == 404
   end
 
+  test "runtime fingerprints ignore blank entries and normalize valid certificates" do
+    variable = "MOBILE_ANDROID_SHA256_CERT_FINGERPRINTS"
+    previous = System.get_env(variable)
+
+    on_exit(fn ->
+      if previous, do: System.put_env(variable, previous), else: System.delete_env(variable)
+    end)
+
+    fingerprint = Enum.join(List.duplicate("ab", 32), ":")
+    System.put_env(variable, " , #{fingerprint}, , \t")
+    config = Config.Reader.read!("config/runtime.exs", env: :test)
+    associations = config |> Keyword.fetch!(:shroud) |> Keyword.fetch!(:mobile_associations)
+    assert associations[:android_sha256_cert_fingerprints] == [String.upcase(fingerprint)]
+    Application.put_env(:shroud, :mobile_associations, associations)
+
+    assert [%{"target" => %{"sha256_cert_fingerprints" => [normalized]}}] =
+             json_response(request(:android), 200)
+
+    assert normalized == String.upcase(fingerprint)
+  end
+
   test "malformed identities do not advertise associations" do
     for team <- ["", "invalid", "TESTTEAM01.other", 123] do
       Application.put_env(:shroud, :mobile_associations, apple_team_id: team)

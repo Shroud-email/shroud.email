@@ -67,17 +67,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let active = true;
     const verify = async (url?: string | null) => {
       const current = ++generation.current;
-      setAccount(null);
       try {
         if (url && new URL(url).pathname === '/oauth/callback')
           await service.callback(url);
         const next = await service.account();
-        if (active && current === generation.current) setAccount(next);
+        if (active && current === generation.current) {
+          setAccount(next);
+          if (next) setMessage(null);
+        }
       } catch (error) {
-        if (active && current === generation.current)
+        if (active && current === generation.current) {
+          setAccount(null);
           setMessage(
             error instanceof Error ? error.message : 'Sign-in failed.'
           );
+        }
       }
     };
     void Linking.getInitialURL().then((url) => verify(url));

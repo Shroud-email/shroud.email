@@ -21,6 +21,7 @@ function provider(platform = 'android') {
     completeBrowser = resolve;
   });
   let exchanges = 0;
+  let identityResponse;
   const account = { id: 'account-id', email: 'person@example.com' };
   const react = {
     createContext: () => ({ Provider: 'provider' }),
@@ -73,7 +74,10 @@ function provider(platform = 'android') {
         },
       },
       fetch,
-      () => 0
+      (handler) => {
+        listeners.tick = handler;
+        return 0;
+      }
     );
     return exports;
   };
@@ -89,6 +93,11 @@ function provider(platform = 'android') {
       });
     }
     assert.ok(url.endsWith('/me'));
+    if (identityResponse) {
+      const response = identityResponse;
+      identityResponse = null;
+      return response;
+    }
     return Response.json(account);
   });
   const context = load('../src/auth/context.tsx', {
@@ -153,8 +162,12 @@ function provider(platform = 'android') {
     browserOpened,
     completeBrowser,
     active: () => listeners.active('active'),
+    tick: () => listeners.tick(),
     callback: () => listeners.link({ url: callback }),
     success: () => completeBrowser({ type: 'success', url: callback }),
+    identityResponse: (response) => {
+      identityResponse = response;
+    },
     exchanges: () => exchanges,
   };
 }
@@ -215,3 +228,109 @@ for (const [platform, result] of [
     assert.match(app.render().message, /cancelled/);
   });
 }
+
+test('periodic verification preserves identity while pending, clears it on failure, and clears recovered errors', async () => {
+  const app = provider();
+  await settle();
+  const signingIn = app.render().signIn();
+  await app.browserOpened;
+  app.success();
+  await signingIn;
+  let completeVerification;
+  app.identityResponse(
+    new Promise((resolve) => {
+      completeVerification = resolve;
+    })
+  );
+  app.tick();
+  await settle();
+  assert.deepEqual(app.render().account, app.account);
+  completeVerification(Response.json(app.account));
+  await settle();
+  assert.deepEqual(app.render().account, app.account);
+
+  app.identityResponse(new Response('{}', { status: 500 }));
+  app.tick();
+  await settle();
+  assert.equal(app.render().account, null);
+  assert.match(app.render().message, /Unable to verify/);
+  app.tick();
+  await settle();
+  assert.deepEqual(app.render().account, app.account);
+  assert.equal(app.render().message, null);
+});
+
+test('unsupported native builds retain an enabled session cleanup button; web does not', () => {
+  for (const platform of ['android', 'ios', 'web']) {
+    let cleared = 0;
+    const element = (type, props) => ({ type, props });
+    const imports = {
+      'react/jsx-runtime': { jsx: element, jsxs: element },
+      'expo-device': { isDevice: true },
+      'react-native': {
+        Button: 'Button',
+        Platform: { OS: platform },
+        StyleSheet: { create: (styles) => styles },
+      },
+      'react-native-safe-area-context': { SafeAreaView: 'SafeAreaView' },
+      '@/constants/theme': {
+        Spacing: {},
+        BottomTabInset: 0,
+        MaxContentWidth: 400,
+      },
+      '@/auth/context': {
+        unsupported: 'Sign-in is unavailable.',
+        useAuth: () => ({
+          account: null,
+          busy: false,
+          signOut: () => {
+            cleared++;
+          },
+        }),
+      },
+    };
+    for (const [file, name] of [
+      ['animated-icon', 'AnimatedIcon'],
+      ['hint-row', 'HintRow'],
+      ['themed-text', 'ThemedText'],
+      ['themed-view', 'ThemedView'],
+      ['web-badge', 'WebBadge'],
+    ])
+      imports[`@/components/${file}`] = { [name]: name };
+    const exports = {};
+    new Function(
+      'exports',
+      'require',
+      ts.transpileModule(
+        fs.readFileSync(require.resolve('../src/app/index.tsx'), 'utf8'),
+        {
+          compilerOptions: {
+            module: ts.ModuleKind.CommonJS,
+            jsx: ts.JsxEmit.ReactJSX,
+          },
+        }
+      ).outputText
+    )(exports, (name) => imports[name]);
+    const buttons = [];
+    const walk = (node) => {
+      if (!node) return;
+      if (Array.isArray(node)) return node.forEach(walk);
+      if (node.type === 'Button') buttons.push(node.props);
+      walk(node.props?.children);
+    };
+    walk(exports.default());
+    assert.equal(
+      buttons.find((button) => button.title === 'Sign in').disabled,
+      true
+    );
+    const cleanup = buttons.find(
+      (button) => button.title === 'Clear session / sign out'
+    );
+    if (platform === 'web') assert.equal(cleanup, undefined);
+    else {
+      assert.equal(cleanup.disabled, false);
+      cleanup.onPress();
+      assert.equal(cleared, 1);
+    }
+  }
+});

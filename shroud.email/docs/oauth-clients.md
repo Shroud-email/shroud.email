@@ -88,7 +88,9 @@ credentials, and replay revokes the entire connection. Serialize refreshes in
 each client. Users can revoke connections immediately in Settings → Security →
 Connected apps. Do not log token bodies or place access/refresh tokens in URLs.
 
-OAuth endpoints and REST endpoints support cookieless cross-origin requests.
+OAuth metadata, registration, token, and revocation endpoints and REST endpoints
+support cookieless cross-origin requests. Open `/oauth/authorize` as a top-level
+browser navigation, not a cross-origin fetch.
 Extensions should exchange and store credentials in their background context,
 not a content script. Limit manifest host permissions to the Shroud instance.
 Public client IDs and display names do not cryptographically authenticate an

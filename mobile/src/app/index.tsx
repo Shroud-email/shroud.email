@@ -65,7 +65,7 @@ export default function HomeScreen() {
               void (auth.account ? auth.signOut() : auth.signIn());
             }}
           />
-          {!unsupported && !auth.account && (
+          {Platform.OS !== 'web' && !auth.account && (
             <Button
               title="Clear session / sign out"
               disabled={auth.busy}
