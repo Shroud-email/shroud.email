@@ -22,7 +22,7 @@ config :shroud,
     |> Enum.map(&String.trim/1)
 
 config :shroud, :mobile_associations,
-  apple_team_id: System.get_env("MOBILE_APPLE_TEAM_ID", "U9MQ2D642F"),
+  apple_team_id: System.get_env("MOBILE_APPLE_TEAM_ID"),
   android_sha256_cert_fingerprints:
     System.get_env("MOBILE_ANDROID_SHA256_CERT_FINGERPRINTS", "")
     |> String.split(",", trim: true)
