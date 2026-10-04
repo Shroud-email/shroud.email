@@ -83,7 +83,7 @@ defmodule ShroudWeb.McpTest do
     assert String.to_integer(seconds) in 1..60
   end
 
-  test "cursor pagination follows creation time and ID despite new aliases and deletion" do
+  test "page pagination follows creation time and ID with search, status and configurable limits" do
     %{user: user, tokens: tokens} = connection_fixture()
     newer_id = alias_fixture(%{user_id: user.id, title: "Store old", notes: "Receipts"})
     first_tie = alias_fixture(%{user_id: user.id, title: "Store tie", notes: "Receipts"})
@@ -107,26 +107,18 @@ defmodule ShroudWeb.McpTest do
     assert hd(first["aliases"])["created_at"] == "2026-01-03T00:00:00Z"
     assert first["has_more"]
 
-    alias_fixture(%{user_id: user.id, title: "Store new", notes: "Receipts"})
-    Aliases.delete_email_alias(last_tie.id)
+    second = tool(tokens, "list_aliases", Map.put(filters, :page, 2))["structuredContent"]
+    assert Enum.map(second["aliases"], & &1["address"]) == [first_tie.address]
+    assert second["has_more"]
 
-    second =
-      tool(tokens, "list_aliases", Map.put(filters, :cursor, first["next_cursor"]))[
+    final =
+      tool(tokens, "list_aliases", %{filters | limit: 2} |> Map.put(:page, 2))[
         "structuredContent"
       ]
 
-    assert Enum.map(second["aliases"], & &1["address"]) == [first_tie.address]
-
-    third =
-      tool(
-        tokens,
-        "list_aliases",
-        %{filters | limit: 2} |> Map.put(:cursor, second["next_cursor"])
-      )["structuredContent"]
-
-    assert Enum.map(third["aliases"], & &1["address"]) == [newer_id.address, oldest.address]
-    refute third["has_more"]
-    assert third["next_cursor"] == nil
+    assert Enum.map(final["aliases"], & &1["address"]) == [newer_id.address, oldest.address]
+    refute final["has_more"]
+    refute Map.has_key?(final, "next_cursor")
 
     assert length(tool(tokens, "list_aliases", %{limit: 100})["structuredContent"]["aliases"]) ==
              5
@@ -135,9 +127,7 @@ defmodule ShroudWeb.McpTest do
           %{limit: 0},
           %{limit: 101},
           %{limit: 1.5},
-          %{cursor: "invalid"},
-          %{cursor: Base.url_encode64("[false,1]", padding: false)},
-          %{cursor: first["next_cursor"], page: 1}
+          %{cursor: "unsupported"}
         ] do
       result = tool(tokens, "list_aliases", args)
       assert result["isError"]
@@ -582,7 +572,6 @@ defmodule ShroudWeb.McpTest do
     for page <- [3, 1001] do
       assert tool(tokens, "list_aliases", %{page: page})["structuredContent"] == %{
                "aliases" => [],
-               "next_cursor" => nil,
                "has_more" => false
              }
     end
@@ -618,7 +607,6 @@ defmodule ShroudWeb.McpTest do
                    "enabled" => true
                  }
                ],
-               "next_cursor" => nil,
                "has_more" => false
              }
 
@@ -632,7 +620,6 @@ defmodule ShroudWeb.McpTest do
                  "enabled" => false
                }
              ],
-             "next_cursor" => nil,
              "has_more" => false
            }
 

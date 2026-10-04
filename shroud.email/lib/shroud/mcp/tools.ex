@@ -32,14 +32,14 @@ defmodule Shroud.Mcp.Tools do
       tool(
         "list_aliases",
         "List aliases",
-        "List or search aliases, ordered by creation time, newest first (ties use descending ID). Returns UTC creation timestamps and pagination information. Search uses case-insensitive literal substring matching: every whitespace-separated word must match address, title, or notes, possibly in different fields. Empty search lists all aliases. Use next_cursor with the same search and enabled filters to continue without shifts from newly created aliases; do not combine cursor and page.",
+        "List or search aliases, ordered by creation time, newest first. Search uses case-insensitive literal substring matching: every whitespace-separated word must match address, title, or notes, possibly in different fields. Empty search lists all aliases.",
         object(
           %{
             search: string("Search address, title or notes; omit to list all aliases", 255, 0),
             enabled: %{type: "boolean", description: "Filter enabled or disabled aliases"},
             page: %{
               page
-              | description: "Page number, starting at 1; cannot be combined with cursor"
+              | description: "Page number, starting at 1; results per page are set by limit"
             },
             limit: %{
               type: "integer",
@@ -47,22 +47,16 @@ defmodule Shroud.Mcp.Tools do
               maximum: 100,
               default: 10,
               description: "Results per page"
-            },
-            cursor:
-              string(
-                "Opaque next_cursor from the previous result; keep search and enabled unchanged",
-                512
-              )
+            }
           },
           []
         ),
         object(
           %{
             aliases: %{type: "array", items: alias_output},
-            has_more: %{type: "boolean"},
-            next_cursor: %{type: ["string", "null"]}
+            has_more: %{type: "boolean"}
           },
-          [:aliases, :has_more, :next_cursor]
+          [:aliases, :has_more]
         ),
         true,
         false
@@ -79,7 +73,7 @@ defmodule Shroud.Mcp.Tools do
       tool(
         "create_alias",
         "Create an alias",
-        "Create a forwarding alias with a title and optional notes. Omit domain to use a Shroud-managed domain. Supply a verified custom domain to use it. Omit local_part to generate a random address; supply it with a custom domain to choose an address.",
+        "Create a forwarding alias with a title and optional notes. Omit domain to use a Shroud.email-managed domain. Supply a verified custom domain to use it. Omit local_part to generate a random address, or submit your own.",
         object(
           %{
             title: title,
@@ -87,7 +81,10 @@ defmodule Shroud.Mcp.Tools do
             domain: string("Existing verified custom domain", 253),
             local_part:
               Map.put(
-                string("Local part without @, spaces or underscores", 64),
+                string(
+                  "Local part without @, spaces or underscores; requires a custom domain",
+                  64
+                ),
                 :pattern,
                 "^[^@\\s_]+$"
               )
@@ -101,7 +98,7 @@ defmodule Shroud.Mcp.Tools do
       tool(
         "edit_alias",
         "Edit an alias",
-        "Update an alias's title, notes or forwarding status. Omitted fields remain unchanged. An empty string clears the title or notes. Disabling immediately stops forwarding, including password-reset emails.",
+        "Update an alias's title, notes or forwarding status. Omitted fields remain unchanged. An empty string clears the title or notes. Disabling immediately stops forwarding.",
         object(
           %{
             address: address,
@@ -174,24 +171,18 @@ defmodule Shroud.Mcp.Tools do
         do: where(query, [a], a.enabled == ^args["enabled"]),
         else: query
 
-    with {:ok, query} <- after_cursor(query, args) do
-      size = Map.get(args, "limit", 10)
+    size = Map.get(args, "limit", 10)
 
-      entries =
-        Repo.all(
-          from(a in query, limit: ^(size + 1), offset: ^((Map.get(args, "page", 1) - 1) * size))
-        )
+    entries =
+      Repo.all(
+        from(a in query, limit: ^(size + 1), offset: ^((Map.get(args, "page", 1) - 1) * size))
+      )
 
-      aliases = Enum.take(entries, size)
-      has_more = length(entries) > size
-
-      {:ok,
-       %{
-         aliases: Enum.map(aliases, &alias_data/1),
-         has_more: has_more,
-         next_cursor: if(has_more, do: encode_cursor(List.last(aliases)), else: nil)
-       }}
-    end
+    {:ok,
+     %{
+       aliases: Enum.map(Enum.take(entries, size), &alias_data/1),
+       has_more: length(entries) > size
+     }}
   end
 
   defp execute(connection, "create_alias", args) do
@@ -268,33 +259,6 @@ defmodule Shroud.Mcp.Tools do
           do: error("INVALID_ARGUMENT", "Supply a title, notes or enabled status to edit"),
           else: alias_result(Aliases.update_email_alias(email_alias, attrs))
     end
-  end
-
-  defp after_cursor(_query, %{"cursor" => _, "page" => _}),
-    do: error("INVALID_ARGUMENT", "Supply cursor or page, not both")
-
-  defp after_cursor(query, %{"cursor" => cursor}) do
-    with {:ok, json} <- Base.url_decode64(cursor, padding: false),
-         {:ok, [timestamp, id]} <- Jason.decode(json),
-         true <-
-           is_binary(timestamp) and is_integer(id) and id > 0 and id <= 9_223_372_036_854_775_807,
-         {:ok, created_at} <- NaiveDateTime.from_iso8601(timestamp) do
-      {:ok,
-       where(
-         query,
-         [a],
-         a.inserted_at < ^created_at or (a.inserted_at == ^created_at and a.id < ^id)
-       )}
-    else
-      _ -> error("INVALID_ARGUMENT", "Invalid alias cursor")
-    end
-  end
-
-  defp after_cursor(query, _args), do: {:ok, query}
-
-  defp encode_cursor(email_alias) do
-    Jason.encode!([NaiveDateTime.to_iso8601(email_alias.inserted_at), email_alias.id])
-    |> Base.url_encode64(padding: false)
   end
 
   defp alias_result({:ok, email_alias}), do: {:ok, alias_data(email_alias)}

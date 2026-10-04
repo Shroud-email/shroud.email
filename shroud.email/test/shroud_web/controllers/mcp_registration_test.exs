@@ -97,8 +97,7 @@ defmodule ShroudWeb.McpRegistrationTest do
 
       assert result["result"]["structuredContent"] == %{
                "aliases" => [],
-               "has_more" => false,
-               "next_cursor" => nil
+               "has_more" => false
              }
 
       refresh = %{
