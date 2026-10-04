@@ -43,12 +43,11 @@ project; shared zizmor, commitlint, and filesystem security checks run once.
 
 ### CI repair trigger
 
-`.github/workflows/amp-ci-repair.yml` launches a fresh Amp orb when a watched
-workflow fails after a push to `main`. Each failed workflow run attempt gets one
-repair thread that investigates all of its failed jobs. The workflow watches
-the repository's push-to-main checks, builds, release automation, and deployments;
-add new workflow names to its `workflows` list as needed. PR runs, manual runs,
-scheduled runs, successful runs, and cancellations do not launch repair agents.
+`.github/workflows/amp-ci-repair.yml` watches all workflows with a `**` wildcard.
+Any workflow failure on `main`, including manual and scheduled runs, starts a
+fresh repair orb that investigates all failed jobs in that run attempt. There is
+no workflow-name allowlist or PR trigger. Pull request runs, successful runs,
+cancellations, and the repair workflow itself do not launch repair agents.
 
 GitHub Actions launches the orb with `amp -ox` and records its link in the job
 summary. No listener thread needs to remain unarchived. The agent must verify a
@@ -72,10 +71,6 @@ read-only contents permission. The Amp token is only supplied to the launch step
 Rerunning the launcher does not create another orb. If launching fails, inspect
 Amp first: the orb can exist even when its creation response is lost. A new
 failed attempt of the source workflow can launch a new repair thread.
-
-Run `node --test .github/scripts/start-ci-repair.test.mjs` to test the launcher
-without creating real orbs or PRs. The workflow also runs these tests on PRs
-that change the launcher or its configuration.
 
 See [migration and cutover notes](docs/monorepo-migration.md) before enabling
 deployments from this repository. Imported history is retained through merge
