@@ -32,8 +32,9 @@ function assertionOptions(publicKey) {
   };
 }
 
-function supported(window) {
-  return !!(window.PublicKeyCredential && window.navigator.credentials);
+function supported(window, operation) {
+  return !!(window.PublicKeyCredential &&
+    typeof window.navigator.credentials?.[operation] === "function");
 }
 
 function reason(error, timedOut = false) {
@@ -43,13 +44,13 @@ function reason(error, timedOut = false) {
   return "failed";
 }
 
-export function createPasskeyHooks(window, document) {
+export function createPasskeyHooks(window) {
   const PasskeyRegistration = {
     mounted() {
       this.passkeyGeneration = 0;
       this.passkeyController = null;
       this.passkeyTimer = null;
-      this.pushEvent("passkey_supported", { supported: supported(window) });
+      this.pushEvent("passkey_supported", { supported: supported(window, "create") });
       this.handleEvent("passkey-register", payload => this.registerPasskey(payload));
       this.handleEvent("passkey-cancel", () => this.cancelPasskeyRegistration());
     },
@@ -70,7 +71,7 @@ export function createPasskeyHooks(window, document) {
       }, 60_000);
 
       try {
-        if (!supported(window) || typeof window.navigator.credentials.create !== "function") {
+        if (!supported(window, "create")) {
           throw new DOMException("Passkeys unsupported", "NotSupportedError");
         }
         this.pushEvent("passkey_status", { token, phase: "waiting" });
@@ -105,7 +106,7 @@ export function createPasskeyHooks(window, document) {
 
     disconnected() { this.cancelPasskeyRegistration(); },
     reconnected() {
-      this.pushEvent("passkey_supported", { supported: supported(window) });
+      this.pushEvent("passkey_supported", { supported: supported(window, "create") });
     },
     destroyed() { this.cancelPasskeyRegistration(); },
     cancelPasskeyRegistration() {
@@ -122,10 +123,11 @@ export function createPasskeyHooks(window, document) {
       this.passkeyGeneration = 0;
       this.passkeyController = null;
       this.passkeyTimer = null;
-      this.passkeyButton = document.getElementById("passkey-login-button");
-      this.passkeyClick = () => this.startPasskeyLogin(false);
-      this.passkeyButton?.addEventListener("click", this.passkeyClick);
-      const available = supported(window);
+      this.passkeyClick = event => {
+        if (event.target.closest("#passkey-login-button")) this.startPasskeyLogin(false);
+      };
+      this.el.addEventListener("click", this.passkeyClick);
+      const available = supported(window, "get");
       this.pushEvent("passkey_supported", { supported: available });
       if (available) this.startConditionalPasskeyLogin();
     },
@@ -153,7 +155,7 @@ export function createPasskeyHooks(window, document) {
     },
 
     requestPasskeyOptions(conditional, generation) {
-      if (!supported(window) || typeof window.navigator.credentials.get !== "function") {
+      if (!supported(window, "get")) {
         if (!conditional) this.pushEvent("passkey_login_error", { reason: "unsupported" });
         return;
       }
@@ -223,12 +225,12 @@ export function createPasskeyHooks(window, document) {
 
     disconnected() { this.cancelPasskeyLogin(); },
     reconnected() {
-      const available = supported(window);
+      const available = supported(window, "get");
       this.pushEvent("passkey_supported", { supported: available });
       if (available) this.startConditionalPasskeyLogin();
     },
     destroyed() {
-      this.passkeyButton?.removeEventListener("click", this.passkeyClick);
+      this.el.removeEventListener("click", this.passkeyClick);
       this.cancelPasskeyLogin();
     },
     cancelPasskeyLogin() {
@@ -244,4 +246,4 @@ export function createPasskeyHooks(window, document) {
 }
 
 export const { PasskeyRegistration, PasskeyLogin } =
-  createPasskeyHooks(globalThis.window, globalThis.document);
+  createPasskeyHooks(globalThis.window);

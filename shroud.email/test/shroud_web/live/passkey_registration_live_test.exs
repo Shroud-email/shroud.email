@@ -256,12 +256,15 @@ defmodule ShroudWeb.PasskeyRegistrationLiveTest do
     refute_push_event(view, "passkey-register", _)
   end
 
-  test "unsupported browsers see an explanation inside the add dialog", %{view: view} do
+  test "unsupported browsers see an explanation without an add button", %{conn: conn} do
+    {:ok, view, _} = live(conn, ~p"/settings/security")
+    refute has_element?(view, "#add-passkey-button")
+    render_hook(view, "passkey_supported", %{supported: true})
+    assert has_element?(view, "#add-passkey-button")
     render_hook(view, "passkey_supported", %{supported: false})
-    view |> element("#add-passkey-button") |> render_click()
-    assert has_element?(view, "#passkey-dialog")
-    assert has_element?(view, "#passkey-confirm[disabled]")
-    assert has_element?(view, "#passkey-dialog-status", "This browser does not support passkeys")
+    refute has_element?(view, "#add-passkey-button")
+    refute has_element?(view, "#passkey-dialog")
+    assert has_element?(view, "#passkey-status", "This browser does not support passkeys")
   end
 
   test "malformed passwords fail inline without crashing or authorizing enrollment", %{

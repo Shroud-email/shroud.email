@@ -27,8 +27,7 @@ defmodule ShroudWeb.UserSessionControllerTest do
 
       assert response
              |> Floki.parse_document!()
-             |> Floki.find("#passkey-login-controls[hidden]")
-             |> length() == 1
+             |> Floki.find("#passkey-login-controls") == []
     end
 
     test "redirects if already logged in", %{conn: conn, user: user} do

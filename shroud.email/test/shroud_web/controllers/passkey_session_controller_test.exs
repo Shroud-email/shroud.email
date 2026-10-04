@@ -123,11 +123,20 @@ defmodule ShroudWeb.PasskeySessionControllerTest do
 
   test "unsupported browsers hide passkey controls and errors preserve password fallback",
        context do
-    assert has_element?(context.view, "#passkey-login-controls[hidden]")
+    refute has_element?(context.view, "#passkey-login-controls")
+    refute has_element?(context.view, "#passkey-login-button")
     render_hook(context.view, "passkey_supported", %{supported: true})
-    refute has_element?(context.view, "#passkey-login-controls[hidden]")
+    assert has_element?(context.view, "#passkey-login-button")
     render_hook(context.view, "passkey_login_error", %{reason: "timeout"})
     assert has_element?(context.view, "#passkey-login-status", "timed out")
+    assert has_element?(context.view, "#passkey-login-button")
+
+    render_hook(context.view, "passkey_supported", %{supported: false})
+    refute has_element?(context.view, "#passkey-login-controls")
+    render_hook(context.view, "passkey_supported", %{supported: true})
+    render_hook(context.view, "passkey_login_error", %{reason: "unsupported"})
+    refute has_element?(context.view, "#passkey-login-button")
+    refute has_element?(context.view, "#passkey-login-status")
     refute has_element?(context.view, "#passkey-login-form[phx-trigger-action]")
     assert html_response(context.conn, 200) =~ "login-form"
   end

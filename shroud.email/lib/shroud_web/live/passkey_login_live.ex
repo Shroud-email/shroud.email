@@ -67,6 +67,10 @@ defmodule ShroudWeb.PasskeyLoginLive do
     end
   end
 
+  def handle_event("passkey_login_error", %{"reason" => "unsupported"}, socket) do
+    {:noreply, assign(socket, passkey_supported: false, error: nil)}
+  end
+
   def handle_event("passkey_login_error", %{"reason" => reason}, socket) do
     {:noreply, assign(socket, :error, error_message(reason))}
   end
@@ -80,8 +84,8 @@ defmodule ShroudWeb.PasskeyLoginLive do
     ~H"""
     <div id="passkey-login" phx-hook="PasskeyLogin">
       <div
+        :if={@passkey_supported}
         id="passkey-login-controls"
-        hidden={!@passkey_supported}
         class="mt-5 border-t border-gray-200 pt-5 dark:border-gray-700"
       >
         <button id="passkey-login-button" type="button" class="btn btn-white w-full">
@@ -120,9 +124,6 @@ defmodule ShroudWeb.PasskeyLoginLive do
 
   defp error_message("timeout"), do: "Passkey request timed out. Please try again."
   defp error_message("canceled"), do: "Passkey sign-in was canceled. Please try again."
-
-  defp error_message("unsupported"),
-    do: "This browser does not support passkeys. You can still use your password."
 
   defp error_message(_), do: "Could not sign in with passkey. Please try again."
 end
