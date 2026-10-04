@@ -41,37 +41,6 @@ project; shared zizmor, commitlint, and filesystem security checks run once.
 `.agents/setup` prepares the app, website, and Go toolchains in an Amp orb.
 `amp orb services ensure` starts the Phoenix preview and returns its portal URL.
 
-### CI repair trigger
-
-`.github/workflows/amp-ci-repair.yml` watches all workflows with a `**` wildcard.
-Any workflow failure on `main`, including manual and scheduled runs, starts a
-fresh repair orb that investigates all failed jobs in that run attempt. There is
-no workflow-name allowlist or PR trigger. Pull request runs, successful runs,
-cancellations, and the repair workflow itself do not launch repair agents.
-
-GitHub Actions launches the orb with `amp -ox` and records its link in the job
-summary. No listener thread needs to remain unarchived. The agent must verify a
-safe fix before pushing a repair branch and opening a PR. It must not merge,
-deploy, push to `main`, or change production data or shared infrastructure.
-
-To enable the trigger:
-
-1. Add an Amp access token from [Amp Security Settings](https://ampcode.com/settings/security)
-   as the repository Actions secret `AMP_API_KEY`. Use an access token, not a
-   short-lived CLI login session token. Never paste the token into a thread.
-2. Ensure the token's owner can access the Amp project `taobojlen/shroud.email`
-   and has connected GitHub in Amp with access to logs, branches, and PRs.
-3. Merge the workflow into `main`. GitHub only activates `workflow_run` listeners
-   from the default branch.
-
-The privileged launcher checks out trusted `main` code, not the failed run's
-commit, and does not consume upstream artifacts or caches. Its GitHub token has
-read-only contents permission. The Amp token is only supplied to the launch step.
-
-Rerunning the launcher does not create another orb. If launching fails, inspect
-Amp first: the orb can exist even when its creation response is lost. A new
-failed attempt of the source workflow can launch a new repair thread.
-
 See [migration and cutover notes](docs/monorepo-migration.md) before enabling
 deployments from this repository. Imported history is retained through merge
 commits: **do not squash the migration**.
