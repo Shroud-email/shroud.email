@@ -1558,6 +1558,109 @@ defmodule Shroud.Email.EmailHandlerTest do
     end
   end
 
+  describe "postmaster delivery" do
+    setup do
+      original = Application.get_env(:shroud, :admin_user_email)
+      Application.put_env(:shroud, :admin_user_email, "operator@example.net")
+
+      on_exit(fn ->
+        if is_nil(original),
+          do: Application.delete_env(:shroud, :admin_user_email),
+          else: Application.put_env(:shroud, :admin_user_email, original)
+      end)
+    end
+
+    test "reserves the service address and preserves raw bytes without spam filtering", %{
+      user: user
+    } do
+      reserved = alias_fixture(%{user_id: user.id, address: "postmaster@email.shroud.test"})
+      raw = "From: reporter@example.org\r\nX-Spam-Flag: YES\r\n\r\nOriginal bytes " <> <<255>>
+
+      assert :ok =
+               perform_job(EmailHandler, %{
+                 from: "reporter@example.org",
+                 to: "POSTMASTER@EMAIL.SHROUD.TEST",
+                 data: Base.encode64(raw)
+               })
+
+      assert_received {:email, email}
+      assert email.to == [{"", "operator@example.net"}]
+      assert email.from == {"Shroud postmaster", "noreply@email.shroud.test"}
+      assert email.subject == "Mail to postmaster@email.shroud.test"
+      assert email.html_body == nil
+      assert [attachment] = email.attachments
+      assert attachment.data == raw
+      assert attachment.filename == "postmaster.eml"
+      assert attachment.content_type == "message/rfc822"
+      assert Aliases.get_email_alias!(reserved.id).forwarded == 0
+      refute_received {:email, _}
+    end
+
+    test "null-sender mixed recipients retain both postmaster delivery and bounce handling" do
+      raw = "Subject: Delivery problem\r\n\r\nDetails"
+
+      assert {:ok, _} =
+               %{
+                 from: "",
+                 to: ["postmaster@email.shroud.test", "noreply@email.shroud.test"],
+                 data: Base.encode64(raw)
+               }
+               |> EmailHandler.new()
+               |> Oban.insert()
+
+      assert %{success: 3, failure: 0} =
+               Oban.drain_queue(queue: :outgoing_email, with_recursion: true)
+
+      assert_received {:email, email}
+      assert email.to == [{"", "operator@example.net"}]
+      assert hd(email.attachments).data == raw
+      refute_received {:email, _}
+      assert [bounce] = all_enqueued(worker: Shroud.S3.S3UploadJob)
+      assert bounce.args["content"] == raw
+      assert bounce.args["path"] =~ "noreply@email.shroud.test"
+    end
+
+    test "custom-domain postmaster remains a customer alias", %{user: user} do
+      domain = custom_domain_fixture(%{user_id: user.id})
+      address = "postmaster@#{domain.domain}"
+      alias_fixture(%{user_id: user.id, address: address})
+
+      perform_job(EmailHandler, %{
+        from: "reporter@example.org",
+        to: address,
+        data: text_email("reporter@example.org", [address], "Hello", "Customer mail")
+      })
+
+      assert_email_sent(fn email -> assert email.to == [{address, user.email}] end)
+      refute_email_sent(%{to: "operator@example.net"})
+    end
+
+    test "missing or self-referencing destinations fail instead of dropping or looping" do
+      args = %{from: nil, to: "postmaster@email.shroud.test", data: Base.encode64("original")}
+      Application.delete_env(:shroud, :admin_user_email)
+      assert {:error, :postmaster_destination_missing} = perform_job(EmailHandler, args)
+      Application.put_env(:shroud, :admin_user_email, "POSTMASTER@EMAIL.SHROUD.TEST")
+      assert {:error, :postmaster_forwarding_loop} = perform_job(EmailHandler, args)
+      assert_no_email_sent()
+    end
+
+    test "mailer failures propagate so Oban can retry" do
+      args = %{
+        from: "reporter@example.org",
+        to: "postmaster@email.shroud.test",
+        data: Base.encode64("original")
+      }
+
+      with_failing_mailer(fn ->
+        assert {:error, :simulated_smtp_failure} = perform_job(EmailHandler, args)
+      end)
+
+      assert_no_email_sent()
+      assert :ok = perform_job(EmailHandler, args)
+      assert_email_sent(fn email -> assert email.to == [{"", "operator@example.net"}] end)
+    end
+  end
+
   defp tracking_pixel_email_args(email_alias) do
     %{
       from: "sender@example.com",
