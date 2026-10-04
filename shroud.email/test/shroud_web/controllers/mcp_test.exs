@@ -41,7 +41,7 @@ defmodule ShroudWeb.McpTest do
     assert LazyHTML.text(document) =~ "Access expires after 90 days."
 
     assert LazyHTML.query(document, "#unverified-client") |> LazyHTML.text() =~
-             "Shroud.email has not verified its identity."
+             "Shroud.email has not verified this app's identity. Only connect an app you trust."
 
     assert LazyHTML.query(document, "#unverified-client") |> LazyHTML.text() =~
              params["redirect_uri"]
