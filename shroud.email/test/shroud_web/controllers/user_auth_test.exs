@@ -188,10 +188,25 @@ defmodule ShroudWeb.UserAuthTest do
 
   describe "require_confirmed_user/2" do
     test "redirects if user is not authenticated", %{conn: conn} do
-      conn = conn |> fetch_flash() |> UserAuth.require_confirmed_user([])
+      conn = get(conn, ~p"/settings/account")
       assert conn.halted
       assert redirected_to(conn) == ~p"/users/log_in"
       assert Flash.get(conn.assigns.flash, :error) == "You must log in to access this page."
+    end
+
+    test "redirects root visits without a login error", %{conn: conn} do
+      for path <- ["/", "/?source=bookmark"] do
+        redirected_conn = get(conn, path)
+
+        assert redirected_conn.halted
+        assert redirected_to(redirected_conn) == ~p"/users/log_in"
+        refute Flash.get(redirected_conn.assigns.flash, :error)
+        assert get_session(redirected_conn, :user_return_to) == path
+
+        login_conn = get(recycle(redirected_conn), ~p"/users/log_in")
+        assert html_response(login_conn, 200)
+        refute Flash.get(login_conn.assigns.flash, :error)
+      end
     end
 
     test "redirects if user is not confirmed", %{conn: conn, user: user} do
