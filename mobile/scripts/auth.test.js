@@ -107,6 +107,59 @@ test("cold-start persisted PKCE and simultaneous router/browser callback exchang
   assert.equal(storage.data.has("pending"), false);
 });
 
+for (const operation of ["callback", "account"]) {
+  test(`${operation} times out a stalled response body within the request deadline`, async (t) => {
+    t.mock.timers.enable({ apis: ["setTimeout"] });
+    const storage = store();
+    await storage.set("pending", JSON.stringify(pending));
+    if (operation === "account")
+      await storage.set(
+        "tokens",
+        JSON.stringify({
+          access: "access",
+          refresh: "refresh",
+          expires: 999999,
+        }),
+      );
+    let signal;
+    let reading;
+    const bodyStarted = new Promise((resolve) => {
+      reading = resolve;
+    });
+    const service = new AuthService(
+      storage,
+      pending.clientId,
+      async (_url, options) => {
+        signal = options.signal;
+        t.mock.timers.tick(5000);
+        return {
+          ok: true,
+          json: () =>
+            new Promise((_resolve, reject) => {
+              signal.addEventListener("abort", () => reject(signal.reason));
+              reading();
+            }),
+        };
+      },
+      () => 1000,
+    );
+    const result = assert.rejects(service[operation](callback), {
+      name: "AbortError",
+    });
+    await bodyStarted;
+    t.mock.timers.tick(9999);
+    assert.equal(signal.aborted, false);
+    t.mock.timers.tick(1);
+    assert.equal(signal.aborted, true);
+    await result;
+    if (operation === "callback") {
+      assert.equal(await storage.get("tokens"), null);
+      assert.equal(await service.callback(callback), false);
+    }
+    await service.cancelPending();
+  });
+}
+
 test("invalid callback never exchanges; ambiguous code failure is not replayed", async () => {
   const storage = store();
   let calls = 0;

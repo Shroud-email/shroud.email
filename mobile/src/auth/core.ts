@@ -78,14 +78,19 @@ export class AuthService {
     private transport: typeof fetch = fetch,
     private now = Date.now,
   ) {}
-  private async request(url: string, options: RequestInit) {
+  private async request<T>(
+    url: string,
+    options: RequestInit,
+    consume: (response: Response) => Promise<T> | T,
+  ) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 15_000);
     try {
-      return await this.transport(url, {
+      const response = await this.transport(url, {
         ...options,
         signal: controller.signal,
       });
+      return await consume(response);
     } finally {
       clearTimeout(timer);
     }
@@ -104,18 +109,23 @@ export class AuthService {
     return this.serial(() => this.store.remove("pending"));
   }
   private async token(fields: Record<string, string>) {
-    const response = await this.request(`${issuer}/oauth/token`, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        ...fields,
-        client_id: this.clientId,
-        resource,
-      }).toString(),
-    });
-    if (!response.ok)
-      throw new Error("Session unavailable. Please sign in again.");
-    const body = await response.json();
+    const body = await this.request(
+      `${issuer}/oauth/token`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          ...fields,
+          client_id: this.clientId,
+          resource,
+        }).toString(),
+      },
+      (response) => {
+        if (!response.ok)
+          throw new Error("Session unavailable. Please sign in again.");
+        return response.json();
+      },
+    );
     if (
       typeof body.access_token !== "string" ||
       !body.access_token ||
@@ -170,17 +180,20 @@ export class AuthService {
           throw error;
         }
       }
-      const response = await this.request(`${resource}/me`, {
-        headers: { Authorization: `Bearer ${tokens.access}` },
-      });
-      if (!response.ok) {
-        if (response.status === 401 || response.status === 403)
-          await this.store.remove("tokens");
-        throw new Error(
-          "Unable to verify your account. Please reconnect or sign in again.",
-        );
-      }
-      const account = await response.json();
+      const account = await this.request(
+        `${resource}/me`,
+        { headers: { Authorization: `Bearer ${tokens.access}` } },
+        async (response) => {
+          if (!response.ok) {
+            if (response.status === 401 || response.status === 403)
+              await this.store.remove("tokens");
+            throw new Error(
+              "Unable to verify your account. Please reconnect or sign in again.",
+            );
+          }
+          return response.json();
+        },
+      );
       if (typeof account.id !== "string" || typeof account.email !== "string")
         throw new Error("Invalid account response.");
       return { id: account.id, email: account.email };
@@ -194,15 +207,20 @@ export class AuthService {
       if (!raw) return;
       const tokens: Tokens = JSON.parse(raw);
       try {
-        const response = await this.request(`${issuer}/oauth/revoke`, {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: new URLSearchParams({
-            token: tokens.refresh,
-            client_id: this.clientId,
-          }).toString(),
-        });
-        if (!response.ok) throw new Error();
+        await this.request(
+          `${issuer}/oauth/revoke`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({
+              token: tokens.refresh,
+              client_id: this.clientId,
+            }).toString(),
+          },
+          (response) => {
+            if (!response.ok) throw new Error();
+          },
+        );
       } catch {
         throw new Error(
           "Signed out locally, but the connection could not be revoked. Revoke it in Shroud account settings when online.",

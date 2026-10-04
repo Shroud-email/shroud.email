@@ -106,6 +106,7 @@ defmodule ShroudWeb.OAuthApiTest do
       |> options(Mcp.api_resource() <> "/aliases")
 
     assert response(conn, 204) == ""
+    assert get_resp_header(conn, "access-control-allow-origin") == [origin]
 
     assert get_resp_header(conn, "access-control-allow-methods") == [
              "GET, POST, PATCH, DELETE, OPTIONS"
