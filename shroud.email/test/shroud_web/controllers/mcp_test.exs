@@ -6,11 +6,6 @@ defmodule ShroudWeb.McpTest do
   alias Shroud.{Accounts, Aliases, Mcp, Repo}
   alias Shroud.Mcp.Tools
 
-  setup do
-    configure_clients()
-    :ok
-  end
-
   test "discovery advertises PKCE, issuer identification, resource and bounded scopes" do
     metadata =
       build_conn() |> get("/.well-known/oauth-authorization-server") |> json_response(200)
@@ -44,6 +39,13 @@ defmodule ShroudWeb.McpTest do
     html = html_response(conn, 200)
     document = LazyHTML.from_document(html)
     assert LazyHTML.text(document) =~ "Access expires after 90 days."
+
+    assert LazyHTML.query(document, "#unverified-client") |> LazyHTML.text() =~
+             "Shroud.email has not verified its identity."
+
+    assert LazyHTML.query(document, "#unverified-client") |> LazyHTML.text() =~
+             params["redirect_uri"]
+
     refute LazyHTML.text(document) =~ "delete aliases"
     assert LazyHTML.query(document, "#connection-permissions li") |> Enum.count() == 2
     assert LazyHTML.query(document, "script") |> LazyHTML.attribute("src") == ["/assets/app.js"]

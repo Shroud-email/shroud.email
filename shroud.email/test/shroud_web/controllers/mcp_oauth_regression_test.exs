@@ -4,7 +4,6 @@ defmodule ShroudWeb.McpOAuthRegressionTest do
   alias Shroud.{Accounts, Mcp, Repo}
 
   setup do
-    configure_clients()
     %{user: confirmed_user()}
   end
 
@@ -35,16 +34,8 @@ defmodule ShroudWeb.McpOAuthRegressionTest do
     for query <- [nil, "", "tag=first&tag=second&encoded=%2f%20&bare&empty="],
         decision <- ["allow", "deny"] do
       callback = "https://client.example/callback" <> if(query == nil, do: "", else: "?" <> query)
-      clients = Application.fetch_env!(:shroud, :mcp_clients)
-
-      Application.put_env(
-        :shroud,
-        :mcp_clients,
-        put_in(clients, ["test-client", "redirect_uris"], [callback])
-      )
-
-      {params, _} = authorization_params(["aliases:read"])
-      params = %{params | "redirect_uri" => callback, "state" => "state & + /"}
+      {params, _} = authorization_params(["aliases:read"], callback)
+      params = %{params | "state" => "state & + /"}
 
       html =
         build_conn() |> log_in_user(user) |> get("/oauth/authorize", params) |> html_response(200)

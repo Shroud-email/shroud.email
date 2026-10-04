@@ -115,7 +115,6 @@ defmodule ShroudWeb.RateLimitIntegrationTest do
   end
 
   test "MCP shares the REST account quota across connections and IPs", %{conn: conn} do
-    Shroud.McpFixtures.configure_clients()
     %{user: user, tokens: tokens} = Shroud.McpFixtures.connection_fixture()
     %{tokens: second} = Shroud.McpFixtures.connection_fixture(["aliases:read"], user)
     %{tokens: other} = Shroud.McpFixtures.connection_fixture(["aliases:read"])
@@ -138,7 +137,6 @@ defmodule ShroudWeb.RateLimitIntegrationTest do
   end
 
   test "exhausted MCP quota stops mutations while preserving browser CORS", %{conn: conn} do
-    Shroud.McpFixtures.configure_clients()
     %{user: user, tokens: tokens} = Shroud.McpFixtures.connection_fixture()
     email_alias = Shroud.AliasesFixtures.alias_fixture(%{user_id: user.id, enabled: true})
     [session] = mcp(conn, tokens.access_token) |> get_resp_header("mcp-session-id")

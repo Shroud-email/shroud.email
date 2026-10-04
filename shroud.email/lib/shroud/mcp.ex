@@ -25,10 +25,9 @@ defmodule Shroud.Mcp do
 
   def issuer, do: ShroudWeb.Endpoint.url()
   def resource, do: issuer() <> "/mcp"
-  def clients, do: Application.get_env(:shroud, :mcp_clients, %{})
 
   def validate_authorization(params) when is_map(params) do
-    with %{"name" => name, "redirect_uris" => redirects} = metadata <-
+    with %{"name" => name, "redirect_uris" => redirects} <-
            Clients.metadata(params["client_id"]),
          true <- params["redirect_uri"] in redirects,
          true <- params["response_type"] == "code",
@@ -43,7 +42,6 @@ defmodule Shroud.Mcp do
        %{
          name: name,
          scopes: scopes,
-         dynamic?: metadata["mcp_dynamic"] == true,
          redirect_uri: params["redirect_uri"]
        }}
     else
@@ -187,8 +185,7 @@ defmodule Shroud.Mcp do
           _ -> nil
         end
 
-      name =
-        get_in(clients(), [connection.client_id, "name"]) || dynamic_name || "Disconnected client"
+      name = dynamic_name || "Disconnected client"
 
       %{connection | client_name: name}
     end)

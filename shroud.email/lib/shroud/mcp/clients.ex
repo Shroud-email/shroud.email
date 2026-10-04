@@ -1,18 +1,17 @@
 defmodule Shroud.Mcp.Clients do
-  @moduledoc "Public MCP OAuth clients registered through configuration or RFC 7591."
+  @moduledoc "Public MCP OAuth clients registered through RFC 7591."
   @behaviour Boruta.Oauth.Clients
-  alias Shroud.{Mcp, Repo}
+  alias Shroud.Repo
   import Boruta.Ecto.OauthMapper, only: [to_oauth_schema: 1]
 
   def metadata(id) when is_binary(id) do
-    Mcp.clients()[id] ||
-      case dynamic_client(id) do
-        %Boruta.Ecto.Client{metadata: metadata, redirect_uris: redirects} ->
-          Map.put(metadata, "redirect_uris", redirects)
+    case dynamic_client(id) do
+      %Boruta.Ecto.Client{metadata: metadata, redirect_uris: redirects} ->
+        Map.put(metadata, "redirect_uris", redirects)
 
-        _ ->
-          nil
-      end
+      _ ->
+        nil
+    end
   end
 
   def metadata(_id), do: nil
@@ -109,35 +108,9 @@ defmodule Shroud.Mcp.Clients do
 
   @impl true
   def get_client(id) do
-    case Mcp.clients()[id] do
-      %{"redirect_uris" => redirects} ->
-        existing = Repo.get_by(Boruta.Ecto.Client, name: id)
-
-        if existing && existing.redirect_uris == redirects &&
-             existing.refresh_token_ttl == 90 * 86_400 do
-          to_oauth_schema(existing)
-        else
-          Repo.insert!(
-            public_client(id, redirects),
-            on_conflict: {:replace, [:redirect_uris, :refresh_token_ttl]},
-            conflict_target: :name
-          )
-
-          Repo.get_by!(Boruta.Ecto.Client, name: id) |> to_oauth_schema()
-        end
-
-      _ ->
-        with {:ok, uuid} <- Ecto.UUID.cast(id),
-             %Boruta.Ecto.Client{name: name} <- Repo.get(Boruta.Ecto.Client, uuid),
-             true <- Map.has_key?(Mcp.clients(), name) do
-          get_client(name)
-        else
-          _ ->
-            case dynamic_client(id) do
-              nil -> nil
-              client -> to_oauth_schema(client)
-            end
-        end
+    case dynamic_client(id) do
+      nil -> nil
+      client -> to_oauth_schema(client)
     end
   end
 

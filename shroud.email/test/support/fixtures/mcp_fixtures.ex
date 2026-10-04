@@ -2,33 +2,22 @@ defmodule Shroud.McpFixtures do
   alias Shroud.{Accounts, Mcp, Repo}
   import Shroud.AccountsFixtures
 
-  def configure_clients do
-    previous = Application.get_env(:shroud, :mcp_clients)
+  def client_fixture(callback \\ "https://client.example/callback") do
+    {:ok, registration} =
+      Mcp.Clients.register(%{"client_name" => "Test client", "redirect_uris" => [callback]})
 
-    Application.put_env(:shroud, :mcp_clients, %{
-      "test-client" => %{
-        "name" => "Test client",
-        "redirect_uris" => ["https://client.example/callback"]
-      },
-      "other-client" => %{
-        "name" => "Other client",
-        "redirect_uris" => ["https://other.example/callback"]
-      }
-    })
-
-    ExUnit.Callbacks.on_exit(fn ->
-      if previous,
-        do: Application.put_env(:shroud, :mcp_clients, previous),
-        else: Application.delete_env(:shroud, :mcp_clients)
-    end)
+    registration.client_id
   end
 
-  def authorization_params(scopes \\ Map.keys(Mcp.permissions())) do
+  def authorization_params(
+        scopes \\ Map.keys(Mcp.permissions()),
+        callback \\ "https://client.example/callback"
+      ) do
     verifier = String.duplicate("a", 43)
 
     params = %{
-      "client_id" => "test-client",
-      "redirect_uri" => "https://client.example/callback",
+      "client_id" => client_fixture(callback),
+      "redirect_uri" => callback,
       "response_type" => "code",
       "scope" => Enum.join(scopes, " "),
       "state" => "user-supplied-state",

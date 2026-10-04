@@ -4,11 +4,6 @@ defmodule ShroudWeb.McpRegistrationTest do
   import Phoenix.LiveViewTest
   alias Shroud.{Mcp, Repo}
 
-  setup do
-    configure_clients()
-    :ok
-  end
-
   test "an unknown client can register, obtain consent, call tools, refresh and revoke" do
     for callback <- ["https://agent.example/callback", "http://127.0.0.1:49123/callback"] do
       registration =
@@ -16,7 +11,7 @@ defmodule ShroudWeb.McpRegistrationTest do
 
       assert registration["token_endpoint_auth_method"] == "none"
       refute Map.has_key?(registration, "client_secret")
-      refute Map.has_key?(Mcp.clients(), registration["client_id"])
+      assert Repo.get!(Boruta.Ecto.Client, registration["client_id"]).metadata["mcp_dynamic"]
 
       user = confirmed_user()
       {params, verifier} = authorization_params(["aliases:read"])
@@ -110,7 +105,7 @@ defmodule ShroudWeb.McpRegistrationTest do
       }
 
       assert build_conn()
-             |> post("/oauth/token", %{refresh | "client_id" => "other-client"})
+             |> post("/oauth/token", %{refresh | "client_id" => client_fixture()})
              |> json_response(400)
 
       rotated = build_conn() |> post("/oauth/token", refresh) |> json_response(200)
