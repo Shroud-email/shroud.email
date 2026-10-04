@@ -24,10 +24,6 @@ defmodule Shroud.Email.EmailHandler do
     do_perform(job, from, to, decoded_data)
   end
 
-  defp do_perform(_job, from, to, data) when from in ["", nil] do
-    BounceHandler.handle_haraka_bounce_report(to, data)
-  end
-
   defp do_perform(_job, from, to, data) when byte_size(data) > 26_214_400 do
     # when the email is too big, cancel
 
@@ -50,7 +46,46 @@ defmodule Shroud.Email.EmailHandler do
   end
 
   defp do_perform(_job, from, to, data) do
-    handle_recipient(from, to, data)
+    cond do
+      postmaster?(to) -> forward_postmaster(data)
+      from in ["", nil] -> BounceHandler.handle_haraka_bounce_report(to, data)
+      true -> handle_recipient(from, to, data)
+    end
+  end
+
+  defp postmaster?(recipient) do
+    String.downcase(recipient) == "postmaster@#{String.downcase(Shroud.Util.email_domain())}"
+  end
+
+  defp forward_postmaster(data) do
+    destination = Application.get_env(:shroud, :admin_user_email)
+
+    cond do
+      destination in [nil, ""] ->
+        {:error, :postmaster_destination_missing}
+
+      postmaster?(destination) ->
+        {:error, :postmaster_forwarding_loop}
+
+      true ->
+        email =
+          Swoosh.Email.new()
+          |> Swoosh.Email.to(destination)
+          |> Swoosh.Email.from({"Shroud postmaster", "noreply@#{Shroud.Util.email_domain()}"})
+          |> Swoosh.Email.subject("Mail to postmaster@#{Shroud.Util.email_domain()}")
+          |> Swoosh.Email.text_body("The original postmaster message is attached.")
+          |> Swoosh.Email.attachment(
+            Swoosh.Attachment.new({:data, data},
+              filename: "postmaster.eml",
+              content_type: "message/rfc822"
+            )
+          )
+
+        case Shroud.Mailer.deliver(email) do
+          {:ok, _} -> :ok
+          {:error, _} = error -> error
+        end
+    end
   end
 
   defp fan_out(%Oban.Job{id: id}, from, recipients, data) do
