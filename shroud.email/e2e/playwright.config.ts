@@ -1,4 +1,4 @@
-import { defineConfig } from "@playwright/test"
+import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./tests",
@@ -10,9 +10,9 @@ export default defineConfig({
     baseURL: process.env.BASE_URL || "http://localhost:4400",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
-    video: "retain-on-failure"
+    video: "retain-on-failure",
   },
   reporter: process.env.CI ? [["line"], ["html", { open: "never" }]] : "list",
   projects: [{ name: "chromium", use: { browserName: "chromium" } }],
-  webServer: undefined
-})
+  webServer: undefined,
+});

@@ -71,7 +71,9 @@ for (const { htmlFile, markup } of images) {
       failures.push(`Expected eager loading on featured post image ${label}`);
     }
     if (!markup.includes('fetchpriority="high"')) {
-      failures.push(`Expected high fetch priority on featured post image ${label}`);
+      failures.push(
+        `Expected high fetch priority on featured post image ${label}`,
+      );
     }
   } else if (!markup.includes('loading="lazy"')) {
     failures.push(`Expected lazy loading on non-hero image ${label}`);

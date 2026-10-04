@@ -42,7 +42,9 @@ No test framework is configured. Verify changes with `npm run build`.
 
 ## Coding Conventions
 
-- 2-space indentation, double quotes (enforced by Biome)
+- 2-space indentation, double quotes. Root Prettier formats JavaScript and
+  TypeScript (`npm run format` from the monorepo root); Biome handles other
+  supported file formats and website linting.
 - Components: PascalCase filenames. Pages/routes: kebab-case
 - Biome only lints `src/**/*` and root config files; `.astro`/`.vue` files have relaxed rules (useConst, useImportType, unused vars/imports off)
 - Fonts: Manrope (body), Fraunces (headings) — self-hosted from `src/assets/fonts/`

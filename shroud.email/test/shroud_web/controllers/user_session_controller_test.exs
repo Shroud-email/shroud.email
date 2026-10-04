@@ -50,8 +50,13 @@ defmodule ShroudWeb.UserSessionControllerTest do
       conn = get(conn, "/users/confirm")
       response = html_response(conn, 200)
       assert response =~ user.email
-      assert response =~ "Settings</a>"
-      assert response =~ "Log out</a>"
+      document = LazyHTML.from_document(response)
+
+      assert document |> LazyHTML.query("#user-menu-item-0") |> LazyHTML.text() |> String.trim() ==
+               "Settings"
+
+      assert document |> LazyHTML.query("#user-menu-item-1") |> LazyHTML.text() |> String.trim() ==
+               "Log out"
     end
 
     test "logs the user in with remember me", %{conn: conn, user: user} do

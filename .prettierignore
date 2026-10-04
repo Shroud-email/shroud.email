@@ -1,0 +1,21 @@
+# Dependencies and generated output; source files are formatted across projects.
+**/node_modules/
+**/deps/
+**/_build/
+**/dist/
+**/build/
+**/coverage/
+**/cover/
+**/.astro/
+**/.expo/
+**/.wrangler/
+**/playwright-report/
+**/test-results/
+shroud.email/priv/static/assets/
+shroud.email/assets/js/_hooks/
+mobile/ios/
+mobile/android/
+mobile/expo-env.d.ts
+website/worker-configuration.d.ts
+.amp/
+.worktrees/

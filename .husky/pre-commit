@@ -1,3 +1,0 @@
-cd shroud.email
-mise exec -- mix format --check-formatted
-mise exec -- mix credo

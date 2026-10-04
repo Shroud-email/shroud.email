@@ -2,12 +2,17 @@ import { createLiveToastHook } from "../vendor/live_toast.ts";
 
 function prepareNotification(element) {
   if (!element.dataset.kind) return;
-  element.setAttribute("role", element.dataset.kind === "error" ? "alert" : "status");
+  element.setAttribute(
+    "role",
+    element.dataset.kind === "error" ? "alert" : "status",
+  );
   element.setAttribute("aria-atomic", "true");
   element.dataset.corner = window.matchMedia("(min-width: 640px)").matches
     ? "top_right"
     : "bottom_center";
-  element.querySelector("button")?.setAttribute("aria-label", "Dismiss notification");
+  element
+    .querySelector("button")
+    ?.setAttribute("aria-label", "Dismiss notification");
 }
 
 const hook = createLiveToastHook(8000, 3);
@@ -46,8 +51,12 @@ export const LiveToast = {
     prepareNotification(this.el);
     hook.mounted.call(this);
     if (this.el.dataset.liveToastGroup === "true") {
-      notificationSink = request => this.el.dispatchEvent(new CustomEvent("live-toast:add", { detail: request }));
-      for (const request of pendingNotifications.splice(0)) notificationSink(request);
+      notificationSink = (request) =>
+        this.el.dispatchEvent(
+          new CustomEvent("live-toast:add", { detail: request }),
+        );
+      for (const request of pendingNotifications.splice(0))
+        notificationSink(request);
     }
   },
   destroyed() {
@@ -63,15 +72,19 @@ export const LiveToast = {
 // Controller pages have no enclosing LiveView to mount the toast hook or handle
 // lv:clear-flash. Their redirect flashes stay visible until explicitly dismissed.
 export function initializeFlashNotifications() {
-  document.querySelectorAll("#toast-group [data-component=flash]").forEach(element => {
-    prepareNotification(element);
-    if (element.closest("[data-phx-main]")) return;
-    element.style.opacity = "1";
-    element.style.gridRow = "auto";
-    element.style.marginBottom = "12px";
-  });
-  document.addEventListener("click", event => {
-    const button = event.target.closest("#toast-group [data-component=flash] button");
+  document
+    .querySelectorAll("#toast-group [data-component=flash]")
+    .forEach((element) => {
+      prepareNotification(element);
+      if (element.closest("[data-phx-main]")) return;
+      element.style.opacity = "1";
+      element.style.gridRow = "auto";
+      element.style.marginBottom = "12px";
+    });
+  document.addEventListener("click", (event) => {
+    const button = event.target.closest(
+      "#toast-group [data-component=flash] button",
+    );
     if (!button || button.closest("[data-phx-main]")) return;
     button.closest("[data-component=flash]").remove();
   });

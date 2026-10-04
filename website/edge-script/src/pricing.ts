@@ -15,14 +15,17 @@ function isUK(country: string | null): boolean {
 // Native Storage returns an empty 400 for some missing directory URLs. Check
 // the explicit index file before replacing that response; other 400s stay 400.
 // This hook requires the Pull Zone's "Run script before cache" setting.
-export async function repairDirectoryNotFound(
-  ctx: { request: Request; response: Response },
-) {
+export async function repairDirectoryNotFound(ctx: {
+  request: Request;
+  response: Response;
+}) {
   const url = new URL(ctx.request.url);
-  const directoryStyle = url.pathname.endsWith("/") ||
+  const directoryStyle =
+    url.pathname.endsWith("/") ||
     !url.pathname.split("/").at(-1)!.includes(".");
   if (
-    ctx.response.status !== 400 || !directoryStyle ||
+    ctx.response.status !== 400 ||
+    !directoryStyle ||
     (ctx.request.method !== "GET" && ctx.request.method !== "HEAD")
   ) {
     return ctx.response;
@@ -89,9 +92,10 @@ export async function disableHtmlRanges(ctx: { request: Request }) {
   return ctx.request;
 }
 
-export async function rewritePricing(
-  ctx: { request: Request; response: Response },
-) {
+export async function rewritePricing(ctx: {
+  request: Request;
+  response: Response;
+}) {
   const type = ctx.response.headers.get("content-type") ?? "";
   const country = ctx.request.headers.get("cdn-requestcountrycode");
 

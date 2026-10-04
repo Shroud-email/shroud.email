@@ -4,17 +4,20 @@ import test from "node:test";
 import { runInNewContext } from "node:vm";
 
 const window = {};
-runInNewContext(readFileSync(new URL("../vendor/components.js", import.meta.url), "utf8"), { window });
+runInNewContext(
+  readFileSync(new URL("../vendor/components.js", import.meta.url), "utf8"),
+  { window },
+);
 
 function menu(disabled) {
   const items = disabled.map((value, index) => ({
     id: `item-${index}`,
-    getAttribute: name => name === "aria-disabled" && value ? "true" : null,
+    getAttribute: (name) => (name === "aria-disabled" && value ? "true" : null),
   }));
   const instance = window.AlpineComponents.menu();
   instance.$el = { querySelectorAll: () => items };
   instance.$refs = { "menu-items": { focus() {} } };
-  instance.$nextTick = callback => callback();
+  instance.$nextTick = (callback) => callback();
   instance.init();
   return instance;
 }
@@ -22,8 +25,11 @@ function menu(disabled) {
 test("arrow navigation skips disabled items without changing their original indices", () => {
   const instance = menu([true, false, true, false, true]);
   for (const [method, index] of [
-    ["onArrowDown", 1], ["onArrowDown", 3], ["onArrowDown", 3],
-    ["onArrowUp", 1], ["onArrowUp", 1],
+    ["onArrowDown", 1],
+    ["onArrowDown", 3],
+    ["onArrowDown", 3],
+    ["onArrowUp", 1],
+    ["onArrowUp", 1],
   ]) {
     instance[method]();
     assert.equal(instance.activeIndex, index);

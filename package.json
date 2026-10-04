@@ -2,13 +2,15 @@
   "name": "shroud.email",
   "scripts": {
     "test": "node --test shroud.email/assets/js/*_test.mjs",
-    "prepare": "husky"
+    "format": "prettier --write '**/*.{js,jsx,mjs,cjs,ts,tsx,mts,cts}'",
+    "format:check": "prettier --check '**/*.{js,jsx,mjs,cjs,ts,tsx,mts,cts}'",
+    "prepare": "git config --local core.hooksPath .lefthook && mise exec -- lefthook install --force"
   },
   "dependencies": {
     "@commitlint/cli": "^20.5.0",
     "@commitlint/config-conventional": "^20.5.0"
   },
   "devDependencies": {
-    "husky": "^9.1.7"
+    "prettier": "3.9.9"
   }
 }

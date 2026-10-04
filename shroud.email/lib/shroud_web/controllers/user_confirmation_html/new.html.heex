@@ -11,8 +11,15 @@
         We sent you an email with a confirmation link.
         Please click the link in this email to continue.
       </p>
-      <.form :let={f} id="resend-confirmation-form" for={%{}} as={:user} action={~p"/users/confirm"} class="mt-6">
-        <%= hidden_input f, :email, required: true, value: @current_user.email %>
+      <.form
+        :let={f}
+        id="resend-confirmation-form"
+        for={%{}}
+        as={:user}
+        action={~p"/users/confirm"}
+        class="mt-6"
+      >
+        {hidden_input(f, :email, required: true, value: @current_user.email)}
         <div>
           <.button type="submit" class="w-full" text="Resend confirmation email" />
         </div>

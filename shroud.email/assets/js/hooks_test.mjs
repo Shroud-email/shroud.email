@@ -35,34 +35,49 @@ function fixture(writeText) {
   hook.el = element;
   hook.mounted();
 
-  return { hook, listeners, tooltipContents, tooltipDestroyed: () => tooltipDestroyed };
+  return {
+    hook,
+    listeners,
+    tooltipContents,
+    tooltipDestroyed: () => tooltipDestroyed,
+  };
 }
 
 test("copy hook copies the current element text and cleans up on removal", async () => {
   const copied = [];
-  const { hook, listeners, tooltipContents, tooltipDestroyed } = fixture(async text => {
-    copied.push(text);
-  });
+  const { hook, listeners, tooltipContents, tooltipDestroyed } = fixture(
+    async (text) => {
+      copied.push(text);
+    },
+  );
   await listeners.click();
 
   hook.el.dataset.clipboardText = "updated@example.com";
   await listeners.click();
   assert.deepEqual(copied, ["hello@example.com", "updated@example.com"]);
-  assert.deepEqual(tooltipContents, ["Copy to clipboard", "Copied!", "Copied!"]);
+  assert.deepEqual(tooltipContents, [
+    "Copy to clipboard",
+    "Copied!",
+    "Copied!",
+  ]);
 
   hook.destroyed();
   assert.equal(tooltipDestroyed(), true);
   assert.equal(listeners.click, undefined);
 });
 
-test("repeat clicks restart the feedback timer and removal cancels it", async context => {
+test("repeat clicks restart the feedback timer and removal cancels it", async (context) => {
   context.mock.timers.enable({ apis: ["setTimeout"] });
   const { hook, listeners, tooltipContents } = fixture(async () => {});
   await listeners.click();
   context.mock.timers.tick(1500);
   await listeners.click();
   context.mock.timers.tick(500);
-  assert.deepEqual(tooltipContents, ["Copy to clipboard", "Copied!", "Copied!"]);
+  assert.deepEqual(tooltipContents, [
+    "Copy to clipboard",
+    "Copied!",
+    "Copied!",
+  ]);
   context.mock.timers.tick(1499);
   assert.equal(tooltipContents.at(-1), "Copied!");
   context.mock.timers.tick(1);
@@ -74,14 +89,17 @@ test("repeat clicks restart the feedback timer and removal cancels it", async co
   assert.equal(tooltipContents.at(-1), "Copied!");
 });
 
-test("a denied clipboard write shows failure feedback and resets it", async context => {
+test("a denied clipboard write shows failure feedback and resets it", async (context) => {
   context.mock.timers.enable({ apis: ["setTimeout"] });
   const { hook, listeners, tooltipContents } = fixture(async () => {
     throw new Error("Clipboard permission denied");
   });
 
   await assert.doesNotReject(listeners.click());
-  assert.deepEqual(tooltipContents, ["Copy to clipboard", "Copy failed — please copy manually"]);
+  assert.deepEqual(tooltipContents, [
+    "Copy to clipboard",
+    "Copy failed — please copy manually",
+  ]);
   context.mock.timers.tick(2000);
   assert.equal(tooltipContents.at(-1), "Copy to clipboard");
   hook.destroyed();
@@ -99,7 +117,7 @@ test("an unavailable clipboard API shows failure feedback", async () => {
 test("backup-code copy opens its custom alert only when copying fails", async () => {
   let denied = false;
   const copied = [];
-  const { hook, listeners } = fixture(async text => {
+  const { hook, listeners } = fixture(async (text) => {
     if (denied) throw new Error("Denied");
     copied.push(text);
   });

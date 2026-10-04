@@ -1,12 +1,14 @@
 function decodeBase64(value) {
   const binary = atob(value.replace(/-/g, "+").replace(/_/g, "/"));
-  return Uint8Array.from(binary, char => char.charCodeAt(0));
+  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
 }
 
 function encodeBase64(value) {
   const bytes = new Uint8Array(value || 0);
-  return btoa(Array.from(bytes, byte => String.fromCharCode(byte)).join(""))
-    .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  return btoa(Array.from(bytes, (byte) => String.fromCharCode(byte)).join(""))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
 }
 
 function registrationOptions(publicKey) {
@@ -14,10 +16,12 @@ function registrationOptions(publicKey) {
     ...publicKey,
     challenge: decodeBase64(publicKey.challenge),
     user: { ...publicKey.user, id: decodeBase64(publicKey.user.id) },
-    excludeCredentials: (publicKey.excludeCredentials || []).map(credential => ({
-      ...credential,
-      id: decodeBase64(credential.id),
-    })),
+    excludeCredentials: (publicKey.excludeCredentials || []).map(
+      (credential) => ({
+        ...credential,
+        id: decodeBase64(credential.id),
+      }),
+    ),
   };
 }
 
@@ -25,7 +29,7 @@ function assertionOptions(publicKey) {
   return {
     ...publicKey,
     challenge: decodeBase64(publicKey.challenge),
-    allowCredentials: (publicKey.allowCredentials || []).map(credential => ({
+    allowCredentials: (publicKey.allowCredentials || []).map((credential) => ({
       ...credential,
       id: decodeBase64(credential.id),
     })),
@@ -33,14 +37,18 @@ function assertionOptions(publicKey) {
 }
 
 function supported(window, operation) {
-  return !!(window.PublicKeyCredential &&
-    typeof window.navigator.credentials?.[operation] === "function");
+  return !!(
+    window.PublicKeyCredential &&
+    typeof window.navigator.credentials?.[operation] === "function"
+  );
 }
 
 function reason(error, timedOut = false) {
   if (timedOut) return "timeout";
-  if (error?.name === "NotAllowedError" || error?.name === "AbortError") return "canceled";
-  if (error?.name === "NotSupportedError" || error?.name === "SecurityError") return "unsupported";
+  if (error?.name === "NotAllowedError" || error?.name === "AbortError")
+    return "canceled";
+  if (error?.name === "NotSupportedError" || error?.name === "SecurityError")
+    return "unsupported";
   return "failed";
 }
 
@@ -50,9 +58,15 @@ export function createPasskeyHooks(window) {
       this.passkeyGeneration = 0;
       this.passkeyController = null;
       this.passkeyTimer = null;
-      this.pushEvent("passkey_supported", { supported: supported(window, "create") });
-      this.handleEvent("passkey-register", payload => this.registerPasskey(payload));
-      this.handleEvent("passkey-cancel", () => this.cancelPasskeyRegistration());
+      this.pushEvent("passkey_supported", {
+        supported: supported(window, "create"),
+      });
+      this.handleEvent("passkey-register", (payload) =>
+        this.registerPasskey(payload),
+      );
+      this.handleEvent("passkey-cancel", () =>
+        this.cancelPasskeyRegistration(),
+      );
     },
 
     async registerPasskey({ token, publicKey }) {
@@ -82,14 +96,24 @@ export function createPasskeyHooks(window) {
         if (generation !== this.passkeyGeneration) return;
         this.pushEvent("passkey_status", { token, phase: "saving" });
         await new Promise((resolve, reject) => {
-          controller.signal.addEventListener("abort", () =>
-            reject(new DOMException("aborted", "AbortError")), { once: true });
-          this.pushEvent("passkey_registered", {
-            token,
-            rawId: encodeBase64(credential.rawId),
-            attestationObject: encodeBase64(credential.response.attestationObject),
-            clientDataJSON: encodeBase64(credential.response.clientDataJSON),
-          }, reply => reply?.error ? reject(new Error(reply.error)) : resolve(reply));
+          controller.signal.addEventListener(
+            "abort",
+            () => reject(new DOMException("aborted", "AbortError")),
+            { once: true },
+          );
+          this.pushEvent(
+            "passkey_registered",
+            {
+              token,
+              rawId: encodeBase64(credential.rawId),
+              attestationObject: encodeBase64(
+                credential.response.attestationObject,
+              ),
+              clientDataJSON: encodeBase64(credential.response.clientDataJSON),
+            },
+            (reply) =>
+              reply?.error ? reject(new Error(reply.error)) : resolve(reply),
+          );
         });
       } catch (error) {
         if (generation === this.passkeyGeneration) {
@@ -104,11 +128,17 @@ export function createPasskeyHooks(window) {
       }
     },
 
-    disconnected() { this.cancelPasskeyRegistration(); },
-    reconnected() {
-      this.pushEvent("passkey_supported", { supported: supported(window, "create") });
+    disconnected() {
+      this.cancelPasskeyRegistration();
     },
-    destroyed() { this.cancelPasskeyRegistration(); },
+    reconnected() {
+      this.pushEvent("passkey_supported", {
+        supported: supported(window, "create"),
+      });
+    },
+    destroyed() {
+      this.cancelPasskeyRegistration();
+    },
     cancelPasskeyRegistration() {
       ++this.passkeyGeneration;
       this.passkeyController?.abort();
@@ -123,8 +153,9 @@ export function createPasskeyHooks(window) {
       this.passkeyGeneration = 0;
       this.passkeyController = null;
       this.passkeyTimer = null;
-      this.passkeyClick = event => {
-        if (event.target.closest("#passkey-login-button")) this.startPasskeyLogin(false);
+      this.passkeyClick = (event) => {
+        if (event.target.closest("#passkey-login-button"))
+          this.startPasskeyLogin(false);
       };
       this.el.addEventListener("click", this.passkeyClick);
       const available = supported(window, "get");
@@ -135,9 +166,13 @@ export function createPasskeyHooks(window) {
     async startConditionalPasskeyLogin() {
       const generation = this.passkeyGeneration;
       try {
-        const check = window.PublicKeyCredential.isConditionalMediationAvailable;
-        if (typeof check === "function" && await check.call(window.PublicKeyCredential) &&
-            generation === this.passkeyGeneration) {
+        const check =
+          window.PublicKeyCredential.isConditionalMediationAvailable;
+        if (
+          typeof check === "function" &&
+          (await check.call(window.PublicKeyCredential)) &&
+          generation === this.passkeyGeneration
+        ) {
           this.requestPasskeyOptions(true, generation);
         }
       } catch {
@@ -156,7 +191,8 @@ export function createPasskeyHooks(window) {
 
     requestPasskeyOptions(conditional, generation) {
       if (!supported(window, "get")) {
-        if (!conditional) this.pushEvent("passkey_login_error", { reason: "unsupported" });
+        if (!conditional)
+          this.pushEvent("passkey_login_error", { reason: "unsupported" });
         return;
       }
       let timedOut = false;
@@ -172,7 +208,7 @@ export function createPasskeyHooks(window) {
           }
         }, 60_000);
       }
-      this.pushEvent("passkey_options", {}, reply => {
+      this.pushEvent("passkey_options", {}, (reply) => {
         if (generation !== this.passkeyGeneration) return;
         if (reply?.error || !reply?.publicKey) {
           this.finishPasskeyLogin(generation);
@@ -186,30 +222,55 @@ export function createPasskeyHooks(window) {
       });
     },
 
-    async getPasskey({ token, publicKey }, conditional, generation, didTimeOut) {
+    async getPasskey(
+      { token, publicKey },
+      conditional,
+      generation,
+      didTimeOut,
+    ) {
       const controller = new AbortController();
       this.passkeyController = controller;
       try {
-        const options = { publicKey: assertionOptions(publicKey), signal: controller.signal };
+        const options = {
+          publicKey: assertionOptions(publicKey),
+          signal: controller.signal,
+        };
         if (conditional) options.mediation = "conditional";
         const credential = await window.navigator.credentials.get(options);
         if (generation !== this.passkeyGeneration) return;
         await new Promise((resolve, reject) => {
-          controller.signal.addEventListener("abort", () =>
-            reject(new DOMException("aborted", "AbortError")), { once: true });
-          this.pushEvent("passkey_assertion", {
-            token,
-            rawId: encodeBase64(credential.rawId),
-            userHandle: encodeBase64(credential.response.userHandle),
-            authenticatorData: encodeBase64(credential.response.authenticatorData),
-            clientDataJSON: encodeBase64(credential.response.clientDataJSON),
-            signature: encodeBase64(credential.response.signature),
-          }, reply => reply?.error ? reject(new Error(reply.error)) : resolve(reply));
+          controller.signal.addEventListener(
+            "abort",
+            () => reject(new DOMException("aborted", "AbortError")),
+            { once: true },
+          );
+          this.pushEvent(
+            "passkey_assertion",
+            {
+              token,
+              rawId: encodeBase64(credential.rawId),
+              userHandle: encodeBase64(credential.response.userHandle),
+              authenticatorData: encodeBase64(
+                credential.response.authenticatorData,
+              ),
+              clientDataJSON: encodeBase64(credential.response.clientDataJSON),
+              signature: encodeBase64(credential.response.signature),
+            },
+            (reply) =>
+              reply?.error ? reject(new Error(reply.error)) : resolve(reply),
+          );
         });
       } catch (error) {
-        if (generation === this.passkeyGeneration && !(conditional &&
-            (error?.name === "NotAllowedError" || error?.name === "AbortError"))) {
-          this.pushEvent("passkey_login_error", { reason: reason(error, didTimeOut()) });
+        if (
+          generation === this.passkeyGeneration &&
+          !(
+            conditional &&
+            (error?.name === "NotAllowedError" || error?.name === "AbortError")
+          )
+        ) {
+          this.pushEvent("passkey_login_error", {
+            reason: reason(error, didTimeOut()),
+          });
         }
       } finally {
         this.finishPasskeyLogin(generation);
@@ -223,7 +284,9 @@ export function createPasskeyHooks(window) {
       this.passkeyController = null;
     },
 
-    disconnected() { this.cancelPasskeyLogin(); },
+    disconnected() {
+      this.cancelPasskeyLogin();
+    },
     reconnected() {
       const available = supported(window, "get");
       this.pushEvent("passkey_supported", { supported: available });
@@ -245,5 +308,6 @@ export function createPasskeyHooks(window) {
   return { PasskeyRegistration, PasskeyLogin };
 }
 
-export const { PasskeyRegistration, PasskeyLogin } =
-  createPasskeyHooks(globalThis.window);
+export const { PasskeyRegistration, PasskeyLogin } = createPasskeyHooks(
+  globalThis.window,
+);

@@ -17,7 +17,10 @@ declare global {
     hasAttribute(name: string): boolean;
     setAttribute(name: string, value: string): HtmlRewriterElement;
     removeAttribute(name: string): HtmlRewriterElement;
-    setInnerContent(content: string, options?: ContentOptions): HtmlRewriterElement;
+    setInnerContent(
+      content: string,
+      options?: ContentOptions,
+    ): HtmlRewriterElement;
     before(content: string, options?: ContentOptions): HtmlRewriterElement;
     after(content: string, options?: ContentOptions): HtmlRewriterElement;
     remove(): HtmlRewriterElement;

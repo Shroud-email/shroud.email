@@ -1,18 +1,18 @@
 // Copied from Tailwind UI
 // https://tailwindui.com/js/components-v2.js?id=c08ed7087921a2a8b1bf
 
-;(window.AlpineComponents = {}),
+((window.AlpineComponents = {}),
   (window.AlpineComponents.listbox = function (e) {
     return {
       init() {
-        ;(this.optionCount = this.$refs.listbox.children.length),
+        ((this.optionCount = this.$refs.listbox.children.length),
           this.$watch("activeIndex", (e) => {
             this.open &&
               (null !== this.activeIndex
                 ? (this.activeDescendant =
                     this.$refs.listbox.children[this.activeIndex].id)
-                : (this.activeDescendant = ""))
-          })
+                : (this.activeDescendant = ""));
+          }));
       },
       activeDescendant: null,
       optionCount: null,
@@ -20,103 +20,106 @@
       activeIndex: null,
       selectedIndex: 0,
       get active() {
-        return this.items[this.activeIndex]
+        return this.items[this.activeIndex];
       },
       get [e.modelName || "selected"]() {
-        return this.items[this.selectedIndex]
+        return this.items[this.selectedIndex];
       },
       choose(e) {
-        ;(this.selectedIndex = e), (this.open = !1)
+        ((this.selectedIndex = e), (this.open = !1));
       },
       onButtonClick() {
         this.open ||
           ((this.activeIndex = this.selectedIndex),
           (this.open = !0),
           this.$nextTick(() => {
-            this.$refs.listbox.focus(),
+            (this.$refs.listbox.focus(),
               this.$refs.listbox.children[this.activeIndex].scrollIntoView({
                 block: "nearest",
-              })
-          }))
+              }));
+          }));
       },
       onOptionSelect() {
-        null !== this.activeIndex && (this.selectedIndex = this.activeIndex),
+        (null !== this.activeIndex && (this.selectedIndex = this.activeIndex),
           (this.open = !1),
-          this.$refs.button.focus()
+          this.$refs.button.focus());
       },
       onEscape() {
-        ;(this.open = !1), this.$refs.button.focus()
+        ((this.open = !1), this.$refs.button.focus());
       },
       onArrowUp() {
-        ;(this.activeIndex =
+        ((this.activeIndex =
           this.activeIndex - 1 < 0
             ? this.optionCount - 1
             : this.activeIndex - 1),
           this.$refs.listbox.children[this.activeIndex].scrollIntoView({
             block: "nearest",
-          })
+          }));
       },
       onArrowDown() {
-        ;(this.activeIndex =
+        ((this.activeIndex =
           this.activeIndex + 1 > this.optionCount - 1
             ? 0
             : this.activeIndex + 1),
           this.$refs.listbox.children[this.activeIndex].scrollIntoView({
             block: "nearest",
-          })
+          }));
       },
       ...e,
-    }
+    };
   }),
   (window.AlpineComponents.menu = function (e = { open: !1 }) {
     return {
       init() {
-        this.items = Array.from(this.$el.querySelectorAll('[role="menuitem"]'))
+        this.items = Array.from(this.$el.querySelectorAll('[role="menuitem"]'));
       },
       activeDescendant: null,
       activeIndex: null,
       items: null,
       open: e.open,
       focusButton() {
-        this.$refs.button.focus()
+        this.$refs.button.focus();
       },
       onButtonClick() {
-        ;(this.open = !this.open),
+        ((this.open = !this.open),
           this.open &&
             this.$nextTick(() => {
-              this.activeIndex = -1
-              this.activeDescendant = null
-              this.$refs["menu-items"].focus()
-            })
+              this.activeIndex = -1;
+              this.activeDescendant = null;
+              this.$refs["menu-items"].focus();
+            }));
       },
       onButtonEnter() {
         if (this.open) {
-          this.open = false
-          return
+          this.open = false;
+          return;
         }
-        this.onArrowDown()
-        this.$nextTick(() => this.$refs["menu-items"].focus())
+        this.onArrowDown();
+        this.$nextTick(() => this.$refs["menu-items"].focus());
       },
       onArrowUp() {
-        const start = !this.open || this.activeIndex === -1
-          ? this.items.length - 1
-          : this.activeIndex - 1
-        this.open = true
+        const start =
+          !this.open || this.activeIndex === -1
+            ? this.items.length - 1
+            : this.activeIndex - 1;
+        this.open = true;
         for (let index = start; index >= 0; index--) {
-          if (this.items[index].getAttribute("aria-disabled") === "true") continue
-          this.activeIndex = index
-          this.activeDescendant = this.items[index].id
-          break
+          if (this.items[index].getAttribute("aria-disabled") === "true")
+            continue;
+          this.activeIndex = index;
+          this.activeDescendant = this.items[index].id;
+          break;
         }
       },
       onArrowDown() {
-        const start = this.open ? this.activeIndex + 1 : 0
-        this.open = true
+        const start = this.open ? this.activeIndex + 1 : 0;
+        this.open = true;
         for (let index = start; index < this.items.length; index++) {
-          if (this.items[index].getAttribute("aria-disabled") === "true") continue
-          this.activeIndex = index
-          this.activeDescendant = this.items[index].id
-          break
+          if (this.items[index].getAttribute("aria-disabled") === "true")
+            continue;
+          this.activeIndex = index;
+          this.activeDescendant = this.items[index].id;
+          break;
         }
       },
       onClickAway(e) {
@@ -133,11 +136,11 @@
             "textarea:not([disabled])",
           ]
             .map((e) => `${e}:not([tabindex='-1'])`)
-            .join(",")
-          ;(this.open = !1), e.target.closest(t) || this.focusButton()
+            .join(",");
+          ((this.open = !1), e.target.closest(t) || this.focusButton());
         }
       },
-    }
+    };
   }),
   (window.AlpineComponents.popoverGroup = function () {
     return {
@@ -150,13 +153,16 @@
               window.dispatchEvent(
                 new CustomEvent("close-popover-group", { detail: this.$el }),
               )
-            : window.removeEventListener("focus", e, !0)
-        }
-        window.addEventListener("focus", e, !0)
+            : window.removeEventListener("focus", e, !0);
+        };
+        window.addEventListener("focus", e, !0);
       },
-    }
+    };
   }),
-  (window.AlpineComponents.popover = function ({ open: e = !1, focus: t = !1 } = {}) {
+  (window.AlpineComponents.popover = function ({
+    open: e = !1,
+    focus: t = !1,
+  } = {}) {
     const i = [
       "[contentEditable=true]",
       "[tabindex]",
@@ -169,7 +175,7 @@
       "textarea:not([disabled])",
     ]
       .map((e) => `${e}:not([tabindex='-1'])`)
-      .join(",")
+      .join(",");
     return {
       __type: "popover",
       open: e,
@@ -179,48 +185,48 @@
             e &&
               this.$nextTick(() => {
                 !(function (e) {
-                  const t = Array.from(e.querySelectorAll(i))
+                  const t = Array.from(e.querySelectorAll(i));
                   !(function e(i) {
                     void 0 !== i &&
                       (i.focus({ preventScroll: !0 }),
-                      document.activeElement !== i && e(t[t.indexOf(i) + 1]))
-                  })(t[0])
-                })(this.$refs.panel)
-              })
-          })
+                      document.activeElement !== i && e(t[t.indexOf(i) + 1]));
+                  })(t[0]);
+                })(this.$refs.panel);
+              });
+          });
         let e = (i) => {
           if (!document.body.contains(this.$el))
-            return void window.removeEventListener("focus", e, !0)
-          let n = t ? this.$refs.panel : this.$el
+            return void window.removeEventListener("focus", e, !0);
+          let n = t ? this.$refs.panel : this.$el;
           if (
             this.open &&
             i.target instanceof Element &&
             !n.contains(i.target)
           ) {
-            let e = this.$el
-            for (; e.parentNode; )
+            let e = this.$el;
+            for (; e.parentNode;)
               if (((e = e.parentNode), e.__x instanceof this.constructor)) {
-                if ("popoverGroup" === e.__x.$data.__type) return
-                if ("popover" === e.__x.$data.__type) break
+                if ("popoverGroup" === e.__x.$data.__type) return;
+                if ("popover" === e.__x.$data.__type) break;
               }
-            this.open = !1
+            this.open = !1;
           }
-        }
-        window.addEventListener("focus", e, !0)
+        };
+        window.addEventListener("focus", e, !0);
       },
       onEscape() {
-        ;(this.open = !1), this.restoreEl && this.restoreEl.focus()
+        ((this.open = !1), this.restoreEl && this.restoreEl.focus());
       },
       onClosePopoverGroup(e) {
-        e.detail.contains(this.$el) && (this.open = !1)
+        e.detail.contains(this.$el) && (this.open = !1);
       },
       toggle(e) {
-        ;(this.open = !this.open),
+        ((this.open = !this.open),
           this.open
             ? (this.restoreEl = e.currentTarget)
-            : this.restoreEl && this.restoreEl.focus()
+            : this.restoreEl && this.restoreEl.focus());
       },
-    }
+    };
   }),
   (window.AlpineComponents.radioGroup = function ({
     initialCheckedIndex: e = 0,
@@ -229,62 +235,62 @@
       value: void 0,
       active: void 0,
       init() {
-        let t = Array.from(this.$el.querySelectorAll("input"))
-        this.value = t[e]?.value
+        let t = Array.from(this.$el.querySelectorAll("input"));
+        this.value = t[e]?.value;
         for (let e of t)
-          e.addEventListener("change", () => {
-            this.active = e.value
+          (e.addEventListener("change", () => {
+            this.active = e.value;
           }),
             e.addEventListener("focus", () => {
-              this.active = e.value
-            })
+              this.active = e.value;
+            }));
         window.addEventListener(
           "focus",
           () => {
-            console.log("Focus change"),
+            (console.log("Focus change"),
               t.includes(document.activeElement) ||
-                (console.log("HIT"), (this.active = void 0))
+                (console.log("HIT"), (this.active = void 0)));
           },
           !0,
-        )
+        );
       },
-    }
+    };
   }),
   (window.AlpineComponents.tabs = function () {
     return {
       selectedIndex: 0,
       onTabClick(e) {
-        if (!this.$el.contains(e.detail)) return
+        if (!this.$el.contains(e.detail)) return;
         let t = Array.from(
             this.$el.querySelectorAll('[x-data^="AlpineComponents.tab("]'),
           ),
           i = Array.from(
             this.$el.querySelectorAll('[x-data^="AlpineComponents.tabPanel("]'),
           ),
-          n = t.indexOf(e.detail)
-        ;(this.selectedIndex = n),
+          n = t.indexOf(e.detail);
+        ((this.selectedIndex = n),
           window.dispatchEvent(
             new CustomEvent("tab-select", {
               detail: { tab: e.detail, panel: i[n] },
             }),
-          )
+          ));
       },
       onTabKeydown(e) {
-        if (!this.$el.contains(e.detail.tab)) return
+        if (!this.$el.contains(e.detail.tab)) return;
         let t = Array.from(
             this.$el.querySelectorAll('[x-data^="AlpineComponents.tab("]'),
           ),
-          i = t.indexOf(e.detail.tab)
+          i = t.indexOf(e.detail.tab);
         "ArrowLeft" === e.detail.key
           ? this.onTabClick({ detail: t[(i - 1 + t.length) % t.length] })
           : "ArrowRight" === e.detail.key
-          ? this.onTabClick({ detail: t[(i + 1) % t.length] })
-          : "Home" === e.detail.key || "PageUp" === e.detail.key
-          ? this.onTabClick({ detail: t[0] })
-          : ("End" !== e.detail.key && "PageDown" !== e.detail.key) ||
-            this.onTabClick({ detail: t[t.length - 1] })
+            ? this.onTabClick({ detail: t[(i + 1) % t.length] })
+            : "Home" === e.detail.key || "PageUp" === e.detail.key
+              ? this.onTabClick({ detail: t[0] })
+              : ("End" !== e.detail.key && "PageDown" !== e.detail.key) ||
+                this.onTabClick({ detail: t[t.length - 1] });
       },
-    }
+    };
   }),
   (window.AlpineComponents.tab = function (e = 0) {
     return {
@@ -294,17 +300,19 @@
           this.$el
             .closest('[x-data^="AlpineComponents.tabs("]')
             .querySelectorAll('[x-data^="AlpineComponents.tab("]'),
-        )
-        ;(this.selected = t.indexOf(this.$el) === e),
+        );
+        ((this.selected = t.indexOf(this.$el) === e),
           this.$watch("selected", (e) => {
-            e && this.$el.focus()
-          })
+            e && this.$el.focus();
+          }));
       },
       onClick() {
-        window.dispatchEvent(new CustomEvent("tab-click", { detail: this.$el }))
+        window.dispatchEvent(
+          new CustomEvent("tab-click", { detail: this.$el }),
+        );
       },
       onKeydown(e) {
-        ;[
+        ([
           "ArrowLeft",
           "ArrowRight",
           "Home",
@@ -316,12 +324,12 @@
             new CustomEvent("tab-keydown", {
               detail: { tab: this.$el, key: e.key },
             }),
-          )
+          ));
       },
       onTabSelect(e) {
-        this.selected = e.detail.tab === this.$el
+        this.selected = e.detail.tab === this.$el;
       },
-    }
+    };
   }),
   (window.AlpineComponents.tabPanel = function (e = 0) {
     return {
@@ -331,11 +339,11 @@
           this.$el
             .closest('[x-data^="AlpineComponents.tabs("]')
             .querySelectorAll('[x-data^="AlpineComponents.tabPanel("]'),
-        )
-        this.selected = t.indexOf(this.$el) === e
+        );
+        this.selected = t.indexOf(this.$el) === e;
       },
       onTabSelect(e) {
-        this.selected = e.detail.panel === this.$el
+        this.selected = e.detail.panel === this.$el;
       },
-    }
-  })
+    };
+  }));

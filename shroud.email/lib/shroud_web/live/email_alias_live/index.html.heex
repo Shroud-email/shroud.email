@@ -22,7 +22,7 @@
         <.text_input name="alias_name" placeholder="john.doe" />
         <span class="ml-3 text-sm text-gray-700 dark:text-gray-300">{@custom_alias_domain}</span>
       </div>
-      <p id="custom-alias-error" :if={@custom_alias_error != ""} class="text-red-600 mt-1 text-sm">
+      <p :if={@custom_alias_error != ""} id="custom-alias-error" class="text-red-600 mt-1 text-sm">
         {@custom_alias_error}
       </p>
     </div>
