@@ -42,6 +42,7 @@ defmodule ShroudWeb.Router do
   end
 
   scope "/", ShroudWeb do
+    get("/.well-known/openai-apps-challenge", OpenaiVerificationController, :show)
     get("/.well-known/oauth-authorization-server", OAuthController, :metadata)
     get("/.well-known/oauth-protected-resource", OAuthController, :resource_metadata)
     get("/.well-known/oauth-protected-resource/mcp", OAuthController, :resource_metadata)
