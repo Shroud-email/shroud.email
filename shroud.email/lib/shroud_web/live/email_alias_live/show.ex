@@ -17,6 +17,7 @@ defmodule ShroudWeb.EmailAliasLive.Show do
       |> assign(:address, address)
       |> assign(:blocked_sender_error, "")
       |> assign(:reverse_alias_recipient, "")
+      |> assign(:inboxes_enabled, Shroud.Inboxes.enabled?(socket.assigns.current_user))
       |> assign(:paid, Accounts.paid?(socket.assigns.current_user))
       |> update_email_alias()
 
@@ -70,6 +71,15 @@ defmodule ShroudWeb.EmailAliasLive.Show do
           </div>
         </div>
         <div class="border-t border-gray-200 dark:border-gray-700">
+          <div :if={@inboxes_enabled and @alias.delivery_mode == :inbox} class="px-4 py-5 sm:px-6">
+            <.link
+              id="open-inbox"
+              navigate={~p"/inbox/#{@alias.address}"}
+              class="text-indigo-600 dark:text-indigo-400"
+            >
+              Open inbox · messages are stored, not forwarded
+            </.link>
+          </div>
           <dl>
             <div class="bg-gray-50 dark:bg-gray-700 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
               <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">
@@ -147,7 +157,7 @@ defmodule ShroudWeb.EmailAliasLive.Show do
                 </dd>
               </div>
             </.form>
-            <%= if @paid do %>
+            <%= if @paid and @alias.delivery_mode == :forward do %>
               <div class="bg-white dark:bg-gray-800 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                 <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">
                   <div>Send emails</div>

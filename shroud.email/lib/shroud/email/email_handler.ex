@@ -45,11 +45,11 @@ defmodule Shroud.Email.EmailHandler do
     fan_out(job, from, recipients, data)
   end
 
-  defp do_perform(_job, from, to, data) do
+  defp do_perform(job, from, to, data) do
     cond do
       postmaster?(to) -> forward_postmaster(data)
       from in ["", nil] -> BounceHandler.handle_haraka_bounce_report(to, data)
-      true -> handle_recipient(from, to, data)
+      true -> handle_recipient(from, to, data, job.id || Ecto.UUID.generate())
     end
   end
 
@@ -124,12 +124,13 @@ defmodule Shroud.Email.EmailHandler do
     end
   end
 
-  @spec handle_recipient(String.t(), String.t(), String.t()) :: :ok | {:error, term()}
-  defp handle_recipient(sender, recipient, data) do
+  @spec handle_recipient(String.t(), String.t(), String.t(), integer() | String.t()) ::
+          :ok | {:error, term()}
+  defp handle_recipient(sender, recipient, data, delivery_id) do
     if ReplyAddress.reply_address?(recipient) do
       OutgoingEmailHandler.handle_outgoing_email(sender, recipient, data)
     else
-      IncomingEmailHandler.handle_incoming_email(sender, recipient, data)
+      IncomingEmailHandler.handle_incoming_email(sender, recipient, data, delivery_id)
     end
   end
 end

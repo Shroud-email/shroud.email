@@ -177,11 +177,14 @@ defmodule ShroudWeb.Router do
       live("/settings/billing/lifetime", UserSettingsLive, :lifetime)
       live("/", EmailAliasLive.Index, :index)
       live("/alias/:address", EmailAliasLive.Show, :show)
+      live("/inbox/:address", InboxLive, :index)
+      live("/inbox/:address/messages/:id", InboxLive, :show)
       live("/domains", CustomDomainLive.Index, :index)
       live("/domains/:domain", CustomDomainLive.Show, :show)
       live("/detention", SpamEmailLive.Index, :index)
     end
 
+    get("/inbox/messages/:id/attachments/:index", InboxAttachmentController, :show)
     get("/checkout/billing", CheckoutController, :billing_portal)
     post("/checkout/paddle", CheckoutController, :create)
   end

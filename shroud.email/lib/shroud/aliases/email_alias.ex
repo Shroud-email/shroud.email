@@ -8,6 +8,8 @@ defmodule Shroud.Aliases.EmailAlias do
   schema "email_aliases" do
     field :address, :string
     field :enabled, :boolean, default: true
+    field :delivery_mode, Ecto.Enum, values: [:forward, :inbox], default: :forward
+    field :retention_days, :integer
     field :title, :string
     field :notes, :string
     field :forwarded, :integer, default: 0
@@ -32,6 +34,8 @@ defmodule Shroud.Aliases.EmailAlias do
     |> cast(attrs, [
       :address,
       :enabled,
+      :delivery_mode,
+      :retention_days,
       :title,
       :notes,
       :forwarded,
@@ -42,6 +46,7 @@ defmodule Shroud.Aliases.EmailAlias do
     ])
     |> update_change(:address, &String.downcase/1)
     |> validate_required([:address, :enabled, :user_id])
+    |> validate_number(:retention_days, greater_than: 0, less_than_or_equal_to: 36_500)
     |> validate_format(:address, ~r/^[^\s_]+@[^\s]+$/,
       message: "must have an @ sign and no spaces or underscores"
     )

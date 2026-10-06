@@ -24,7 +24,7 @@ defmodule Shroud.Email.IncomingEmailHandler do
   @spec handle_incoming_email(String.t(), String.t(), String.t()) ::
           :ok | {:error, term()}
   # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
-  def handle_incoming_email(sender, recipient, data) do
+  def handle_incoming_email(sender, recipient, data, delivery_id \\ Ecto.UUID.generate()) do
     # Lookup real email based on the receiving alias (`recipient`)
     recipient_user = Accounts.get_user_by_alias(recipient)
     email_alias = Aliases.get_email_alias_by_address(recipient)
@@ -55,6 +55,9 @@ defmodule Shroud.Email.IncomingEmailHandler do
         )
 
         Aliases.increment_blocked!(email_alias)
+
+      email_alias.delivery_mode == :inbox ->
+        Shroud.Inboxes.store(email_alias, sender, data, delivery_id)
 
       SpamHandler.spam?(data) ->
         maybe_log(

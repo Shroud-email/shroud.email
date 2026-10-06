@@ -44,6 +44,16 @@
   </.live_component>
 </form>
 
+<div :if={@inboxes_enabled} class="mb-4 flex items-center justify-end">
+  <.button
+    id="new-inbox"
+    click="add_inbox"
+    text="New inbox"
+    icon={:inbox}
+    disabled={@at_free_limit}
+  />
+</div>
+
 <%= if @filtered_alias_count == 0 and @filter_query == "" do %>
   <.empty_state
     title="No aliases yet"
@@ -164,6 +174,14 @@
                     <div class="text-sm text-gray-500 dark:text-gray-400">
                       {email_alias.title}
                     </div>
+                    <.link
+                      :if={@inboxes_enabled and email_alias.delivery_mode == :inbox}
+                      id={"open-inbox-#{email_alias.id}"}
+                      navigate={~p"/inbox/#{email_alias.address}"}
+                      class="text-sm text-indigo-600 dark:text-indigo-400"
+                    >
+                      Open inbox · no forwarding
+                    </.link>
                     <dl class="text-sm lg:hidden">
                       <dt class="sr-only sm:hidden">Forwarded</dt>
                       <dd class="mt-1 truncate text-gray-500 dark:text-gray-400 sm:hidden">

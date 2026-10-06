@@ -99,6 +99,8 @@ defmodule Shroud.Email.OutgoingEmailHandler do
   defp sender_owns_alias?(user, reply_address) do
     {_recipient_address, email_alias} = ReplyAddress.from_reply_address(reply_address)
     email_alias = Aliases.get_email_alias_by_address(email_alias)
-    not is_nil(email_alias) && email_alias.user_id == user.id
+
+    not is_nil(email_alias) && email_alias.user_id == user.id &&
+      email_alias.delivery_mode == :forward
   end
 end

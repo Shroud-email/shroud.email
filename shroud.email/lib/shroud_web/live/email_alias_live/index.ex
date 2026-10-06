@@ -25,6 +25,7 @@ defmodule ShroudWeb.EmailAliasLive.Index do
       |> update_custom_domains()
       |> assign(:custom_alias_domain, nil)
       |> assign(:custom_alias_error, "")
+      |> assign(:inboxes_enabled, Shroud.Inboxes.enabled?(socket.assigns.current_user))
       |> assign(:alias_count, Aliases.count_aliases(socket.assigns.current_user))
       |> assign_at_free_limit()
       |> assign(:page_title, "Aliases")
@@ -66,6 +67,17 @@ defmodule ShroudWeb.EmailAliasLive.Index do
   end
 
   @impl true
+  def handle_event("add_inbox", _params, %{assigns: %{current_user: user}} = socket) do
+    if Shroud.Inboxes.enabled?(user) and can?(user, create(EmailAlias)) do
+      case Aliases.create_random_email_alias(user, %{delivery_mode: :inbox}) do
+        {:ok, inbox} -> {:noreply, push_navigate(socket, to: ~p"/inbox/#{inbox.address}")}
+        {:error, _} -> {:noreply, put_notification(socket, :error, "Could not create inbox.")}
+      end
+    else
+      {:noreply, put_notification(socket, :error, "You don't have permission to do that.")}
+    end
+  end
+
   def handle_event("add_alias", _params, %{assigns: %{current_user: user}} = socket) do
     if user |> can?(create(EmailAlias)) do
       case Aliases.create_random_email_alias(user) do

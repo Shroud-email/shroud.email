@@ -106,3 +106,32 @@ metadata. Minimal backend payloads do not guarantee minimal stored data.
 The SDK does not reliably merge previous anonymous visits with account history.
 Marketing UTM parameters and referrers are tracked, but cross-day anonymous
 marketing-to-account attribution is not guaranteed.
+
+## Inbox aliases
+
+The `agent_inboxes` feature flag enables inbox creation and the inbox UI. It is
+off by default and supports per-user rollout through the feature-flags admin UI.
+Inbox aliases store mail instead of forwarding it. Receiving mail and retention
+cleanup operate independently of the UI flag. MCP and OAuth inbox access are not
+exposed.
+
+Inbox messages retain their original MIME contents and attachments, encrypted
+with `Shroud.Vault` under the `inboxes/` prefix in the existing S3 bucket. The
+application requires S3 PutObject, GetObject, and DeleteObject permissions. Keep
+the bucket private and exclude this prefix from any automatic expiration policy
+that would override the user's retention setting. Vault keys must remain available
+for as long as their encrypted messages are retained.
+
+Retention defaults to no automatic expiry. Users can set a positive number of
+days per inbox or clear it to keep mail indefinitely. Retention uses receipt time
+and applies to existing messages. Hourly cleanup removes expired messages,
+explicitly deleted messages, and messages belonging to deleted aliases. Message
+deletion immediately hides the message; its S3 object remains scheduled for
+cleanup until deletion succeeds. S3 version history and backups require their own
+deletion policies; deleting the current object does not erase historical copies.
+
+Opening messages or downloading attachments does not mark them read. Read/unread
+state changes only through explicit actions. The inbox UI displays message bodies
+as escaped text, and attachments are authenticated downloads rather than public
+S3 links. Inbox aliases cannot send mail. The existing 25 MB incoming-message
+limit also applies to inbox deliveries.
