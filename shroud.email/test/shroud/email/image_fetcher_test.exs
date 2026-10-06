@@ -72,6 +72,22 @@ defmodule Shroud.Email.ImageFetcherTest do
     assert urls == expected
   end
 
+  test "caps jobs at the first 500 distinct eligible URLs without counting duplicates or embedded images" do
+    html =
+      Enum.map_join(1..501, fn n ->
+        """
+        <img src="cid:attachment-#{n}"><img src="/relative-#{n}.jpg">
+        <img src="https://images.example.com/#{n}.jpg">
+        <img src="https://images.example.com/#{n}.jpg">
+        """
+      end)
+
+    assert :ok = ImageFetcher.enqueue(%ParsedEmail{parsed_html: Floki.parse_document!(html)})
+    urls = all_enqueued(worker: ImageFetcher) |> Enum.map(& &1.args["url"]) |> Enum.sort()
+    expected = Enum.map(1..500, &"https://images.example.com/#{&1}.jpg") |> Enum.sort()
+    assert urls == expected
+  end
+
   test "text-only emails enqueue nothing" do
     assert :ok = ImageFetcher.enqueue(%ParsedEmail{parsed_html: nil})
     refute_enqueued(worker: ImageFetcher)

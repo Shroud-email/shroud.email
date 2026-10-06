@@ -2,6 +2,7 @@ defmodule Shroud.Email.ImageFetcher do
   @moduledoc """
   Visits remote images independently of email delivery and recipient activity.
   Image bodies are discarded. Only public HTTP(S) destinations are contacted.
+  Each email queues at most 500 distinct eligible image URLs, in document order.
   """
 
   use Oban.Worker, queue: :image_fetcher, max_attempts: 1
@@ -9,6 +10,7 @@ defmodule Shroud.Email.ImageFetcher do
   alias Shroud.Email.ParsedEmail
 
   @max_bytes 5 * 1024 * 1024
+  @max_images 500
 
   @spec enqueue(ParsedEmail.t()) :: :ok
   def enqueue(%ParsedEmail{parsed_html: nil}), do: :ok
@@ -17,8 +19,9 @@ defmodule Shroud.Email.ImageFetcher do
     html
     |> Floki.find("img")
     |> Floki.attribute("src")
-    |> Enum.uniq()
-    |> Enum.filter(&(remote_uri(&1) != nil))
+    |> Stream.uniq()
+    |> Stream.filter(&(remote_uri(&1) != nil))
+    |> Stream.take(@max_images)
     |> Enum.map(&new(%{url: &1}))
     |> Oban.insert_all()
 
