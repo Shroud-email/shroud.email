@@ -1,20 +1,36 @@
 ---
-import { OpenPanelComponent } from "@openpanel/astro";
 const clientId = import.meta.env.PUBLIC_OPENPANEL_CLIENT_ID;
 ---
 
 {import.meta.env.PROD && clientId && (
-  <OpenPanelComponent
-    apiUrl="https://panel.shroud.email/api"
-    clientId={clientId}
-    scriptUrl="https://panel.shroud.email/op1.js"
-    trackScreenViews={true}
-    trackOutgoingLinks={true}
-    trackAttributes={true}
-    sessionReplay={{ enabled: false }}
-    filter={`function (event) {
-      // Static production builds are also used for staging and local previews.
-      return window.location.origin === "https://shroud.email";
-    }`}
-  />
+  <>
+    <script is:inline define:vars={{ clientId }}>
+      window.op = window.op || (() => {
+        const queue = [];
+        return new Proxy(function (...args) {
+          if (args.length) queue.push(args);
+        }, {
+          get(_target, property) {
+            return property === "q" ? queue : (...args) => queue.push([property, ...args]);
+          },
+          has(_target, property) {
+            return property === "q";
+          },
+        });
+      })();
+      window.op("init", {
+        apiUrl: "https://panel.shroud.email/api",
+        clientId,
+        trackScreenViews: true,
+        trackOutgoingLinks: true,
+        trackAttributes: true,
+        sessionReplay: { enabled: false },
+        filter() {
+          // Static production builds are also used for staging and local previews.
+          return window.location.origin === "https://shroud.email";
+        },
+      });
+    </script>
+    <script is:inline src="https://panel.shroud.email/op1.js" defer async></script>
+  </>
 )}

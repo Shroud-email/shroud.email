@@ -141,8 +141,9 @@ defmodule Shroud.AnalyticsTest do
   end
 
   test "disabled or missing-secret configuration does not start a network task" do
+    config = Application.fetch_env!(:shroud, :openpanel)
+
     for overrides <- [[enabled: false], [client_secret: nil], [client_secret: ""]] do
-      config = Application.fetch_env!(:shroud, :openpanel)
       Application.put_env(:shroud, :openpanel, Keyword.merge(config, overrides))
       assert :ok = Analytics.email_forwarded(42)
       assert Task.Supervisor.children(Shroud.Analytics.Tasks) == []

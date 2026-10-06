@@ -35,8 +35,9 @@ website Bunny Storage and Pull Zones; no separate docs deployment is required.
 
 ### Analytics
 
-Marketing and docs share `src/components/OpenPanel.astro`, using `@openpanel/astro`
-with `https://panel.shroud.email/api` and `https://panel.shroud.email/op1.js`.
+Marketing and docs share `src/components/OpenPanel.astro`, using OpenPanel's
+script-tag integration with `https://panel.shroud.email/api` and
+`https://panel.shroud.email/op1.js`.
 Set `PUBLIC_OPENPANEL_CLIENT_ID` at build time (for example, in `.env`). It is
 public and included in the generated HTML. Missing or empty values omit tracking.
 The production deployment reads it from the GitHub Actions repository variable
