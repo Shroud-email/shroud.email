@@ -3,6 +3,24 @@ defmodule Shroud.Email.InboxEmailTest do
   alias Shroud.Email.InboxEmail
   import Shroud.InboxesFixtures
 
+  test "attachment filenames prefer disposition, then content type name, then a fallback" do
+    for {type, disposition, expected} <- [
+          {"application/pdf; name=type.pdf", "attachment; filename=disposition.pdf",
+           "disposition.pdf"},
+          {"application/pdf; name=type.pdf", "attachment", "type.pdf"},
+          {"text/plain; name=notes.txt", "inline", "notes.txt"},
+          {"application/pdf", "attachment", "attachment"}
+        ] do
+      raw =
+        "Content-Type: #{type}\r\nContent-Disposition: #{disposition}\r\n\r\nFile bytes"
+
+      email = InboxEmail.parse(raw, "sender@example.com", "recipient@example.com")
+      assert [attachment] = email.attachments
+      assert attachment.filename == expected
+      assert attachment.data == "File bytes"
+    end
+  end
+
   test "8bit and quoted-printable attachments preserve bytes and line endings" do
     for {encoding, encoded, expected} <- [
           {"8bit", <<"café\r\n", 0, 255, "\r\n">>, <<"café\r\n", 0, 255, "\r\n">>},

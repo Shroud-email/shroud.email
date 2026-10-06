@@ -123,8 +123,10 @@ that would override the user's retention setting. Vault keys must remain availab
 for as long as their encrypted messages are retained.
 
 Retention defaults to no automatic expiry. Users can set a positive number of
-days per inbox or clear it to keep mail indefinitely. Retention uses receipt time
-and applies to existing messages. Hourly cleanup removes expired messages,
+days per inbox or clear it to keep mail indefinitely. Retention starts when the
+queued delivery first creates its inbox message record, not at SMTP receipt or
+S3 upload completion. Retries use the same record and do not reset retention.
+Retention applies to existing messages. Hourly cleanup removes expired messages,
 explicitly deleted messages, and messages belonging to deleted aliases. Message
 deletion immediately hides the message; its S3 object remains scheduled for
 cleanup until deletion succeeds. S3 version history and backups require their own

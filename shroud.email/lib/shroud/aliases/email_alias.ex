@@ -45,7 +45,7 @@ defmodule Shroud.Aliases.EmailAlias do
       :domain_id
     ])
     |> update_change(:address, &String.downcase/1)
-    |> validate_required([:address, :enabled, :user_id])
+    |> validate_required([:address, :enabled, :user_id, :delivery_mode])
     |> validate_number(:retention_days, greater_than: 0, less_than_or_equal_to: 36_500)
     |> validate_format(:address, ~r/^[^\s_]+@[^\s]+$/,
       message: "must have an @ sign and no spaces or underscores"

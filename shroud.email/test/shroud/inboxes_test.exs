@@ -170,6 +170,7 @@ defmodule Shroud.InboxesTest do
 
     assert [%Message{spam: true}] = Inboxes.list_messages(user, inbox.address).entries
     assert Shroud.Email.list_spam_emails(user) == []
+    refute_received {:email, _}
   end
 
   test "inbox aliases cannot use the outgoing reverse-alias path", %{user: user, inbox: inbox} do

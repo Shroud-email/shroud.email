@@ -8,6 +8,19 @@ defmodule ShroudWeb.EmailAliasLiveTest do
   describe "Show" do
     setup :register_and_log_in_user
 
+    test "sending controls and upsells apply only to forward aliases", %{conn: conn, user: user} do
+      for status <- [:active, :free], mode <- [:forward, :inbox] do
+        user |> Ecto.Changeset.change(status: status) |> Shroud.Repo.update!()
+        email_alias = alias_fixture(%{user_id: user.id, delivery_mode: mode})
+        {:ok, view, _} = live(conn, ~p"/alias/#{email_alias.address}")
+
+        assert has_element?(view, "#recipient") == (status == :active and mode == :forward)
+
+        assert has_element?(view, "dd a[href='/settings/billing']") ==
+                 (status == :free and mode == :forward)
+      end
+    end
+
     test "desktop and mobile deletion require confirmation", %{conn: conn, user: user} do
       email_alias = alias_fixture(%{user_id: user.id})
       {:ok, view, _} = live(conn, ~p"/alias/#{email_alias.address}")

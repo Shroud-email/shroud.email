@@ -6,6 +6,13 @@ defmodule Shroud.AliasesTest do
 
   import Shroud.{AccountsFixtures, AliasesFixtures, DomainFixtures}
 
+  test "explicitly clearing delivery mode returns a validation error" do
+    email_alias = alias_fixture(%{user_id: user_fixture().id})
+    assert {:error, changeset} = Aliases.update_email_alias(email_alias, %{delivery_mode: nil})
+    assert errors_on(changeset).delivery_mode == ["can't be blank"]
+    assert Shroud.Repo.reload!(email_alias).delivery_mode == :forward
+  end
+
   describe "generate_alias_name/1" do
     test "skips collisions on the selected domain without creating an alias" do
       user = user_fixture()
