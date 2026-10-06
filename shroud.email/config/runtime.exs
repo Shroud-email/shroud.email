@@ -30,8 +30,6 @@ config :shroud, :mobile_associations,
     |> Enum.reject(&(&1 == ""))
     |> Enum.map(&String.upcase/1)
 
-config :shroud, :openai_apps_challenge, System.get_env("OPENAI_APPS_CHALLENGE")
-
 # Optional: Chatwoot support widget. Set CHATWOOT_BASE_URL to the URL of
 # your Chatwoot server to enable the widget. When unset (e.g. for
 # self-hosted deployments), the widget is not loaded at all.
