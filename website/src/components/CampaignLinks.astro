@@ -25,14 +25,13 @@
       !(
         target.origin === page.origin ||
         target.origin === "https://app.shroud.email"
-      ) ||
-      keys.some((key) => target.searchParams.has(key))
+      )
     ) return href;
 
     let changed = false;
     for (const key of keys) {
       const value = page.searchParams.get(key);
-      if (value !== null) {
+      if (value !== null && !target.searchParams.has(key)) {
         target.searchParams.set(key, value);
         changed = true;
       }
