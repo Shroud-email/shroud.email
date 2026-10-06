@@ -27,6 +27,7 @@ config :shroud, ShroudWeb.Endpoint,
   url: [host: "localhost"],
   render_errors: [
     formats: [html: ShroudWeb.ErrorHTML, json: ShroudWeb.ErrorJSON],
+    root_layout: [html: {ShroudWeb.Layouts, :error}],
     layout: false
   ],
   pubsub_server: Shroud.PubSub,
