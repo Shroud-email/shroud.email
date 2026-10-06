@@ -23,7 +23,13 @@ defmodule Shroud.Email.EmailHandlerTest do
   import ExUnit.CaptureLog
   import Mox
 
-  import Shroud.{AccountsFixtures, AliasesFixtures, DomainFixtures, EmailFixtures}
+  import Shroud.{
+    AccountsFixtures,
+    AliasesFixtures,
+    DomainFixtures,
+    EmailFixtures,
+    TrackerFixtures
+  }
 
   alias Shroud.Repo
   alias Shroud.Email
@@ -52,6 +58,44 @@ defmodule Shroud.Email.EmailHandlerTest do
   end
 
   describe "perform/1" do
+    test "visits normal images and removed trackers without restoring them in delivered HTML", %{
+      email_alias: email_alias
+    } do
+      tracker_fixture(%{name: "Known tracker", pattern: "https://known\\.example\\.com/"})
+
+      data =
+        html_email("sender@example.com", [email_alias.address], "Images", """
+        <img src="https://images.example.com/photo.jpg">
+        <img src="https://known.example.com/open">
+        <img src="https://unknown.example.com/pixel" width="1" height="1">
+        """)
+
+      assert :ok =
+               perform_job(EmailHandler, %{
+                 from: "sender@example.com",
+                 to: email_alias.address,
+                 data: data
+               })
+
+      assert_email_sent(fn email ->
+        assert length(Floki.find(Floki.parse_document!(email.html_body), "img")) == 1
+        refute email.html_body =~ "known.example.com"
+        refute email.html_body =~ "unknown.example.com"
+        assert email.html_body =~ "/proxy?"
+      end)
+
+      urls =
+        all_enqueued(worker: Shroud.Email.ImageFetcher)
+        |> Enum.map(& &1.args["url"])
+        |> Enum.sort()
+
+      assert urls == [
+               "https://images.example.com/photo.jpg",
+               "https://known.example.com/open",
+               "https://unknown.example.com/pixel"
+             ]
+    end
+
     test "disabling branding removes both footers without disabling tracker removal", %{
       user: user,
       email_alias: email_alias
@@ -1134,6 +1178,7 @@ defmodule Shroud.Email.EmailHandlerTest do
       spam_email = hd(Email.list_spam_emails(user))
 
       assert spam_email.html_body == "<h1>Spam</h1>"
+      refute_enqueued(worker: Shroud.Email.ImageFetcher)
 
       assert_enqueued(
         worker: Shroud.Accounts.UserNotifierJob,
@@ -1546,10 +1591,16 @@ defmodule Shroud.Email.EmailHandlerTest do
       end)
 
       assert Repo.aggregate(TrackerDomain, :count) == 0
+      refute_enqueued(worker: Shroud.Email.ImageFetcher)
 
       # Attempt 2 (the Oban retry): delivery succeeds. The domain is now counted
       # exactly once -- not twice.
       perform_job(EmailHandler, args)
+
+      assert_enqueued(
+        worker: Shroud.Email.ImageFetcher,
+        args: %{url: "https://spy.example.com"}
+      )
 
       assert %TrackerDomain{count: 1} =
                Repo.get_by(TrackerDomain, domain: "spy.example.com", date: Date.utc_today())

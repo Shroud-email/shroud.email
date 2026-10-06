@@ -96,6 +96,7 @@ defmodule Shroud.MixProject do
       {:timex, "~> 3.7"},
       {:httpoison, "~> 2.3"},
       {:req, "~> 0.6"},
+      {:pfx, "~> 0.14.2"},
       {:quantum, "~> 3.4"},
       {:nimble_totp, "~> 1.0"},
       {:wax_, "~> 0.7"},

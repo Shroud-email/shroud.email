@@ -12,6 +12,7 @@ defmodule Shroud.Email.IncomingEmailHandler do
   alias Shroud.Email.{
     SpamHandler,
     ParsedEmail,
+    ImageFetcher,
     TrackerRemover,
     Enricher,
     ReplyAddress
@@ -191,6 +192,7 @@ defmodule Shroud.Email.IncomingEmailHandler do
         Repo.transaction(fn ->
           Aliases.increment_forwarded!(email_alias)
           Email.record_blocked_domains(ParsedEmail.blocked_domains(processed))
+          ImageFetcher.enqueue(parsed_email)
         end)
 
       {:error, {_code, %{"error" => error}}} ->

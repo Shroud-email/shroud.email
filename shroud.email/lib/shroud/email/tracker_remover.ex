@@ -8,7 +8,6 @@ defmodule Shroud.Email.TrackerRemover do
   - TODO: look at other external resources like fonts
   - TODO: look at images with URL params, even if they're not on the blocklist
   - TODO: handle tracking links (automatically click them)
-  - TODO: open everything as soon as the email is received (like Mail Privacy Protection)
   """
 
   # TODO: look into also handling text emails (i.e. just tracking links)

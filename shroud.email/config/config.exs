@@ -75,6 +75,7 @@ config :shroud, Oban,
   queues: [
     default: 1,
     outgoing_email: 5,
+    image_fetcher: 3,
     notifier: 1,
     dns_checker: 3
   ]
