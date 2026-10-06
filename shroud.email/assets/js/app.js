@@ -36,32 +36,25 @@ import Tooltip from "@ryangjchandler/alpine-tooltip";
 import { initializePaddle } from "@paddle/paddle-js";
 import { setupPaddleCheckout } from "./paddle_checkout.mjs";
 import { PasskeyRegistration, PasskeyLogin } from "./passkeys.mjs";
-import posthog from "posthog-js";
-import { sanitizeAnalyticsEvent } from "./analytics.mjs";
+import { OpenPanel } from "@openpanel/web";
+import { filterAnalyticsEvent } from "./analytics.mjs";
 
-const posthogToken = document.querySelector(
-  'meta[name="posthog-token"]',
+const openpanelClientId = document.querySelector(
+  'meta[name="openpanel-client-id"]',
 )?.content;
-if (posthogToken) {
-  posthog.init(posthogToken, {
-    api_host: document.querySelector('meta[name="posthog-host"]').content,
-    defaults: "2025-05-24",
-    cookieless_mode: "always",
-    person_profiles: "never",
-    capture_pageview: "history_change",
-    before_send: sanitizeAnalyticsEvent,
-    autocapture: false,
-    disable_session_recording: true,
-    disable_surveys: true,
-    capture_heatmaps: false,
-    capture_exceptions: false,
-    capture_performance: false,
-    capture_dead_clicks: false,
-    rageclick: false,
-    enable_recording_console_log: false,
-    logs: { captureConsoleLogs: false },
-    advanced_disable_flags: true,
+if (openpanelClientId) {
+  const analytics = new OpenPanel({
+    clientId: openpanelClientId,
+    apiUrl: document.querySelector('meta[name="openpanel-api-url"]').content,
+    trackScreenViews: true,
+    trackOutgoingLinks: true,
+    trackAttributes: true,
+    sessionReplay: { enabled: false },
+    filter: filterAnalyticsEvent,
   });
+  analytics.profileId =
+    document.querySelector('meta[name="openpanel-profile-id"]')?.content ||
+    undefined;
 }
 
 Alpine.plugin(Tooltip);
@@ -93,9 +86,6 @@ let liveSocket = new LiveSocket("/live", Socket, {
           document,
           window,
           initializePaddle,
-          onCheckoutCompleted: () => {
-            if (posthogToken) posthog.capture("paid plan signed up");
-          },
         });
       },
       destroyed() {

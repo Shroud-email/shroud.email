@@ -181,6 +181,7 @@ defmodule Shroud.Email.IncomingEmailHandler do
 
     case deliver_result do
       {:ok, _id} ->
+        Shroud.Analytics.email_forwarded(user.id)
         email_alias = Aliases.get_email_alias_by_address!(recipient)
 
         # Record blocked tracking domains only once the email has actually been

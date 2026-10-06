@@ -319,5 +319,13 @@ defmodule Shroud.Aliases do
     %EmailAlias{user_id: attrs.user_id}
     |> EmailAlias.changeset(attrs)
     |> Repo.insert()
+    |> case do
+      {:ok, email_alias} = result ->
+        Shroud.Analytics.alias_created(email_alias)
+        result
+
+      error ->
+        error
+    end
   end
 end

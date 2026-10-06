@@ -38,10 +38,22 @@ config :shroud,
   chatwoot_base_url: System.get_env("CHATWOOT_BASE_URL"),
   chatwoot_hmac_token: System.get_env("CHATWOOT_HMAC_TOKEN")
 
-# Optional cookieless browser analytics. An unset token disables PostHog.
-config :shroud,
-  posthog_token: System.get_env("POSTHOG_TOKEN"),
-  posthog_host: System.get_env("POSTHOG_HOST", "https://eu.i.posthog.com")
+# Analytics is opt-in and disabled in development and tests, including when
+# production credentials are present in the environment.
+openpanel_client_id = System.get_env("OPENPANEL_CLIENT_ID")
+openpanel_api_url = System.get_env("OPENPANEL_API_URL")
+openpanel_client_secret = System.get_env("OPENPANEL_CLIENT_SECRET")
+
+config :shroud, :openpanel,
+  enabled:
+    config_env() == :prod and
+      Enum.all?(
+        [openpanel_client_id, openpanel_api_url, openpanel_client_secret],
+        &(&1 not in [nil, ""])
+      ),
+  client_id: openpanel_client_id,
+  api_url: openpanel_api_url,
+  client_secret: openpanel_client_secret
 
 # Optional: Cap CAPTCHA. Set all three of CAP_INSTANCE_URL, CAP_SITE_KEY,
 # and CAP_SECRET_KEY to enable. When any is unset, Cap is fully disabled

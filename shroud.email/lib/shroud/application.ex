@@ -17,6 +17,7 @@ defmodule Shroud.Application do
       # Start rate limiting before the Endpoint can accept requests.
       {Shroud.RateLimit, key_older_than: :timer.minutes(15)},
       {Task.Supervisor, name: ShroudWeb.ProxyResolverTasks},
+      {Task.Supervisor, name: Shroud.Analytics.Tasks, max_children: 100},
       ShroudWeb.TrustedProxies,
       # Start the Endpoint (http/https)
       ShroudWeb.Endpoint,

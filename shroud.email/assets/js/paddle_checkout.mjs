@@ -49,7 +49,6 @@ export function setupPaddleCheckout({
   window,
   initializePaddle,
   logger = console,
-  onCheckoutCompleted = () => {},
 }) {
   const button = document.querySelector("#upgrade-button");
   const price = document.querySelector("#upgrade-price[data-paddle-price-id]");
@@ -76,7 +75,6 @@ export function setupPaddleCheckout({
         !checkoutCompleted
       ) {
         checkoutCompleted = true;
-        onCheckoutCompleted();
         window.setTimeout(() => {
           window.location.href = "/settings/billing";
         }, 5000);

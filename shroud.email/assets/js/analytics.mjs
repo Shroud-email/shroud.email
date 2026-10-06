@@ -24,7 +24,12 @@ function redactPaths(value) {
   return value;
 }
 
-// Apply to URL, pathname, referrer, and nested initial-page properties alike.
-export function sanitizeAnalyticsEvent(event) {
-  return { ...event, properties: redactPaths(event.properties) };
+// OpenPanel sends this same envelope after the filter returns true.
+export function filterAnalyticsEvent(event) {
+  if (event.type === "track") {
+    event.payload.properties = redactPaths(event.payload.properties);
+    // Page titles can contain alias/domain addresses.
+    delete event.payload.properties?.__title;
+  }
+  return true;
 }

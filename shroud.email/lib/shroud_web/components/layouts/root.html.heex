@@ -16,8 +16,18 @@
       name="paddle-environment"
       content={Application.get_env(:shroud, :billing, [])[:paddle_environment]}
     />
-    <meta name="posthog-token" content={Application.get_env(:shroud, :posthog_token)} />
-    <meta name="posthog-host" content={Application.get_env(:shroud, :posthog_host)} />
+    <%= if Application.get_env(:shroud, :openpanel, [])[:enabled] do %>
+      <meta name="referrer" content="strict-origin-when-cross-origin" />
+      <meta
+        name="openpanel-client-id"
+        content={Application.get_env(:shroud, :openpanel)[:client_id]}
+      />
+      <meta name="openpanel-api-url" content={Application.get_env(:shroud, :openpanel)[:api_url]} />
+      <meta
+        name="openpanel-profile-id"
+        content={if assigns[:current_user], do: Shroud.Analytics.profile_id(@current_user.id)}
+      />
+    <% end %>
     {csrf_meta_tag()}
     <.live_title suffix=" · Shroud.email">
       {assigns[:page_title] || "Home"}

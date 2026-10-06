@@ -1,0 +1,20 @@
+---
+import { OpenPanelComponent } from "@openpanel/astro";
+const clientId = import.meta.env.PUBLIC_OPENPANEL_CLIENT_ID;
+---
+
+{import.meta.env.PROD && clientId && (
+  <OpenPanelComponent
+    apiUrl="https://panel.shroud.email/api"
+    clientId={clientId}
+    scriptUrl="https://panel.shroud.email/op1.js"
+    trackScreenViews={true}
+    trackOutgoingLinks={true}
+    trackAttributes={true}
+    sessionReplay={{ enabled: false }}
+    filter={`function (event) {
+      // Static production builds are also used for staging and local previews.
+      return window.location.origin === "https://shroud.email";
+    }`}
+  />
+)}

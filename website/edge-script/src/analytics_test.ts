@@ -1,11 +1,14 @@
 import assert from "node:assert/strict";
 import { trackTextRequest } from "./analytics.ts";
 
+// Dummy credentials only; fetch is mocked in every test.
+Deno.env.set("OPENPANEL_CLIENT_ID", "test-client");
+Deno.env.set("OPENPANEL_CLIENT_SECRET", "test-secret");
+
 Deno.test(
   "text requests send anonymous metadata and preserve the response",
   async () => {
     const originalFetch = globalThis.fetch;
-    const ids = new Set<string>();
     let calls = 0;
     try {
       for (const [path, format, status] of [
@@ -28,7 +31,7 @@ Deno.test(
           headers: { "cache-control": "public, max-age=3600", etag: '"text"' },
         });
         const result = await trackTextRequest({
-          request: new Request(`https://example.test${path}?private=value`, {
+          request: new Request(`https://shroud.email${path}?private=value`, {
             headers: {
               "user-agent": "ExampleBot/1.0",
               "cdn-requestcountrycode": "GB",
@@ -41,33 +44,35 @@ Deno.test(
         });
         assert.equal(sent, true);
         assert.ok(captured);
-        assert.equal(captured.url, "https://ph.btao.org/batch/");
+        assert.equal(captured.url, "https://panel.shroud.email/api/track");
         assert.equal(captured.method, "POST");
         assert.equal(captured.headers.get("content-type"), "application/json");
         assert.equal(captured.headers.has("cookie"), false);
         assert.equal(captured.headers.has("x-forwarded-for"), false);
+        assert.equal(captured.headers.has("x-client-ip"), false);
+        assert.equal(captured.headers.has("user-agent"), false);
+        assert.equal(
+          captured.headers.get("openpanel-client-id"),
+          "test-client",
+        );
+        assert.equal(
+          captured.headers.get("openpanel-client-secret"),
+          "test-secret",
+        );
         const payload = await captured.json();
-        assert.ok(payload.api_key.startsWith("phc_"));
-        assert.equal(payload.batch.length, 1);
-        const event = payload.batch[0];
-        assert.equal(event.event, "$pageview");
-        const id = event.distinct_id;
-        assert.match(id, /^[0-9a-f-]{36}$/);
-        assert.ok(!ids.has(id));
-        ids.add(id);
+        assert.equal(payload.type, "track");
+        const event = payload.payload;
+        assert.equal(event.name, "screen_view");
+        assert.equal(
+          new Date(event.properties.__timestamp).toISOString(),
+          event.properties.__timestamp,
+        );
         assert.deepEqual(event.properties, {
-          $lib: "posthog-edge",
-          $lib_version: "5.55.0",
-          $is_server: true,
-          $process_person_profile: false,
-          $geoip_disable: true,
-          $current_url: `https://example.test${path}`,
-          $host: "example.test",
-          $pathname: path,
+          __path: `https://shroud.email${path}`,
+          __timestamp: event.properties.__timestamp,
           capture_source: "edge",
           format,
           status,
-          $raw_user_agent: "ExampleBot/1.0",
           country: "GB",
         });
         assert.equal(result, response);
@@ -107,7 +112,7 @@ Deno.test(
         const response = new Response(null, { status });
         assert.equal(
           await trackTextRequest({
-            request: new Request(`https://example.test${path}`, { method }),
+            request: new Request(`https://shroud.email${path}`, { method }),
             response,
           }),
           response,
@@ -133,8 +138,7 @@ Deno.test(
           if (failure === "http") return new Response(null, { status: 503 });
           if (failure === "network") throw new Error("Offline");
           await new Promise<void>((_resolve, reject) => {
-            // The SDK unreferences its deadline timer. Keep the mock request
-            // alive like a real network operation and fail if no abort arrives.
+            // Fail the test if the wrapper does not abort the request.
             const deadline = setTimeout(
               () => reject(new Error("No abort")),
               2_000,
@@ -156,7 +160,7 @@ Deno.test(
         const response = new Response("# Content\n");
         assert.equal(
           await trackTextRequest({
-            request: new Request("https://example.test/llms.txt"),
+            request: new Request("https://shroud.email/llms.txt"),
             response,
           }),
           response,
@@ -167,6 +171,50 @@ Deno.test(
       }
     } finally {
       globalThis.fetch = originalFetch;
+    }
+  },
+);
+
+Deno.test(
+  "missing configuration and nonproduction requests never send",
+  async () => {
+    const originalFetch = globalThis.fetch;
+    let calls = 0;
+    try {
+      globalThis.fetch = () => {
+        calls++;
+        throw new Error("Unexpected analytics send");
+      };
+      for (const [clientId, secret, origin] of [
+        [undefined, "test-secret", "https://shroud.email"],
+        ["", "test-secret", "https://shroud.email"],
+        ["test-client", undefined, "https://shroud.email"],
+        ["test-client", "", "https://shroud.email"],
+        [
+          "test-client",
+          "test-secret",
+          "https://shroud-email-website-staging.b-cdn.net",
+        ],
+        ["test-client", "test-secret", "http://localhost:8080"],
+      ]) {
+        if (clientId === undefined) Deno.env.delete("OPENPANEL_CLIENT_ID");
+        else Deno.env.set("OPENPANEL_CLIENT_ID", clientId);
+        if (secret === undefined) Deno.env.delete("OPENPANEL_CLIENT_SECRET");
+        else Deno.env.set("OPENPANEL_CLIENT_SECRET", secret);
+        const response = new Response("text");
+        assert.equal(
+          await trackTextRequest({
+            request: new Request(`${origin}/llms.txt`),
+            response,
+          }),
+          response,
+        );
+      }
+      assert.equal(calls, 0);
+    } finally {
+      globalThis.fetch = originalFetch;
+      Deno.env.set("OPENPANEL_CLIENT_ID", "test-client");
+      Deno.env.set("OPENPANEL_CLIENT_SECRET", "test-secret");
     }
   },
 );

@@ -9,6 +9,7 @@ defmodule ShroudWeb.CheckoutController do
 
   @subscription_event_types [
     "subscription.created",
+    "subscription.activated",
     "subscription.updated",
     "subscription.canceled",
     "subscription.past_due"
@@ -149,7 +150,7 @@ defmodule ShroudWeb.CheckoutController do
 
   defp handle_event(_malformed_event), do: {:error, :malformed_event}
 
-  defp provision_subscription(subscription, event, _event_type) when is_map(subscription) do
+  defp provision_subscription(subscription, event, event_type) when is_map(subscription) do
     with {:ok, customer_id} <- required_binary(subscription, "customer_id"),
          {:ok, subscription_id} <- required_binary(subscription, "id"),
          {:ok, status} <- required_subscription_status(subscription),
@@ -169,6 +170,9 @@ defmodule ShroudWeb.CheckoutController do
              price_id: price_id,
              plan_expires_at: period_end,
              status: paddle_status_to_our_status(status),
+             paid_conversion?:
+               status == "active" and
+                 event_type in ["subscription.created", "subscription.activated"],
              event_at: event_at
            }) do
       log_subscription_result(result, event, customer_id)
