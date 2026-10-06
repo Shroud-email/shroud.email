@@ -1,6 +1,7 @@
 ---
-import { Image } from "astro:assets";
+import { Image, getImage } from "astro:assets";
 import appScreenshot from "~/assets/app-screenshot.webp";
+import appScreenshotDark from "~/assets/app-screenshot-dark.webp";
 import ScrollingText from "~/components/atoms/ScrollingText.astro";
 
 export interface Props {
@@ -8,6 +9,12 @@ export interface Props {
 }
 
 const { learnMoreId } = Astro.props;
+
+const darkScreenshot = await getImage({
+  src: appScreenshotDark,
+  layout: "constrained",
+  width: 900,
+});
 
 const trust = [
   "5 free aliases",
@@ -18,9 +25,9 @@ const trust = [
 ---
 
 <section class="relative isolate overflow-hidden bg-slate-950">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <div class="mx-auto max-w-[90rem] px-4 sm:px-6 lg:px-8">
         <div
-            class="grid items-center gap-12 pt-28 pb-16 sm:pt-32 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-16 lg:pt-40 lg:pb-28"
+            class="grid items-center gap-12 pt-28 pb-16 sm:pt-32 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.2fr)] lg:gap-16 lg:pt-40 lg:pb-28"
         >
             <div class="max-w-xl">
                 <h1
@@ -90,19 +97,31 @@ const trust = [
                 </ul>
             </div>
 
-            <div class="relative lg:-mr-8 xl:-mr-16">
+            <div class="relative min-w-0">
                 <div
-                    class="rounded-2xl bg-slate-900/70 p-2 ring-1 ring-white/10"
+                    class="browser-preview overflow-hidden rounded-xl bg-slate-200 dark:bg-slate-800 shadow-2xl ring-1 ring-white/10"
                 >
+                    <div class="flex items-center gap-1.5 px-4 py-3" aria-hidden="true">
+                        <span class="size-2.5 rounded-full bg-slate-400 dark:bg-slate-500"></span>
+                        <span class="size-2.5 rounded-full bg-slate-400 dark:bg-slate-500"></span>
+                        <span class="size-2.5 rounded-full bg-slate-400 dark:bg-slate-500"></span>
+                    </div>
+                    <picture>
+                    <source
+                        media="(prefers-color-scheme: dark)"
+                        srcset={darkScreenshot.srcSet.attribute}
+                        sizes={darkScreenshot.attributes.sizes}
+                    />
                     <Image
-                        class="w-full rounded-lg ring-1 ring-white/5"
+                        class="w-full"
                         src={appScreenshot}
-                        alt="The Shroud.email dashboard listing several email aliases, each showing how many messages it has forwarded"
+                        alt="The Shroud.email dashboard listing email aliases, forwarded message counts, and enabled or disabled statuses"
                         layout="constrained"
-                        width={700}
+                        width={900}
                         loading="eager"
                         fetchpriority="high"
                     />
+                    </picture>
                 </div>
             </div>
         </div>
