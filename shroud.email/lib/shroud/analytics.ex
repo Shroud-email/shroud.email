@@ -26,22 +26,28 @@ defmodule Shroud.Analytics do
   def email_forwarded(user_id), do: capture(user_id, "email_forwarded", %{})
   def outgoing_email_sent(user_id), do: capture(user_id, "outgoing_email_sent", %{})
 
+  def signup(user_id, path) do
+    # OpenPanel extracts properties.__query from __path during ingestion.
+    capture(user_id, "signup", %{__path: path})
+  end
+
   def paid_conversion(user_id, converted_at, source) when source in [:paddle, :lifetime_code],
     do: capture(user_id, "paid_conversion", %{source: Atom.to_string(source)}, converted_at)
 
+  def identify(user_id), do: send_event("identify", %{profileId: profile_id(user_id)})
+
   defp capture(user_id, name, properties, occurred_at \\ DateTime.utc_now()) do
+    send_event("track", %{
+      name: name,
+      profileId: profile_id(user_id),
+      properties: Map.put(properties, :__timestamp, DateTime.to_iso8601(occurred_at))
+    })
+  end
+
+  defp send_event(type, payload) do
     config = Application.get_env(:shroud, :openpanel, [])
 
     if config[:enabled] and config[:client_secret] not in [nil, ""] do
-      body = %{
-        type: "track",
-        payload: %{
-          name: name,
-          profileId: profile_id(user_id),
-          properties: Map.put(properties, :__timestamp, DateTime.to_iso8601(occurred_at))
-        }
-      }
-
       Task.Supervisor.start_child(Shroud.Analytics.Tasks, fn ->
         Req.post(
           url: String.trim_trailing(config[:api_url], "/") <> "/track",
@@ -50,7 +56,7 @@ defmodule Shroud.Analytics do
             {"openpanel-client-secret", config[:client_secret]},
             {"user-agent", "ShroudAnalytics/1.0"}
           ],
-          json: body,
+          json: %{type: type, payload: payload},
           retry: false,
           receive_timeout: 1_000,
           connect_options: [timeout: 1_000]

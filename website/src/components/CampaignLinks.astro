@@ -1,0 +1,53 @@
+<script>
+  const keys = [
+    "utm_source",
+    "utm_medium",
+    "utm_campaign",
+    "utm_term",
+    "utm_content",
+    "utm_id",
+    "utm_source_platform",
+    "utm_creative_format",
+    "utm_marketing_tactic",
+  ];
+
+  function campaignLink(href: string, pageUrl: string | URL): string {
+    const page = new URL(pageUrl);
+    let target: URL;
+    try {
+      target = new URL(href, page);
+    } catch {
+      return href;
+    }
+    if (
+      href.startsWith("#") ||
+      !["https:", "http:"].includes(target.protocol) ||
+      !(
+        target.origin === page.origin ||
+        target.origin === "https://app.shroud.email"
+      )
+    ) return href;
+
+    let changed = false;
+    for (const key of keys) {
+      const value = page.searchParams.get(key);
+      if (value !== null && !target.searchParams.has(key)) {
+        target.searchParams.set(key, value);
+        changed = true;
+      }
+    }
+    return changed ? target.href : href;
+  }
+
+  function update() {
+    for (const link of document.querySelectorAll<HTMLAnchorElement>("a[href]:not([download])")) {
+      const href = link.getAttribute("href")!;
+      const decorated = campaignLink(href, window.location.href);
+      if (decorated !== href) link.setAttribute("href", decorated);
+    }
+  }
+
+  update();
+  // Vue hydration and documentation navigation can insert new links.
+  new MutationObserver(update).observe(document.body, { childList: true, subtree: true });
+</script>

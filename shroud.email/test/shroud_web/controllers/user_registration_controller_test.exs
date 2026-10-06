@@ -6,6 +6,108 @@ defmodule ShroudWeb.UserRegistrationControllerTest do
   import Shroud.AccountsFixtures
   import ShroudWeb.CaptchaHelpers
 
+  test "campaign survives signup form, invalid submission and account creation", %{conn: conn} do
+    previous = Application.get_env(:shroud, :openpanel)
+    on_exit(fn -> Application.put_env(:shroud, :openpanel, previous) end)
+    bypass = Bypass.open()
+    owner = self()
+
+    Application.put_env(:shroud, :openpanel,
+      enabled: true,
+      client_id: "test",
+      client_secret: "test",
+      api_url: "http://localhost:#{bypass.port}/api"
+    )
+
+    Bypass.expect(bypass, "POST", "/api/track", fn conn ->
+      {:ok, body, conn} = Plug.Conn.read_body(conn)
+      send(owner, {:signup_event, Jason.decode!(body)})
+      Plug.Conn.resp(conn, 200, "{}")
+    end)
+
+    campaign = %{
+      "utm_source" => "newsletter",
+      "utm_medium" => "email",
+      "utm_campaign" => "autumn & winter",
+      "utm_term" => "privacy",
+      "utm_content" => "footer",
+      "utm_id" => "campaign-42",
+      "utm_source_platform" => "loops",
+      "utm_creative_format" => "text",
+      "utm_marketing_tactic" => "prospecting",
+      "gclid" => "google-click",
+      "fbclid" => "meta-click",
+      "custom_tag" => String.duplicate("é", 201),
+      "empty_tag" => ""
+    }
+
+    conn = get(conn, "/users/register?" <> URI.encode_query(campaign))
+    document = conn |> html_response(200) |> Floki.parse_document!()
+    fields = Floki.find(document, "#user-registration-form input[type=hidden]")
+
+    for {key, value} <- campaign do
+      assert Enum.any?(fields, fn field ->
+               Floki.attribute(field, "name") == ["user[signup_campaign][#{key}]"] and
+                 Floki.attribute(field, "value") == [value]
+             end)
+    end
+
+    conn =
+      post(recycle(conn), ~p"/users/register", %{
+        "user" => %{"email" => "invalid", "password" => "short", "signup_campaign" => campaign}
+      })
+
+    document = conn |> html_response(200) |> Floki.parse_document!()
+
+    assert Floki.attribute(document, "input[name='user[signup_campaign][utm_campaign]']", "value") ==
+             ["autumn & winter"]
+
+    email = unique_user_email()
+
+    conn =
+      post(recycle(conn), ~p"/users/register", %{
+        "user" =>
+          valid_user_attributes(
+            email: email,
+            signup_campaign: Map.put(campaign, "nested", %{"invalid" => "value"})
+          )
+      })
+
+    assert redirected_to(conn) == "/users/confirm"
+    user = Shroud.Accounts.get_user_by_email(email)
+    assert_receive {:signup_event, %{"type" => "track", "payload" => payload}}, 2_000
+    assert payload["name"] == "signup"
+    assert payload["profileId"] == Shroud.Analytics.profile_id(user.id)
+    path = URI.parse(payload["properties"]["__path"])
+    assert path.path == "/users/register"
+    assert URI.decode_query(path.query) == campaign
+    assert_receive {:signup_event, %{"type" => "identify", "payload" => identity}}, 2_000
+    assert identity == %{"profileId" => Shroud.Analytics.profile_id(user.id)}
+  end
+
+  test "CAPTCHA retry preserves query tags and lifetime selection", %{conn: conn} do
+    enable_cap()
+
+    conn =
+      post(conn, ~p"/users/register", %{
+        "user" => %{
+          "status" => "lifetime",
+          "signup_campaign" => %{"utm_source" => "newsletter", "gclid" => "private"}
+        }
+      })
+
+    url = URI.parse(redirected_to(conn))
+    assert url.path == "/users/register"
+
+    assert URI.decode_query(url.query) == %{
+             "utm_source" => "newsletter",
+             "gclid" => "private",
+             "lifetime" => "true"
+           }
+  after
+    disable_cap()
+  end
+
   describe "GET /users/register" do
     test "renders registration page", %{conn: conn} do
       conn = get(conn, ~p"/users/register")
