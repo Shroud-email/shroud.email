@@ -11,6 +11,7 @@ export function repairPrompt(event) {
     run?.head_repository?.id !== 505987755 ||
     run?.name === process.env.GITHUB_WORKFLOW ||
     run?.name === "Dependabot Updates" ||
+    run?.path?.startsWith("dynamic/dependabot/") ||
     run?.event === "pull_request" ||
     run?.event === "pull_request_target" ||
     run?.head_branch !== "main" ||
