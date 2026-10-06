@@ -2,6 +2,8 @@ const tokenPath =
   /(\/(?:users\/(?:reset_password|confirm)|settings\/confirm_email)\/)[^/?#\s]+/g;
 const reportPath = /(\/email-report\/)[^/?#\s]+/g;
 const aliasPath = /(\/alias(?:es)?\/)[^/?#\s]+/g;
+const inboxMessagePath = /(\/inbox\/(?:[^/?#\s]+\/)?messages\/)[^/?#\s]+/g;
+const inboxPath = /(\/inbox\/)(?!messages(?:\/|[?#\s]|$))[^/?#\s]+/g;
 const domainPath = /(\/domains?\/)[^/?#\s]+/g;
 
 function redactPaths(value) {
@@ -10,6 +12,8 @@ function redactPaths(value) {
       .replace(tokenPath, "$1:token")
       .replace(reportPath, "$1:data")
       .replace(aliasPath, "$1:address")
+      .replace(inboxMessagePath, "$1:message")
+      .replace(inboxPath, "$1:address")
       .replace(domainPath, "$1:domain");
   }
   if (Array.isArray(value)) return value.map(redactPaths);

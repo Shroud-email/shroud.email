@@ -10,6 +10,7 @@ test("retains OpenPanel events and redacts sensitive routes in all URL propertie
     ["email-report", "SECRET", ":data"],
     ["alias", "address@example.com", ":address"],
     ["aliases", "address%40example.com", ":address"],
+    ["inbox", "address%40example.com", ":address"],
     ["domain", "private.example.com", ":domain"],
     ["domains", "private.example.com", ":domain"],
   ]) {
@@ -43,6 +44,29 @@ test("retains OpenPanel events and redacts sensitive routes in all URL propertie
     filterAnalyticsEvent(event);
     assert.deepEqual(event, sanitized);
   }
+});
+
+test("redacts inbox addresses and message IDs in message and attachment routes", () => {
+  const event = {
+    type: "track",
+    payload: {
+      name: "screen_view",
+      properties: {
+        __path: "/inbox/agent%40example.com/messages/713",
+        __referrer: "/inbox/agent@example.com/messages/713?page=2",
+        href: "/inbox/messages/713/attachments/0",
+      },
+    },
+  };
+  assert.equal(filterAnalyticsEvent(event), true);
+  assert.deepEqual(event.payload.properties, {
+    __path: "/inbox/:address/messages/:message",
+    __referrer: "/inbox/:address/messages/:message?page=2",
+    href: "/inbox/messages/:message/attachments/0",
+  });
+  const sanitized = structuredClone(event);
+  filterAnalyticsEvent(event);
+  assert.deepEqual(event, sanitized);
 });
 
 test("does not filter pages, events, or UTM attribution", () => {
