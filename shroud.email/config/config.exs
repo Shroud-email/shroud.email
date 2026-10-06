@@ -106,18 +106,21 @@ config :phoenix, :json_library, Jason
 
 config :phoenix, :filter_parameters, [
   "password",
+  "secret",
   "token",
   "code",
   "code_verifier",
   "approval",
-  "arguments"
+  "arguments",
+  "rawId",
+  "userHandle",
+  "authenticatorData",
+  "clientDataJSON",
+  "attestationObject",
+  "signature"
 ]
 
 config :sentry, before_send: {Shroud.ErrorReporter, :before_send}
-
-config :phoenix,
-       :filter_parameters,
-       ~w(password secret token rawId userHandle authenticatorData clientDataJSON attestationObject signature)
 
 config :fun_with_flags, :cache,
   enabled: true,
