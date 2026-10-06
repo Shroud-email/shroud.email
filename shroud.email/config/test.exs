@@ -75,3 +75,5 @@ config :shroud, :billing,
 # Shroud.Captcha) so captcha_test.exs can assert on responses without any
 # real network calls.
 config :shroud, :cap_req_options, plug: {Req.Test, Shroud.Captcha}
+
+config :shroud, :image_req_options, plug: {Req.Test, Shroud.Email.ImageFetcher}
