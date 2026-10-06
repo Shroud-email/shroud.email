@@ -30,6 +30,12 @@
         as={:user}
         class="space-y-6"
       >
+        <input
+          :for={{key, value} <- @campaign}
+          type="hidden"
+          name={"user[signup_campaign][#{key}]"}
+          value={value}
+        />
         <%= if @lifetime do %>
           <p class="text-sm text-gray-600 dark:text-gray-400 text-center">
             Signing up for a lifetime account.

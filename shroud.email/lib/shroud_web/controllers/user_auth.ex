@@ -25,6 +25,7 @@ defmodule ShroudWeb.UserAuth do
   """
   def log_in_user(conn, user, params \\ %{}) do
     token = Accounts.generate_user_session_token(user)
+    Shroud.Analytics.identify(user.id)
 
     user_return_to =
       if user.confirmed_at do
