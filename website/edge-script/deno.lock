@@ -6,8 +6,7 @@
     "jsr:@std/encoding@^1.0.5": "1.0.11",
     "jsr:@std/internal@^1.0.14": "1.0.14",
     "jsr:@std/path@^1.0.6": "1.1.6",
-    "npm:esbuild@*": "0.28.1",
-    "npm:posthog-node@5.55.0": "5.55.0"
+    "npm:esbuild@*": "0.28.1"
   },
   "jsr": {
     "@luca/esbuild-deno-loader@0.11.1": {
@@ -165,15 +164,6 @@
       "os": ["win32"],
       "cpu": ["x64"]
     },
-    "@posthog/core@1.55.3": {
-      "integrity": "sha512-XnmG9jo7WlxTeN4oCNWH4ESLQHR6ZPZ+mcq+8JxU62k5i1BAe3BSrybnmXHjqKp7e3rUvLK2bOzGZGSlfHvlNA==",
-      "dependencies": [
-        "@posthog/types"
-      ]
-    },
-    "@posthog/types@1.413.0": {
-      "integrity": "sha512-tYAVzNojWckuG/wxBB0fwE70sFruQQq4xbhkci7eH2ARU3mMfUTkvpN1HwBMpm0AtbxidLiH0IFvagmdJ8opPw=="
-    },
     "esbuild@0.28.1": {
       "integrity": "sha512-HrJrvZv5ayxBzPfwphOoNzkzOIIlifzk0KJrGK2c8R4+LKpMtpYLQeUdjnwjWv/LZlkH2laZk+4w78pi99D4Vw==",
       "optionalDependencies": [
@@ -206,17 +196,9 @@
       ],
       "scripts": true,
       "bin": true
-    },
-    "posthog-node@5.55.0": {
-      "integrity": "sha512-8dFtlDTqs0CKGZ8t4mUnk4NdShAgzru3B9D0MfM/NTBzlRyAjctivzWINLtMLRQxYjvgBohxy7RTwiQf4mPycQ==",
-      "dependencies": [
-        "@posthog/core"
-      ]
     }
   },
   "remote": {
-    "https://esm.sh/@bunny.net/edgescript-sdk@0.12.0": "2b6ef65794a748f842dfe40d7ad9414ca3c2670efc1c396a0fc22ec6c8e74318",
-    "https://esm.sh/@bunny.net/edgescript-sdk@0.12.0/denonext/edgescript-sdk.mjs": "ad02b8b1feab2af1e8743c51079363029f4b267358a61319c78f7448ea575b19",
     "https://esm.sh/@bunny.net/edgescript-sdk@0.13.0": "c34f1937f588eb07c012f5bee827c75415309e51d0f8fde1917b7273da751104",
     "https://esm.sh/@bunny.net/edgescript-sdk@0.13.0/denonext/edgescript-sdk.mjs": "bc0b074b7346f9508b3cc2d572c0f1847f51792907af2f4fff0beb16eadc4ef7"
   }

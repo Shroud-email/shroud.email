@@ -586,15 +586,17 @@ defmodule Shroud.Accounts do
   paid-signup notification share one transaction so concurrent deliveries
   cannot regress subscription state or enqueue duplicate transition notices.
   """
-  def apply_paddle_subscription_event(%{
-        customer_id: customer_id,
-        identity_user_id: identity_user_id,
-        subscription_id: subscription_id,
-        price_id: price_id,
-        status: status,
-        plan_expires_at: plan_expires_at,
-        event_at: event_at
-      }) do
+  def apply_paddle_subscription_event(
+        %{
+          customer_id: customer_id,
+          identity_user_id: identity_user_id,
+          subscription_id: subscription_id,
+          price_id: price_id,
+          status: status,
+          plan_expires_at: plan_expires_at,
+          event_at: event_at
+        } = event
+      ) do
     Repo.transaction(fn ->
       user = lock_paddle_user(customer_id, identity_user_id)
 
@@ -607,18 +609,47 @@ defmodule Shroud.Accounts do
         last_paddle_event_at: event_at
       }
 
-      case paddle_subscription_relationship(user, subscription_id, price_id, status) do
-        :current -> apply_locked_paddle_event(user, attrs)
-        :new -> apply_locked_paddle_event(user, clear_pending_paddle_checkout(attrs))
-        :unrelated -> :unrelated_subscription
-        :price_conflict -> Repo.rollback(:subscription_price_conflict)
-      end
+      result =
+        case paddle_subscription_relationship(user, subscription_id, price_id, status) do
+          :current -> apply_locked_paddle_event(user, attrs)
+          :new -> apply_locked_paddle_event(user, clear_pending_paddle_checkout(attrs))
+          :unrelated -> :unrelated_subscription
+          :price_conflict -> Repo.rollback(:subscription_price_conflict)
+        end
+
+      record_paid_conversion(user, event, result)
     end)
     |> case do
-      {:ok, result} -> {:ok, result}
-      {:error, reason} -> {:error, reason}
+      {:ok, {:paid_conversion, user_id, converted_at, result}} ->
+        Shroud.Analytics.paid_conversion(user_id, converted_at, :paddle)
+        {:ok, result}
+
+      {:ok, result} ->
+        {:ok, result}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
+
+  # Activation may arrive after a newer update for the same subscription.
+  # Record the milestone without regressing the current subscription state.
+  defp record_paid_conversion(
+         %User{paid_converted_at: nil} = user,
+         %{paid_conversion?: true, event_at: event_at},
+         result
+       )
+       when result in [:applied, :stale] do
+    converted_at = event_at |> DateTime.from_naive!("Etc/UTC") |> DateTime.add(0, :microsecond)
+
+    user
+    |> Ecto.Changeset.change(paid_converted_at: converted_at)
+    |> Repo.update!()
+
+    {:paid_conversion, user.id, converted_at, result}
+  end
+
+  defp record_paid_conversion(_user, _event, result), do: result
 
   defp apply_locked_paddle_event(user, %{last_paddle_event_at: event_at} = attrs) do
     if stale_paddle_event?(event_at, user.last_paddle_event_at) do

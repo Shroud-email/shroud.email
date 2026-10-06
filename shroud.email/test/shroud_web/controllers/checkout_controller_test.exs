@@ -15,6 +15,38 @@ defmodule ShroudWeb.CheckoutControllerTest do
   @period_end_naive ~N[2030-01-01 00:00:00]
   @occurred_at "2030-01-01T00:00:00Z"
 
+  test "trial creation and renewals are not conversions; activation is", %{conn: conn} do
+    user =
+      user_fixture(%{
+        status: :free,
+        paddle_customer_id: "ctm_conversion",
+        paddle_subscription_id: "sub_conversion",
+        paddle_price_id: "pri_test_yearly"
+      })
+
+    trial = subscription_event("trialing", "ctm_conversion", "sub_conversion")
+    assert response(post_event(conn, trial), 200) == ""
+    assert is_nil(Repo.reload!(user).paid_converted_at)
+
+    renewal =
+      subscription_event("active", "ctm_conversion", "sub_conversion",
+        event_type: "subscription.updated",
+        occurred_at: "2030-01-02T00:00:00Z"
+      )
+
+    assert response(post_event(recycle(conn), renewal), 200) == ""
+    assert is_nil(Repo.reload!(user).paid_converted_at)
+
+    activation =
+      subscription_event("active", "ctm_conversion", "sub_conversion",
+        event_type: "subscription.activated",
+        occurred_at: "2030-01-02T00:00:00Z"
+      )
+
+    assert response(post_event(recycle(conn), activation), 200) == ""
+    assert Repo.reload!(user).paid_converted_at == ~U[2030-01-02 00:00:00.000000Z]
+  end
+
   defp paid_signup_notification? do
     [worker: Shroud.NotifierJob]
     |> all_enqueued()

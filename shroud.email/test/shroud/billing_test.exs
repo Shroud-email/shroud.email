@@ -47,11 +47,19 @@ defmodule Shroud.Billing.BillingTest do
       assert :ok == Billing.redeem_lifetime_code(code, user)
       user = Repo.reload!(user)
       assert user.status == :lifetime
+      assert %DateTime{} = user.paid_converted_at
 
       assert_enqueued(
         worker: LoopsJob,
         args: %{action: "sync_loops", user_id: user.id}
       )
+    end
+
+    test "another code cannot repeat the conversion, even with a stale user struct", %{user: user} do
+      assert :ok = Billing.redeem_lifetime_code(Billing.create_lifetime_code(), user)
+      converted_at = Repo.reload!(user).paid_converted_at
+      assert :ok = Billing.redeem_lifetime_code(Billing.create_lifetime_code(), user)
+      assert Repo.reload!(user).paid_converted_at == converted_at
     end
 
     test "logs a successful redemption", %{user: user} do

@@ -29,9 +29,28 @@ specification is also published at `/docs/openapi.json`.
 The `/docs/api/aliases/` and `/docs/api/domains/` URLs redirect to the generated
 list-operation pages. Since this is a static build, Astro emits HTML redirect
 pages rather than HTTP redirects. All other existing guide URLs are preserved.
-Docs use the website's cookieless PostHog integration, Manrope font, and indigo
+Docs use the website's OpenPanel integration, Manrope font, and indigo
 accent. Documentation is built and deployed with the website using the existing
 website Bunny Storage and Pull Zones; no separate docs deployment is required.
+
+### Analytics
+
+Marketing and docs share `src/components/OpenPanel.astro`, using OpenPanel's
+script-tag integration with `https://panel.shroud.email/api` and
+`https://panel.shroud.email/op1.js`.
+Set `PUBLIC_OPENPANEL_CLIENT_ID` at build time (for example, in `.env`). It is
+public and included in the generated HTML. Missing or empty values omit tracking.
+The production deployment reads it from the GitHub Actions repository variable
+`OPENPANEL_CLIENT_ID`. Do not supply a client secret to the website build.
+Screen views, outgoing links, and `data-track` attributes are enabled; session
+replay and identification are not. The SDK retains normal marketing URLs and UTM
+attribution. Do not add addresses, message content, or other private data to
+tracking attributes or URLs. There are no page/event allowlists.
+
+Development builds omit analytics. Production-built staging and local previews
+reject events unless the browser origin is exactly `https://shroud.email`.
+Text-request analytics is separately opt-in via Bunny runtime configuration;
+see [edge analytics](edge-script/README.md#text-analytics).
 
 Use `pnpm build` followed by `pnpm preview` to check Pagefind search, which needs
 the production search index. `pnpm check:content-images` checks that the

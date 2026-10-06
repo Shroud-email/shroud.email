@@ -1,4 +1,5 @@
 defmodule Shroud.Billing do
+  import Ecto.Query
   alias Ecto.Multi
   alias Shroud.Accounts
   alias Shroud.Accounts.User
@@ -31,27 +32,47 @@ defmodule Shroud.Billing do
       true ->
         result =
           Multi.new()
+          |> Multi.run(:locked_user, fn repo, _changes ->
+            {:ok, repo.one!(from u in User, where: u.id == ^user.id, lock: "FOR UPDATE")}
+          end)
           |> Multi.insert(
             :lifetime_code,
             LifetimeCode.changeset(%LifetimeCode{}, %{code: code, redeemed_by_id: user.id})
           )
-          |> Multi.update(
-            :user,
-            User.status_changeset(user, %{status: :lifetime})
-          )
+          |> Multi.update(:user, fn %{locked_user: locked_user} ->
+            lifetime_changeset(locked_user)
+          end)
           |> Multi.run(:loops_job, fn _repo, %{user: updated_user} ->
             Accounts.enqueue_loops_sync(updated_user)
           end)
           |> Repo.transaction()
 
         case result do
-          {:ok, _changes} ->
+          {:ok, %{locked_user: prior_user, user: updated_user}} ->
+            if is_nil(prior_user.paid_converted_at) and not is_nil(updated_user.paid_converted_at) do
+              Shroud.Analytics.paid_conversion(
+                user.id,
+                updated_user.paid_converted_at,
+                :lifetime_code
+              )
+            end
+
             Logger.notice("#{user.email} redeemed a lifetime code!")
             :ok
 
           {:error, _failed_operation, _failed_value, _changes_so_far} ->
             {:error, :redemption_failed}
         end
+    end
+  end
+
+  defp lifetime_changeset(user) do
+    changeset = User.status_changeset(user, %{status: :lifetime})
+
+    if is_nil(user.paid_converted_at) and user.status != :lifetime do
+      Ecto.Changeset.put_change(changeset, :paid_converted_at, DateTime.utc_now())
+    else
+      changeset
     end
   end
 

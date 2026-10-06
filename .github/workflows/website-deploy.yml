@@ -44,6 +44,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - run: pnpm run build
+        env:
+          PUBLIC_OPENPANEL_CLIENT_ID: ${{ vars.OPENPANEL_CLIENT_ID }}
 
       - name: Deploy production with the official Bunny action
         uses: BunnyWay/actions/deploy-site@4b22fe0b319386b3913117daf97729409dd0a6ef # deploy-site_0.1.1

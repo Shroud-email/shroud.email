@@ -1,6 +1,4 @@
 // Text responses cannot run browser analytics. Track requests at the CDN edge.
-import { PostHog } from "npm:posthog-node@5.55.0/edge";
-
 export async function trackTextRequest(ctx: {
   request: Request;
   response: Response;
@@ -16,6 +14,7 @@ export async function trackTextRequest(ctx: {
           : null;
   if (
     !format ||
+    url.origin !== "https://shroud.email" ||
     ctx.request.method !== "GET" ||
     (!ctx.response.ok && ctx.response.status !== 304)
   ) {
@@ -23,39 +22,42 @@ export async function trackTextRequest(ctx: {
   }
 
   try {
-    // The SDK has no waitUntil hook. Bound the awaited send so analytics failure
-    // cannot prevent delivery. Each request is anonymous, not a visitor profile.
-    const client = new PostHog(
-      "phc_9q2mSOtde8Gj01Y41ok3beG5Lrt89INpUBrO46SqKD7",
-      {
-        host: "https://ph.btao.org",
-        flushInterval: 0,
-        fetchRetryCount: 0,
-        requestTimeout: 1_000,
-        disableGeoip: true,
-        disableCompression: true,
-        enableExceptionAutocapture: false,
-        enableLocalEvaluation: false,
-      },
-    );
-    await client.captureImmediate({
-      distinctId: crypto.randomUUID(),
-      event: "$pageview",
-      properties: {
-        $process_person_profile: false,
-        $current_url: `${url.origin}${url.pathname}`,
-        $host: url.hostname,
-        $pathname: url.pathname,
-        capture_source: "edge",
-        format,
-        status: ctx.response.status,
-        $raw_user_agent:
-          ctx.request.headers.get("user-agent")?.slice(0, 512) ?? "",
-        country: ctx.request.headers.get("cdn-requestcountrycode"),
-      },
-    });
+    // Bunny Env Configuration supplies these at runtime, never at build time.
+    const clientId = Deno.env.get("OPENPANEL_CLIENT_ID");
+    const secret = Deno.env.get("OPENPANEL_CLIENT_SECRET");
+    if (!clientId || !secret) return ctx.response;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 1_000);
+    try {
+      const response = await fetch("https://panel.shroud.email/api/track", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "openpanel-client-id": clientId,
+          "openpanel-client-secret": secret,
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          type: "track",
+          payload: {
+            name: "screen_view",
+            properties: {
+              __path: `${url.origin}${url.pathname}`,
+              __timestamp: new Date().toISOString(),
+              capture_source: "edge",
+              format,
+              status: ctx.response.status,
+              country: ctx.request.headers.get("cdn-requestcountrycode"),
+            },
+          },
+        }),
+      });
+      await response.body?.cancel();
+    } finally {
+      clearTimeout(timeout);
+    }
   } catch {
-    // Analytics is best-effort; the original file response remains unchanged.
+    // Best-effort, no retries: analytics must not prevent file delivery.
   }
   return ctx.response;
 }
