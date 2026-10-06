@@ -10,6 +10,7 @@ export function repairPrompt(event) {
     event?.repository?.full_name !== "Shroud-email/shroud.email" ||
     run?.head_repository?.id !== 505987755 ||
     run?.name === process.env.GITHUB_WORKFLOW ||
+    run?.name === "Dependabot Updates" ||
     run?.event === "pull_request" ||
     run?.event === "pull_request_target" ||
     run?.head_branch !== "main" ||
