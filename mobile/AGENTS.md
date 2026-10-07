@@ -5,6 +5,10 @@
 - Node.js is pinned by the root `mise.toml`.
 - This is a managed Expo app with TypeScript and Expo Router. Routes live in
   `src/app/`. Keep native `ios/` and `android/` folders generated and ignored.
+- Start the Expo dev server with `EXPO_UNSTABLE_MCP_SERVER=1`, for example
+  `EXPO_UNSTABLE_MCP_SERVER=1 npx expo start`. Local MCP capabilities require
+  `expo-mcp` and Expo CLI authentication with the same account as the MCP connection.
+  Reconnect the Expo MCP connection after starting or stopping the dev server.
 - Verify changes with `npx tsc --noEmit`, `npm run lint`, and `npx expo-doctor`.
   Use `npx expo export --platform all` to check bundling for iOS, Android, and web.
 - The browser preview is not a substitute for native device testing. Local iOS
