@@ -157,6 +157,92 @@ defmodule Shroud.Domain.DnsCheckerTest do
   end
 
   describe "DMARC records" do
+    test "accepts policy choices, reporting tags, defaults, and split TXT strings" do
+      records = [
+        ["v=DMARC1; p=none; rua=mailto:dmarc@example.com"],
+        ["v = DMARC1 ; rua = mailto:dmarc@example.com ;"],
+        ["v=DMARC1; p=quarantine; aspf=s; adkim=s; sp=reject; np=none; t=y; psd=n"],
+        ["v=DMARC1; p=reject; ruf=mailto:fail@example.com; fo=1:d:s; future=value; future=other"],
+        ["V=DMARC1; P=QUARANTINE; rua=https://reports.example.com"],
+        ["unrelated TXT", "v=DMARC1; p=none"],
+        [[~c"v=DMARC1; p=none; rua=mailto:", ~c"dmarc@example.com"]],
+        ["v=DMARC1; p=none; rua=mailto:first@example.com, mailto:second@example.com"],
+        ["v=DMARC1; p=none; rua=mailto:first@example.com,\tmailto:second@example.com"],
+        ["v=DMARC1;\tp\t=\tnone\t; ruf=mailto:first@example.com\t,\tmailto:second@example.com;"],
+        ["v=DMARC1; rua=mailto:dmarc@example.com!10m"],
+        ["v=DMARC1; p=none; ruf=mailto:dmarc@example.com!100"],
+        ["v=DMARC1; rua=https://reports.example.com/%21%2C%20!2G"],
+        ["v=DMARC1; rua=mailto:dmarc%21reports@example.com"]
+      ]
+
+      domain = custom_domain_fixture(%{domain: "example.com", dmarc_verified_at: nil})
+
+      for txt <- records do
+        domain |> Ecto.Changeset.change(dmarc_verified_at: nil) |> Repo.update!()
+
+        stub(Shroud.MockDnsClient, :lookup, fn
+          "_dmarc.example.com", :txt -> txt
+          _, _ -> []
+        end)
+
+        perform_job(DnsChecker, %{custom_domain_id: domain.id})
+        assert Repo.reload!(domain).dmarc_verified_at != nil, inspect(txt)
+      end
+    end
+
+    test "rejects malformed policies and multiple DMARC records" do
+      records = [
+        ["v=DMARC1; rua=mailto:dmarc@example.com%GG"],
+        ["v=DMARC1; p=none; rua=mailto:dmarc@example.com!bogus"],
+        ["v=DMARC1;\np=none"],
+        ["v=DMARC1; p=none\n"],
+        ["v=DMARC1; p=none; rua=mailto:dmarc@example.com\n"],
+        ["v=DMARC1;\u00A0p=none"],
+        ["v=DMARC1; p=none; ruf=mailto:dmarc@example.com%2"],
+        ["v=DMARC1; p=none; rua=mailto:dmarc@example.com%"],
+        ["v=DMARC1; p=none; rua=mailto:dmarc@example.com!"],
+        ["v=DMARC1; p=none; rua=mailto:dmarc@example.com!10m!20k"],
+        ["v=DMARC1; p=none; rua=mailto:dmarc@example.com!10x"],
+        ["v=DMARC1; p=none; rua=mailto:dmarc\t@example.com"],
+        ["v=dmarc1; p=none"],
+        ["p=none; v=DMARC1"],
+        ["v=DMARC1"],
+        ["v=DMARC1; p=invalid"],
+        ["v=DMARC1; p=none; aspf=invalid"],
+        ["v=DMARC1; p=none; sp=invalid"],
+        ["v=DMARC1; p=none; p=reject"],
+        ["v=DMARC1; p=none; P=reject"],
+        ["v=DMARC1; p=none; future"],
+        ["v=DMARC1; p=none; v=DMARC1"],
+        ["v=DMARC1; p=none; t=invalid"],
+        ["v=DMARC1; p=none; psd=invalid"],
+        ["v=DMARC1; p=none;; adkim=r"],
+        ["v=DMARC1; p=none; rua=not-a-uri"],
+        ["v=DMARC1; p=none; rua=mailto:first@example.com,not-a-uri"],
+        ["v=DMARC1; p=none; ruf=mailto:"],
+        ["v=DMARC1; p=none; fo=0:1"],
+        ["v=DMARC1; p=none; fo=d:d"],
+        ["v=DMARC1; p=none", "v=DMARC1; p=reject"],
+        ["v=DMARC1; p=none", "v=DMARC1; p=invalid"]
+      ]
+
+      domain = custom_domain_fixture(%{domain: "example.com"})
+
+      for txt <- records do
+        domain
+        |> Ecto.Changeset.change(dmarc_verified_at: ~N[2022-07-16 00:00:00])
+        |> Repo.update!()
+
+        stub(Shroud.MockDnsClient, :lookup, fn
+          "_dmarc.example.com", :txt -> txt
+          _, _ -> []
+        end)
+
+        perform_job(DnsChecker, %{custom_domain_id: domain.id})
+        assert is_nil(Repo.reload!(domain).dmarc_verified_at), inspect(txt)
+      end
+    end
+
     test "verifies DMARC records" do
       Shroud.MockDnsClient
       |> stub(:lookup, fn domain, record_type ->

@@ -13,6 +13,16 @@ defmodule Shroud.Domain.DnsChecker do
   alias Shroud.Domain.CustomDomain
   alias Shroud.Domain.DnsRecord
 
+  @dmarc_values %{
+    "p" => ~w(none quarantine reject),
+    "sp" => ~w(none quarantine reject),
+    "np" => ~w(none quarantine reject),
+    "adkim" => ~w(r s),
+    "aspf" => ~w(r s),
+    "t" => ~w(y n),
+    "psd" => ~w(y n u)
+  }
+
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"custom_domain_id" => id}}) do
     custom_domain = Repo.get!(CustomDomain, id)
@@ -36,8 +46,7 @@ defmodule Shroud.Domain.DnsChecker do
     dkim_verified_at = if has_records?(desired_dkim), do: now, else: nil
 
     # DMARC
-    desired_dmarc = DnsRecord.desired_dmarc_records(custom_domain)
-    dmarc_verified_at = if has_records?(desired_dmarc), do: now, else: nil
+    dmarc_verified_at = if valid_dmarc_record?(custom_domain), do: now, else: nil
 
     # Save
     custom_domain =
@@ -86,6 +95,81 @@ defmodule Shroud.Domain.DnsChecker do
     record = to_string(record)
     String.downcase(record) == String.downcase(desired_record)
   end
+
+  defp valid_dmarc_record?(%CustomDomain{domain: domain}) do
+    records =
+      dns_impl().lookup("_dmarc.#{domain}", :txt)
+      |> Enum.map(&IO.iodata_to_binary/1)
+      |> Enum.filter(&Regex.match?(~r/^[vV][ \t]*=[ \t]*DMARC1(?:[ \t]*;|[ \t]*$)/, &1))
+
+    case records do
+      [record] ->
+        [_version | tags] =
+          record |> String.split(";") |> Enum.map(&trim_dmarc_whitespace/1)
+
+        tags = if List.last(tags) == "", do: Enum.drop(tags, -1), else: tags
+        valid_dmarc_tags?(tags)
+
+      _ ->
+        false
+    end
+  end
+
+  defp valid_dmarc_tags?(tags) do
+    pairs =
+      Enum.map(tags, fn tag ->
+        case Regex.run(~r/\A([a-z]+)[ \t]*=[ \t]*([\t\x20-\x3A\x3C-\x7E]+)\z/i, tag) do
+          [_, name, value] -> {String.downcase(name), value}
+          nil -> nil
+        end
+      end)
+
+    names =
+      for {name, _value} <- pairs,
+          is_map_key(@dmarc_values, name) or name in ~w(v fo rua ruf),
+          do: name
+
+    Enum.all?(pairs, &valid_dmarc_tag?/1) and
+      names == Enum.uniq(names) and
+      "v" not in names and
+      ("p" in names or "rua" in names)
+  end
+
+  defp valid_dmarc_tag?(nil), do: false
+
+  defp valid_dmarc_tag?({tag, value}) when is_map_key(@dmarc_values, tag),
+    do: String.downcase(value) in Map.fetch!(@dmarc_values, tag)
+
+  defp valid_dmarc_tag?({"fo", value}) do
+    options = String.downcase(value) |> String.split(":")
+
+    Enum.all?(options, &(&1 in ["0", "1", "d", "s"])) and
+      length(Enum.uniq(options)) == length(options) and
+      not ("0" in options and "1" in options)
+  end
+
+  defp valid_dmarc_tag?({tag, value}) when tag in ["rua", "ruf"] do
+    value
+    |> String.split(",")
+    |> Enum.all?(&valid_dmarc_uri?/1)
+  end
+
+  defp valid_dmarc_tag?({_unknown, _value}), do: true
+
+  defp valid_dmarc_uri?(value) do
+    value = trim_dmarc_whitespace(value)
+
+    with [uri] <-
+           Regex.run(~r/\A([^! \t]+)(?:![0-9]+[kmgt]?)?\z/i, value, capture: :all_but_first),
+         false <- Regex.match?(~r/%(?![0-9a-f]{2})/i, uri),
+         {:ok, %URI{scheme: scheme} = parsed} when is_binary(scheme) <- URI.new(uri) do
+      parsed.host not in [nil, ""] or parsed.path not in [nil, ""]
+    else
+      _ -> false
+    end
+  end
+
+  defp trim_dmarc_whitespace(value), do: Regex.replace(~r/\A[ \t]+|[ \t]+\z/, value, "")
 
   defp dns_impl() do
     Application.get_env(:shroud, :dns_client, Shroud.DnsClient)
