@@ -361,7 +361,7 @@ defmodule ShroudWeb.SettingsLiveTest do
     assert has_element?(view, "#show-disable-totp")
   end
 
-  test "leaving Security discards pending 2FA enrollment and backup-code display", %{
+  test "pending 2FA enrollment survives menu navigation but backup-code display does not", %{
     conn: conn,
     user: user
   } do
@@ -371,24 +371,15 @@ defmodule ShroudWeb.SettingsLiveTest do
 
     view = navigate_settings(view, conn, :account, ~p"/settings/account")
     view = navigate_settings(view, conn, :security, ~p"/settings/security")
-    refute has_element?(view, "#totp-qr-code svg")
-
-    render_submit(view, "enable_totp", %{
-      "verification_code" => NimbleTOTP.verification_code(secret)
-    })
-
-    refute Repo.reload!(user).totp_enabled
-
-    view |> element("#generate_totp_secret") |> render_click()
-    fresh_secret = :sys.get_state(view.pid).socket.assigns.totp_secret
-    refute fresh_secret == secret
+    assert has_element?(view, "#totp-qr-code svg")
+    assert :sys.get_state(view.pid).socket.assigns.totp_secret == secret
 
     view
-    |> form("#enable_totp", verification_code: NimbleTOTP.verification_code(fresh_secret))
+    |> form("#enable_totp", verification_code: NimbleTOTP.verification_code(secret))
     |> render_submit()
 
     assert Repo.reload!(user).totp_enabled
-    assert Repo.reload!(user).totp_secret == fresh_secret
+    assert Repo.reload!(user).totp_secret == secret
     assert has_element?(view, "#totp-backup-codes")
     view = navigate_settings(view, conn, :account, ~p"/settings/account")
     view = navigate_settings(view, conn, :security, ~p"/settings/security")
@@ -405,6 +396,31 @@ defmodule ShroudWeb.SettingsLiveTest do
     refute Repo.reload!(user).totp_enabled
     refute has_element?(view, "#totp-qr-code")
     assert has_element?(view, "#notification-source [data-kind=error]", "Invalid two-factor")
+
+    view = navigate_settings(view, conn, :account, ~p"/settings/account")
+    view = navigate_settings(view, conn, :security, ~p"/settings/security")
+    refute has_element?(view, "#totp-qr-code")
+  end
+
+  test "pending 2FA state is isolated by login session, even for the same user", %{
+    conn: conn,
+    user: user
+  } do
+    {:ok, view, _} = live(conn, ~p"/settings/security")
+    view |> element("#generate_totp_secret") |> render_click()
+    other_conn = build_conn() |> log_in_user(user)
+    {:ok, other, _} = live(other_conn, ~p"/settings/security")
+    refute has_element?(other, "#totp-qr-code")
+
+    render_submit(other, "enable_totp", %{
+      "verification_code" =>
+        NimbleTOTP.verification_code(:sys.get_state(view.pid).socket.assigns.totp_secret)
+    })
+
+    refute Repo.reload!(user).totp_enabled
+    view = navigate_settings(view, conn, :appearance, ~p"/settings/appearance")
+    view = navigate_settings(view, conn, :security, ~p"/settings/security")
+    assert has_element?(view, "#totp-qr-code")
   end
 
   test "2FA disable rejects invalid codes and consumes a valid backup code", %{
@@ -416,8 +432,6 @@ defmodule ShroudWeb.SettingsLiveTest do
     view |> element("#show-disable-totp") |> render_click()
     view = navigate_settings(view, conn, :appearance, ~p"/settings/appearance")
     view = navigate_settings(view, conn, :security, ~p"/settings/security")
-    refute has_element?(view, "#disable_totp")
-    view |> element("#show-disable-totp") |> render_click()
     assert has_element?(view, "#disable_totp")
     view |> form("#disable_totp", verification_code: "invalid") |> render_submit()
     assert Repo.reload!(user).totp_enabled
@@ -427,6 +441,10 @@ defmodule ShroudWeb.SettingsLiveTest do
     refute Repo.reload!(user).totp_enabled
     assert Repo.reload!(user).totp_backup_codes == remaining
     assert has_element?(view, "#generate_totp_secret")
+    view = navigate_settings(view, conn, :account, ~p"/settings/account")
+    view = navigate_settings(view, conn, :security, ~p"/settings/security")
+    refute has_element?(view, "#disable_totp")
+    refute has_element?(view, "#totp-qr-code")
   end
 
   test "lifetime redemption handles invalid and used codes, then updates billing", %{

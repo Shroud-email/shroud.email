@@ -19,6 +19,7 @@ defmodule Shroud.Application do
       {Task.Supervisor, name: ShroudWeb.ProxyResolverTasks},
       {Task.Supervisor, name: Shroud.Analytics.Tasks, max_children: 100},
       ShroudWeb.TrustedProxies,
+      ShroudWeb.PendingTOTP,
       # Start the Endpoint (http/https)
       ShroudWeb.Endpoint,
       {Oban, Application.fetch_env!(:shroud, Oban)},

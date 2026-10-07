@@ -4,24 +4,34 @@ defmodule ShroudWeb.SecuritySettingsLive do
   alias Shroud.{Accounts, OAuth, Repo}
   alias Shroud.Accounts.{Passkeys, TOTP, User}
   alias ShroudWeb.Components.PopupAlert
+  alias ShroudWeb.PendingTOTP
 
   import ShroudWeb.SettingsComponents, only: [input: 1]
 
   embed_templates "security_settings_live/*"
 
   @impl true
-  def mount(_params, _session, socket) do
+  def mount(_params, %{"user_token" => token}, socket) do
     user = socket.assigns.current_user
+    key = :crypto.hash(:sha256, token)
+
+    {secret, show_disable} =
+      case {user.totp_enabled, PendingTOTP.get(key)} do
+        {false, {:enable, secret}} -> {secret, false}
+        {true, :disable} -> {nil, true}
+        _ -> {nil, false}
+      end
 
     socket =
       assign(socket,
+        totp_session_key: key,
         password_form: to_form(Accounts.change_user_password(user)),
         totp_form: to_form(%{"verification_code" => ""}),
         trigger_password_submit: false,
-        totp_secret: nil,
-        otp_qr_code: nil,
+        totp_secret: secret,
+        otp_qr_code: totp_qr_code(user, secret),
         totp_backup_codes: nil,
-        show_disable_totp: false,
+        show_disable_totp: show_disable,
         passkey_form: to_form(%{"current_password" => ""}, as: :passkey),
         passkey_dialog: nil,
         passkey_password_error: nil,
@@ -273,14 +283,15 @@ defmodule ShroudWeb.SecuritySettingsLive do
       {:noreply, assign(socket, :current_user, user)}
     else
       secret = TOTP.create_secret()
-      qr_code = user |> TOTP.otp_uri(secret) |> EQRCode.encode() |> EQRCode.svg(width: 264)
-      {:noreply, assign(socket, totp_secret: secret, otp_qr_code: qr_code)}
+      PendingTOTP.put(socket.assigns.totp_session_key, {:enable, secret})
+      {:noreply, assign(socket, totp_secret: secret, otp_qr_code: totp_qr_code(user, secret))}
     end
   end
 
   def handle_event("enable_totp", %{"verification_code" => otp}, socket) do
     user = Repo.reload!(socket.assigns.current_user)
     secret = socket.assigns.totp_secret
+    PendingTOTP.delete(socket.assigns.totp_session_key)
 
     if !user.totp_enabled && secret && TOTP.valid_code?(user, secret, otp) do
       backup_codes = TOTP.enable_totp!(user, secret)
@@ -303,6 +314,7 @@ defmodule ShroudWeb.SecuritySettingsLive do
   end
 
   def handle_event("show_disable_totp", _params, socket) do
+    PendingTOTP.put(socket.assigns.totp_session_key, :disable)
     {:noreply, assign(socket, :show_disable_totp, true)}
   end
 
@@ -320,6 +332,7 @@ defmodule ShroudWeb.SecuritySettingsLive do
 
     if user.totp_enabled && TOTP.valid_code?(user, user.totp_secret, otp) do
       user = user |> Repo.reload!() |> TOTP.disable_totp!()
+      PendingTOTP.delete(socket.assigns.totp_session_key)
 
       {:noreply,
        socket
@@ -350,6 +363,12 @@ defmodule ShroudWeb.SecuritySettingsLive do
   def terminate(_reason, socket) do
     cancel_passkey(socket)
     :ok
+  end
+
+  defp totp_qr_code(_user, nil), do: nil
+
+  defp totp_qr_code(user, secret) do
+    user |> TOTP.otp_uri(secret) |> EQRCode.encode() |> EQRCode.svg(width: 264)
   end
 
   defp load_connections(socket) do
