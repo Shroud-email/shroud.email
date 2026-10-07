@@ -14,7 +14,7 @@
             ]
           }
           id={"settings-nav-#{action}"}
-          patch={path}
+          navigate={path}
           aria-current={
             if @live_action == action or (action == :billing and @live_action == :lifetime) or
                  (action == :security and @live_action == :connections),
