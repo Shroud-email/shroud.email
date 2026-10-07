@@ -1,4 +1,6 @@
-<div id="fog" class="min-h-full pt-16 pb-12 flex flex-col bg-gray-800">
+<div id="fog" class="relative isolate min-h-full pt-16 pb-12 flex flex-col bg-[#101827]">
+  <canvas aria-hidden="true" class="absolute inset-0 -z-10 w-full h-full pointer-events-none">
+  </canvas>
   <main class="grow flex flex-col justify-center max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8">
     <div class="shrink-0 flex justify-center">
       <a href="/" class="inline-flex">
@@ -24,6 +26,7 @@
     </div>
   </main>
   <footer class="shrink-0 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8">
+    <span id="fog-status" role="status" class="sr-only"></span>
     <nav class="flex justify-center space-x-4">
       <a
         href="mailto:hello@shroud.email"
@@ -42,24 +45,3 @@
     </nav>
   </footer>
 </div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r121/three.min.js">
-</script>
-<script src="https://cdn.jsdelivr.net/npm/vanta@0.5.21/dist/vanta.fog.min.js">
-</script>
-<script>
-  VANTA.FOG({
-    el: "#fog",
-    THREE: THREE,
-    mouseControls: false,
-    touchControls: false,
-    gyroControls: false,
-    minHeight: 200.0,
-    minWidth: 200.0,
-    baseColor: 0x1f2937,
-    lowlightColor: 0x111827,
-    midtoneColor: 0x334155,
-    highlightColor: 0x475569,
-    speed: 1.8,
-  });
-</script>

@@ -13,6 +13,10 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+#fog:not([data-state='ready']) canvas {
+  visibility: hidden;
+}
+
 @theme {
   --font-sans: 'Inter var', ui-sans-serif, system-ui, sans-serif,
     'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';

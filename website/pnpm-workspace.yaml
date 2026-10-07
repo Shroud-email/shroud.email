@@ -1,7 +1,9 @@
 allowBuilds:
   '@tailwindcss/oxide': true
+  '@vgpu/adapter-node': false
   esbuild: true
   sharp: true
   vue-demi: true
+  webgpu: false
 patchedDependencies:
   astro-llms-md@3.0.2: patches/astro-llms-md@3.0.2.patch

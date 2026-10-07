@@ -38,6 +38,9 @@ import { setupPaddleCheckout } from "./paddle_checkout.mjs";
 import { PasskeyRegistration, PasskeyLogin } from "./passkeys.mjs";
 import { OpenPanel } from "@openpanel/web";
 import { filterAnalyticsEvent } from "./analytics.mjs";
+import { initFog } from "./fog.js";
+
+initFog();
 
 const openpanelClientId = document.querySelector(
   'meta[name="openpanel-client-id"]',
@@ -71,7 +74,7 @@ window.addEventListener("phx:set-theme", (event) =>
 initializeFlashNotifications();
 let csrfToken = document
   .querySelector("meta[name='csrf-token']")
-  .getAttribute("content");
+  ?.getAttribute("content");
 let liveSocket = new LiveSocket("/live", Socket, {
   hooks: {
     CopyToClipboard,

@@ -3,7 +3,8 @@ import LandingLayout from "../layouts/LandingLayout.astro";
 ---
 
 <LandingLayout title="404 Not Found" description="Sorry, we couldn't find the page you're looking for.">
-  <div id="fog" class="flex-1 pt-16 pb-12 flex flex-col bg-slate-950">
+  <div id="fog" class="relative isolate flex-1 pt-16 pb-12 flex flex-col bg-[#101827]">
+    <canvas aria-hidden="true" class="absolute inset-0 -z-10 w-full h-full pointer-events-none"></canvas>
     <div class="grow flex flex-col justify-center max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8">
       <div class="py-16">
         <div class="text-center">
@@ -16,24 +17,15 @@ import LandingLayout from "../layouts/LandingLayout.astro";
         </div>
       </div>
     </div>
+    <span id="fog-status" role="status" class="sr-only"></span>
   </div>
 </LandingLayout>
 
-<script is:inline src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r121/three.min.js"></script>
-<script is:inline src="https://cdn.jsdelivr.net/npm/vanta@0.5.21/dist/vanta.fog.min.js"></script>
-<script is:inline>
-VANTA.FOG({
-  el: "#fog",
-  THREE: THREE,
-  mouseControls: false,
-  touchControls: false,
-  gyroControls: false,
-  minHeight: 200.0,
-  minWidth: 200.0,
-  baseColor: 0x0f172a,
-  lowlightColor: 0x020617,
-  midtoneColor: 0x1e293b,
-  highlightColor: 0x334155,
-  speed: 1.8,
-});
+<style>
+  #fog:not([data-state="ready"]) canvas { visibility: hidden; }
+</style>
+
+<script>
+  import { initFog } from "../scripts/fog.js";
+  initFog();
 </script>
