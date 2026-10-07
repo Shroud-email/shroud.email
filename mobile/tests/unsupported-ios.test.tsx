@@ -1,4 +1,9 @@
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react-native";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 
@@ -9,6 +14,8 @@ Object.defineProperty(Platform, "Version", {
 });
 const { AuthProvider } = require("../src/auth/context");
 const HomeScreen = require("../src/app/index").default;
+
+afterEach(() => jest.restoreAllMocks());
 
 test("unsupported iOS disables sign-in but allows local session cleanup", async () => {
   const remove = jest.spyOn(SecureStore, "deleteItemAsync").mockResolvedValue();
@@ -27,5 +34,5 @@ test("unsupported iOS disables sign-in but allows local session cleanup", async 
   });
   expect(cleanup).toBeEnabled();
   await fireEvent.press(cleanup);
-  expect(remove).toHaveBeenCalled();
+  await waitFor(() => expect(remove).toHaveBeenCalled());
 });

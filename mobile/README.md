@@ -50,7 +50,7 @@ do not replace native device testing.
 
 ```sh
 npm test
-npx tsc --noEmit
+npm run typecheck
 npm run lint
 npx expo-doctor
 npx expo export --platform all

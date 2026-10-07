@@ -8,6 +8,8 @@ import * as WebBrowser from "expo-web-browser";
 
 import ExploreScreen from "../src/app/explore";
 
+afterEach(() => jest.restoreAllMocks());
+
 test("Explore expands image documentation and opens documentation in the native browser", async () => {
   const open = jest.spyOn(WebBrowser, "openBrowserAsync").mockResolvedValue({
     type: WebBrowser.WebBrowserResultType.DISMISS,
