@@ -26,7 +26,7 @@ defmodule Shroud.Release do
     start_app()
     email = Application.get_env(:shroud, :admin_user_email)
 
-    if email && is_nil(Accounts.get_user_by_email(email)) do
+    if email not in [nil, ""] && is_nil(Accounts.get_user_by_email(email)) do
       # some random password, but we sent a password reset email so the user can set their own
       password = :crypto.strong_rand_bytes(32) |> Base.url_encode64()
       now = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)

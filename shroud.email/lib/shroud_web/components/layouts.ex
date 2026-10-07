@@ -7,7 +7,10 @@ defmodule ShroudWeb.Layouts do
   CHATWOOT_BASE_URL). All widget markup/JS is gated on this being set.
   """
   def chatwoot_base_url do
-    Application.get_env(:shroud, :chatwoot_base_url)
+    case Application.get_env(:shroud, :chatwoot_base_url) do
+      url when url in [nil, ""] -> nil
+      url -> url
+    end
   end
 
   @doc """

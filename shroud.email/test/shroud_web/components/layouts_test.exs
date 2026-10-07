@@ -1,5 +1,5 @@
 defmodule ShroudWeb.LayoutsTest do
-  use ExUnit.Case, async: true
+  use ShroudWeb.ConnCase, async: false
 
   alias Shroud.Accounts.User
   alias ShroudWeb.Layouts
@@ -17,6 +17,16 @@ defmodule ShroudWeb.LayoutsTest do
 
       try do
         assert Layouts.chatwoot_base_url() == "https://support.example.com"
+
+        document =
+          build_conn() |> get("/users/log_in") |> html_response(200) |> Floki.parse_document!()
+
+        assert [_] =
+                 Floki.find(document, "script[src='https://support.example.com/packs/js/sdk.js']")
+
+        assert Floki.attribute(document, "body", "data-chatwoot-base-url") == [
+                 "https://support.example.com"
+               ]
       after
         Application.put_env(:shroud, :chatwoot_base_url, previous)
       end
@@ -28,6 +38,23 @@ defmodule ShroudWeb.LayoutsTest do
 
       try do
         assert is_nil(Layouts.chatwoot_base_url())
+      after
+        Application.put_env(:shroud, :chatwoot_base_url, previous)
+      end
+    end
+
+    test "omits the Chatwoot script and configuration when the URL is empty" do
+      previous = Application.get_env(:shroud, :chatwoot_base_url)
+      Application.put_env(:shroud, :chatwoot_base_url, "")
+
+      try do
+        assert is_nil(Layouts.chatwoot_base_url())
+
+        document =
+          build_conn() |> get("/users/log_in") |> html_response(200) |> Floki.parse_document!()
+
+        assert Floki.find(document, "script[src$='/packs/js/sdk.js']") == []
+        assert Floki.attribute(document, "body", "data-chatwoot-base-url") == []
       after
         Application.put_env(:shroud, :chatwoot_base_url, previous)
       end

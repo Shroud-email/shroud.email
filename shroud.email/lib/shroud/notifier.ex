@@ -27,7 +27,7 @@ defmodule Shroud.Notifier do
         # Not configured; do nothing
         :ok
 
-      {:ok, nil} ->
+      {:ok, url} when url in [nil, ""] ->
         # Not configured; do nothing
         :ok
 
