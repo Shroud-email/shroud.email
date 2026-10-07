@@ -10,7 +10,8 @@ defmodule Shroud.Email.EmailHandler do
     BounceHandler,
     ReplyAddress,
     IncomingEmailHandler,
-    OutgoingEmailHandler
+    OutgoingEmailHandler,
+    Unsubscribe
   }
 
   import Shroud.Accounts.Logging, only: [maybe_log: 2]
@@ -126,10 +127,15 @@ defmodule Shroud.Email.EmailHandler do
 
   @spec handle_recipient(String.t(), String.t(), String.t()) :: :ok | {:error, term()}
   defp handle_recipient(sender, recipient, data) do
-    if ReplyAddress.reply_address?(recipient) do
-      OutgoingEmailHandler.handle_outgoing_email(sender, recipient, data)
-    else
-      IncomingEmailHandler.handle_incoming_email(sender, recipient, data)
+    cond do
+      Unsubscribe.relay_address?(recipient) ->
+        Unsubscribe.relay_email(sender, recipient)
+
+      ReplyAddress.reply_address?(recipient) ->
+        OutgoingEmailHandler.handle_outgoing_email(sender, recipient, data)
+
+      true ->
+        IncomingEmailHandler.handle_incoming_email(sender, recipient, data)
     end
   end
 end

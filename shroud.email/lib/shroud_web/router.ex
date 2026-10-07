@@ -42,6 +42,8 @@ defmodule ShroudWeb.Router do
   end
 
   scope "/", ShroudWeb do
+    get("/unsubscribe/:token", UnsubscribeController, :show, log: false)
+    post("/unsubscribe/:token", UnsubscribeController, :create, log: false)
     get("/.well-known/openai-apps-challenge", OpenaiVerificationController, :show)
     get("/.well-known/oauth-authorization-server", OAuthController, :metadata)
     get("/.well-known/oauth-protected-resource", OAuthController, :resource_metadata)

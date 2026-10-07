@@ -4,6 +4,11 @@ defmodule Shroud.ErrorReporter do
       }),
       do: nil
 
+  def before_send(%Sentry.Event{request: %{url: url} = request} = event) when is_binary(url) do
+    url = String.replace(url, ~r{/unsubscribe/[^/?#]+}, "/unsubscribe/:token")
+    %{event | request: %{request | url: url}}
+  end
+
   def before_send(event), do: event
 
   def handle_event([:oban, :job, :exception], measure, meta, _) do

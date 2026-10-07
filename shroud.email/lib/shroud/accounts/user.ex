@@ -34,6 +34,10 @@ defmodule Shroud.Accounts.User do
     field :theme, Ecto.Enum, values: [:system, :light, :dark], default: :system
     field :email_branding, :boolean, default: true
 
+    field :unsubscribe_behavior, Ecto.Enum,
+      values: [:forward_then_block, :forward_then_disable, :always_block, :always_disable],
+      default: :forward_then_block
+
     has_many :aliases, EmailAlias
 
     timestamps()
@@ -238,5 +242,11 @@ defmodule Shroud.Accounts.User do
     user
     |> cast(attrs, [:email_branding])
     |> validate_required([:email_branding])
+  end
+
+  def unsubscribe_changeset(user, attrs) do
+    user
+    |> cast(attrs, [:unsubscribe_behavior])
+    |> validate_required([:unsubscribe_behavior])
   end
 end

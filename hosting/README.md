@@ -21,8 +21,8 @@ last 24 hours, using this same private key and selector while retaining the
 custom domain as the signature's `d=` value. Customers publish the DKIM CNAME
 shown in the app; no per-customer keys, files or restarts are required.
 
-The plugin was imported from `haraka-plugin-dkim` 1.3.1 with its MIT license.
-Signing and verification code remain upstream; custom-domain key selection uses
+The plugin uses `haraka-plugin-dkim` 1.3.1 with its MIT license.
+Custom-domain key selection uses
 PostgreSQL through the existing Haraka database environment variables. Unknown
 or expired domains are not signed. Lookup errors and missing keys are logged
 and mail continues without a signature, preserving upstream behavior.
@@ -39,6 +39,33 @@ cd haraka/haraka_config
 npm ci --omit=dev --omit=optional
 node --test test/*.test.js
 ```
+
+## Unsubscribe headers
+
+Account settings offer sender unsubscribe with a block/disable fallback, or
+always blocking/disabling. The default uses verified sender unsubscribe headers
+when available and otherwise blocks the envelope sender for the receiving alias.
+Ordinary unsubscribe links do not gain one-click functionality.
+
+Verified mailto unsubscribe uses an alias-scoped relay, including for free accounts.
+Only the alias owner can use it. The relay sends the verified destination, subject
+and body, not the submitted message, headers or attachments. Ordinary outgoing
+email still requires a paid account. Relay recipes are encrypted at rest and
+revoked when the alias is re-enabled, a sender is unblocked or the alias is deleted.
+
+Haraka verifies the original DKIM signature before the app modifies the message.
+Forwarded sender unsubscribe headers must be covered by one passing signature
+whose signing domain exactly matches the original From domain. Haraka passes
+these headers to the app with an HMAC using the shared `SMTP_PASSWORD`; configure
+the same password on both services. The app rejects unverified, malformed, and
+expired metadata and uses the selected fallback instead.
+
+Outbound DKIM signs both `List-Unsubscribe` and `List-Unsubscribe-Post`.
+RFC 8058 requires a valid signature covering both headers and a public HTTPS
+app URL. Deploy the app migrations and updated Haraka plugin/configuration together.
+Shroud's local unsubscribe links require no login, do not mutate state on GET,
+and are revoked when the alias is re-enabled or a sender is unblocked.
+The action encoded in an existing email does not change when account settings change.
 
 ## SMTP certificate renewal
 

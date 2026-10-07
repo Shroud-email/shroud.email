@@ -1,7 +1,13 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { createHash, generateKeyPairSync, verify } = require("node:crypto");
+const {
+  createHash,
+  createHmac,
+  generateKeyPairSync,
+  verify,
+} = require("node:crypto");
+const dns = require("node:dns");
 const { once } = require("node:events");
 const fs = require("node:fs");
 const net = require("node:net");
@@ -33,9 +39,11 @@ function setup(t) {
   const previous = {
     HARAKA: process.env.HARAKA,
     EMAIL_DOMAIN: process.env.EMAIL_DOMAIN,
+    SMTP_PASSWORD: process.env.SMTP_PASSWORD,
   };
   process.env.HARAKA = root;
   process.env.EMAIL_DOMAIN = "BASE.EXAMPLE";
+  process.env.SMTP_PASSWORD = "test-attestation-secret";
   t.after(() => {
     for (const [key, value] of Object.entries(previous)) {
       if (value === undefined) delete process.env[key];
@@ -49,8 +57,11 @@ function setup(t) {
   const plugin = new Plugin("dkim_shroud");
   plugin._compile();
   plugin.register();
-  assert.deepEqual(Object.keys(plugin.hooks), ["queue_outbound"]);
-  assert.equal(plugin.cfg.sign.headers, "From");
+  assert.deepEqual(Object.keys(plugin.hooks), ["data_post", "queue_outbound"]);
+  assert.equal(
+    plugin.cfg.sign.headers,
+    "From,List-Unsubscribe,List-Unsubscribe-Post",
+  );
   const shippedPlugins = fs
     .readFileSync(path.join(__dirname, "../config/plugins"), "utf8")
     .split("\n");
@@ -81,6 +92,7 @@ async function message(from, envelope = "base.example") {
     lognotice: log,
     logerror: log,
     logprotocol: log,
+    auth_results: () => {},
   };
 }
 
@@ -123,6 +135,212 @@ test("base-domain signing retains upstream behavior and needs no database", asyn
   const connection = await message("sender@base.example");
   assert.deepEqual(await sign(plugin, connection), []);
   checkSignature(connection, "sender@base.example", "base.example");
+});
+
+function inbound(plugin, connection) {
+  return new Promise((resolve) =>
+    plugin.dkim_verify((...args) => resolve(args), connection),
+  );
+}
+
+function unsubscribeHeaders(connection, post = true) {
+  const txn = connection.transaction;
+  txn.add_header(
+    "List-Unsubscribe",
+    "<https://sender.example/unsubscribe>,\r\n\t<mailto:leave@sender.example> ",
+  );
+  if (post)
+    txn.add_header("List-Unsubscribe-Post", "List-Unsubscribe=One-Click ");
+  txn.add_header("X-Shroud-Unsubscribe", "spoofed");
+  txn.add_header("X-Shroud-Unsubscribe", "also-spoofed");
+  txn.add_header(
+    "Authentication-Results",
+    "sender.example; dkim=pass header.d=base.example",
+  );
+}
+
+for (const header of ["constructor", "__proto__"]) {
+  for (const present of [false, true]) {
+    test(`real verification handles ${present ? "oversigned" : "absent"} ${header} headers without trusting spoofed attestations`, async (t) => {
+      const { plugin } = setup(t);
+      t.mock.method(dns.promises, "resolveTxt", async () => [
+        [
+          `v=DKIM1; p=${keys.publicKey.export({ type: "spki", format: "der" }).toString("base64")}`,
+        ],
+      ]);
+      const connection = await message("sender@base.example");
+      unsubscribeHeaders(connection);
+      const txn = connection.transaction;
+      if (present) {
+        // Haraka refuses these names when adding headers. Inject the actual
+        // wire field at the stream boundary to exercise the verifier's index.
+        const stream = txn.message_stream;
+        const pipe = stream.pipe.bind(stream);
+        t.mock.method(stream, "pipe", (destination, options) => {
+          destination.write(Buffer.from(`${header}: actual input field\r\n`));
+          return pipe(destination, options);
+        });
+      }
+      const signedHeaders = present
+        ? `from:${header}:${header}`
+        : `from:${header}`;
+      // A matching body hash reaches header canonicalization. The deliberately
+      // invalid signature then fails normally, rather than throwing on .pop().
+      txn.add_header(
+        "DKIM-Signature",
+        `v=1; a=rsa-sha256; d=base.example; s=shroudemail; h=${signedHeaders}; bh=${createHash("sha256").update(body).digest("base64")}; b=AQ==`,
+      );
+      assert.deepEqual(await inbound(plugin, connection), []);
+      assert.equal(txn.notes.dkim_results.length, 1);
+      assert.equal(txn.notes.dkim_results[0].result, "fail");
+      assert.equal(txn.notes.dkim_results[0].error, undefined);
+      assert.deepEqual(
+        txn.notes.dkim_results[0].signed_headers,
+        signedHeaders.split(":"),
+      );
+      assert.equal(txn.header.get_all("X-Shroud-Unsubscribe").length, 0);
+      assert.equal(dns.promises.resolveTxt.mock.callCount(), 1);
+    });
+  }
+}
+
+test("real verification preserves original signed bytes and emits the HMAC wire contract", async (t) => {
+  const { plugin } = setup(t);
+  t.mock.method(dns.promises, "resolveTxt", async () => [
+    [
+      `v=DKIM1; p=${keys.publicKey.export({ type: "spki", format: "der" }).toString("base64")}`,
+    ],
+  ]);
+  const connection = await message("sender@base.example");
+  unsubscribeHeaders(connection);
+  // Include the spoofed header in the original signature: removing it before
+  // verification would invalidate this otherwise passing signature.
+  plugin.cfg.headers_to_sign.push("x-shroud-unsubscribe");
+  await sign(plugin, connection);
+  await inbound(plugin, connection);
+  const txn = connection.transaction;
+  assert.equal(txn.notes.dkim_results[0].result, "pass");
+  assert.ok(
+    txn.notes.dkim_results[0].signed_headers.includes("list-unsubscribe-post"),
+  );
+  const attestations = txn.header.get_all("X-Shroud-Unsubscribe");
+  assert.equal(attestations.length, 1);
+  const wire = attestations[0].trim();
+  assert.match(wire, /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
+  const [payload, mac] = wire.split(".");
+  const decoded = JSON.parse(
+    Buffer.from(payload, "base64url").toString("utf8"),
+  );
+  assert.deepEqual(decoded, {
+    unsubscribe:
+      "<https://sender.example/unsubscribe>, <mailto:leave@sender.example>",
+    post: "List-Unsubscribe=One-Click",
+    timestamp: decoded.timestamp,
+  });
+  assert.ok(Math.abs(decoded.timestamp - Math.floor(Date.now() / 1000)) <= 2);
+  assert.equal(
+    mac,
+    createHmac("sha256", "test-attestation-secret")
+      .update(`shroud-unsubscribe:${payload}`)
+      .digest("base64url"),
+  );
+
+  // Model the app replacing original headers with generated one-click URLs.
+  txn.remove_header("DKIM-Signature");
+  txn.remove_header("List-Unsubscribe");
+  txn.remove_header("List-Unsubscribe-Post");
+  txn.add_header(
+    "List-Unsubscribe",
+    "<https://shroud.example/unsubscribe/token>",
+  );
+  txn.add_header("List-Unsubscribe-Post", "List-Unsubscribe=One-Click");
+  txn.notes.dkim_signed = false;
+  await sign(plugin, connection);
+  const final = await plugin.run_verify_stream(txn);
+  assert.equal(final[0].result, "pass");
+  assert.ok(final[0].signed_headers.includes("list-unsubscribe"));
+  assert.ok(final[0].signed_headers.includes("list-unsubscribe-post"));
+});
+
+test("attestation fails closed on spoofing, failures, coverage, alignment and duplicates", async (t) => {
+  const { plugin } = setup(t);
+  const covered = ["from", "list-unsubscribe", "list-unsubscribe-post"];
+  const pass = {
+    result: "pass",
+    domain: "base.example",
+    signed_headers: covered,
+  };
+  for (const scenario of [
+    "none",
+    "error",
+    "fail",
+    "unaligned",
+    "missing-unsubscribe",
+    "missing-post",
+    "split",
+    "duplicate-unsubscribe",
+    "duplicate-post",
+    "duplicate-from",
+    "bad-marker",
+    "no-secret",
+    "valid",
+    "no-post",
+  ]) {
+    const connection = await message("sender@base.example");
+    unsubscribeHeaders(connection, scenario !== "no-post");
+    const txn = connection.transaction;
+    let results = [{ ...pass }];
+    if (scenario === "none") results = [];
+    if (scenario === "fail") results[0].result = "fail";
+    if (scenario === "unaligned") results[0].domain = "sub.base.example";
+    if (scenario.startsWith("missing-"))
+      results[0].signed_headers = covered.filter(
+        (h) =>
+          h !==
+          (scenario === "missing-post"
+            ? "list-unsubscribe-post"
+            : "list-unsubscribe"),
+      );
+    if (scenario === "split")
+      results = [
+        { ...pass, signed_headers: ["from", "list-unsubscribe"] },
+        { ...pass, signed_headers: ["from", "list-unsubscribe-post"] },
+      ];
+    if (scenario.startsWith("duplicate-"))
+      txn.add_header(
+        {
+          "duplicate-unsubscribe": "List-Unsubscribe",
+          "duplicate-post": "List-Unsubscribe-Post",
+          "duplicate-from": "From",
+        }[scenario],
+        "duplicate",
+      );
+    if (scenario === "bad-marker") {
+      txn.remove_header("List-Unsubscribe-Post");
+      txn.add_header("List-Unsubscribe-Post", "list-unsubscribe=one-click");
+    }
+    process.env.SMTP_PASSWORD =
+      scenario === "no-secret" ? "" : "test-attestation-secret";
+    t.mock.method(plugin, "run_verify_stream", async () => {
+      assert.equal(txn.header.get_all("X-Shroud-Unsubscribe").length, 2);
+      if (scenario === "error") throw new Error("verifier failed");
+      return results;
+    });
+    await inbound(plugin, connection);
+    const attestations = txn.header.get_all("X-Shroud-Unsubscribe");
+    assert.equal(
+      attestations.length,
+      ["valid", "no-post"].includes(scenario) ? 1 : 0,
+      scenario,
+    );
+    if (scenario === "no-post")
+      assert.equal(
+        JSON.parse(
+          Buffer.from(attestations[0].trim().split(".")[0], "base64url"),
+        ).post,
+        null,
+      );
+  }
 });
 
 test("concurrent custom domains use the shared key but retain distinct From domains", async (t) => {

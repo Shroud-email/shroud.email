@@ -45,7 +45,7 @@ class DKIMVerifyStream extends Stream {
     this._no_signatures_found = false
     this.buffer = new Buf()
     this.headers = []
-    this.header_idx = {}
+    this.header_idx = Object.create(null)
     this.dkim_objects = []
     this.results = []
     this.result = 'none'
@@ -69,6 +69,7 @@ class DKIMVerifyStream extends Stream {
         identity: result.identity,
         domain: result.domain,
         selector: result.selector,
+        signed_headers: result.signed_headers,
         result: result.result,
       }
       if (err) {
@@ -106,7 +107,7 @@ class DKIMVerifyStream extends Stream {
       const header_name = match[1]
       if (!header_name) continue
       const hn = header_name.toLowerCase()
-      if (!this.header_idx[hn]) this.header_idx[hn] = []
+      if (!Object.hasOwn(this.header_idx, hn)) this.header_idx[hn] = []
       this.header_idx[hn].push(header)
     }
   }

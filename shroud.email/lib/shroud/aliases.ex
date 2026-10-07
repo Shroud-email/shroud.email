@@ -119,33 +119,98 @@ defmodule Shroud.Aliases do
   end
 
   def update_email_alias(%EmailAlias{} = email_alias, attrs) do
-    change_email_alias(email_alias, attrs)
-    |> Repo.update()
+    with_locked_alias(email_alias.id, fn current ->
+      changeset = change_email_alias(current, attrs)
+
+      removed_blocks =
+        if changeset.valid?,
+          do:
+            current.blocked_addresses -- Ecto.Changeset.get_field(changeset, :blocked_addresses),
+          else: []
+
+      changeset =
+        if (not current.enabled and Ecto.Changeset.get_field(changeset, :enabled)) or
+             removed_blocks != [] do
+          Ecto.Changeset.put_change(
+            changeset,
+            :unsubscribe_generation,
+            current.unsubscribe_generation + 1
+          )
+        else
+          changeset
+        end
+
+      Repo.update(changeset)
+    end)
   end
 
   @spec block_sender(EmailAlias.t(), String.t()) ::
           {:ok, EmailAlias.t()} | {:error, Ecto.Changeset.t()}
   def block_sender(%EmailAlias{} = email_alias, sender) do
-    blocked_addresses = MapSet.new([String.downcase(sender) | email_alias.blocked_addresses])
-    attrs = %{blocked_addresses: MapSet.to_list(blocked_addresses)}
+    with_locked_alias(email_alias.id, fn current ->
+      addresses = Enum.uniq([String.downcase(sender) | current.blocked_addresses])
 
-    email_alias
-    |> EmailAlias.blocked_addresses_changeset(attrs)
-    |> Repo.update()
+      current
+      |> EmailAlias.blocked_addresses_changeset(%{blocked_addresses: addresses})
+      |> Repo.update()
+    end)
   end
 
   @spec unblock_sender(EmailAlias.t(), String.t()) :: {:ok, EmailAlias.t()} | :error
   def unblock_sender(%EmailAlias{} = email_alias, sender) do
-    blocked_addresses =
-      email_alias.blocked_addresses
-      |> Enum.map(&String.downcase/1)
-      |> Enum.reject(fn address -> address == String.downcase(sender) end)
+    with_locked_alias(email_alias.id, fn current ->
+      addresses =
+        Enum.reject(current.blocked_addresses, &(String.downcase(&1) == String.downcase(sender)))
 
-    attrs = %{blocked_addresses: blocked_addresses}
+      changeset = EmailAlias.blocked_addresses_changeset(current, %{blocked_addresses: addresses})
 
-    email_alias
-    |> EmailAlias.blocked_addresses_changeset(attrs)
-    |> Repo.update()
+      changeset =
+        if addresses != current.blocked_addresses do
+          Ecto.Changeset.put_change(
+            changeset,
+            :unsubscribe_generation,
+            current.unsubscribe_generation + 1
+          )
+        else
+          changeset
+        end
+
+      Repo.update(changeset)
+    end)
+  end
+
+  def unsubscribe(alias_id, generation, action, sender) when action in [:block, :disable] do
+    with_locked_alias(alias_id, fn current ->
+      if current.unsubscribe_generation != generation or not is_nil(current.deleted_at) do
+        {:error, :invalid}
+      else
+        attrs =
+          case action do
+            :block ->
+              %{
+                blocked_addresses:
+                  Enum.uniq([String.downcase(sender) | current.blocked_addresses])
+              }
+
+            :disable ->
+              %{enabled: false}
+          end
+
+        current |> change_email_alias(attrs) |> Repo.update()
+      end
+    end)
+  end
+
+  defp with_locked_alias(id, fun) do
+    Repo.transaction(fn ->
+      current = Repo.one(from a in EmailAlias, where: a.id == ^id, lock: "FOR UPDATE")
+
+      case current && fun.(current) do
+        {:ok, updated} -> updated
+        {:error, reason} -> Repo.rollback(reason)
+        nil -> Repo.rollback(:invalid)
+      end
+    end)
   end
 
   def create_random_email_alias(user, attrs \\ %{}) do

@@ -18,6 +18,7 @@ defmodule Shroud.Aliases.EmailAlias do
     field :replied_in_last_30_days, :integer, virtual: true, default: 0
     field :deleted_at, :naive_datetime
     field :blocked_addresses, {:array, :string}, default: []
+    field :unsubscribe_generation, :integer, default: 0
 
     belongs_to :user, User
     belongs_to :domain, CustomDomain

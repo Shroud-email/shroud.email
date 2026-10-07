@@ -2,6 +2,7 @@
 
 const fs = require('node:fs/promises')
 const path = require('node:path')
+const { createHmac } = require('node:crypto')
 
 const { parseHeader } = require('@haraka/email-address')
 const { Pool } = require('pg')
@@ -404,7 +405,15 @@ exports.run_verify_stream = function (txn) {
 // Runs verification and records results. Resolves to the args array to
 // pass to next() (empty, or [CONT, 'no/bad signature']).
 exports.verify_message = async function (connection, txn) {
-  const results = await this.run_verify_stream(txn)
+  let results
+  try {
+    // Do not mutate headers until the verifier has consumed the original message.
+    results = await this.run_verify_stream(txn)
+  } finally {
+    // Never accept an attestation supplied by the sender, even on verifier errors.
+    txn.remove_header('X-Shroud-Unsubscribe')
+  }
+  this.attest_unsubscribe(connection, txn, results)
 
   if (!results || results.length === 0) {
     txn.results.add(this, { skip: 'no/bad signature' })
@@ -440,4 +449,47 @@ exports.verify_message = async function (connection, txn) {
   }
 
   return []
+}
+
+exports.attest_unsubscribe = function (connection, txn, results) {
+  const secret = process.env.SMTP_PASSWORD
+  if (!secret) return
+  const from = txn.header.get_all('From')
+  const unsubscribe = txn.header.get_all('List-Unsubscribe')
+  const post = txn.header.get_all('List-Unsubscribe-Post')
+  if (from.length !== 1 || unsubscribe.length !== 1 || post.length > 1) return
+  const addresses = this.parse_address_header(connection, from[0])
+  if (addresses?.length !== 1 || !addresses[0].host) return
+  const domain = addresses[0].host.toLowerCase()
+  const unfold = (value) => value.replace(/\r?\n[ \t]+/g, ' ').trim()
+  const value = unfold(unsubscribe[0])
+  const marker = post.length ? unfold(post[0]) : null
+  if (!value || /[\r\n]/.test(value)) return
+  if (marker !== null && marker !== 'List-Unsubscribe=One-Click') return
+  // Only our own verifier results count; never consult Authentication-Results.
+  if (
+    !results?.some(
+      (res) =>
+        res.result === 'pass' &&
+        !res.error &&
+        res.domain?.toLowerCase() === domain &&
+        res.signed_headers?.includes('from') &&
+        res.signed_headers.includes('list-unsubscribe') &&
+        (marker === null ||
+          res.signed_headers.includes('list-unsubscribe-post')),
+    )
+  )
+    return
+  const payload = Buffer.from(
+    JSON.stringify({
+      unsubscribe: value,
+      post: marker,
+      timestamp: Math.floor(Date.now() / 1000),
+    }),
+    'utf8',
+  ).toString('base64url')
+  const mac = createHmac('sha256', secret)
+    .update(`shroud-unsubscribe:${payload}`)
+    .digest('base64url')
+  txn.add_header('X-Shroud-Unsubscribe', `${payload}.${mac}`)
 }

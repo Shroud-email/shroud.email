@@ -242,6 +242,7 @@ class DKIMObject {
       identity: this.identity,
       selector: this.fields.s,
       domain: this.fields.d,
+      signed_headers: this.signed_headers,
       result,
     })
   }
@@ -284,7 +285,7 @@ class DKIMObject {
   #feedSignedHeaders() {
     for (const header of this.signed_headers) {
       this.debug(`${this.identity}: canonicalize header: ${header}`)
-      if (!this.header_idx[header]) continue
+      if (!Object.hasOwn(this.header_idx, header)) continue
       // RFC 6376 section 5.4.2, read headers from bottom to top
       const this_header = this.header_idx[header].pop()
       if (!this_header) continue

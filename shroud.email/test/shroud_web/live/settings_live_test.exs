@@ -9,6 +9,41 @@ defmodule ShroudWeb.SettingsLiveTest do
 
   setup :register_and_log_in_user
 
+  test "unsubscribe preference defaults to forward then block and all choices persist", %{
+    conn: conn,
+    user: user
+  } do
+    {:ok, view, _} = live(conn, ~p"/settings/account")
+
+    assert has_element?(
+             view,
+             "#user_unsubscribe_behavior option[value=forward_then_block][selected]"
+           )
+
+    for behavior <- [
+          "forward_then_disable",
+          "always_block",
+          "always_disable",
+          "forward_then_block"
+        ] do
+      view
+      |> form("#unsubscribe-form", user: %{unsubscribe_behavior: behavior})
+      |> render_submit()
+
+      assert to_string(Repo.reload!(user).unsubscribe_behavior) == behavior
+      {:ok, reloaded, _} = live(conn, ~p"/settings/account")
+
+      assert has_element?(
+               reloaded,
+               "#user_unsubscribe_behavior option[value=#{behavior}][selected]"
+             )
+    end
+
+    render_submit(view, "update_unsubscribe", %{"user" => %{"unsubscribe_behavior" => "invalid"}})
+    assert has_element?(view, "#unsubscribe-form .invalid-feedback", "is invalid")
+    assert Repo.reload!(user).unsubscribe_behavior == :forward_then_block
+  end
+
   test "unflagged users cannot see or submit email preferences", %{conn: conn, user: user} do
     {:ok, view, _} = live(conn, ~p"/settings/account")
     refute has_element?(view, "#email-preferences-form")
