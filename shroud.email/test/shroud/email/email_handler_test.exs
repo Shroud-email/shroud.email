@@ -6,7 +6,7 @@ defmodule Shroud.Email.EmailHandlerTest.FailingMailerAdapter do
   @impl true
   def deliver(email, config) do
     if is_nil(config[:fail_to]) or Enum.any?(email.to, fn {_, to} -> to == config[:fail_to] end) do
-      {:error, :simulated_smtp_failure}
+      {:error, Keyword.get(config, :reason, :simulated_smtp_failure)}
     else
       Test.deliver(email, [])
     end
@@ -58,6 +58,43 @@ defmodule Shroud.Email.EmailHandlerTest do
   end
 
   describe "perform/1" do
+    test "logs structured delivery errors and returns them without counting a delivery", %{
+      user: user,
+      email_alias: email_alias
+    } do
+      smtp_error =
+        {:permanent_failure, ~c"haraka", "501 RFC-5321 local-part exceeds 64 octets\r\n"}
+
+      incoming_args = tracking_pixel_email_args(email_alias)
+
+      outgoing_args = %{
+        from: user.email,
+        to: "recipient_at_example.com_alias@email.shroud.test",
+        data: text_email(user.email, ["recipient@example.com"], "Reply", "Hello")
+      }
+
+      for args <- [incoming_args, outgoing_args],
+          reason <- [smtp_error, {:retries_exceeded, smtp_error}, {501, %{"error" => smtp_error}}] do
+        log =
+          capture_log(fn ->
+            with_failing_mailer(
+              fn -> assert {:error, ^smtp_error} = perform_job(EmailHandler, args) end,
+              reason: reason
+            )
+          end)
+
+        assert log =~ "permanent_failure"
+        assert log =~ "local-part exceeds 64 octets"
+      end
+
+      email_alias = Aliases.get_email_alias_by_address!(email_alias.address)
+      assert email_alias.forwarded == 0
+      assert email_alias.replied == 0
+      assert Repo.aggregate(TrackerDomain, :count) == 0
+      refute_enqueued(worker: Shroud.Email.ImageFetcher)
+      assert_no_email_sent()
+    end
+
     test "visits normal images and removed trackers without restoring them in delivered HTML", %{
       email_alias: email_alias
     } do

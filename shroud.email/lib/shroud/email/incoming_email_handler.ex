@@ -196,15 +196,15 @@ defmodule Shroud.Email.IncomingEmailHandler do
         end)
 
       {:error, {_code, %{"error" => error}}} ->
-        Logger.error("Failed to forward email from #{sender} to #{user.email}: #{error}")
+        Logger.error("Failed to forward email from #{sender} to #{user.email}: #{inspect(error)}")
         {:error, error}
 
       {:error, {_code, error}} ->
-        Logger.error("Failed to forward email from #{sender} to #{user.email}: #{error}")
+        Logger.error("Failed to forward email from #{sender} to #{user.email}: #{inspect(error)}")
         {:error, error}
 
       {:error, error} ->
-        Logger.error("Failed to forward email from #{sender} to #{user.email}: #{error}")
+        Logger.error("Failed to forward email from #{sender} to #{user.email}: #{inspect(error)}")
         {:error, error}
     end
   end
