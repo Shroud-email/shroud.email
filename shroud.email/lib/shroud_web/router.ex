@@ -19,14 +19,14 @@ defmodule ShroudWeb.Router do
     plug(:fetch_spam_count)
   end
 
-  pipeline :mounted_apps do
+  pipeline :fun_with_flags do
     plug(:accepts, ["html"])
     plug(:fetch_session)
     plug(:fetch_live_flash)
     plug(:fetch_current_user)
     plug(ShroudWeb.Plugs.RateLimit, :routes)
     plug(ShroudWeb.Plugs.SentryContext)
-    plug(:protect_from_forgery)
+    # FunWithFlags.UI protects its forms and serves static assets before its CSRF plug.
     plug(:put_secure_browser_headers)
   end
 
@@ -110,7 +110,7 @@ defmodule ShroudWeb.Router do
   end
 
   scope "/feature_flags" do
-    pipe_through([:mounted_apps, :require_admin_user])
+    pipe_through([:fun_with_flags, :require_admin_user])
     forward("/", FunWithFlags.UI.Router, namespace: "feature_flags")
   end
 
