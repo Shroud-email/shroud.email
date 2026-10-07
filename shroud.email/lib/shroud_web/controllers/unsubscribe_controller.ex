@@ -19,6 +19,8 @@ defmodule ShroudWeb.UnsubscribeController do
       |> List.first("")
       |> String.split(";")
       |> List.first()
+      |> String.trim()
+      |> String.downcase()
 
     with true <- content_type in ["application/x-www-form-urlencoded", "multipart/form-data"],
          %{"List-Unsubscribe" => "One-Click"} <- conn.body_params,

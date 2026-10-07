@@ -11,6 +11,8 @@ defmodule Shroud.Email.Unsubscribe do
 
   @salt "alias unsubscribe"
   @marker "List-Unsubscribe=One-Click"
+  @relay_validity_days 90
+  @max_unsubscribe_bytes 4096
 
   def add_headers(email, user, email_alias, sender, message) do
     original = verified_headers(message.headers)
@@ -66,6 +68,17 @@ defmodule Shroud.Email.Unsubscribe do
       Regex.match?(~r/^unsubscribe_[0-9a-f]{48}$/, local)
   end
 
+  def prune_relays do
+    Repo.delete_all(
+      from relay in UnsubscribeRelay,
+        join: email_alias in assoc(relay, :alias),
+        where:
+          relay.inserted_at <= ago(@relay_validity_days, "day") or
+            relay.generation != email_alias.unsubscribe_generation or
+            not is_nil(email_alias.deleted_at)
+    )
+  end
+
   def relay_email(sender, recipient) do
     {local, _domain} = Util.extract_email_parts(String.downcase(recipient))
     token_hash = :crypto.hash(:sha256, String.replace_prefix(local, "unsubscribe_", ""))
@@ -79,6 +92,7 @@ defmodule Shroud.Email.Unsubscribe do
             relay.token_hash == ^token_hash and
               relay.generation == email_alias.unsubscribe_generation,
           where: is_nil(email_alias.deleted_at) and user.email == ^sender,
+          where: relay.inserted_at > ago(@relay_validity_days, "day"),
           where: user.status in [:active, :lifetime, :free],
           select: {relay.recipe, email_alias.address}
       )
@@ -112,7 +126,8 @@ defmodule Shroud.Email.Unsubscribe do
     secret = Application.get_env(:shroud, :unsubscribe_attestation_secret)
 
     with true <- is_binary(secret) and byte_size(secret) > 0,
-         value when is_binary(value) <- Map.get(headers, "x-shroud-unsubscribe"),
+         value when is_binary(value) and byte_size(value) <= 16_384 <-
+           Map.get(headers, "x-shroud-unsubscribe"),
          [payload, mac] <- String.split(value, "."),
          {:ok, signature} <- Base.url_decode64(mac, padding: false),
          expected = :crypto.mac(:hmac, :sha256, secret, "shroud-unsubscribe:" <> payload),
@@ -129,6 +144,10 @@ defmodule Shroud.Email.Unsubscribe do
       _ -> :error
     end
   end
+
+  defp usable_headers?(unsubscribe, _post)
+       when is_binary(unsubscribe) and byte_size(unsubscribe) > @max_unsubscribe_bytes,
+       do: false
 
   defp usable_headers?(unsubscribe, post)
        when is_binary(unsubscribe) and post in [nil, @marker] do
@@ -224,7 +243,7 @@ defmodule Shroud.Email.Unsubscribe do
           generation: email_alias.unsubscribe_generation,
           alias_id: email_alias.id
         },
-        on_conflict: :nothing,
+        on_conflict: {:replace, [:inserted_at]},
         conflict_target: :token_hash
       )
 

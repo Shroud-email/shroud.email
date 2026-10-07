@@ -145,7 +145,7 @@ defmodule Shroud.Aliases do
   end
 
   @spec block_sender(EmailAlias.t(), String.t()) ::
-          {:ok, EmailAlias.t()} | {:error, Ecto.Changeset.t()}
+          {:ok, EmailAlias.t()} | {:error, Ecto.Changeset.t() | :invalid}
   def block_sender(%EmailAlias{} = email_alias, sender) do
     with_locked_alias(email_alias.id, fn current ->
       addresses = Enum.uniq([String.downcase(sender) | current.blocked_addresses])
@@ -156,7 +156,8 @@ defmodule Shroud.Aliases do
     end)
   end
 
-  @spec unblock_sender(EmailAlias.t(), String.t()) :: {:ok, EmailAlias.t()} | :error
+  @spec unblock_sender(EmailAlias.t(), String.t()) ::
+          {:ok, EmailAlias.t()} | {:error, Ecto.Changeset.t() | :invalid}
   def unblock_sender(%EmailAlias{} = email_alias, sender) do
     with_locked_alias(email_alias.id, fn current ->
       addresses =

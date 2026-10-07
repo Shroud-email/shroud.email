@@ -458,6 +458,7 @@ exports.attest_unsubscribe = function (connection, txn, results) {
   const unsubscribe = txn.header.get_all('List-Unsubscribe')
   const post = txn.header.get_all('List-Unsubscribe-Post')
   if (from.length !== 1 || unsubscribe.length !== 1 || post.length > 1) return
+  if (Buffer.byteLength(unsubscribe[0], 'utf8') > 4096) return
   const addresses = this.parse_address_header(connection, from[0])
   if (addresses?.length !== 1 || !addresses[0].host) return
   const domain = addresses[0].host.toLowerCase()

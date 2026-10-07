@@ -343,6 +343,56 @@ test("attestation fails closed on spoofing, failures, coverage, alignment and du
   }
 });
 
+test("attestation bounds raw List-Unsubscribe values by UTF-8 bytes", async (t) => {
+  const { plugin } = setup(t);
+  const prefix = "<https://sender.example/";
+  for (const [name, padding, bytes, accepted] of [
+    ["exact ASCII limit", "a".repeat(4071), 4096, true],
+    ["over ASCII limit", "a".repeat(4072), 4097, false],
+    ["exact UTF-8 limit", "é".repeat(2035) + "a", 4096, true],
+    ["over UTF-8 limit", "é".repeat(2036), 4097, false],
+    ["raw limit before unfolding", "a".repeat(4069) + "\r\n\t", 4097, false],
+  ]) {
+    const value = `${prefix}${padding}>`;
+    assert.equal(Buffer.byteLength(value, "utf8"), bytes, name);
+    const connection = await message("sender@base.example");
+    unsubscribeHeaders(connection);
+    const txn = connection.transaction;
+    const getAll = txn.header.get_all.bind(txn.header);
+    // Supply raw header values: Haraka's add_header encodes non-ASCII text.
+    t.mock.method(txn.header, "get_all", (header) =>
+      header === "List-Unsubscribe" ? [value] : getAll(header),
+    );
+    t.mock.method(plugin, "run_verify_stream", async () => {
+      assert.deepEqual(
+        txn.header
+          .get_all("X-Shroud-Unsubscribe")
+          .map((v) => v.trim())
+          .sort(),
+        ["also-spoofed", "spoofed"],
+      );
+      return [
+        {
+          result: "pass",
+          domain: "base.example",
+          signed_headers: ["from", "list-unsubscribe", "list-unsubscribe-post"],
+        },
+      ];
+    });
+    await inbound(plugin, connection);
+    const attestations = txn.header.get_all("X-Shroud-Unsubscribe");
+    assert.equal(attestations.length, accepted ? 1 : 0, name);
+    if (accepted) {
+      const payload = attestations[0].trim().split(".")[0];
+      assert.equal(
+        JSON.parse(Buffer.from(payload, "base64url")).unsubscribe,
+        value,
+        name,
+      );
+    }
+  }
+});
+
 test("concurrent custom domains use the shared key but retain distinct From domains", async (t) => {
   const { plugin } = setup(t);
   const queried = [];

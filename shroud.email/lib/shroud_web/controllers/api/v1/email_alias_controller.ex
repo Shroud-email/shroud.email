@@ -255,6 +255,10 @@ defmodule ShroudWeb.Api.V1.EmailAliasController do
     render_error(conn, 403, "Account is inactive")
   end
 
+  defp render_alias_result({:error, :invalid}, conn) do
+    render_error(conn, 404, "Alias not found")
+  end
+
   defp render_alias_result({:error, %Ecto.Changeset{} = changeset}, conn) do
     error =
       changeset

@@ -8,6 +8,25 @@ defmodule ShroudWeb.EmailAliasLiveTest do
   describe "Show" do
     setup :register_and_log_in_user
 
+    test "blocking and unblocking tolerate an alias deleted while the page is open", %{
+      conn: conn,
+      user: user
+    } do
+      for event <- ["block_sender", "unblock_sender"] do
+        email_alias = alias_fixture(%{user_id: user.id})
+        {:ok, view, _} = live(conn, ~p"/alias/#{email_alias.address}")
+        Shroud.Repo.delete!(email_alias)
+
+        render_click(view, event, %{"sender" => "news@example.com"})
+
+        assert has_element?(
+                 view,
+                 "#notification-source [data-kind=error]",
+                 "Something went wrong."
+               )
+      end
+    end
+
     test "desktop and mobile deletion require confirmation", %{conn: conn, user: user} do
       email_alias = alias_fixture(%{user_id: user.id})
       {:ok, view, _} = live(conn, ~p"/alias/#{email_alias.address}")

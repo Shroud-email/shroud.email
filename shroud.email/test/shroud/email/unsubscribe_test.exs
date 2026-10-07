@@ -67,6 +67,79 @@ defmodule Shroud.Email.UnsubscribeTest do
     end
   end
 
+  test "verified unsubscribe values have a 4096-byte limit", %{
+    user: user,
+    email_alias: email_alias
+  } do
+    prefix = "<https://example.com/unsubscribe?token="
+
+    for bytes <- [4096, 4097] do
+      url = prefix <> String.duplicate("a", bytes - byte_size(prefix) - 1) <> ">"
+
+      email =
+        Unsubscribe.add_headers(
+          Swoosh.Email.new(),
+          user,
+          email_alias,
+          @sender,
+          message(attestation(url, @marker))
+        )
+
+      if bytes == 4096 do
+        assert email.headers["List-Unsubscribe"] == url
+      else
+        assert email.headers["List-Unsubscribe"] =~ "/unsubscribe/"
+      end
+    end
+  end
+
+  test "mailto expiry, renewal and cleanup preserve only valid relays", %{
+    user: user,
+    email_alias: email_alias
+  } do
+    recipient = mailto_relay(user, email_alias)
+
+    recent =
+      NaiveDateTime.utc_now()
+      |> NaiveDateTime.add(-89 * 86_400)
+      |> NaiveDateTime.truncate(:second)
+
+    expired =
+      NaiveDateTime.utc_now()
+      |> NaiveDateTime.add(-91 * 86_400)
+      |> NaiveDateTime.truncate(:second)
+
+    Repo.update_all(UnsubscribeRelay, set: [inserted_at: recent])
+    assert {0, _} = Unsubscribe.prune_relays()
+    assert :ok = Unsubscribe.relay_email(user.email, recipient)
+    assert_email_sent()
+
+    Repo.update_all(UnsubscribeRelay, set: [inserted_at: expired])
+    assert :ok = Unsubscribe.relay_email(user.email, recipient)
+    refute_email_sent()
+
+    assert mailto_relay(user, email_alias) == recipient
+    assert {0, _} = Unsubscribe.prune_relays()
+    assert :ok = Unsubscribe.relay_email(user.email, recipient)
+    assert_email_sent()
+
+    Repo.update_all(UnsubscribeRelay, set: [inserted_at: expired])
+    assert {1, _} = Unsubscribe.prune_relays()
+    assert Repo.aggregate(UnsubscribeRelay, :count) == 0
+
+    assert mailto_relay(user, email_alias) == recipient
+    assert :ok = Unsubscribe.relay_email(user.email, recipient)
+    assert_email_sent()
+
+    assert {:ok, blocked} = Aliases.block_sender(email_alias, @sender)
+    assert {:ok, current} = Aliases.unblock_sender(blocked, @sender)
+    assert {1, _} = Unsubscribe.prune_relays()
+    mailto_relay(user, current)
+    assert {:ok, _} = Aliases.delete_email_alias(email_alias.id)
+    assert {1, _} = Unsubscribe.prune_relays()
+    assert {0, _} = Unsubscribe.prune_relays()
+  end
+
   test "ordinary verified unsubscribe is preserved without inventing one-click support", %{
     user: user,
     email_alias: email_alias

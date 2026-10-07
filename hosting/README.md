@@ -48,10 +48,14 @@ when available and otherwise blocks the envelope sender for the receiving alias.
 Ordinary unsubscribe links do not gain one-click functionality.
 
 Verified mailto unsubscribe uses an alias-scoped relay, including for free accounts.
-Only the alias owner can use it. The relay sends the verified destination, subject
-and body, not the submitted message, headers or attachments. Ordinary outgoing
-email still requires a paid account. Relay recipes are encrypted at rest and
-revoked when the alias is re-enabled, a sender is unblocked or the alias is deleted.
+The opaque relay address is a bearer capability. Its envelope sender must match
+the alias owner's inbox address, but this check is not authentication. The relay
+sends the verified destination, subject and body, not the submitted message,
+headers or attachments. Ordinary outgoing email still requires a paid account.
+Relay recipes are encrypted at rest and expire 90 days after their last verified
+appearance in forwarded mail. They are revoked when the alias is re-enabled,
+a sender is unblocked or the alias is deleted. A daily job removes expired and
+revoked records.
 
 Haraka verifies the original DKIM signature before the app modifies the message.
 Forwarded sender unsubscribe headers must be covered by one passing signature
@@ -59,6 +63,7 @@ whose signing domain exactly matches the original From domain. Haraka passes
 these headers to the app with an HMAC using the shared `SMTP_PASSWORD`; configure
 the same password on both services. The app rejects unverified, malformed, and
 expired metadata and uses the selected fallback instead.
+Unsubscribe values exceeding 4096 UTF-8 bytes use the selected fallback.
 
 Outbound DKIM signs both `List-Unsubscribe` and `List-Unsubscribe-Post`.
 RFC 8058 requires a valid signature covering both headers and a public HTTPS

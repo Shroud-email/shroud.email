@@ -34,6 +34,20 @@ defmodule ShroudWeb.UnsubscribeControllerTest do
     refute Repo.reload!(email_alias).enabled
   end
 
+  test "mixed-case and padded Content-Type media types are accepted", %{conn: conn, token: token} do
+    for type <- [
+          "Application/X-WWW-Form-Urlencoded",
+          " application/x-www-form-urlencoded ; charset=UTF-8"
+        ] do
+      response =
+        conn
+        |> put_req_header("content-type", type)
+        |> post(~p"/unsubscribe/#{token}", "List-Unsubscribe=One-Click")
+
+      assert response.status == 204
+    end
+  end
+
   test "multipart POST is accepted", %{conn: conn, token: token, email_alias: email_alias} do
     body =
       "--boundary\r\nContent-Disposition: form-data; name=\"List-Unsubscribe\"\r\n\r\nOne-Click\r\n--boundary--\r\n"

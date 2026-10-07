@@ -266,6 +266,9 @@ defmodule Shroud.Mcp.Tools do
   defp alias_result({:error, :inactive_user}),
     do: error("ACCOUNT_INACTIVE", "Account is inactive")
 
+  defp alias_result({:error, :invalid}),
+    do: error("ALIAS_NOT_FOUND", "Alias not found")
+
   defp alias_result({:error, :free_limit_reached}),
     do:
       error(
