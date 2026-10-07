@@ -328,13 +328,12 @@ defmodule ShroudWeb.RateLimitIntegrationTest do
 
     render_click(view, "generate_totp_secret")
     assert has_element?(view, "#totp-qr-code")
-    secret = :sys.get_state(view.pid).socket.assigns.totp_secret
 
     seed({:security, :second_factor}, {:account, user.id}, 5)
     {:ok, view, _} = live(conn, "/settings/security")
     render_click(view, "generate_totp_secret")
     assert has_element?(view, "#notification-source [data-kind=error]", "Too many requests")
-    assert :sys.get_state(view.pid).socket.assigns.totp_secret == secret
+    refute has_element?(view, "#totp-qr-code")
   end
 
   test "public passkey challenge quota uses the connection peer", %{conn: conn} do
