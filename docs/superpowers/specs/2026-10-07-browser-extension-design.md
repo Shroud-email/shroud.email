@@ -4,13 +4,17 @@
 
 Implement the approved browser-extension designs in one codebase for desktop Chrome, Firefox, and Safari. Users sign in with OAuth, create and copy aliases from the toolbar popup, and optionally create or fill aliases in website email fields. Support hosted Shroud.email and self-hosted instances.
 
-Design reference: https://app.paper.design/file/01M3VEVRW9WWCGNZH64T87G0SP/p-2-0
+Required UI designs: https://app.paper.design/file/01M3VEVRW9WWCGNZH64T87G0SP/p-2-0
+
+The Paper designs are the source of truth for the extension's layout, styling, copy, and designed states, not optional inspiration. Implementers must access this file through the Paper MCP tools before planning or implementing UI. Inspect the relevant artboards, node hierarchy, computed styles, and screenshots; do not reconstruct the designs from this spec's prose or conversation screenshots alone. Use file ID `01M3VEVRW9WWCGNZH64T87G0SP` and page ID `p-2-0`.
+
+Preserve the Paper designs and the behavior requirements in this spec. If they conflict or a required state is not designed, raise that gap before introducing a different layout or interaction. If the Paper MCP tools are unavailable, report the blocker rather than substitute an inferred design.
 
 This is a new `extension/` project with its own npm lockfile. Root npm dependencies remain repository-maintenance tooling. Phoenix owns account policy, OAuth, domain validation, and alias creation. Store publishing, production migrations, signing, and deployments require separate authorization.
 
 ## Browser architecture
 
-Use WXT, TypeScript, React, and Tailwind CSS v4. Build Manifest V3 outputs for Chrome, Firefox, and Safari explicitly; do not rely on WXT's per-browser default manifest versions.
+Use WXT, TypeScript, Vue 3, and Tailwind CSS v4. Build Manifest V3 outputs for Chrome, Firefox, and Safari explicitly; do not rely on WXT's per-browser default manifest versions.
 
 Share popup components, content-script UI, API contracts, OAuth logic, and tests. Keep browser differences in manifest/build configuration and small platform operations only where required by tested API differences.
 
@@ -90,11 +94,17 @@ Paper's complete states include light/dark popup, login disclosure closed/open, 
 
 ## Verification and delivery
 
+Before planning or implementing, fetch current `origin/main` and rebase unpublished feature commits onto it, preserving uncommitted work. Do not rewrite published history without explicit approval. After synchronization, read the root `AGENTS.md` and every scoped `AGENTS.md` governing the files being changed, especially `shroud.email/AGENTS.md` for backend work. Follow their current testing guidance and project-local commands; this spec does not replace repository instructions.
+
+Follow the repository's testing philosophy: test observable outcomes rather than implementation details. Keep tests focused on plausible failures, with independently derived expectations and inputs that distinguish correct behavior from a likely wrong implementation. For Phoenix, use ExUnit, existing fixtures, and Mox behaviours for external services to keep tests deterministic. For LiveView changes, use DOM-aware selectors and stable element IDs rather than raw HTML comparisons. Apply the same outcome-focused approach to Vue components and extension integration tests; do not substitute snapshots, source-text assertions, or mocked browser APIs for exercising real browser integrations.
+
 Use TDD for API policy, OAuth validation, message boundaries, creation state transitions, and field discovery/filling. Use asymmetric inputs and concurrency/lifecycle boundaries: wrong issuer/state/tab, duplicate callbacks, refresh rotation, background restart, account switch, stale usage, unverified foreign domains, double clicks, missing inputs, and create-success/copy-failure.
 
 Run targeted Phoenix tests plus formatting, compile, Credo, and Sobelow for affected backend code. Run extension unit/component tests, TypeScript checks, and production builds for all three targets. Verify manifest permissions and ensure credentials are excluded from public/content-script data.
 
 Exercise the real Chromium extension with a local Phoenix instance and deterministic website fixtures. Inspect screenshots for every affected visual state, in light and dark modes. Validate Firefox and Safari locally where installed tooling allows; distinguish build/package success from executed browser behavior. Safari signing, App Store submission, production registration/migrations, and store publishing remain outside local implementation delivery.
+
+Compare rendered UI screenshots against the corresponding Paper artboards retrieved through the Paper MCP tools. Verify layout, typography, colors, spacing, radii, icons, and copy for each designed state; correct discrepancies before declaring the UI complete.
 
 ## Technical references
 
@@ -102,4 +112,4 @@ Exercise the real Chromium extension with a local Phoenix instance and determini
 - Apple API compatibility, including unsupported identity: https://developer.apple.com/documentation/safariservices/assessing-your-safari-web-extension-s-browser-compatibility
 - Safari packaging: https://developer.apple.com/documentation/safariservices/packaging-a-web-extension-for-safari
 
-This spec awaits review before the task-by-task implementation plan and product code.
+This spec is approved for implementation planning. Product code follows review of the task-by-task implementation plan.
