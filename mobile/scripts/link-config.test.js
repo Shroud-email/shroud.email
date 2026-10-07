@@ -5,6 +5,7 @@ const { test } = require("node:test");
 const { expo } = require("../app.json");
 
 test("native identities and the HTTPS association domain are stable", () => {
+  assert.deepEqual(expo.platforms, ["ios", "android"]);
   assert.equal(expo.scheme, "shroud");
   assert.equal(expo.ios.bundleIdentifier, "email.shroud.app");
   assert.equal(expo.android.package, "email.shroud.app");

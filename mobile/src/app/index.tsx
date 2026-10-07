@@ -6,14 +6,10 @@ import { AnimatedIcon } from "@/components/animated-icon";
 import { HintRow } from "@/components/hint-row";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
-import { WebBadge } from "@/components/web-badge";
 import { BottomTabInset, MaxContentWidth, Spacing } from "@/constants/theme";
 import { unsupported, useAuth } from "@/auth/context";
 
 function getDevMenuHint() {
-  if (Platform.OS === "web") {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
   if (Device.isDevice) {
     return (
       <ThemedText type="small">
@@ -65,7 +61,7 @@ export default function HomeScreen() {
               void (auth.account ? auth.signOut() : auth.signIn());
             }}
           />
-          {Platform.OS !== "web" && !auth.account && (
+          {!auth.account && (
             <Button
               title="Clear session / sign out"
               disabled={auth.busy}
@@ -84,8 +80,6 @@ export default function HomeScreen() {
             hint={<ThemedText type="code">npm run reset-project</ThemedText>}
           />
         </ThemedView>
-
-        {Platform.OS === "web" && <WebBadge />}
       </SafeAreaView>
     </ThemedView>
   );
