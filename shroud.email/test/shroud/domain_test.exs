@@ -34,8 +34,8 @@ defmodule Shroud.DomainTest do
 
     test "get_custom_domain!/2 does not return another's domain" do
       user = user_fixture()
-      _custom_domain = custom_domain_fixture(%{user_id: user.id, domain: "example.com"})
       other_user = user_fixture()
+      _custom_domain = custom_domain_fixture(%{user_id: user.id, domain: "example.com"})
 
       assert_raise Ecto.NoResultsError, fn ->
         Domain.get_custom_domain!(other_user, "example.com")

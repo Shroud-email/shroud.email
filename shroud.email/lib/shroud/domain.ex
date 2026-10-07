@@ -8,6 +8,7 @@ defmodule Shroud.Domain do
   alias Shroud.Accounts
   alias Shroud.Accounts.User
   alias Shroud.Aliases.EmailAlias
+  alias Shroud.Util
 
   alias Shroud.Domain.CustomDomain
 
@@ -39,6 +40,23 @@ defmodule Shroud.Domain do
   @spec get_custom_domain(String.t()) :: CustomDomain.t() | nil
   def get_custom_domain(domain) do
     Repo.get_by(CustomDomain, domain: domain) |> Repo.preload([:user])
+  end
+
+  @doc """
+  Whether Haraka accepts mail for this domain, regardless of alias existence.
+  Custom-domain ownership verification must be less than 24 hours old.
+  """
+  def hosted_domain?(domain) do
+    domain = String.downcase(domain)
+    one_day_ago = NaiveDateTime.utc_now() |> NaiveDateTime.add(-24 * 60 * 60)
+
+    domain == String.downcase(Util.email_domain()) or
+      Repo.exists?(
+        from d in CustomDomain,
+          where:
+            fragment("lower(?)", d.domain) == ^domain and
+              d.ownership_verified_at > ^one_day_ago
+      )
   end
 
   @doc """

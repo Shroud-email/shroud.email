@@ -2,7 +2,7 @@ defmodule ShroudWeb.SettingsLiveTest do
   use ShroudWeb.ConnCase, async: true
 
   import Phoenix.LiveViewTest
-  import Shroud.AccountsFixtures
+  import Shroud.{AccountsFixtures, AliasesFixtures}
 
   alias Shroud.{Accounts, Billing, Repo}
   alias Shroud.Accounts.{TOTP, User}
@@ -244,6 +244,26 @@ defmodule ShroudWeb.SettingsLiveTest do
     assert Repo.reload!(user).email == user.email
     assert_receive {:email, %{to: [{_, ^email}], text_body: body}}
     assert body =~ "/settings/confirm_email/"
+  end
+
+  test "email changes reject known and unknown Shroud addresses with a generic error", %{
+    conn: conn,
+    user: user
+  } do
+    email_alias = alias_fixture(%{user_id: user.id})
+    {:ok, view, _} = live(conn, ~p"/settings/account")
+
+    for email <- [email_alias.address, "unknown@email.shroud.test"] do
+      view
+      |> form("#update_email", user: %{email: email}, current_password: valid_user_password())
+      |> render_submit()
+
+      assert has_element?(view, "#update_email .invalid-feedback", "is invalid")
+      refute has_element?(view, "#notification-source [data-kind=info]")
+      assert Repo.reload!(user).email == user.email
+    end
+
+    refute_receive {:email, _}
   end
 
   test "email and current-password errors are rendered in place", %{conn: conn, user: user} do

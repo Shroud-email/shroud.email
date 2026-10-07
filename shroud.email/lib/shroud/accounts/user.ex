@@ -2,6 +2,8 @@ defmodule Shroud.Accounts.User do
   use Ecto.Schema
   import Ecto.Changeset
   alias Shroud.Aliases.EmailAlias
+  alias Shroud.Domain
+  alias Shroud.Util
 
   schema "users" do
     field :email, :string
@@ -74,7 +76,7 @@ defmodule Shroud.Accounts.User do
   defp validate_email(changeset) do
     changeset
     |> validate_required([:email])
-    |> validate_change(:email, &validate_email_format/2)
+    |> validate_change(:email, &validate_email_address/2)
     |> validate_length(:email, max: 160)
     |> unsafe_validate_unique(:email, Shroud.Repo)
     |> unique_constraint(:email)
@@ -82,10 +84,20 @@ defmodule Shroud.Accounts.User do
 
   # Validates the email against gen_smtp's RFC 5322 parser — the same parser
   # we use for outgoing mail.
-  defp validate_email_format(:email, email) do
+  defp validate_email_address(:email, email) do
     case :smtp_util.parse_rfc5322_addresses(email) do
-      {:ok, [{:undefined, _address}]} -> []
-      _ -> [email: "is invalid"]
+      {:ok, [{:undefined, _address}]} ->
+        {_local, domain} = Util.extract_email_parts(email)
+
+        # Reject the entire domain so the result cannot reveal alias existence.
+        if Domain.hosted_domain?(domain) do
+          [email: "is invalid"]
+        else
+          []
+        end
+
+      _ ->
+        [email: "is invalid"]
     end
   end
 

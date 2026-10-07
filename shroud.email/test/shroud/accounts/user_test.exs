@@ -2,6 +2,8 @@ defmodule Shroud.Accounts.UserTest do
   use Shroud.DataCase, async: true
 
   alias Shroud.Accounts.User
+  alias Shroud.Domain
+  import Shroud.{AccountsFixtures, AliasesFixtures, DomainFixtures}
 
   describe "registration_changeset/2 email validation" do
     # Email validity is checked with gen_smtp's own RFC 5322 parser
@@ -99,6 +101,115 @@ defmodule Shroud.Accounts.UserTest do
 
         assert email_errors == [],
                "expected #{inspect(unquote(email))} to pass validation, got errors: #{inspect(email_errors)}"
+      end
+    end
+  end
+
+  describe "hosted-domain email validation" do
+    test "rejects primary-domain addresses without exposing alias existence or state" do
+      owner = user_fixture()
+      active = alias_fixture(%{user_id: owner.id})
+      disabled = alias_fixture(%{user_id: owner.id, enabled: false})
+
+      deleted =
+        alias_fixture(%{
+          user_id: owner.id,
+          deleted_at: NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
+        })
+
+      for email <- [
+            active.address,
+            disabled.address,
+            deleted.address,
+            "unknown@email.shroud.test",
+            "UPPER@EMAIL.SHROUD.TEST"
+          ] do
+        changeset = User.registration_changeset(%User{}, valid_user_attributes(%{email: email}))
+        assert errors_on(changeset) == %{email: ["is invalid"]}
+      end
+    end
+
+    test "rejects every address on an ownership-verified custom domain, even without catch-all or MX verification" do
+      owner = user_fixture()
+
+      domain =
+        custom_domain_fixture(%{
+          user_id: owner.id,
+          domain: "Hosted.Example",
+          catchall_enabled: false,
+          mx_verified_at: nil
+        })
+
+      email_alias = alias_fixture(%{user_id: owner.id, address: "known@hosted.example"})
+
+      for email <- [email_alias.address, "unknown@HOSTED.EXAMPLE"] do
+        changeset = User.registration_changeset(%User{}, valid_user_attributes(%{email: email}))
+        assert errors_on(changeset) == %{email: ["is invalid"]}
+      end
+
+      refute Domain.hosted_domain?("sub.hosted.example")
+      assert Domain.hosted_domain?(domain.domain)
+    end
+
+    test "unverified and expired domain registrations cannot block an external inbox" do
+      owner = user_fixture()
+
+      fresh =
+        NaiveDateTime.utc_now()
+        |> NaiveDateTime.add(-23 * 60 * 60)
+        |> NaiveDateTime.truncate(:second)
+
+      expired =
+        NaiveDateTime.utc_now()
+        |> NaiveDateTime.add(-24 * 60 * 60)
+        |> NaiveDateTime.truncate(:second)
+
+      custom_domain_fixture(%{
+        user_id: owner.id,
+        domain: "fresh.example",
+        ownership_verified_at: fresh
+      })
+
+      custom_domain_fixture(%{
+        user_id: owner.id,
+        domain: "expired.example",
+        ownership_verified_at: expired
+      })
+
+      custom_domain_fixture(%{
+        user_id: owner.id,
+        domain: "unverified.example",
+        ownership_verified_at: nil
+      })
+
+      assert Domain.hosted_domain?("fresh.example")
+
+      for domain <- ["expired.example", "unverified.example", "external.example"] do
+        refute Domain.hosted_domain?(domain)
+
+        assert User.registration_changeset(
+                 %User{},
+                 valid_user_attributes(%{email: "inbox@#{domain}"})
+               ).valid?
+      end
+    end
+
+    test "does not add an account-existence error for an existing user on a hosted domain" do
+      user = user_fixture(%{email: "existing@hosted.example"})
+      custom_domain_fixture(%{domain: "hosted.example"})
+
+      changeset =
+        User.registration_changeset(%User{}, valid_user_attributes(%{email: user.email}))
+
+      assert errors_on(changeset) == %{email: ["is invalid"]}
+    end
+
+    test "email changes use the same generic rejection" do
+      user = user_fixture()
+      custom_domain_fixture(%{user_id: user.id, domain: "hosted.example"})
+
+      for email <- ["inbox@email.shroud.test", "inbox@hosted.example"] do
+        assert errors_on(User.email_changeset(user, %{email: email})) == %{email: ["is invalid"]}
       end
     end
   end

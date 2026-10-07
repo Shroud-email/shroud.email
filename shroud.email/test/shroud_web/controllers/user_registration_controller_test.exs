@@ -3,8 +3,9 @@ defmodule ShroudWeb.UserRegistrationControllerTest do
   # "Cap enabled" describe block below; must run serially to stay isolation-safe.
   use ShroudWeb.ConnCase, async: false
 
-  import Shroud.AccountsFixtures
+  import Shroud.{AccountsFixtures, AliasesFixtures, DomainFixtures}
   import ShroudWeb.CaptchaHelpers
+  import Swoosh.TestAssertions
 
   test "campaign survives signup form, invalid submission and account creation", %{conn: conn} do
     previous = Application.get_env(:shroud, :openpanel)
@@ -165,6 +166,45 @@ defmodule ShroudWeb.UserRegistrationControllerTest do
       assert response =~ "Sign up"
       assert response =~ "is invalid"
       assert response =~ "should be at least 12 character"
+    end
+
+    test "hosted-address rejection has the same generic DOM error for known and unknown aliases",
+         %{conn: conn} do
+      owner = user_fixture()
+      primary_alias = alias_fixture(%{user_id: owner.id})
+
+      custom_domain_fixture(%{
+        user_id: owner.id,
+        domain: "hosted.example",
+        catchall_enabled: false
+      })
+
+      custom_alias = alias_fixture(%{user_id: owner.id, address: "known@hosted.example"})
+
+      for email <- [
+            primary_alias.address,
+            "unknown@email.shroud.test",
+            custom_alias.address,
+            "unknown@hosted.example"
+          ] do
+        response_conn =
+          post(recycle(conn), ~p"/users/register", %{
+            "user" => valid_user_attributes(%{email: email})
+          })
+
+        document = response_conn |> html_response(200) |> LazyHTML.from_document()
+
+        errors =
+          document
+          |> LazyHTML.query("#user-registration-form .invalid-feedback")
+          |> Enum.map(&(LazyHTML.text(&1) |> String.trim()))
+
+        assert errors == ["is invalid"]
+        refute get_session(response_conn, :user_token)
+        assert is_nil(Shroud.Accounts.get_user_by_email(email))
+      end
+
+      assert_no_email_sent()
     end
 
     test "creates a lifetime user", %{conn: conn} do
