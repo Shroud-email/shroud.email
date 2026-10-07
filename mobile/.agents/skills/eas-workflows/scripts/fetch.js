@@ -1,17 +1,17 @@
 #!/usr/bin/env node
 
-import { createHash } from 'node:crypto';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import { resolve } from 'node:path';
-import process from 'node:process';
+import { createHash } from "node:crypto";
+import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { resolve } from "node:path";
+import process from "node:process";
 
-const CACHE_DIRECTORY = resolve(import.meta.dirname, '.cache');
+const CACHE_DIRECTORY = resolve(import.meta.dirname, ".cache");
 const DEFAULT_TTL_SECONDS = 15 * 60; // 15 minutes
 
 export async function fetchCached(url) {
   await mkdir(CACHE_DIRECTORY, { recursive: true });
 
-  const cacheFile = resolve(CACHE_DIRECTORY, hashUrl(url) + '.json');
+  const cacheFile = resolve(CACHE_DIRECTORY, hashUrl(url) + ".json");
   const cached = await loadCacheEntry(cacheFile);
   if (cached && cached.expires > Math.floor(Date.now() / 1000)) {
     return cached.data;
@@ -21,8 +21,8 @@ export async function fetchCached(url) {
   // Cache-Control: max-age=0 overrides Node's default 'no-cache' to allow 304 responses.
   const response = await fetch(url, {
     headers: {
-      'Cache-Control': 'max-age=0',
-      ...(cached?.etag && { 'If-None-Match': cached.etag }),
+      "Cache-Control": "max-age=0",
+      ...(cached?.etag && { "If-None-Match": cached.etag }),
     },
   });
 
@@ -37,7 +37,7 @@ export async function fetchCached(url) {
     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
   }
 
-  const etag = response.headers.get('etag');
+  const etag = response.headers.get("etag");
   const data = await response.text();
   const expires = getExpires(response.headers);
 
@@ -47,12 +47,12 @@ export async function fetchCached(url) {
 }
 
 function hashUrl(url) {
-  return createHash('sha256').update(url).digest('hex').slice(0, 16);
+  return createHash("sha256").update(url).digest("hex").slice(0, 16);
 }
 
 async function loadCacheEntry(cacheFile) {
   try {
-    return JSON.parse(await readFile(cacheFile, 'utf-8'));
+    return JSON.parse(await readFile(cacheFile, "utf-8"));
   } catch {
     return null;
   }
@@ -66,13 +66,13 @@ function getExpires(headers) {
   const now = Math.floor(Date.now() / 1000);
 
   // Prefer Cache-Control: max-age
-  const maxAgeSeconds = parseMaxAge(headers.get('cache-control'));
+  const maxAgeSeconds = parseMaxAge(headers.get("cache-control"));
   if (maxAgeSeconds != null) {
     return now + maxAgeSeconds;
   }
 
   // Fall back to Expires header
-  const expires = headers.get('expires');
+  const expires = headers.get("expires");
   if (expires) {
     const expiresTime = Date.parse(expires);
     if (!Number.isNaN(expiresTime)) {
@@ -95,7 +95,7 @@ function parseMaxAge(cacheControl) {
 if (import.meta.main) {
   const url = process.argv[2];
 
-  if (!url || url === '--help' || url === '-h') {
+  if (!url || url === "--help" || url === "-h") {
     console.log(`Usage: fetch <url>
 
 Fetches a URL with HTTP caching (ETags + Cache-Control/Expires).
