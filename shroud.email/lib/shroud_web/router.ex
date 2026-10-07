@@ -169,12 +169,12 @@ defmodule ShroudWeb.Router do
     get("/settings/confirm_email/:token", UserSettingsController, :confirm_email)
 
     live_session :authenticated, on_mount: ShroudWeb.UserLiveAuth do
-      live("/settings/account", UserSettingsLive, :account)
-      live("/settings/security", UserSettingsLive, :security)
-      live("/settings/connections", UserSettingsLive, :connections)
-      live("/settings/appearance", UserSettingsLive, :appearance)
-      live("/settings/billing", UserSettingsLive, :billing)
-      live("/settings/billing/lifetime", UserSettingsLive, :lifetime)
+      live("/settings/account", AccountSettingsLive, :account)
+      live("/settings/security", SecuritySettingsLive, :security)
+      live("/settings/connections", SecuritySettingsLive, :connections)
+      live("/settings/appearance", AppearanceSettingsLive, :appearance)
+      live("/settings/billing", BillingSettingsLive, :billing)
+      live("/settings/billing/lifetime", BillingSettingsLive, :lifetime)
       live("/", EmailAliasLive.Index, :index)
       live("/alias/:address", EmailAliasLive.Show, :show)
       live("/domains", CustomDomainLive.Index, :index)

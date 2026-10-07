@@ -17,6 +17,7 @@ defmodule ShroudWeb.PasskeyRegistrationLiveTest do
   end
 
   test "enrollment requires the current password and updates the list without navigation", %{
+    conn: conn,
     view: view,
     user: user
   } do
@@ -55,8 +56,8 @@ defmodule ShroudWeb.PasskeyRegistrationLiveTest do
     assert has_element?(view, "#passkey-status", "Passkey added.")
     refute has_element?(view, "#passkey-dialog")
 
-    view |> element("#settings-nav-account") |> render_click()
-    view |> element("#settings-nav-security") |> render_click()
+    view = navigate_settings(view, conn, :account, ~p"/settings/account")
+    view = navigate_settings(view, conn, :security, ~p"/settings/security")
     assert has_element?(view, "#remove-passkey-button-#{credential.id}")
     refute has_element?(view, "#passkey-dialog")
     view |> element("#remove-passkey-button-#{credential.id}") |> render_click()
@@ -123,6 +124,7 @@ defmodule ShroudWeb.PasskeyRegistrationLiveTest do
   end
 
   test "cancellation and tab navigation invalidate outstanding enrollment", %{
+    conn: conn,
     view: view,
     user: user
   } do
@@ -134,9 +136,11 @@ defmodule ShroudWeb.PasskeyRegistrationLiveTest do
     assert_reply(view, %{error: "invalid_registration"})
 
     options = authorize(view)
-    view |> element("#settings-nav-account") |> render_click()
-    assert_patch(view, ~p"/settings/account")
-    view |> element("#settings-nav-security") |> render_click()
+    monitor = Process.monitor(view.pid)
+    view = navigate_settings(view, conn, :account, ~p"/settings/account")
+    assert_receive {:DOWN, ^monitor, :process, _, _}
+    refute Repo.get_by(PasskeyChallenge, token: Base.url_decode64!(options.token, padding: false))
+    view = navigate_settings(view, conn, :security, ~p"/settings/security")
     render_hook(view, "passkey_registered", response(options))
     assert_reply(view, %{error: "invalid_registration"})
     assert Accounts.list_passkeys(user) == []
@@ -303,6 +307,13 @@ defmodule ShroudWeb.PasskeyRegistrationLiveTest do
       assert has_element?(view, "#passkey-password-error", "Incorrect password")
       assert Accounts.get_passkey(credential.credential_id)
     end
+  end
+
+  defp navigate_settings(view, conn, action, path) do
+    {:ok, next, _} =
+      view |> element("#settings-nav-#{action}") |> render_click() |> follow_redirect(conn, path)
+
+    next
   end
 
   defp authorize(view) do

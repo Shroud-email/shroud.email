@@ -1,4 +1,4 @@
-defmodule ShroudWeb.UserSettingsLiveTest do
+defmodule ShroudWeb.SettingsLiveTest do
   use ShroudWeb.ConnCase, async: true
 
   import Phoenix.LiveViewTest
@@ -142,8 +142,6 @@ defmodule ShroudWeb.UserSettingsLiveTest do
 
     refute first_id == second_id
 
-    view |> element("#settings-nav-account") |> render_click()
-    assert find_live_child(view, "notifications").pid == notifications.pid
     assert has_element?(notifications, "##{first_id}")
     notifications |> element("#toast-group") |> render_hook("clear", %{id: first_id})
     refute has_element?(notifications, "##{first_id}")
@@ -175,22 +173,44 @@ defmodule ShroudWeb.UserSettingsLiveTest do
     assert has_element?(view, "#manage-connections")
   end
 
-  test "patches between settings pages and updates the active navigation", %{conn: conn} do
-    {:ok, view, _} = live(conn, ~p"/settings/account")
-    assert has_element?(view, "#update_email")
-    assert has_element?(view, "#settings-nav-account[aria-current=page]")
+  test "menu navigation mounts separate LiveViews and updates the active navigation", %{
+    conn: conn
+  } do
+    pages = [
+      {:account, ~p"/settings/account", "#update_email", ShroudWeb.AccountSettingsLive},
+      {:security, ~p"/settings/security", "#update_password", ShroudWeb.SecuritySettingsLive},
+      {:appearance, ~p"/settings/appearance", "#appearance-form",
+       ShroudWeb.AppearanceSettingsLive},
+      {:billing, ~p"/settings/billing", "#paddle-signup", ShroudWeb.BillingSettingsLive}
+    ]
 
-    for {action, path, selector} <- [
-          {:security, ~p"/settings/security", "#update_password"},
-          {:appearance, ~p"/settings/appearance", "#appearance-form"},
-          {:billing, ~p"/settings/billing", "#paddle-signup"}
-        ] do
-      view |> element("#settings-nav-#{action}") |> render_click()
-      assert_patch(view, path)
-      assert has_element?(view, selector)
-      assert has_element?(view, "#settings-nav-#{action}[aria-current=page]")
-      refute has_element?(view, "#update_email")
+    for {source, source_path, _, source_module} <- pages,
+        {target, target_path, selector, target_module} <- pages,
+        source != target do
+      {:ok, view, _} = live(conn, source_path)
+      assert view.module == source_module
+      assert has_element?(view, "#settings-nav-#{source}[aria-current=page]")
+      next = navigate_settings(view, conn, target, target_path)
+      refute next.pid == view.pid
+      assert next.module == target_module
+      assert has_element?(next, selector)
+      assert has_element?(next, "#settings-nav-#{target}[aria-current=page]")
+      refute has_element?(next, "#settings-nav-#{source}[aria-current=page]")
     end
+  end
+
+  test "Connected apps patches within Security and keeps its menu item active", %{conn: conn} do
+    {:ok, view, _} = live(conn, ~p"/settings/security")
+    view |> element("#manage-connections") |> render_click()
+    assert_patch(view, ~p"/settings/connections")
+    assert view.module == ShroudWeb.SecuritySettingsLive
+    assert has_element?(view, "#no-connections")
+    assert has_element?(view, "#settings-nav-security[aria-current=page]")
+
+    view |> element("#back-to-security") |> render_click()
+    assert_patch(view, ~p"/settings/security")
+    assert has_element?(view, "#update_password")
+    assert has_element?(view, "#settings-nav-security[aria-current=page]")
   end
 
   test "settings require a confirmed, authenticated user", %{conn: conn} do
@@ -335,13 +355,13 @@ defmodule ShroudWeb.UserSettingsLiveTest do
 
     view |> element("#dismiss-backup-codes") |> render_click()
     refute has_element?(view, "#totp-backup-codes")
-    view |> element("#settings-nav-account") |> render_click()
-    view |> element("#settings-nav-security") |> render_click()
+    view = navigate_settings(view, conn, :account, ~p"/settings/account")
+    view = navigate_settings(view, conn, :security, ~p"/settings/security")
     refute has_element?(view, "#totp-backup-codes")
     assert has_element?(view, "#show-disable-totp")
   end
 
-  test "pending 2FA enrollment survives navigation between settings tabs", %{
+  test "leaving Security discards pending 2FA enrollment and backup-code display", %{
     conn: conn,
     user: user
   } do
@@ -349,19 +369,29 @@ defmodule ShroudWeb.UserSettingsLiveTest do
     view |> element("#generate_totp_secret") |> render_click()
     secret = :sys.get_state(view.pid).socket.assigns.totp_secret
 
-    view |> element("#settings-nav-account") |> render_click()
-    view |> element("#settings-nav-security") |> render_click()
-    assert has_element?(view, "#totp-qr-code svg")
+    view = navigate_settings(view, conn, :account, ~p"/settings/account")
+    view = navigate_settings(view, conn, :security, ~p"/settings/security")
+    refute has_element?(view, "#totp-qr-code svg")
+
+    render_submit(view, "enable_totp", %{
+      "verification_code" => NimbleTOTP.verification_code(secret)
+    })
+
+    refute Repo.reload!(user).totp_enabled
+
+    view |> element("#generate_totp_secret") |> render_click()
+    fresh_secret = :sys.get_state(view.pid).socket.assigns.totp_secret
+    refute fresh_secret == secret
 
     view
-    |> form("#enable_totp", verification_code: NimbleTOTP.verification_code(secret))
+    |> form("#enable_totp", verification_code: NimbleTOTP.verification_code(fresh_secret))
     |> render_submit()
 
     assert Repo.reload!(user).totp_enabled
-    assert Repo.reload!(user).totp_secret == secret
+    assert Repo.reload!(user).totp_secret == fresh_secret
     assert has_element?(view, "#totp-backup-codes")
-    view |> element("#settings-nav-account") |> render_click()
-    view |> element("#settings-nav-security") |> render_click()
+    view = navigate_settings(view, conn, :account, ~p"/settings/account")
+    view = navigate_settings(view, conn, :security, ~p"/settings/security")
     refute has_element?(view, "#totp-backup-codes")
   end
 
@@ -375,6 +405,10 @@ defmodule ShroudWeb.UserSettingsLiveTest do
     refute Repo.reload!(user).totp_enabled
     refute has_element?(view, "#totp-qr-code")
     assert has_element?(view, "#notification-source [data-kind=error]", "Invalid two-factor")
+
+    view = navigate_settings(view, conn, :account, ~p"/settings/account")
+    view = navigate_settings(view, conn, :security, ~p"/settings/security")
+    refute has_element?(view, "#totp-qr-code")
   end
 
   test "2FA disable rejects invalid codes and consumes a valid backup code", %{
@@ -384,8 +418,10 @@ defmodule ShroudWeb.UserSettingsLiveTest do
     TOTP.enable_totp!(user, TOTP.create_secret())
     {:ok, view, _} = live(conn, ~p"/settings/security")
     view |> element("#show-disable-totp") |> render_click()
-    view |> element("#settings-nav-appearance") |> render_click()
-    view |> element("#settings-nav-security") |> render_click()
+    view = navigate_settings(view, conn, :appearance, ~p"/settings/appearance")
+    view = navigate_settings(view, conn, :security, ~p"/settings/security")
+    refute has_element?(view, "#disable_totp")
+    view |> element("#show-disable-totp") |> render_click()
     assert has_element?(view, "#disable_totp")
     view |> form("#disable_totp", verification_code: "invalid") |> render_submit()
     assert Repo.reload!(user).totp_enabled
@@ -395,6 +431,10 @@ defmodule ShroudWeb.UserSettingsLiveTest do
     refute Repo.reload!(user).totp_enabled
     assert Repo.reload!(user).totp_backup_codes == remaining
     assert has_element?(view, "#generate_totp_secret")
+    view = navigate_settings(view, conn, :account, ~p"/settings/account")
+    view = navigate_settings(view, conn, :security, ~p"/settings/security")
+    refute has_element?(view, "#disable_totp")
+    refute has_element?(view, "#totp-qr-code")
   end
 
   test "lifetime redemption handles invalid and used codes, then updates billing", %{
@@ -402,6 +442,8 @@ defmodule ShroudWeb.UserSettingsLiveTest do
     user: user
   } do
     {:ok, view, _} = live(conn, ~p"/settings/billing/lifetime")
+    assert view.module == ShroudWeb.BillingSettingsLive
+    assert has_element?(view, "#settings-nav-billing[aria-current=page]")
     view |> form("#lifetime-form", lifetime_code: "invalid") |> render_submit()
     assert has_element?(view, "#notification-source [data-kind=error]", "Invalid code")
     refute Repo.reload!(user).status == :lifetime
@@ -429,5 +471,12 @@ defmodule ShroudWeb.UserSettingsLiveTest do
     {:ok, view, _} = live(conn, ~p"/settings/billing")
     assert has_element?(view, "#paddle-signup[phx-hook=PaddleCheckout][phx-update=ignore]")
     assert has_element?(view, "#upgrade-button")
+  end
+
+  defp navigate_settings(view, conn, action, path) do
+    {:ok, next, _} =
+      view |> element("#settings-nav-#{action}") |> render_click() |> follow_redirect(conn, path)
+
+    next
   end
 end

@@ -1,11 +1,13 @@
-defmodule ShroudWeb.UserSettingsLive do
+defmodule ShroudWeb.SecuritySettingsLive do
   use ShroudWeb, :live_view
 
-  alias Shroud.{Accounts, Billing, OAuth, Repo}
+  alias Shroud.{Accounts, OAuth, Repo}
   alias Shroud.Accounts.{Passkeys, TOTP, User}
   alias ShroudWeb.Components.PopupAlert
 
-  embed_templates "user_settings_live/*"
+  import ShroudWeb.SettingsComponents, only: [input: 1]
+
+  embed_templates "security_settings_live/*"
 
   @impl true
   def mount(_params, _session, socket) do
@@ -13,9 +15,7 @@ defmodule ShroudWeb.UserSettingsLive do
 
     socket =
       assign(socket,
-        email_form: to_form(Accounts.change_user_email(user)),
         password_form: to_form(Accounts.change_user_password(user)),
-        lifetime_form: to_form(%{"lifetime_code" => ""}),
         totp_form: to_form(%{"verification_code" => ""}),
         trigger_password_submit: false,
         totp_secret: nil,
@@ -52,42 +52,25 @@ defmodule ShroudWeb.UserSettingsLive do
         do: load_connections(socket),
         else: socket
 
-    billing_config = Application.get_env(:shroud, :billing, [])
-    price_id = billing_config[:paddle_yearly_price_id]
-    client_token = billing_config[:paddle_client_token]
-
     titles = %{
-      account: "Account settings",
       security: "Security settings",
-      connections: "Connected apps",
-      appearance: "Appearance settings",
-      billing: "Billing settings",
-      lifetime: "Lifetime signup"
+      connections: "Connected apps"
     }
 
     {:noreply,
      assign(socket,
        current_user: user,
        page_title: titles[socket.assigns.live_action],
-       email_preferences_enabled?: Accounts.email_preferences_enabled?(user),
-       email_preferences_form: to_form(User.email_preferences_changeset(user, %{})),
-       appearance_form: to_form(%{"theme" => to_string(user.theme)}),
        totp_backup_codes:
-         if(socket.assigns.live_action == :security, do: socket.assigns.totp_backup_codes),
-       paddle_price_id: price_id,
-       paddle_checkout_available?: configured?(price_id) and configured?(client_token)
+         if(socket.assigns.live_action == :security, do: socket.assigns.totp_backup_codes)
      )}
   end
 
   @impl true
   def render(assigns) do
     ~H"""
-    <.account :if={@live_action == :account} {assigns} />
     <.security :if={@live_action == :security} {assigns} />
     <.connections :if={@live_action == :connections} {assigns} />
-    <.appearance :if={@live_action == :appearance} {assigns} />
-    <.billing :if={@live_action == :billing} {assigns} />
-    <.lifetime :if={@live_action == :lifetime} {assigns} />
     """
   end
 
@@ -101,54 +84,6 @@ defmodule ShroudWeb.UserSettingsLive do
        |> put_notification(:info, "App disconnected.")}
     else
       _ -> {:noreply, put_notification(socket, :error, "Connection not found.")}
-    end
-  end
-
-  def handle_event("update_email", %{"current_password" => password, "user" => params}, socket) do
-    user = Repo.reload!(socket.assigns.current_user)
-
-    case Accounts.apply_user_email(user, password, params) do
-      {:ok, applied_user} ->
-        Accounts.deliver_update_email_instructions(
-          applied_user,
-          user.email,
-          &url(~p"/settings/confirm_email/#{&1}")
-        )
-
-        {:noreply,
-         socket
-         |> assign(:email_form, to_form(Accounts.change_user_email(user)))
-         |> put_notification(
-           :info,
-           "A link to confirm your email change has been sent to the new address."
-         )}
-
-      {:error, changeset} ->
-        {:noreply, assign(socket, :email_form, to_form(changeset))}
-    end
-  end
-
-  def handle_event("update_email_preferences", %{"user" => params}, socket) do
-    user = Repo.reload!(socket.assigns.current_user)
-
-    case Accounts.update_user_email_preferences(user, params) do
-      {:ok, user} ->
-        {:noreply,
-         socket
-         |> assign(
-           current_user: user,
-           email_preferences_form: to_form(User.email_preferences_changeset(user, %{}))
-         )
-         |> put_notification(:info, "Email preferences updated.")}
-
-      {:error, :feature_disabled} ->
-        {:noreply,
-         socket
-         |> assign(:email_preferences_enabled?, false)
-         |> put_notification(:error, "Email preferences are not available.")}
-
-      {:error, changeset} ->
-        {:noreply, assign(socket, :email_preferences_form, to_form(changeset))}
     end
   end
 
@@ -331,21 +266,6 @@ defmodule ShroudWeb.UserSettingsLive do
     end
   end
 
-  def handle_event("update_theme", %{"theme" => theme}, socket) do
-    case Accounts.update_user_theme(socket.assigns.current_user, %{theme: theme}) do
-      {:ok, user} ->
-        {:noreply,
-         socket
-         |> assign(:current_user, user)
-         |> assign(:appearance_form, to_form(%{"theme" => to_string(user.theme)}))
-         |> put_notification(:info, "Appearance updated.")
-         |> push_event("set-theme", %{theme: to_string(user.theme)})}
-
-      {:error, _changeset} ->
-        {:noreply, put_notification(socket, :error, "Invalid theme preference.")}
-    end
-  end
-
   def handle_event("generate_totp_secret", _params, socket) do
     user = Repo.reload!(socket.assigns.current_user)
 
@@ -410,26 +330,6 @@ defmodule ShroudWeb.UserSettingsLive do
     end
   end
 
-  def handle_event("lifetime_signup", %{"lifetime_code" => code}, socket) do
-    case Billing.redeem_lifetime_code(code, socket.assigns.current_user) do
-      :ok ->
-        {:noreply,
-         socket
-         |> put_notification(:info, "You have successfully signed up for lifetime access!")
-         |> push_patch(to: ~p"/settings/billing")}
-
-      {:error, :invalid_code} ->
-        {:noreply, put_notification(socket, :error, "Invalid code.")}
-
-      {:error, :already_redeemed} ->
-        {:noreply, put_notification(socket, :error, "This code has already been redeemed.")}
-
-      {:error, :redemption_failed} ->
-        {:noreply,
-         put_notification(socket, :error, "We couldn't redeem this code. Please try again.")}
-    end
-  end
-
   @impl true
   def handle_info(:passkey_dialog_closed, socket) do
     {:noreply,
@@ -446,28 +346,10 @@ defmodule ShroudWeb.UserSettingsLive do
 
   def handle_info(_message, socket), do: {:noreply, socket}
 
-  attr :field, Phoenix.HTML.FormField, required: true
-  attr :label, :string, required: true
-  attr :type, :string, default: "text"
-  attr :id, :string, default: nil
-  attr :name, :string, default: nil
-  attr :rest, :global, include: ~w(required minlength maxlength inputmode autocomplete pattern)
-
-  defp input(assigns) do
-    ~H"""
-    <label for={@id || @field.id} class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-      {@label}
-    </label>
-    <input
-      type={@type}
-      id={@id || @field.id}
-      name={@name || @field.name}
-      value={if @type != "password", do: @field.value}
-      class="mt-1 block w-full border border-gray-300 rounded-md shadow-xs py-2 px-3 focus:outline-hidden focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
-      {@rest}
-    />
-    <span :for={error <- @field.errors} class="invalid-feedback">{translate_error(error)}</span>
-    """
+  @impl true
+  def terminate(_reason, socket) do
+    cancel_passkey(socket)
+    :ok
   end
 
   defp load_connections(socket) do
@@ -477,8 +359,6 @@ defmodule ShroudWeb.UserSettingsLive do
     |> assign(:connections_empty?, connections == [])
     |> stream(:connections, connections, reset: true)
   end
-
-  defp configured?(value), do: is_binary(value) and value != ""
 
   defp passkey_password(%{"passkey" => %{"current_password" => password}})
        when is_binary(password) and byte_size(password) in 1..72,
