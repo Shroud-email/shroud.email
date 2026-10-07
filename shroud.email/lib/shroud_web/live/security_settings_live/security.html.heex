@@ -6,8 +6,8 @@
   phx-trigger-action={@trigger_password_submit}
   id="update_password"
 >
-  <div class="shadow-sm dark:shadow-gray-900/50 sm:rounded-md sm:overflow-hidden">
-    <div class="bg-white dark:bg-gray-800 py-6 px-4 space-y-6 sm:p-6">
+  <div class="shadow-sm dark:shadow-gray-900/50 rounded-md overflow-hidden">
+    <div class="bg-white dark:bg-gray-800 p-6 space-y-6">
       <div>
         <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100">Password</h3>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
@@ -45,15 +45,15 @@
           />
         </div>
       </div>
-    </div>
-    <div class="px-4 py-3 bg-gray-50 dark:bg-gray-700 text-right sm:px-6">
-      <.button type="submit" phx-disable-with="Saving…" text="Change password" />
+      <div class="text-right">
+        <.button type="submit" phx-disable-with="Saving…" text="Change password" />
+      </div>
     </div>
   </div>
 </.form>
 
-<div class="shadow-sm dark:shadow-gray-900/50 sm:rounded-md sm:overflow-hidden">
-  <div class="bg-white dark:bg-gray-800 py-6 px-4 space-y-6 sm:p-6">
+<div class="shadow-sm dark:shadow-gray-900/50 rounded-md overflow-hidden">
+  <div class="bg-white dark:bg-gray-800 p-6 space-y-6">
     <div>
       <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100">
         Two-factor authentication
@@ -178,22 +178,31 @@
 <section
   id="passkeys"
   phx-hook="PasskeyRegistration"
-  class="mt-6 shadow-sm dark:shadow-gray-900/50 sm:rounded-md bg-white dark:bg-gray-800 p-6"
+  class="mt-6 shadow-sm dark:shadow-gray-900/50 rounded-md bg-white dark:bg-gray-800 p-6"
 >
   <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Passkeys</h3>
   <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
     Sign in securely without a password or a separate two-factor code.
   </p>
 
-  <div id="passkey-list" phx-update="stream" class="mt-4 space-y-3">
+  <div id="passkey-list" phx-update="stream" class="mt-4 space-y-6">
     <div
       :for={{dom_id, key} <- @streams.passkeys}
       id={dom_id}
-      class="flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 dark:border-gray-700 pt-3"
+      class="flex flex-wrap sm:flex-nowrap items-start gap-4"
     >
-      <span class="text-sm text-gray-900 dark:text-gray-100">
-        {key.label || "Passkey"} · added {Calendar.strftime(key.inserted_at, "%b %d, %Y")}
+      <span
+        aria-hidden="true"
+        class="hidden sm:flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
+      >
+        <.icon name={:key} class="h-5 w-5" />
       </span>
+      <div class="min-w-0 flex-1 basis-40">
+        <h4 class="text-sm font-semibold break-words">{key.label || "Passkey"}</h4>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          Added {Calendar.strftime(key.inserted_at, "%d %b %Y")}
+        </p>
+      </div>
       <.button
         id={"remove-passkey-button-#{key.id}"}
         click={
@@ -202,7 +211,9 @@
         phx-value-action="remove"
         phx-value-id={key.id}
         intent={:danger_text}
+        class="shrink-0"
         text="Remove"
+        aria-label={"Remove #{key.label || "Passkey"}"}
       />
     </div>
   </div>
@@ -331,16 +342,86 @@
   </p>
 </section>
 
-<section class="bg-white dark:bg-gray-800 shadow-sm rounded-md p-6">
-  <h3 class="text-lg font-medium">Connected apps</h3>
-  <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-    Manage and revoke apps connected to your account.
+<section
+  id="connected-apps"
+  class="bg-white dark:bg-gray-800 shadow-sm dark:shadow-gray-900/50 rounded-md p-6"
+>
+  <h3 id="connected-apps-title" tabindex="-1" class="text-lg font-medium">Connected apps</h3>
+  <p
+    :if={@connections_empty?}
+    id="no-connections"
+    class="mt-4 text-sm text-gray-500 dark:text-gray-400"
+  >
+    No connected apps
   </p>
-  <.button
-    patch={~p"/settings/connections"}
-    id="manage-connections"
-    intent={:white}
-    class="mt-4"
-    text="Manage connections"
-  />
+  <div
+    id="connections"
+    phx-update="stream"
+    class={["space-y-6", !@connections_empty? && "mt-4"]}
+  >
+    <div
+      :for={{id, connection} <- @streams.connections}
+      id={id}
+      class="flex flex-wrap sm:flex-nowrap items-start gap-4"
+    >
+      <span
+        aria-hidden="true"
+        class="hidden sm:flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 font-medium"
+      >
+        {connection.client_name |> String.first() |> String.upcase()}
+      </span>
+      <div class="min-w-0 flex-1 basis-40">
+        <h4 class="text-sm font-semibold break-words">{connection.client_name}</h4>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          Expires {Calendar.strftime(connection.expires_at, "%d %b %Y")}
+        </p>
+        <ul class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm text-gray-600 dark:text-gray-300">
+          <li :for={
+            permission <-
+              Enum.map(connection.scopes, &Shroud.OAuth.permissions(connection.resource)[&1])
+              |> Enum.uniq()
+          }>
+            {permission}
+          </li>
+        </ul>
+      </div>
+      <.button
+        id={"revoke-#{connection.id}"}
+        click={Phoenix.LiveView.JS.push_focus() |> Phoenix.LiveView.JS.push("confirm_disconnect")}
+        phx-value-id={connection.id}
+        intent={:danger_text}
+        class="shrink-0"
+        text="Disconnect"
+        aria-label={"Disconnect #{connection.client_name}"}
+      />
+    </div>
+  </div>
+  <div
+    :if={@disconnect_connection}
+    id="disconnect-app-modal"
+    phx-remove={
+      Phoenix.LiveView.JS.focus(to: "#connected-apps-title") |> Phoenix.LiveView.JS.pop_focus()
+    }
+  >
+    <.live_component
+      module={PopupAlert}
+      id="disconnect-app-dialog"
+      show={true}
+      title={"Disconnect #{@disconnect_connection.client_name}?"}
+      text="This app will lose access immediately."
+      icon={:exclamation_triangle}
+      on_close={:disconnect_dialog_closed}
+    >
+      <:buttons>
+        <.button
+          id="confirm-disconnect"
+          click="revoke_connection"
+          phx-value-id={@disconnect_connection.id}
+          phx-disable-with="Disconnecting…"
+          intent={:danger}
+          text="Disconnect"
+        />
+      </:buttons>
+    </.live_component>
+  </div>
 </section>

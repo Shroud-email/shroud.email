@@ -847,14 +847,17 @@ defmodule ShroudWeb.McpTest do
     assert Repo.get!(Aliases.EmailAlias, untouched.id).enabled
 
     {:ok, wrong, _} =
-      build_conn() |> log_in_user(confirmed_user()) |> live("/settings/connections")
+      build_conn() |> log_in_user(confirmed_user()) |> live("/settings/security")
 
     assert has_element?(wrong, "#no-connections")
+    render_click(wrong, "confirm_disconnect", %{"id" => to_string(connection.id)})
+    refute has_element?(wrong, "#disconnect-app-dialog")
+    assert has_element?(wrong, "#notification-source [data-kind=error]")
     render_click(wrong, "revoke_connection", %{"id" => to_string(connection.id)})
     assert has_element?(wrong, "#notification-source [data-kind=error]")
     assert rpc(tokens.access_token, "tools/list") |> json_response(200)
 
-    {:ok, view, _} = build_conn() |> log_in_user(user) |> live("/settings/connections")
+    {:ok, view, _} = build_conn() |> log_in_user(user) |> live("/settings/security")
 
     assert has_element?(view, "#settings-nav-security[aria-current=page]")
     assert has_element?(view, "#revoke-#{connection.id}")
@@ -862,6 +865,25 @@ defmodule ShroudWeb.McpTest do
     assert has_element?(view, "#notification-source [data-kind=error]")
     assert rpc(tokens.access_token, "tools/list") |> json_response(200)
     view |> element("#revoke-#{connection.id}") |> render_click()
+    assert has_element?(view, "#disconnect-app-dialog[role=dialog][aria-modal=true]")
+    assert has_element?(view, "#disconnect-app-dialog-title", "Disconnect Test client?")
+    assert has_element?(view, "#disconnect-app-dialog [data-modal-dismiss]", "Cancel")
+
+    assert has_element?(
+             view,
+             "#disconnect-app-dialog p",
+             "This app will lose access immediately."
+           )
+
+    assert has_element?(view, "#disconnect-app-dialog svg")
+    assert rpc(tokens.access_token, "tools/list") |> json_response(200)
+    view |> element("#disconnect-app-dialog") |> render_hook("hide")
+    refute has_element?(view, "#disconnect-app-dialog")
+    assert has_element?(view, "#revoke-#{connection.id}")
+    assert rpc(tokens.access_token, "tools/list") |> json_response(200)
+    view |> element("#revoke-#{connection.id}") |> render_click()
+    view |> element("#confirm-disconnect") |> render_click()
+    refute has_element?(view, "#disconnect-app-dialog")
     refute has_element?(view, "#revoke-#{connection.id}")
     assert has_element?(view, "#notification-source [data-kind=info]")
     assert rpc(tokens.access_token, "tools/list") |> response(401)
@@ -876,12 +898,12 @@ defmodule ShroudWeb.McpTest do
     [remaining] = OAuth.list_connections(user)
     assert has_element?(view, "#revoke-#{remaining.id}")
     view |> element("#revoke-#{remaining.id}") |> render_click()
+    view |> element("#confirm-disconnect") |> render_click()
     assert has_element?(view, "#no-connections")
-    refute has_element?(view, "#connections section")
+    refute has_element?(view, "#connections > div")
     assert rpc(read_only.access_token, "tools/list") |> response(401)
 
-    view |> element("#back-to-security") |> render_click()
-    assert_patch(view, "/settings/security")
+    assert has_element?(view, "#update_password")
     assert has_element?(view, "#settings-nav-security[aria-current=page]")
   end
 

@@ -171,7 +171,6 @@ defmodule ShroudWeb.Router do
     live_session :authenticated, on_mount: ShroudWeb.UserLiveAuth do
       live("/settings/account", AccountSettingsLive, :account)
       live("/settings/security", SecuritySettingsLive, :security)
-      live("/settings/connections", SecuritySettingsLive, :connections)
       live("/settings/appearance", AppearanceSettingsLive, :appearance)
       live("/settings/billing", BillingSettingsLive, :billing)
       live("/settings/billing/lifetime", BillingSettingsLive, :lifetime)

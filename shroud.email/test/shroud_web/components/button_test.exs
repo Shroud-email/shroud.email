@@ -70,7 +70,7 @@ defmodule ShroudWeb.Components.ButtonTest do
     html =
       rendered_to_string(~H"""
       <.button id="billing" href="/checkout/billing" text="Billing" />
-      <.button id="connections" patch="/settings/connections" intent={:white} text="Connections" />
+      <.button id="connections" patch="/settings/security" intent={:white} text="Connections" />
       <.button id="aliases" navigate="/" text="Aliases" />
       """)
 
@@ -80,7 +80,7 @@ defmodule ShroudWeb.Components.ButtonTest do
     assert [_] =
              Floki.find(
                document,
-               "a#connections[href='/settings/connections'][data-phx-link=patch]"
+               "a#connections[href='/settings/security'][data-phx-link=patch]"
              )
 
     assert [_] = Floki.find(document, "a#aliases[href='/'][data-phx-link=redirect]")
@@ -93,7 +93,7 @@ defmodule ShroudWeb.Components.ButtonTest do
     html =
       rendered_to_string(~H"""
       <.button id="billing" href="/checkout/billing" disabled text="Billing" />
-      <.button id="connections" patch="/settings/connections" disabled text="Connections" />
+      <.button id="connections" patch="/settings/security" disabled text="Connections" />
       <.button id="aliases" navigate="/" disabled text="Aliases" />
       """)
 

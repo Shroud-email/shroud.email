@@ -13,8 +13,8 @@ defmodule ShroudWeb.OAuthRegressionTest do
     {params, _} = authorization_params(["aliases:read"])
 
     for {path, params, selector} <- [
-          {"/settings/security", %{}, "#manage-connections"},
-          {"/oauth/authorize", params, "header a[href='/settings/connections']"}
+          {"/settings/security", %{}, "#connected-apps"},
+          {"/oauth/authorize", params, "header a[href='/settings/security#connected-apps']"}
         ] do
       document =
         build_conn()
@@ -27,7 +27,7 @@ defmodule ShroudWeb.OAuthRegressionTest do
       assert links != []
     end
 
-    assert build_conn() |> log_in_user(user) |> get("/settings/connections") |> response(200)
+    assert build_conn() |> log_in_user(user) |> get("/settings/security") |> response(200)
   end
 
   test "the MCP flag gates MCP consent but not connection management", %{user: user} do
@@ -37,10 +37,10 @@ defmodule ShroudWeb.OAuthRegressionTest do
     conn = build_conn() |> log_in_user(user)
     assert conn |> get("/oauth/authorize", params) |> response(404)
     assert conn |> post("/oauth/authorize", %{}) |> response(404)
-    assert conn |> get("/settings/connections") |> response(200)
+    assert conn |> get("/settings/security") |> response(200)
 
     document = conn |> get("/settings/security") |> html_response(200) |> Floki.parse_document!()
-    assert Floki.find(document, "#manage-connections") != []
+    assert Floki.find(document, "#connected-apps") != []
   end
 
   test "callbacks append response fields without changing registered query bytes", %{user: user} do
@@ -97,7 +97,7 @@ defmodule ShroudWeb.OAuthRegressionTest do
         |> Accounts.User.theme_changeset(%{theme: theme})
         |> Repo.update!()
 
-      for {path, params} <- [{"/settings/connections", %{}}, {"/oauth/authorize", params}] do
+      for {path, params} <- [{"/settings/security", %{}}, {"/oauth/authorize", params}] do
         conn = build_conn() |> log_in_user(user) |> get(path, params)
         document = conn |> html_response(200) |> Floki.parse_document!()
         assert Floki.attribute(document, "meta[name=theme]", "content") == [to_string(theme)]

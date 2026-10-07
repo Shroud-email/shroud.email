@@ -152,25 +152,25 @@ defmodule ShroudWeb.SettingsLiveTest do
     refute has_element?(view, "#settings-info, #settings-error")
   end
 
-  test "connected apps navigation is independent of the MCP integration flag", %{
+  test "connected apps are independent of the MCP integration flag", %{
     conn: conn,
     user: user
   } do
     {:ok, view, _} = live(conn, ~p"/settings/security")
-    assert has_element?(view, "#manage-connections")
+    assert has_element?(view, "#connected-apps")
 
     FunWithFlags.enable(:chatgpt_integration, for_actor: user)
     {:ok, view, _} = live(conn, ~p"/settings/security")
-    assert has_element?(view, "#manage-connections")
+    assert has_element?(view, "#connected-apps")
 
     other_user = user_fixture()
     other_user = other_user |> User.confirm_changeset() |> Repo.update!()
     {:ok, view, _} = build_conn() |> log_in_user(other_user) |> live(~p"/settings/security")
-    assert has_element?(view, "#manage-connections")
+    assert has_element?(view, "#connected-apps")
 
     FunWithFlags.disable(:chatgpt_integration, for_actor: user)
     {:ok, view, _} = live(conn, ~p"/settings/security")
-    assert has_element?(view, "#manage-connections")
+    assert has_element?(view, "#connected-apps")
   end
 
   test "menu navigation mounts separate LiveViews and updates the active navigation", %{
@@ -199,23 +199,18 @@ defmodule ShroudWeb.SettingsLiveTest do
     end
   end
 
-  test "Connected apps patches within Security and keeps its menu item active", %{conn: conn} do
+  test "connected apps appear alongside the other security settings", %{conn: conn} do
     {:ok, view, _} = live(conn, ~p"/settings/security")
-    view |> element("#manage-connections") |> render_click()
-    assert_patch(view, ~p"/settings/connections")
     assert view.module == ShroudWeb.SecuritySettingsLive
-    assert has_element?(view, "#no-connections")
+    assert has_element?(view, "#connected-apps #no-connections", "No connected apps")
     assert has_element?(view, "#settings-nav-security[aria-current=page]")
-
-    view |> element("#back-to-security") |> render_click()
-    assert_patch(view, ~p"/settings/security")
     assert has_element?(view, "#update_password")
-    assert has_element?(view, "#settings-nav-security[aria-current=page]")
+    refute has_element?(view, "#manage-connections, #back-to-security")
   end
 
   test "settings require a confirmed, authenticated user", %{conn: conn} do
     for path <-
-          ~w(/settings/account /settings/security /settings/connections /settings/appearance /settings/billing /settings/billing/lifetime) do
+          ~w(/settings/account /settings/security /settings/appearance /settings/billing /settings/billing/lifetime) do
       assert {:error, {:redirect, %{to: "/users/log_in"}}} = live(build_conn(), path)
       unconfirmed = user_fixture()
 

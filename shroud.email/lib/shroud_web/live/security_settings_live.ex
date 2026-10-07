@@ -30,6 +30,7 @@ defmodule ShroudWeb.SecuritySettingsLive do
         passkey_pending: false,
         passkey_status: nil,
         passkey_error: false,
+        disconnect_connection: nil,
         connections_empty?: true
       )
       |> stream(:passkeys, [])
@@ -43,43 +44,41 @@ defmodule ShroudWeb.SecuritySettingsLive do
     user = Repo.reload!(socket.assigns.current_user)
 
     socket =
-      if socket.assigns.live_action == :security,
-        do: stream(socket, :passkeys, Accounts.list_passkeys(user), reset: true),
-        else: socket |> cancel_passkey() |> assign(:passkey_dialog, nil)
+      socket
+      |> assign(current_user: user, page_title: "Security settings")
+      |> stream(:passkeys, Accounts.list_passkeys(user), reset: true)
+      |> load_connections()
 
-    socket =
-      if socket.assigns.live_action == :connections,
-        do: load_connections(socket),
-        else: socket
-
-    titles = %{
-      security: "Security settings",
-      connections: "Connected apps"
-    }
-
-    {:noreply,
-     assign(socket,
-       current_user: user,
-       page_title: titles[socket.assigns.live_action],
-       totp_backup_codes:
-         if(socket.assigns.live_action == :security, do: socket.assigns.totp_backup_codes)
-     )}
+    {:noreply, socket}
   end
 
   @impl true
   def render(assigns) do
     ~H"""
-    <.security :if={@live_action == :security} {assigns} />
-    <.connections :if={@live_action == :connections} {assigns} />
+    <.security {assigns} />
     """
   end
 
   @impl true
+  def handle_event("confirm_disconnect", %{"id" => id}, socket) do
+    connection =
+      socket.assigns.current_user
+      |> OAuth.list_connections()
+      |> Enum.find(&(to_string(&1.id) == id))
+
+    if connection do
+      {:noreply, assign(socket, :disconnect_connection, connection)}
+    else
+      {:noreply, put_notification(socket, :error, "Connection not found.")}
+    end
+  end
+
   def handle_event("revoke_connection", %{"id" => id}, socket) do
     with {id, ""} <- Integer.parse(id),
          true <- OAuth.revoke(socket.assigns.current_user, id) do
       {:noreply,
        socket
+       |> assign(:disconnect_connection, nil)
        |> load_connections()
        |> put_notification(:info, "App disconnected.")}
     else
@@ -331,6 +330,10 @@ defmodule ShroudWeb.SecuritySettingsLive do
   end
 
   @impl true
+  def handle_info(:disconnect_dialog_closed, socket) do
+    {:noreply, assign(socket, :disconnect_connection, nil)}
+  end
+
   def handle_info(:passkey_dialog_closed, socket) do
     {:noreply,
      socket

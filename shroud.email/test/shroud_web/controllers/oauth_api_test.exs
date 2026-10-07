@@ -143,7 +143,7 @@ defmodule ShroudWeb.OAuthApiTest do
 
     refute html =~ "id=\"unverified-client\""
     assert html =~ "View your email address"
-    assert build_conn() |> log_in_user(user) |> get("/settings/connections") |> response(200)
+    assert build_conn() |> log_in_user(user) |> get("/settings/security") |> response(200)
 
     refresh = %{
       "grant_type" => "refresh_token",

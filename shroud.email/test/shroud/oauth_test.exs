@@ -444,7 +444,7 @@ defmodule Shroud.OAuthTest do
   end
 
   test "connection request errors are retained for Sentry" do
-    for path <- ["/mcp", "/oauth/token", "/oauth/authorize", "/settings/connections"] do
+    for path <- ["/mcp", "/oauth/token", "/oauth/authorize", "/settings/security"] do
       event =
         struct(Sentry.Event,
           request: %Sentry.Interfaces.Request{url: OAuth.issuer() <> path <> "?code=private"}

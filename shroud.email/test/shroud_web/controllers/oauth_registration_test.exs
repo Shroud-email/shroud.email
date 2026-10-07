@@ -28,7 +28,7 @@ defmodule ShroudWeb.OAuthRegistrationTest do
 
       document = Floki.parse_document!(html)
       assert Floki.text(Floki.find(document, "#unverified-client")) =~ callback
-      assert Floki.find(document, "header a[href='/settings/connections']") != []
+      assert Floki.find(document, "header a[href='/settings/security#connected-apps']") != []
 
       approval =
         document |> Floki.find("input[name=approval]") |> Floki.attribute("value") |> hd()
@@ -55,8 +55,8 @@ defmodule ShroudWeb.OAuthRegistrationTest do
 
       tokens = build_conn() |> post("/oauth/token", exchange) |> json_response(200)
       assert [%{client_name: "Independent agent"}] = OAuth.list_connections(user)
-      {:ok, view, _html} = build_conn() |> log_in_user(user) |> live("/settings/connections")
-      assert has_element?(view, "#connections h2", "Independent agent")
+      {:ok, view, _html} = build_conn() |> log_in_user(user) |> live("/settings/security")
+      assert has_element?(view, "#connections h4", "Independent agent")
 
       initialized =
         build_conn()
