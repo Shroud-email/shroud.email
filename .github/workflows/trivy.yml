@@ -27,6 +27,7 @@ jobs:
         with:
           scan-type: 'fs'
           scan-ref: '.'
+          trivyignores: '.trivyignore.yaml'
           # Temporary migration exception for imported dependency vulnerabilities.
           # Remove after website and Caddy dependency upgrades; keep app scanning enabled.
           skip-files: 'website/pnpm-lock.yaml,caddy-permissive-file-storage/go.mod'
@@ -57,6 +58,7 @@ jobs:
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: ghcr.io/shroud-email/shroud.email:edge
+          trivyignores: '.trivyignore.yaml'
           format: 'sarif'
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH,MEDIUM'
