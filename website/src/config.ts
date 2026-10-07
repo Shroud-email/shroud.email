@@ -8,9 +8,12 @@ export const SITE = {
 export const OPEN_GRAPH = {
   locale: "en_US",
   image: {
-    src: "/img/opengraph.png?v=1",
+    src: "/img/opengraph.jpg",
+    width: 1200,
+    height: 630,
+    type: "image/jpeg",
     alt:
-      "shroud.email logo against a foggy background" +
-      " with the tagline 'email, meet privacy'.",
+      "Shroud.email: Hide your email. Block trackers. " +
+      "Illustration of email aliases with trackers blocked.",
   },
 };

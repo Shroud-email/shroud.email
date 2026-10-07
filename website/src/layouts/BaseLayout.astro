@@ -49,6 +49,8 @@ const imageAlt = OPEN_GRAPH.image.alt;
 
         <link rel="canonical" href={canonicalURL} />
 
+        <meta name="robots" content="max-image-preview:large" />
+
         <SEO
             title={title}
             description={description ?? SITE.description}
@@ -59,7 +61,13 @@ const imageAlt = OPEN_GRAPH.image.alt;
                     image: canonicalImageSrc,
                     url: canonicalURL.toString(),
                 },
-                image: { url: canonicalImageSrc, alt: imageAlt },
+                image: {
+                    url: canonicalImageSrc,
+                    alt: imageAlt,
+                    width: OPEN_GRAPH.image.width,
+                    height: OPEN_GRAPH.image.height,
+                    type: OPEN_GRAPH.image.type,
+                },
                 optional: {
                     siteName: SITE.title,
                     locale: OPEN_GRAPH.locale,
