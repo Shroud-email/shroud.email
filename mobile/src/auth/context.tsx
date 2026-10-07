@@ -26,24 +26,15 @@ import {
 
 const iosVersion = String(Platform.Version).split(".").map(Number);
 export const unsupported =
-  Platform.OS === "web"
-    ? "Native sign-in is not supported in this web preview."
-    : Platform.OS === "ios" &&
-        (iosVersion[0] < 17 ||
-          (iosVersion[0] === 17 && (iosVersion[1] ?? 0) < 4))
-      ? "Secure HTTPS sign-in requires iOS 17.4 or later."
-      : null;
+  Platform.OS === "ios" &&
+  (iosVersion[0] < 17 || (iosVersion[0] === 17 && (iosVersion[1] ?? 0) < 4))
+    ? "Secure HTTPS sign-in requires iOS 17.4 or later."
+    : null;
 const service = new AuthService(
   {
-    get: (key) =>
-      Platform.OS === "web"
-        ? Promise.resolve(null)
-        : SecureStore.getItemAsync(key),
+    get: (key) => SecureStore.getItemAsync(key),
     set: (key, value) => SecureStore.setItemAsync(key, value),
-    remove: (key) =>
-      Platform.OS === "web"
-        ? Promise.resolve()
-        : SecureStore.deleteItemAsync(key),
+    remove: (key) => SecureStore.deleteItemAsync(key),
   },
   clientId,
 );

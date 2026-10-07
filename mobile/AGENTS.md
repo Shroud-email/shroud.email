@@ -9,10 +9,11 @@
   `EXPO_UNSTABLE_MCP_SERVER=1 npx expo start`. Local MCP capabilities require
   `expo-mcp` and Expo CLI authentication with the same account as the MCP connection.
   Reconnect the Expo MCP connection after starting or stopping the dev server.
-- Verify changes with `npx tsc --noEmit`, `npm run lint`, and `npx expo-doctor`.
-  Use `npx expo export --platform all` to check bundling for iOS, Android, and web.
-- The browser preview is not a substitute for native device testing. Local iOS
-  simulator development requires macOS and Xcode.
+- Verify changes with `npm run typecheck`, `npm run lint`, and `npx expo-doctor`.
+  Use `npx expo export --platform all` to check bundling for the configured iOS
+  and Android targets. Web is not supported.
+- Native device testing is required for OS integrations. Local iOS simulator
+  development requires macOS and Xcode.
 
 ## Imported Expo template notice
 

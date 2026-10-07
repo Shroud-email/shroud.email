@@ -1,0 +1,37 @@
+vulnerabilities:
+  - id: CVE-2026-43969
+    statement: >-
+      cowlib has no patched release. Its client-side Cookie encoder is not
+      used: this app uses Cowboy as a server and HTTPoison/hackney for outbound
+      HTTP, with no gun dependency. Remove when a patched cowlib is available.
+
+  - id: CVE-2026-93687
+    paths:
+      - mobile/package-lock.json
+    expired_at: 2026-11-07
+    statement: >-
+      braces has no patched release. The affected recursive glob compiler is
+      used by Jest with repository-controlled patterns, not remote app inputs.
+      Reassess when a patched braces or compatible Jest dependency is available.
+
+  - id: CVE-2026-85393
+    paths:
+      - mobile/package-lock.json
+    expired_at: 2026-11-07
+    statement: >-
+      node-forge has no patched release. It is used by Expo CLI certificate
+      tooling, not the native app. The app has no configured update-signing
+      certificate. The vulnerable verification requires attacker-supplied
+      signatures and a susceptible low-exponent RSA key. Reassess before
+      enabling update signing or accepting untrusted certificates or CSRs.
+
+  - id: CVE-2026-45822
+    paths:
+      - mobile/package-lock.json
+    expired_at: 2026-11-07
+    statement: >-
+      Accepted temporary risk: malformed deep-link query data can cause
+      excessive synchronous decoding in Expo Router's query-string dependency.
+      The patched decode-uri-component 0.5.0 is ESM and is not a drop-in
+      replacement for query-string 7's CommonJS callable import. Remove when
+      Expo Router provides a compatible fix, or apply a tested backport.

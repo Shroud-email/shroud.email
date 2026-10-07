@@ -18,9 +18,9 @@ The app connects to the hosted server; instance selection is not supported.
 
 Use an installed native build with the existing `email.shroud.app` identity and
 verified HTTPS links (including the server's Apple/Android association files).
-Expo Go and the web preview are not native universal-link verification. Web
-sign-in is intentionally disabled and stores no credentials. iOS requires 17.4+
-for secure HTTPS auth-session callbacks; older iOS is explicitly unsupported.
+Expo Go does not verify native universal links. The app targets iOS and Android
+only. iOS requires 17.4+ for secure HTTPS auth-session callbacks; older iOS is
+explicitly unsupported.
 
 Tokens and ten-minute pending PKCE transactions use native SecureStore. Account
 identity is fetched on launch, return to foreground, and every minute. Refreshes
@@ -41,17 +41,16 @@ npm run android
 npm run ios
 ```
 
-## Web
-
-```sh
-npm run web
-```
-
 ## Verification
+
+`npm test` runs the Node script tests and React Native Testing Library integration
+tests. The integration tests render the home screen with its auth provider and
+real React hooks. Native APIs and network requests use test doubles; these tests
+do not replace native device testing.
 
 ```sh
 npm test
-npx tsc --noEmit
+npm run typecheck
 npm run lint
 npx expo-doctor
 npx expo export --platform all
