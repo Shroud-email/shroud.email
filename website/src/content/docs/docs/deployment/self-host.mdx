@@ -67,13 +67,13 @@ Now, look in the directory `./example.com/dns`. This file shows the TXT DNS reco
 
 We're getting there! [DMARC](https://en.wikipedia.org/wiki/DMARC) builds on top of SPF and DKIM to tell recipients how to verify that emails really came from you.
 
-Add the following TXT record for `_dmarc.example.com`, replace `admin@example.com` with your own email address:
+Add the following TXT record for `_dmarc.example.com`. Replace `dmarc@example.com` with a monitored mailbox or a DMARC reporting service; we recommend [Postmark](https://dmarc.postmarkapp.com/).
 
 ```
-v=DMARC1; p=none; ruf=mailto:admin@example.com
+v=DMARC1; p=none; rua=mailto:dmarc@example.com
 ```
 
-This tells recipients to send a message to you if there are any DMARC errors.
+The `p=none` policy requests monitoring without quarantine or rejection. The `rua` tag requests aggregate reports about SPF, DKIM, and DMARC results, including both passing and failing messages.
 
 ## Run the app
 
@@ -121,11 +121,10 @@ You only need to run this manually once; going forward it will run automatically
 
 ### Step 4: Harden DMARC
 
-Now you're up and running, see if you receive any DMARC reports on the email you specified earlier.
-If not, you can tighten your configuration by updating your DMARC TXT record to the following (again, replacing `admin@example.com` with your own email address):
+Once legitimate mail authenticates reliably, you can consider requesting quarantine for messages that fail DMARC. Keep your aggregate reporting destination so you can monitor the effect:
 
 ```
-v=DMARC1; p=quarantine; aspf=s; adkim=s; ruf=mailto:admin@example.com
+v=DMARC1; p=quarantine; rua=mailto:dmarc@example.com
 ```
 
 ## Test your setup

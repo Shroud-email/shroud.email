@@ -53,7 +53,12 @@ With SPF:
 
 With DMARC:
 
-_dmarc  TXT "v=DMARC1; p=reject; adkim=s; aspf=r; rua=mailto:dmarc-feedback@${DOMAIN}; ruf=mailto:dmarc-feedback@${DOMAIN}; pct=100"
+_dmarc  TXT "v=DMARC1; p=none; rua=mailto:dmarc-feedback@${DOMAIN}"
+
+Use a monitored reporting mailbox. Review aggregate reports and test legitimate
+sending paths before choosing a stricter policy. Missing reports do not prove
+that authentication succeeds. Failure reports requested with ruf are optional
+and can expose private message content.
 
 For more information about DKIM and SPF policy,
 the documentation within each plugin contains a longer discussion and links to more detailed information:
