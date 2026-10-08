@@ -485,6 +485,12 @@ defmodule Shroud.Accounts do
     user.email_branding or not email_preferences_enabled?(user)
   end
 
+  def update_user_unsubscribe_behavior(user, attrs) do
+    user
+    |> User.unsubscribe_changeset(attrs)
+    |> Repo.update()
+  end
+
   def update_paddle_details!(user, attrs \\ %{}) do
     user
     |> User.paddle_changeset(attrs)

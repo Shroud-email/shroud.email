@@ -15,7 +15,8 @@ defmodule Shroud.Email.IncomingEmailHandler do
     ImageFetcher,
     TrackerRemover,
     Enricher,
-    ReplyAddress
+    ReplyAddress,
+    Unsubscribe
   }
 
   import Shroud.Accounts.Logging, only: [maybe_log: 2, store_email: 3]
@@ -166,7 +167,9 @@ defmodule Shroud.Email.IncomingEmailHandler do
       store_email(sender, recipient, data)
     end
 
-    parsed_email = ParsedEmail.parse(Mailex.parse!(data), sender, recipient)
+    message = Mailex.parse!(data)
+    parsed_email = ParsedEmail.parse(message, sender, recipient)
+    email_alias = Aliases.get_email_alias_by_address!(recipient)
 
     processed = TrackerRemover.process(parsed_email)
 
@@ -178,6 +181,7 @@ defmodule Shroud.Email.IncomingEmailHandler do
       # Now our pipeline is done, we just want our Swoosh email
       |> Map.get(:swoosh_email)
       |> fix_incoming_sender_and_recipient(user, sender, recipient)
+      |> Unsubscribe.add_headers(user, email_alias, sender, message)
       |> Mailer.deliver()
 
     case deliver_result do

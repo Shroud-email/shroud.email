@@ -36,7 +36,8 @@ config :shroud, :mailer,
 
 config :shroud,
   app_domain: "app.shroud.test",
-  email_domain: "email.shroud.test"
+  email_domain: "email.shroud.test",
+  unsubscribe_attestation_secret: "test unsubscribe attestation secret"
 
 # We don't run a server during test. If one is required,
 # you can enable the server option below.

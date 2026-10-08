@@ -17,6 +17,7 @@ defmodule ShroudWeb.AccountSettingsLive do
        current_user: user,
        page_title: "Account settings",
        email_form: to_form(Accounts.change_user_email(user)),
+       unsubscribe_form: to_form(User.unsubscribe_changeset(user, %{})),
        email_preferences_enabled?: Accounts.email_preferences_enabled?(user),
        email_preferences_form: to_form(User.email_preferences_changeset(user, %{}))
      ), layout: {ShroudWeb.Layouts, :settings}}
@@ -75,6 +76,24 @@ defmodule ShroudWeb.AccountSettingsLive do
 
       {:error, changeset} ->
         {:noreply, assign(socket, :email_preferences_form, to_form(changeset))}
+    end
+  end
+
+  def handle_event("update_unsubscribe", %{"user" => params}, socket) do
+    user = Repo.reload!(socket.assigns.current_user)
+
+    case Accounts.update_user_unsubscribe_behavior(user, params) do
+      {:ok, user} ->
+        {:noreply,
+         socket
+         |> assign(
+           current_user: user,
+           unsubscribe_form: to_form(User.unsubscribe_changeset(user, %{}))
+         )
+         |> put_notification(:info, "Unsubscribe preference updated.")}
+
+      {:error, changeset} ->
+        {:noreply, assign(socket, :unsubscribe_form, to_form(changeset))}
     end
   end
 end

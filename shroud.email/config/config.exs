@@ -63,6 +63,7 @@ config :shroud, Shroud.Scheduler,
     # Daily at midnight
     {"@daily", {Shroud.Scheduler, :update_trackers, []}},
     {"@daily", {Shroud.OAuth, :prune, []}},
+    {"@daily", {Shroud.Email.Unsubscribe, :prune_relays, []}},
     {"@hourly", {Shroud.Scheduler, :delete_spam_emails, []}},
     {"@hourly", {Shroud.Scheduler, :verify_custom_domains, []}}
   ]

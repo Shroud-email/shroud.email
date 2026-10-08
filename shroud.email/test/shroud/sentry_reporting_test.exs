@@ -5,6 +5,17 @@ defmodule Shroud.SentryReportingTest do
 
   @endpoint ShroudWeb.Endpoint
 
+  test "unsubscribe capabilities are redacted from error report URLs" do
+    for {url, expected} <- [
+          {"https://app.example.com/unsubscribe/private-capability",
+           "https://app.example.com/unsubscribe/:token"},
+          {"https://app.example.com/settings/account", "https://app.example.com/settings/account"}
+        ] do
+      event = Sentry.Event.create_event(message: "unexpected", request: %{url: url})
+      assert Shroud.ErrorReporter.before_send(event).request.url == expected
+    end
+  end
+
   test "a tokenless login POST is rejected without creating a Sentry event" do
     Sentry.Test.setup_sentry()
 

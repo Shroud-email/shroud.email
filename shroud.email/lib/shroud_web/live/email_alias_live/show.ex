@@ -494,7 +494,7 @@ defmodule ShroudWeb.EmailAliasLive.Show do
             |> put_notification(:info, "Unblocked #{sender}.")
             |> update_email_alias()
 
-          :error ->
+          {:error, _reason} ->
             put_notification(socket, :error, "Something went wrong.")
         end
       else
@@ -519,11 +519,14 @@ defmodule ShroudWeb.EmailAliasLive.Show do
             |> put_notification(:success, "Blocked #{sender}.")
             |> update_email_alias()
 
-          {:error, changeset} ->
+          {:error, %Ecto.Changeset{} = changeset} ->
             {error, _} = Keyword.get(changeset.errors, :blocked_addresses)
 
             socket
             |> assign(:blocked_sender_error, error)
+
+          {:error, _reason} ->
+            put_notification(socket, :error, "Something went wrong.")
         end
       else
         socket |> put_notification(:error, "You don't have permission to do that.")

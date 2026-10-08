@@ -219,6 +219,8 @@ if config_env() == :prod do
   smtp_password =
     System.get_env("SMTP_PASSWORD") || raise "environment variable SMTP_PASSWORD is missing"
 
+  config :shroud, :unsubscribe_attestation_secret, smtp_password
+
   smtp_relay = System.get_env("SMTP_RELAY") || "localhost"
 
   smtp_port = String.to_integer(System.get_env("SMTP_PORT") || "25")

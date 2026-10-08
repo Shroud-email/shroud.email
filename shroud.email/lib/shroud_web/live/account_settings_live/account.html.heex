@@ -30,6 +30,60 @@
   </div>
 </.form>
 
+<.form for={@unsubscribe_form} phx-submit="update_unsubscribe" id="unsubscribe-form" class="mt-6">
+  <div class="shadow-sm dark:shadow-gray-900/50 sm:rounded-md sm:overflow-hidden">
+    <div class="bg-white dark:bg-gray-800 py-6 px-4 space-y-6 sm:p-6">
+      <div>
+        <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100">
+          Unsubscribe
+        </h3>
+        <p id="unsubscribe-description" class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          Choose what your email app’s unsubscribe button does. Blocking stops that sender only for the receiving alias. Disabling an alias stops all mail to it.
+        </p>
+      </div>
+      <div>
+        <label
+          for="user_unsubscribe_behavior"
+          class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+        >
+          Unsubscribe behavior
+        </label>
+        <select
+          id="user_unsubscribe_behavior"
+          name={@unsubscribe_form[:unsubscribe_behavior].name}
+          aria-describedby="unsubscribe-description unsubscribe-fallback-description"
+          class="mt-1 block w-full border border-gray-300 rounded-md shadow-xs py-2 px-3 focus:outline-hidden focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+        >
+          {Phoenix.HTML.Form.options_for_select(
+            [
+              {"Forward, otherwise block sender", "forward_then_block"},
+              {"Forward, otherwise disable alias", "forward_then_disable"},
+              {"Always block sender", "always_block"},
+              {"Always disable alias", "always_disable"}
+            ],
+            @unsubscribe_form[:unsubscribe_behavior].value
+          )}
+        </select>
+        <p
+          id="unsubscribe-fallback-description"
+          class="mt-2 text-sm text-gray-500 dark:text-gray-400"
+        >
+          Forward preserves the sender’s unsubscribe links when verified and usable. The fallback applies when no usable link is available, not if the sender’s website fails.
+        </p>
+        <span
+          :for={error <- @unsubscribe_form[:unsubscribe_behavior].errors}
+          class="invalid-feedback"
+        >
+          {translate_error(error)}
+        </span>
+      </div>
+    </div>
+    <div class="px-4 py-3 bg-gray-50 dark:bg-gray-700 text-right sm:px-6">
+      <.button type="submit" phx-disable-with="Saving…" text="Save preference" />
+    </div>
+  </div>
+</.form>
+
 <.form
   :if={@email_preferences_enabled?}
   for={@email_preferences_form}
