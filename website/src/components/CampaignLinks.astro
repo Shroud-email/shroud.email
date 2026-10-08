@@ -11,27 +11,60 @@
     "utm_marketing_tactic",
   ];
 
-  function campaignLink(href: string, pageUrl: string | URL): string {
-    const page = new URL(pageUrl);
+  const cookieName = "shroud_campaign";
+  const page = new URL(window.location.href);
+  let campaign = new URLSearchParams();
+
+  try {
+    const cookie = document.cookie
+      .split("; ")
+      .find((value) => value.startsWith(`${cookieName}=`));
+    if (cookie) {
+      campaign = new URLSearchParams(
+        decodeURIComponent(cookie.slice(cookieName.length + 1)),
+      );
+    }
+  } catch {
+    // An unreadable cookie must not prevent links from working.
+  }
+
+  function campaignParams(params: URLSearchParams): URLSearchParams {
+    const result = new URLSearchParams();
+    for (const key of keys) {
+      const value = params.get(key);
+      if (value && value.length <= 200) {
+        result.set(key, value);
+        // Keep the encoded cookie below browser cookie-size limits.
+        if (encodeURIComponent(result.toString()).length > 3000) result.delete(key);
+      }
+    }
+    return result;
+  }
+
+  campaign = campaignParams(campaign);
+  if (!campaign.size) {
+    campaign = campaignParams(page.searchParams);
+    if (campaign.size) {
+      const domain = page.hostname === "shroud.email"
+        ? "; Domain=shroud.email"
+        : "";
+      const secure = page.protocol === "https:" ? "; Secure" : "";
+      document.cookie = `${cookieName}=${encodeURIComponent(campaign.toString())}; Max-Age=604800; Path=/; SameSite=Lax${domain}${secure}`;
+    }
+  }
+
+  function campaignLink(href: string): string {
     let target: URL;
     try {
       target = new URL(href, page);
     } catch {
       return href;
     }
-    if (
-      href.startsWith("#") ||
-      !["https:", "http:"].includes(target.protocol) ||
-      !(
-        target.origin === page.origin ||
-        target.origin === "https://app.shroud.email"
-      )
-    ) return href;
+    if (target.origin !== "https://app.shroud.email") return href;
 
     let changed = false;
-    for (const key of keys) {
-      const value = page.searchParams.get(key);
-      if (value !== null && !target.searchParams.has(key)) {
+    for (const [key, value] of campaign) {
+      if (!target.searchParams.has(key)) {
         target.searchParams.set(key, value);
         changed = true;
       }
@@ -42,7 +75,7 @@
   function update() {
     for (const link of document.querySelectorAll<HTMLAnchorElement>("a[href]:not([download])")) {
       const href = link.getAttribute("href")!;
-      const decorated = campaignLink(href, window.location.href);
+      const decorated = campaignLink(href);
       if (decorated !== href) link.setAttribute("href", decorated);
     }
   }

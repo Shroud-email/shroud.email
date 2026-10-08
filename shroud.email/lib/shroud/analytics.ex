@@ -23,8 +23,9 @@ defmodule Shroud.Analytics do
     })
   end
 
-  def email_forwarded(user_id), do: capture(user_id, "email_forwarded", %{})
-  def outgoing_email_sent(user_id), do: capture(user_id, "outgoing_email_sent", %{})
+  def email_forwarded(user_id, true), do: capture(user_id, "email_forwarded", %{})
+  def email_forwarded(_user_id, false), do: capture(nil, "email_forwarded", %{})
+  def outgoing_email_sent, do: capture(nil, "outgoing_email_sent", %{})
 
   def signup(user_id, path) do
     # OpenPanel extracts properties.__query from __path during ingestion.
@@ -37,11 +38,15 @@ defmodule Shroud.Analytics do
   def identify(user_id), do: send_event("identify", %{profileId: profile_id(user_id)})
 
   defp capture(user_id, name, properties, occurred_at \\ DateTime.utc_now()) do
-    send_event("track", %{
+    payload = %{
       name: name,
-      profileId: profile_id(user_id),
       properties: Map.put(properties, :__timestamp, DateTime.to_iso8601(occurred_at))
-    })
+    }
+
+    payload =
+      if is_nil(user_id), do: payload, else: Map.put(payload, :profileId, profile_id(user_id))
+
+    send_event("track", payload)
   end
 
   defp send_event(type, payload) do

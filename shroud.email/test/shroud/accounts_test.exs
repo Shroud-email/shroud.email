@@ -7,6 +7,23 @@ defmodule Shroud.AccountsTest do
   import Shroud.{AccountsFixtures, AliasesFixtures}
   alias Shroud.Accounts.{LoopsJob, User, UserToken}
 
+  test "the first-forward claim is per user, durable, and rolls back with its transaction" do
+    user = user_fixture()
+    other = user_fixture()
+
+    assert {:error, :failed_forward_recording} =
+             Repo.transaction(fn ->
+               assert Accounts.record_email_forwarded(user.id)
+               Repo.rollback(:failed_forward_recording)
+             end)
+
+    refute Repo.reload!(user).has_forwarded_email
+    assert Accounts.record_email_forwarded(user.id)
+    assert Repo.reload!(user).has_forwarded_email
+    refute Accounts.record_email_forwarded(user.id)
+    assert Accounts.record_email_forwarded(other.id)
+  end
+
   describe "update_user_email_preferences/2" do
     test "the feature defaults off and cannot be changed by unflagged users" do
       user = user_fixture()
