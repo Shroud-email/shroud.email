@@ -188,20 +188,16 @@ defmodule Shroud.Email.IncomingEmailHandler do
         # forwarded, so that retrying a failed Oban job can't inflate the counts.
         # Both counters live in one transaction so they can't diverge from each
         # other if one write fails.
-        Repo.transaction(fn ->
-          first_forward? = Accounts.record_email_forwarded(user.id)
-          Aliases.increment_forwarded!(email_alias)
-          Email.record_blocked_domains(ParsedEmail.blocked_domains(processed))
-          ImageFetcher.enqueue(parsed_email)
-          first_forward?
-        end)
-        |> case do
-          {:ok, first_forward?} ->
-            Shroud.Analytics.email_forwarded(user.id, first_forward?)
+        {:ok, first_forward?} =
+          Repo.transaction(fn ->
+            first_forward? = Accounts.record_email_forwarded(user.id)
+            Aliases.increment_forwarded!(email_alias)
+            Email.record_blocked_domains(ParsedEmail.blocked_domains(processed))
+            ImageFetcher.enqueue(parsed_email)
+            first_forward?
+          end)
 
-          {:error, _reason} = error ->
-            error
-        end
+        Shroud.Analytics.email_forwarded(user.id, first_forward?)
 
       {:error, {_code, %{"error" => error}}} ->
         Logger.error("Failed to forward email from #{sender} to #{user.email}: #{inspect(error)}")
