@@ -131,13 +131,13 @@ const questions = shallowRef([
                                 >
                                     <a
                                         href="https://app.shroud.email/users/register"
-                                        class="inline-flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-white bg-slate-900 hover:bg-slate-950 dark:bg-indigo-500 dark:hover:bg-indigo-400"
+                                        class="button-feedback inline-flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-white bg-slate-900 hover:bg-slate-950 dark:bg-indigo-500 dark:hover:bg-indigo-400"
                                     >
                                         Start free
                                     </a>
                                     <a
                                         href="https://app.shroud.email/settings/billing"
-                                        class="inline-flex items-center justify-center px-5 py-3 border border-slate-300 dark:border-slate-700 text-base font-medium rounded-md text-slate-900 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800"
+                                        class="button-feedback inline-flex items-center justify-center px-5 py-3 border border-slate-300 dark:border-slate-700 text-base font-medium rounded-md text-slate-900 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800"
                                     >
                                         Upgrade to paid
                                     </a>

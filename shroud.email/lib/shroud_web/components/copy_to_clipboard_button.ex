@@ -12,11 +12,21 @@ defmodule ShroudWeb.Components.CopyToClipboardButton do
         id={@id}
         phx-hook="CopyToClipboard"
         intent={:text}
+        class="copy-feedback-button"
         aria-label={"Copy #{@text} to clipboard"}
         size={:compact}
         data-clipboard-text={@text}
       >
-        <.icon name={:clipboard_document} class="h-4 w-4" />
+        <span
+          id={@id <> "-feedback"}
+          phx-update="ignore"
+          data-copy-feedback
+          class="copy-feedback relative inline-flex h-4 w-4 overflow-hidden"
+        >
+          <.icon name={:clipboard_document} class="copy-feedback-clipboard h-4 w-4" />
+          <.icon name={:check} class="copy-feedback-check absolute inset-0 h-4 w-4" />
+          <span data-copy-status class="sr-only" role="status" aria-atomic="true"></span>
+        </span>
       </.button>
     </div>
     """

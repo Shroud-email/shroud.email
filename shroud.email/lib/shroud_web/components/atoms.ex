@@ -47,7 +47,7 @@ defmodule ShroudWeb.Components.Atoms do
         :base_class,
         if(assigns.intent != :unstyled,
           do:
-            "inline-flex items-center justify-center border text-sm font-medium focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-900"
+            "button-feedback inline-flex items-center justify-center border text-sm font-medium focus:outline-hidden focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500 dark:focus-visible:ring-offset-gray-900"
         )
       )
 
@@ -59,6 +59,7 @@ defmodule ShroudWeb.Components.Atoms do
       patch={@patch}
       class={[
         @base_class,
+        @intent != :unstyled && "button-feedback-press",
         @intent not in [:text, :danger_text, :unstyled] && "shadow-xs",
         @button_class,
         @padding,
@@ -81,6 +82,7 @@ defmodule ShroudWeb.Components.Atoms do
       disabled={@disabled}
       class={[
         @base_class,
+        @intent != :unstyled && "button-feedback-press",
         "disabled:opacity-50 disabled:cursor-not-allowed",
         @intent not in [:text, :danger_text, :unstyled] && "shadow-xs",
         @button_class,

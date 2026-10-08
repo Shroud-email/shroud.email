@@ -7,3 +7,10 @@ services:
       title: Shroud.email
       description: Sign in with test@test.com / 123456789012
     agent: control
+  website:
+    command: cd website && mise exec -- pnpm dev --host 0.0.0.0 --port 4321
+    port: 4321
+    health: /
+    portal:
+      title: Shroud.email website
+    agent: control

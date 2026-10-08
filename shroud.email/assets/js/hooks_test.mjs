@@ -7,6 +7,9 @@ function fixture(writeText) {
   const listeners = {};
   const element = {
     dataset: { clipboardText: "hello@example.com" },
+    querySelector() {
+      return null;
+    },
     addEventListener(name, listener) {
       listeners[name] = listener;
     },

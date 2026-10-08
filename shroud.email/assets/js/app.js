@@ -23,7 +23,7 @@ import { LiveSocket } from "phoenix_live_view";
 import topbar from "../vendor/topbar";
 import "../vendor/components";
 import "@cap.js/widget";
-import { CopyToClipboard, Modal } from "./hooks";
+import { AliasDetailsForm, CopyToClipboard, Modal } from "./hooks";
 import {
   LiveToast,
   NotificationSource,
@@ -77,6 +77,7 @@ let csrfToken = document
   ?.getAttribute("content");
 let liveSocket = new LiveSocket("/live", Socket, {
   hooks: {
+    AliasDetailsForm,
     CopyToClipboard,
     Modal,
     LiveToast,
