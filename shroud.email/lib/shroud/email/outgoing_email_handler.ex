@@ -60,7 +60,7 @@ defmodule Shroud.Email.OutgoingEmailHandler do
          |> fix_outgoing_sender_and_recipient(recipient, sender_user)
          |> Mailer.deliver() do
       {:ok, _id} ->
-        Shroud.Analytics.outgoing_email_sent(sender_user.id)
+        Shroud.Analytics.outgoing_email_sent()
         {_recipient_address, email_alias} = ReplyAddress.from_reply_address(recipient)
         email_alias = Aliases.get_email_alias_by_address!(email_alias)
         Aliases.increment_replied!(email_alias)

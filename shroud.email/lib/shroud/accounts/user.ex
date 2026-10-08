@@ -29,6 +29,7 @@ defmodule Shroud.Accounts.User do
     field :paddle_checkout_price_id, :string
     field :last_paddle_event_at, :naive_datetime_usec
     field :paid_converted_at, :utc_datetime_usec
+    field :has_forwarded_email, :boolean, default: false
     field :plan_expires_at, :naive_datetime
     field :status, Ecto.Enum, values: [:lead, :active, :inactive, :lifetime, :free]
     field :theme, Ecto.Enum, values: [:system, :light, :dark], default: :system

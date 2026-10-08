@@ -83,14 +83,22 @@ defmodule Shroud.AnalyticsTest do
       assert {:ok, _, _} = DateTime.from_iso8601(payload["properties"]["__timestamp"])
     end
 
-    for {name, call} <- [
-          {"email_forwarded", fn -> Analytics.email_forwarded(42) end},
-          {"outgoing_email_sent", fn -> Analytics.outgoing_email_sent(42) end}
+    for {name, user_id, call} <- [
+          {"email_forwarded", 42, fn -> Analytics.email_forwarded(42, true) end},
+          {"email_forwarded", nil, fn -> Analytics.email_forwarded(42, false) end},
+          {"outgoing_email_sent", nil, fn -> Analytics.outgoing_email_sent() end}
         ] do
       assert :ok = call.()
       assert_receive {:payload, %{"type" => "track", "payload" => payload}}, 2_000
       assert payload["name"] == name
-      assert payload["profileId"] == Analytics.profile_id(42)
+
+      if user_id do
+        assert payload["profileId"] == Analytics.profile_id(user_id)
+      else
+        refute Map.has_key?(payload, "profileId")
+        assert Enum.sort(Map.keys(payload)) == ["name", "properties"]
+      end
+
       assert Map.keys(payload["properties"]) == ["__timestamp"]
     end
   end
@@ -145,7 +153,7 @@ defmodule Shroud.AnalyticsTest do
 
     for overrides <- [[enabled: false], [client_secret: nil], [client_secret: ""]] do
       Application.put_env(:shroud, :openpanel, Keyword.merge(config, overrides))
-      assert :ok = Analytics.email_forwarded(42)
+      assert :ok = Analytics.email_forwarded(42, true)
       assert Task.Supervisor.children(Shroud.Analytics.Tasks) == []
     end
   end
@@ -159,7 +167,7 @@ defmodule Shroud.AnalyticsTest do
       receive do: (:release -> Plug.Conn.resp(conn, 503, "unavailable"))
     end)
 
-    assert :ok = Analytics.email_forwarded(42)
+    assert :ok = Analytics.email_forwarded(42, true)
     assert_receive {:request_waiting, handler}, 2_000
     [task] = Task.Supervisor.children(Shroud.Analytics.Tasks)
     ref = Process.monitor(task)

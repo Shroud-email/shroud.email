@@ -20,6 +20,15 @@ defmodule Shroud.Accounts do
 
   require Logger
 
+  @doc "Records a successful forward atomically and returns whether it is the user's first."
+  def record_email_forwarded(user_id) do
+    {updated, _} =
+      from(user in User, where: user.id == ^user_id and not user.has_forwarded_email)
+      |> Repo.update_all(set: [has_forwarded_email: true])
+
+    updated == 1
+  end
+
   ## Database getters
 
   @doc """

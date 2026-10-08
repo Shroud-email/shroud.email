@@ -1616,6 +1616,67 @@ defmodule Shroud.Email.EmailHandlerTest do
       assert Aliases.get_email_alias_by_address!(email_alias.address).forwarded == 1
     end
 
+    test "only the first successful forward across a user's aliases includes their profile", %{
+      user: user,
+      email_alias: email_alias
+    } do
+      other_alias = alias_fixture(%{user_id: user.id})
+      previous = Application.get_env(:shroud, :openpanel)
+      bypass = Bypass.open()
+      owner = self()
+
+      Application.put_env(:shroud, :openpanel,
+        enabled: true,
+        client_id: "test-client",
+        client_secret: "test-secret",
+        api_url: "http://localhost:#{bypass.port}/api"
+      )
+
+      on_exit(fn ->
+        for task <- Task.Supervisor.children(Shroud.Analytics.Tasks) do
+          ref = Process.monitor(task)
+          assert_receive {:DOWN, ^ref, :process, ^task, _reason}, 2_000
+        end
+
+        Application.put_env(:shroud, :openpanel, previous)
+      end)
+
+      Bypass.expect(bypass, "POST", "/api/track", fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        send(owner, {:forward_event, Jason.decode!(body)["payload"]})
+        Plug.Conn.resp(conn, 200, "{}")
+      end)
+
+      capture_log(fn ->
+        with_failing_mailer(fn ->
+          perform_job(EmailHandler, tracking_pixel_email_args(email_alias))
+        end)
+      end)
+
+      refute Repo.reload!(user).has_forwarded_email
+
+      for task <- Task.Supervisor.children(Shroud.Analytics.Tasks) do
+        ref = Process.monitor(task)
+        assert_receive {:DOWN, ^ref, :process, ^task, _reason}, 2_000
+      end
+
+      refute_received {:forward_event, _}
+
+      perform_job(EmailHandler, tracking_pixel_email_args(email_alias))
+      assert_receive {:forward_event, first}, 2_000
+      assert first["name"] == "email_forwarded"
+      assert first["profileId"] == Shroud.Analytics.profile_id(user.id)
+      assert Repo.reload!(user).has_forwarded_email
+
+      for alias <- [email_alias, other_alias] do
+        perform_job(EmailHandler, tracking_pixel_email_args(alias))
+        assert_receive {:forward_event, subsequent}, 2_000
+        assert subsequent["name"] == "email_forwarded"
+        refute Map.has_key?(subsequent, "profileId")
+        assert Map.keys(subsequent["properties"]) == ["__timestamp"]
+      end
+    end
+
     test "a failed delivery does not record domains, and a retry does not inflate the count", %{
       email_alias: email_alias
     } do
