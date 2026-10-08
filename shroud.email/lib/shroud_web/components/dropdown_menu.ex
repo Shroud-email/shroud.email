@@ -14,6 +14,8 @@ defmodule ShroudWeb.Components.DropdownMenu do
       class={@class <> " relative"}
       x-data="AlpineComponents.menu({ open: false })"
       x-init="init()"
+      x-on:keydown.capture="instant = true"
+      x-on:pointerdown.capture="instant = false"
       @keydown.escape.stop="open = false; focusButton()"
       @click.away="onClickAway($event)"
     >
@@ -39,13 +41,14 @@ defmodule ShroudWeb.Components.DropdownMenu do
 
       <div
         x-show="open"
-        x-transition:enter="transition ease-out duration-100"
-        x-transition:enter-start="transform opacity-0 scale-95"
-        x-transition:enter-end="transform opacity-100 scale-100"
-        x-transition:leave="transition ease-in duration-75"
-        x-transition:leave-start="transform opacity-100 scale-100"
-        x-transition:leave-end="transform opacity-0 scale-95"
-        class="origin-top-right absolute right-0 z-10 flex flex-col mt-2 w-48 rounded-md shadow-lg py-1 bg-white dark:bg-gray-800 ring-1 ring-black/5 dark:ring-gray-700 focus:outline-hidden"
+        x-transition:enter="menu-enter"
+        x-transition:enter-start="menu-closed"
+        x-transition:enter-end="menu-open"
+        x-transition:leave="menu-leave"
+        x-transition:leave-start="menu-open"
+        x-transition:leave-end="menu-closed"
+        x-bind:class="{ 'menu-instant': instant }"
+        class="menu-motion origin-top-right absolute right-0 z-10 flex flex-col mt-2 w-48 rounded-md shadow-lg py-1 bg-white dark:bg-gray-800 ring-1 ring-black/5 dark:ring-gray-700 focus:outline-hidden"
         x-ref="menu-items"
         x-bind:aria-activedescendant="activeDescendant"
         role="menu"

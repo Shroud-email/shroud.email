@@ -26,6 +26,65 @@ defmodule ShroudWeb.EmailAliasLiveTest do
       assert_redirect(view, ~p"/")
       assert Shroud.Repo.reload!(email_alias).deleted_at
     end
+
+    test "saves title and notes independently and cancels without saving", %{
+      conn: conn,
+      user: user
+    } do
+      email_alias = alias_fixture(%{user_id: user.id, title: "Receipts", notes: "Keep invoices"})
+      {:ok, view, _} = live(conn, ~p"/alias/#{email_alias.address}")
+
+      view |> element("#edit-alias-title") |> render_click()
+      view |> element("#edit-alias-notes") |> render_click()
+
+      view
+      |> form("#alias-notes-form", email_alias: %{notes: "Keep flights and hotels"})
+      |> render_change()
+
+      view
+      |> form("#alias-title-form", email_alias: %{title: "Travel receipts"})
+      |> render_submit()
+
+      saved = Shroud.Repo.reload!(email_alias)
+      assert saved.title == "Travel receipts"
+      assert saved.notes == "Keep invoices"
+      assert has_element?(view, "#notification-source [data-kind=success]", "Updated alias")
+      assert has_element?(view, "#alias-notes-form textarea", "Keep flights and hotels")
+
+      view
+      |> form("#alias-notes-form", email_alias: %{notes: "Keep flights and hotels"})
+      |> render_submit()
+
+      assert Shroud.Repo.reload!(email_alias).notes == "Keep flights and hotels"
+      assert has_element?(view, "#edit-alias-notes")
+
+      view |> element("#edit-alias-title") |> render_click()
+
+      view
+      |> form("#alias-title-form", email_alias: %{title: "Discard this draft"})
+      |> render_change()
+
+      view |> element("#alias-title-form button", "Cancel") |> render_click()
+      view |> element("#edit-alias-title") |> render_click()
+      assert has_element?(view, "#email_alias_title[value='Travel receipts']")
+      assert Shroud.Repo.reload!(email_alias).title == "Travel receipts"
+    end
+
+    test "a rejected save preserves the editor and attempted value", %{conn: conn, user: user} do
+      email_alias = alias_fixture(%{user_id: user.id, title: "Original label"})
+      {:ok, view, _} = live(conn, ~p"/alias/#{email_alias.address}")
+      view |> element("#edit-alias-title") |> render_click()
+
+      render_hook(view, "update_details", %{
+        "field" => "title",
+        "email_alias" => %{"title" => 42}
+      })
+
+      assert has_element?(view, "#email_alias_title[value='42']")
+      assert has_element?(view, "#alias-title-form button", "Save")
+      refute has_element?(view, "#notification-source [data-kind=success]")
+      assert Shroud.Repo.reload!(email_alias).title == "Original label"
+    end
   end
 
   describe "Index" do

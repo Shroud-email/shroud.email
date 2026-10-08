@@ -17,6 +17,7 @@ defmodule ShroudWeb.EmailAliasLive.Show do
       |> assign(:address, address)
       |> assign(:blocked_sender_error, "")
       |> assign(:reverse_alias_recipient, "")
+      |> assign(:editing_fields, MapSet.new())
       |> assign(:paid, Accounts.paid?(socket.assigns.current_user))
       |> update_email_alias()
 
@@ -79,74 +80,102 @@ defmodule ShroudWeb.EmailAliasLive.Show do
                 <.toggle click="toggle" on={@alias.enabled} />
               </dd>
             </div>
-            <.form
-              :let={f}
-              for={@changeset}
-              phx-submit="update"
-              x-on:submit="editingNotes = false; editingTitle = false"
-              x-data="{ editingTitle: false, editingNotes: false }"
+            <div
+              :for={field <- [:title, :notes]}
+              class={[
+                "px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6",
+                if(field == :title,
+                  do: "bg-white dark:bg-gray-800",
+                  else: "bg-gray-50 dark:bg-gray-700"
+                )
+              ]}
             >
-              <div class="bg-white dark:bg-gray-800 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  {label(f, :title)}
-                </dt>
-                <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100 sm:mt-0 sm:col-span-2 flex">
-                  {text_input(f, :title,
-                    "x-show": "editingTitle",
-                    placeholder: "Alias title",
-                    class:
-                      "grow shadow-xs focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400 rounded-md"
-                  )}
-                  <span x-show="!editingTitle" class="grow">
-                    {@alias.title || "No title yet"}
-                  </span>
-                  <span class="ml-4 shrink-0">
-                    <.button
-                      alpine_click="editingTitle = true"
-                      x-show="!editingTitle"
-                      intent={:text}
-                      text="Update"
-                    />
-                    <.button
-                      type="submit"
-                      x-show="editingTitle"
-                      intent={:text}
-                      text="Save"
-                    />
-                  </span>
-                </dd>
-              </div>
-              <div class="bg-gray-50 dark:bg-gray-700 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  {label(f, :notes)}
-                </dt>
-                <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100 sm:mt-0 sm:col-span-2 flex">
-                  {textarea(f, :notes,
-                    "x-show": "editingNotes",
-                    placeholder: "Notes about this alias",
-                    class:
-                      "shadow-xs block w-full focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400 rounded-md"
-                  )}
-                  <span x-show="!editingNotes" class="grow">
-                    {@alias.notes || "No notes"}
-                  </span>
-                  <span class="ml-4 shrink-0">
-                    <.button
-                      alpine_click="editingNotes = true"
-                      x-show="!editingNotes"
-                      intent={:text}
-                      text="Update"
-                    />
-                    <.button
-                      type="submit"
-                      x-show="editingNotes"
-                      intent={:text}
-                      text="Save"
-                    />
-                  </span>
-                </dd>
-              </div>
-            </.form>
+              <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">
+                <label for={"email_alias_#{field}"}>
+                  {if field == :title, do: "Title", else: "Notes"}
+                </label>
+              </dt>
+              <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100 sm:mt-0 sm:col-span-2">
+                <.form
+                  for={@detail_forms[field]}
+                  id={"alias-#{field}-form"}
+                  phx-submit="update_details"
+                  phx-change="validate_details"
+                  phx-hook="AliasDetailsForm"
+                  class="alias-details-form"
+                >
+                  <input type="hidden" name="field" value={field} />
+                  <div
+                    id={"alias-#{field}-#{if MapSet.member?(@editing_fields, field), do: "editor", else: "value"}"}
+                    class="alias-details-content flex flex-wrap items-start gap-3"
+                  >
+                    <div class="min-w-0 flex-1 grid">
+                      {content_tag(
+                        :span,
+                        Map.get(@alias, field) ||
+                          if(field == :title, do: "No title yet", else: "No notes"),
+                        class: [
+                          "col-start-1 row-start-1 whitespace-pre-wrap break-words border border-transparent px-3 py-2",
+                          if(field == :title, do: "min-h-10", else: "min-h-16"),
+                          MapSet.member?(@editing_fields, field) && "invisible"
+                        ],
+                        aria_hidden: MapSet.member?(@editing_fields, field)
+                      )}
+                      <%= if MapSet.member?(@editing_fields, field) do %>
+                        <input
+                          :if={field == :title}
+                          id={@detail_forms[field][field].id}
+                          name={@detail_forms[field][field].name}
+                          value={@detail_forms[field][field].value}
+                          type="text"
+                          placeholder="Alias title"
+                          class="col-start-1 row-start-1 h-full min-h-10 w-full rounded-md border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
+                        />
+                        <textarea
+                          :if={field == :notes}
+                          id={@detail_forms[field][field].id}
+                          name={@detail_forms[field][field].name}
+                          placeholder="Notes about this alias"
+                          aria-keyshortcuts="Meta+Enter Control+Enter"
+                          title="Command+Enter or Ctrl+Enter to save"
+                          class="col-start-1 row-start-1 h-full min-h-16 resize-none w-full rounded-md border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
+                        >{Phoenix.HTML.Form.normalize_value("textarea", @detail_forms[field][field].value)}</textarea>
+                        <span
+                          :for={error <- @detail_forms[field][field].errors}
+                          class="invalid-feedback"
+                        >
+                          {translate_error(error)}
+                        </span>
+                      <% end %>
+                    </div>
+                    <div class="flex items-center justify-end gap-3 shrink-0 w-32 py-2 [&>button]:shrink-0 [&>button]:whitespace-nowrap">
+                      <%= if MapSet.member?(@editing_fields, field) do %>
+                        <.button
+                          type="submit"
+                          intent={:text}
+                          text="Save"
+                          phx-disable-with="Saving…"
+                        />
+                        <.button
+                          click="cancel_details"
+                          phx-value-field={field}
+                          intent={:text}
+                          text="Cancel"
+                        />
+                      <% else %>
+                        <.button
+                          id={"edit-alias-#{field}"}
+                          click="edit_details"
+                          phx-value-field={field}
+                          intent={:text}
+                          text="Update"
+                        />
+                      <% end %>
+                    </div>
+                  </div>
+                </.form>
+              </dd>
+            </div>
             <%= if @paid do %>
               <div class="bg-white dark:bg-gray-800 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                 <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">
@@ -368,8 +397,82 @@ defmodule ShroudWeb.EmailAliasLive.Show do
   end
 
   @impl true
-  def handle_event("update", %{"email_alias" => %{"title" => title, "notes" => notes}}, socket) do
-    {:noreply, update_alias(socket, %{title: title, notes: notes})}
+  def handle_event("edit_details", %{"field" => field}, socket)
+      when field in ["title", "notes"] do
+    field = if field == "title", do: :title, else: :notes
+
+    {:noreply,
+     socket
+     |> assign(:editing_fields, MapSet.put(socket.assigns.editing_fields, field))}
+  end
+
+  @impl true
+  def handle_event("cancel_details", %{"field" => field}, socket)
+      when field in ["title", "notes"] do
+    field = if field == "title", do: :title, else: :notes
+    form = to_form(Aliases.change_email_alias(socket.assigns.alias))
+
+    {:noreply,
+     socket
+     |> assign(:editing_fields, MapSet.delete(socket.assigns.editing_fields, field))
+     |> assign(:detail_forms, Map.put(socket.assigns.detail_forms, field, form))}
+  end
+
+  @impl true
+  def handle_event("validate_details", %{"field" => field, "email_alias" => params}, socket)
+      when field in ["title", "notes"] do
+    attrs = Map.take(params, [field])
+    field = if field == "title", do: :title, else: :notes
+    form = to_form(Aliases.change_email_alias(socket.assigns.alias, attrs), action: :validate)
+
+    {:noreply, assign(socket, :detail_forms, Map.put(socket.assigns.detail_forms, field, form))}
+  end
+
+  @impl true
+  def handle_event(
+        "update_details",
+        %{"field" => field, "email_alias" => params},
+        socket
+      )
+      when field in ["title", "notes"] do
+    attrs = Map.take(params, [field])
+    field = if field == "title", do: :title, else: :notes
+    %{current_user: user, alias: email_alias} = socket.assigns
+
+    socket =
+      if user |> can?(update(email_alias)) do
+        case Aliases.update_email_alias(email_alias, attrs) do
+          {:ok, updated_alias} ->
+            socket
+            |> assign(:alias, updated_alias)
+            |> assign(
+              :detail_forms,
+              Map.put(
+                socket.assigns.detail_forms,
+                field,
+                to_form(Aliases.change_email_alias(updated_alias))
+              )
+            )
+            |> assign(:editing_fields, MapSet.delete(socket.assigns.editing_fields, field))
+            |> put_notification(:success, "Updated alias #{updated_alias.address}.")
+
+          {:error, changeset} ->
+            socket
+            |> assign(
+              :detail_forms,
+              Map.put(socket.assigns.detail_forms, field, to_form(changeset))
+            )
+            |> put_notification(:error, "Couldn't save your changes. Please try again.")
+        end
+      else
+        form = to_form(Aliases.change_email_alias(email_alias, attrs))
+
+        socket
+        |> assign(:detail_forms, Map.put(socket.assigns.detail_forms, field, form))
+        |> put_notification(:error, "You don't have permission to do that.")
+      end
+
+    {:noreply, socket}
   end
 
   @impl true
@@ -458,6 +561,9 @@ defmodule ShroudWeb.EmailAliasLive.Show do
 
     socket
     |> assign(:alias, email_alias)
-    |> assign(:changeset, Aliases.change_email_alias(email_alias))
+    |> assign(
+      :detail_forms,
+      Map.new([:title, :notes], &{&1, to_form(Aliases.change_email_alias(email_alias))})
+    )
   end
 end

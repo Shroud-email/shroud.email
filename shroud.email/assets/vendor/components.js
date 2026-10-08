@@ -77,6 +77,7 @@
       activeIndex: null,
       items: null,
       open: e.open,
+      instant: false,
       focusButton() {
         this.$refs.button.focus();
       },
