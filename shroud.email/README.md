@@ -71,8 +71,8 @@ the subscription update/cancellation events.
 Browser screen views, outgoing links, and explicit `data-track` attributes are
 enabled; session replay and error tracking are not enabled.
 
-Authenticated browser events and backend events use a server-generated HMAC of
-the account ID as `profileId`. An analytics-specific key is derived from Phoenix's
+Authenticated browser events and user-linked backend events use a server-generated
+HMAC of the account ID as `profileId`. An analytics-specific key is derived from Phoenix's
 `secret_key_base`; the database ID and secret are not exposed in analytics HTML
 or payloads. IDs are stable while that secret remains unchanged. Rotating it
 changes analytics IDs and splits account history. No mapping table is required.
@@ -82,9 +82,17 @@ replace sensitive route segments with `:token`, `:data`, `:address`, or `:domain
 Page titles are removed. Outgoing-link text, queries, fragments and UTM
 parameters remain; do not put personal data in them or tracking attributes.
 
-Backend events are `alias_created` (with `custom_domain: true/false`),
+Backend events are `signup`, `alias_created` (with `custom_domain: true/false`),
 `email_forwarded`, `outgoing_email_sent`, and `paid_conversion`. Email events mean
-the mailer accepted delivery, not final recipient delivery. Conversion means the
+the mailer accepted delivery, not final recipient delivery. Only the first
+successful forward for an account includes `profileId`; subsequent forwards and
+all outgoing-email events omit it. The `has_forwarded_email` flag is recorded
+atomically with forward counters and remains set when aliases are deleted.
+Existing alias forward counts initialise the flag during migration; permanently
+deleted alias history is unavailable for this backfill. Signup, alias creation
+and paid-conversion events include `profileId`.
+
+Conversion means the
 first active Paddle subscription creation/activation or lifetime entitlement
 redemption. Conversion events include `source: "paddle"` or
 `source: "lifetime_code"` to distinguish the entitlement source.
@@ -101,7 +109,7 @@ not a billing ledger. There is no historical backfill.
 This is pseudonymous analytics, not anonymous analytics. OpenPanel receives
 browser IPs and user agents and derives visitor, session, device and geographic
 metadata. Backend requests do not forward customer IPs or user agents; OpenPanel
-can associate them with recent browser sessions by profile ID and inherit session
+can associate user-linked events with recent browser sessions by profile ID and inherit session
 metadata. Minimal backend payloads do not guarantee minimal stored data.
 The SDK does not reliably merge previous anonymous visits with account history.
 Marketing UTM parameters and referrers are tracked, but cross-day anonymous

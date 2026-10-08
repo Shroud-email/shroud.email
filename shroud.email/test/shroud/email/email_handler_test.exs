@@ -1654,6 +1654,12 @@ defmodule Shroud.Email.EmailHandlerTest do
       end)
 
       refute Repo.reload!(user).has_forwarded_email
+
+      for task <- Task.Supervisor.children(Shroud.Analytics.Tasks) do
+        ref = Process.monitor(task)
+        assert_receive {:DOWN, ^ref, :process, ^task, _reason}, 2_000
+      end
+
       refute_received {:forward_event, _}
 
       perform_job(EmailHandler, tracking_pixel_email_args(email_alias))
