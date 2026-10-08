@@ -70,6 +70,40 @@ defmodule ShroudWeb.EmailAliasLiveTest do
       assert Shroud.Repo.reload!(email_alias).title == "Travel receipts"
     end
 
+    test "alias refreshes preserve open drafts without saving them", %{conn: conn, user: user} do
+      email_alias = alias_fixture(%{user_id: user.id, title: "Receipts", notes: "Keep invoices"})
+      {:ok, view, _} = live(conn, ~p"/alias/#{email_alias.address}")
+
+      view |> element("#edit-alias-title") |> render_click()
+      view |> element("#edit-alias-notes") |> render_click()
+      view |> form("#alias-title-form", email_alias: %{title: "Travel draft"}) |> render_change()
+
+      view
+      |> form("#alias-notes-form", email_alias: %{notes: "Unsaved flight notes"})
+      |> render_change()
+
+      for {event, params} <- [
+            {"toggle", %{}},
+            {"block_sender", %{"sender" => "spammer@example.com"}},
+            {"unblock_sender", %{"sender" => "spammer@example.com"}}
+          ] do
+        render_hook(view, event, params)
+        assert has_element?(view, "#email_alias_title[value='Travel draft']")
+        assert has_element?(view, "#email_alias_notes", "Unsaved flight notes")
+        saved = Shroud.Repo.reload!(email_alias)
+        assert saved.title == "Receipts"
+        assert saved.notes == "Keep invoices"
+        refute saved.enabled
+
+        assert saved.blocked_addresses ==
+                 if(event == "block_sender", do: ["spammer@example.com"], else: [])
+      end
+
+      view |> element("#alias-notes-form button", "Cancel") |> render_click()
+      view |> element("#edit-alias-notes") |> render_click()
+      assert has_element?(view, "#email_alias_notes", "Keep invoices")
+    end
+
     test "a rejected save preserves the editor and attempted value", %{conn: conn, user: user} do
       email_alias = alias_fixture(%{user_id: user.id, title: "Original label"})
       {:ok, view, _} = live(conn, ~p"/alias/#{email_alias.address}")

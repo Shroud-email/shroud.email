@@ -563,7 +563,16 @@ defmodule ShroudWeb.EmailAliasLive.Show do
     |> assign(:alias, email_alias)
     |> assign(
       :detail_forms,
-      Map.new([:title, :notes], &{&1, to_form(Aliases.change_email_alias(email_alias))})
+      Map.new([:title, :notes], fn field ->
+        form =
+          if MapSet.member?(socket.assigns.editing_fields, field) do
+            socket.assigns.detail_forms[field]
+          else
+            to_form(Aliases.change_email_alias(email_alias))
+          end
+
+        {field, form}
+      end)
     )
   end
 end
