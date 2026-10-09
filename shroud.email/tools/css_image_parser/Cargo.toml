@@ -1,0 +1,13 @@
+[package]
+name = "css_image_parser"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "css_image_parser"
+path = "src/main.rs"
+
+[dependencies]
+cssparser = "=0.38.0"
+serde_json = "1"
+libc = "0.2"

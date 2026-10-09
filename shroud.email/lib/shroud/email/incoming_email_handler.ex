@@ -14,7 +14,6 @@ defmodule Shroud.Email.IncomingEmailHandler do
     ParsedEmail,
     ImageFetcher,
     TrackerRemover,
-    Enricher,
     ReplyAddress
   }
 
@@ -168,10 +167,7 @@ defmodule Shroud.Email.IncomingEmailHandler do
 
     parsed_email = ParsedEmail.parse(Mailex.parse!(data), sender, recipient)
 
-    processed = TrackerRemover.process(parsed_email)
-
-    processed =
-      if Accounts.email_branding_enabled?(user), do: Enricher.process(processed), else: processed
+    processed = TrackerRemover.process(parsed_email, Accounts.email_branding_enabled?(user))
 
     deliver_result =
       processed
@@ -193,7 +189,7 @@ defmodule Shroud.Email.IncomingEmailHandler do
             first_forward? = Accounts.record_email_forwarded(user.id)
             Aliases.increment_forwarded!(email_alias)
             Email.record_blocked_domains(ParsedEmail.blocked_domains(processed))
-            ImageFetcher.enqueue(parsed_email)
+            ImageFetcher.enqueue(processed)
             first_forward?
           end)
 

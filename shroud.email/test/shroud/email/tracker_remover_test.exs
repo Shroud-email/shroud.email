@@ -1,7 +1,7 @@
 defmodule Shroud.Email.TrackerRemoverTest do
   use Shroud.DataCase, async: true
   alias Shroud.Repo
-  alias Shroud.Email.{ParsedEmail, TrackerDomain, TrackerRemover}
+  alias Shroud.Email.{Enricher, ParsedEmail, TrackerDomain, TrackerRemover}
 
   import Shroud.{EmailFixtures, TrackerFixtures}
 
@@ -335,11 +335,10 @@ defmodule Shroud.Email.TrackerRemoverTest do
     assert result =~ "background: url('data:image/png;base64,abc')"
   end
 
-  test "handles escaped CSS tracker URLs and browser-accepted incomplete URLs" do
+  test "handles escaped CSS tracker URLs and punctuation inside quoted URLs" do
     email =
       process_html(~S"""
       <div id="blocked" style='back\67round-image: u\72l("https://spy\6fnu.com/track?x=1"); color: red'>Keep</div>
-      <div id="eof" style="background-image: url(https://spyonu.com/track?eof">Keep</div>
       <div id="safe" style='background-image: url("https://gooddomain.com/a)b?x=1&amp;y=2")'>Keep</div>
       """)
 
@@ -349,8 +348,6 @@ defmodule Shroud.Email.TrackerRemoverTest do
              ~S(back\67round-image: none; color: red)
            ]
 
-    assert Floki.attribute(email.parsed_html, "#eof", "style") == ["background-image: none"]
-
     assert Floki.attribute(email.parsed_html, "#safe", "style") == [
              "background-image: url(\"#{proxy("https://gooddomain.com/a)b?x=1&y=2")}\")"
            ]
@@ -358,6 +355,99 @@ defmodule Shroud.Email.TrackerRemoverTest do
 
   defp proxy(source),
     do: "http://localhost:4002/proxy?url=" <> URI.encode_www_form(URI.encode(source))
+
+  test "discards all privacy edits and branding if any CSS input fails to parse" do
+    for broken <- [
+          ~s|<div style="background: url(https://spyonu.com/track">Keep</div>|,
+          ~s|<style>.hero { background: url("https://spyonu.com/track");</style>|,
+          ~s|<!--[if mso]><div style="background: url(">Keep</div><![endif]-->|,
+          ~s(<style>/* unterminated comment</style>),
+          ~S|<div style='background: url(https://gooddomain.com/a b)'>Keep</div>|,
+          ~S|<div style='background: url("https://gooddomain.com/a\")'>Keep</div>|,
+          ~S|<style>.hero { background: url(https://gooddomain.com/a\)</style>|
+        ] do
+      html =
+        ~s(<img src="https://spyonu.com/track"><img src="https://gooddomain.com/photo">) <> broken
+
+      original =
+        html_email("sender@example.com", ["recipient@example.com"], "Subject", html)
+        |> :mimemail.decode()
+        |> ParsedEmail.parse("sender@example.com", "recipient@example.com")
+
+      processed = original |> TrackerRemover.process() |> Enricher.process()
+
+      assert processed.privacy_processing_failed
+      assert processed.swoosh_email == original.swoosh_email
+      assert processed.parsed_html == original.parsed_html
+      assert processed.removed_trackers == []
+      assert processed.image_urls == []
+    end
+  end
+
+  test "rewrites only image spans in nested CSS with UTF-8, BOM, CRLF and escaped tokens" do
+    css =
+      "\uFEFF/* café */\r\n@media screen {\r\n.hero { " <>
+        ~S|back\67round: image-set("https://gooddomain.com/caf\e9.png" 1x type("image/png"), url("https://spyonu.com/track") 2x); | <>
+        ~S|content: "url(https://spyonu.com/track)"; color: red; } | <>
+        ~S|.embedded { background: url('data:image/svg+xml,<svg>(é)</svg>'); } | <>
+        ~S|@font-face { src: url(https://gooddomain.com/font); }| <> "\r\n}"
+
+    original = %ParsedEmail{
+      parsed_html: [{"style", [], [css]}],
+      swoosh_email: Swoosh.Email.new() |> Swoosh.Email.html_body("<style>#{css}</style>")
+    }
+
+    processed = TrackerRemover.process(original)
+
+    expected =
+      css
+      |> String.replace(
+        ~S("https://gooddomain.com/caf\e9.png"),
+        ~s|url("#{proxy("https://gooddomain.com/café.png")}")|
+      )
+      |> String.replace(~s|url("https://spyonu.com/track")|, ~s|url("data:,")|)
+
+    refute processed.privacy_processing_failed
+    assert processed.parsed_html == [{"style", [], [expected]}]
+    assert processed.removed_trackers == [%{name: "SpyOnU", domain: "spyonu.com"}]
+  end
+
+  test "fails open for decoding errors, excessive nesting and oversized input" do
+    for css <- [
+          <<255>>,
+          "width: " <> String.duplicate("calc(", 130) <> "1" <> String.duplicate(")", 130),
+          String.duplicate(" ", 1_048_577)
+        ] do
+      original = %ParsedEmail{
+        parsed_html: [{"div", [{"style", css}], []}],
+        swoosh_email: Swoosh.Email.new() |> Swoosh.Email.html_body("<div style='#{css}'></div>")
+      }
+
+      processed = TrackerRemover.process(original)
+      assert processed.privacy_processing_failed
+      assert processed.swoosh_email == original.swoosh_email
+      assert processed.parsed_html == original.parsed_html
+    end
+  end
+
+  test "preserves long flat expressions without treating them as excessive nesting" do
+    expression = "calc(" <> String.duplicate("1px + ", 15_000) <> "1px)"
+    css = "width: #{expression}; background: url(https://gooddomain.com/photo)"
+
+    original = %ParsedEmail{
+      parsed_html: [{"div", [{"style", css}], []}],
+      swoosh_email: Swoosh.Email.new() |> Swoosh.Email.html_body("<div></div>")
+    }
+
+    processed = TrackerRemover.process(original)
+    refute processed.privacy_processing_failed
+
+    assert Floki.attribute(processed.parsed_html, "div", "style") == [
+             "width: #{expression}; background: url(\"#{proxy("https://gooddomain.com/photo")}\")"
+           ]
+
+    assert processed.image_urls == ["https://gooddomain.com/photo"]
+  end
 
   test "blocks browser-loadable tracker URLs and preserves the destination of safe encoded URLs" do
     html = ~S"""

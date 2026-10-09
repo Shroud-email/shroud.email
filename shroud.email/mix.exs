@@ -127,6 +127,7 @@ defmodule Shroud.MixProject do
   # See the documentation for `Mix` for more info on aliases.
   defp aliases do
     [
+      compile: [&compile_css_parser/1, "compile"],
       setup: ["deps.get", "ecto.setup"],
       "ecto.setup": ["ecto.create", "ecto.migrate"],
       "ecto.seed": ["run priv/repo/seeds.exs"],
@@ -139,5 +140,32 @@ defmodule Shroud.MixProject do
         "phx.digest"
       ]
     ]
+  end
+
+  defp compile_css_parser(_args) do
+    {_, status} =
+      System.cmd(
+        "cargo",
+        [
+          "build",
+          "--release",
+          "--locked",
+          "--manifest-path",
+          "tools/css_image_parser/Cargo.toml",
+          "--target-dir",
+          "tools/css_image_parser/target"
+        ],
+        into: IO.stream(:stdio, :line)
+      )
+
+    if status != 0, do: Mix.raise("Failed to compile the CSS parser")
+
+    File.mkdir_p!("priv/bin")
+    File.rm("priv/bin/css_image_parser")
+
+    File.cp!(
+      "tools/css_image_parser/target/release/css_image_parser",
+      "priv/bin/css_image_parser"
+    )
   end
 end

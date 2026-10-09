@@ -18,6 +18,7 @@ defmodule Shroud.Application do
       {Shroud.RateLimit, key_older_than: :timer.minutes(15)},
       {Task.Supervisor, name: ShroudWeb.ProxyResolverTasks},
       {Task.Supervisor, name: Shroud.Analytics.Tasks, max_children: 100},
+      {Task.Supervisor, name: Shroud.Email.PrivacyTasks, max_children: 20},
       ShroudWeb.TrustedProxies,
       # Start the Endpoint (http/https)
       ShroudWeb.Endpoint,

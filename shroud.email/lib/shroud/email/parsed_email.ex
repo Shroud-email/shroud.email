@@ -6,7 +6,15 @@ defmodule Shroud.Email.ParsedEmail do
   import Swoosh.Email
   require Logger
 
-  defstruct [:from, :to, :swoosh_email, :parsed_html, removed_trackers: []]
+  defstruct [
+    :from,
+    :to,
+    :swoosh_email,
+    :parsed_html,
+    removed_trackers: [],
+    image_urls: [],
+    privacy_processing_failed: false
+  ]
 
   @typedoc """
   A tracker removed from an email. `domain` is the real host extracted from the
@@ -21,7 +29,9 @@ defmodule Shroud.Email.ParsedEmail do
           to: String.t(),
           swoosh_email: Swoosh.Email.t(),
           parsed_html: Floki.html_tree(),
-          removed_trackers: [removed_tracker()]
+          removed_trackers: [removed_tracker()],
+          image_urls: [String.t()],
+          privacy_processing_failed: boolean()
         }
 
   @allowed_headers [
@@ -48,46 +58,42 @@ defmodule Shroud.Email.ParsedEmail do
   @spec parse(:mimemail.mimetuple() | Mailex.Message.t(), String.t(), String.t()) :: t
   def parse(%Mailex.Message{} = mailex_msg, from, to) do
     swoosh_email = build_email_from_mailex(new(), mailex_msg)
-
-    parsed_html =
-      if swoosh_email.html_body do
-        case Floki.parse_document(swoosh_email.html_body) do
-          {:ok, []} -> nil
-          {:ok, parsed} -> parsed
-          {:error, _error} -> nil
-        end
-      else
-        nil
-      end
+    {parsed_html, failed?} = parse_html(swoosh_email.html_body)
 
     %__MODULE__{
       from: from,
       to: to,
       swoosh_email: swoosh_email,
-      parsed_html: parsed_html
+      parsed_html: parsed_html,
+      privacy_processing_failed: failed?
     }
   end
 
   def parse(mimemail_email, from, to) do
     swoosh_email = build_email(new(), mimemail_email)
-
-    parsed_html =
-      if swoosh_email.html_body do
-        case Floki.parse_document(swoosh_email.html_body) do
-          {:ok, []} -> nil
-          {:ok, parsed} -> parsed
-          {:error, _error} -> nil
-        end
-      else
-        nil
-      end
+    {parsed_html, failed?} = parse_html(swoosh_email.html_body)
 
     %__MODULE__{
       from: from,
       to: to,
       swoosh_email: swoosh_email,
-      parsed_html: parsed_html
+      parsed_html: parsed_html,
+      privacy_processing_failed: failed?
     }
+  end
+
+  defp parse_html(nil), do: {nil, false}
+
+  defp parse_html(html) do
+    case Floki.parse_document(html) do
+      {:ok, []} -> {nil, false}
+      {:ok, parsed} -> {parsed, false}
+      {:error, _} -> {nil, true}
+    end
+  rescue
+    _ -> {nil, true}
+  catch
+    _, _ -> {nil, true}
   end
 
   # HTML

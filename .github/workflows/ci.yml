@@ -18,11 +18,14 @@ defaults:
 jobs:
   changes:
     name: Detect changed projects
-    if: github.event_name == 'push'
     runs-on: depot-ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
       app: ${{ steps.filter.outputs.app }}
       website: ${{ steps.filter.outputs.website }}
+      rust: ${{ steps.filter.outputs.rust }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -40,6 +43,28 @@ jobs:
               - 'website/**'
               - 'shroud.email/openapi.json'
               - '.github/workflows/ci.yml'
+            rust:
+              - 'shroud.email/tools/css_image_parser/**'
+              - 'shroud.email/mise.toml'
+              - '.github/workflows/ci.yml'
+
+  rust:
+    name: Check Rust formatting and Clippy
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Set up Rust
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain 1.94.0 --component rustfmt --component clippy
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - name: Check formatting
+        run: cargo fmt --manifest-path tools/css_image_parser/Cargo.toml --check
+      - name: Run Clippy
+        run: cargo clippy --manifest-path tools/css_image_parser/Cargo.toml --locked -- -D warnings
 
   test:
     needs: changes
@@ -81,6 +106,10 @@ jobs:
         with:
           elixir-version: "1.20.0"
           otp-version: "28"
+      - name: Set up Rust
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain 1.94.0
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
       - name: Restore dependencies cache
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:

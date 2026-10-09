@@ -14,21 +14,57 @@ defmodule Shroud.Email.TrackerRemover do
   # once we enable tracking-link-processing
 
   alias Shroud.Email
-  alias Shroud.Email.{ImageSources, ParsedEmail, Tracker}
+  alias Shroud.Email.{Enricher, ImageSources, ParsedEmail, Tracker}
   use ShroudWeb, :verified_routes
+  require Logger
 
-  @spec process(ParsedEmail.t()) :: ParsedEmail.t()
-  def process(%ParsedEmail{parsed_html: nil} = email), do: email
+  @privacy_budget 10_000
 
-  def process(%ParsedEmail{parsed_html: parsed_html} = email) do
-    trackers = Email.list_trackers()
+  @spec process(ParsedEmail.t(), boolean()) :: ParsedEmail.t()
+  def process(email, branding \\ false)
+  def process(%ParsedEmail{privacy_processing_failed: true} = email, _branding), do: email
 
+  def process(email, branding) do
+    task =
+      Task.Supervisor.async_nolink(Shroud.Email.PrivacyTasks, fn ->
+        {:ok, timer} = :timer.exit_after(@privacy_budget, self(), :kill)
+
+        try do
+          trackers = if email.parsed_html, do: Email.list_trackers(), else: []
+          processed = process_html(email, trackers)
+          if branding, do: Enricher.process(processed), else: processed
+        rescue
+          _ -> fail_open(email)
+        catch
+          _, _ -> fail_open(email)
+        after
+          :timer.cancel(timer)
+        end
+      end)
+
+    case Task.yield(task, @privacy_budget) do
+      {:ok, processed} ->
+        processed
+
+      _ ->
+        Task.shutdown(task, :brutal_kill)
+        fail_open(email)
+    end
+  rescue
+    _ -> fail_open(email)
+  catch
+    _, _ -> fail_open(email)
+  end
+
+  defp process_html(%ParsedEmail{parsed_html: nil} = email, _trackers), do: email
+
+  defp process_html(%ParsedEmail{parsed_html: parsed_html} = email, trackers) do
     # Each removed image accumulates a `%{name, domain}` entry: `name` is the
     # friendly tracker name (nil for unknown pixels) shown in the user's report,
     # and `domain` is the real host extracted from the image URL, which is what
     # we persist for analytics.
-    {processed_html, removed_trackers} =
-      ImageSources.map(parsed_html, &process_source(trackers, &1, &2, &3), [])
+    {processed_html, {removed_trackers, image_urls}} =
+      ImageSources.map(parsed_html, &process_source(trackers, &1, &2, &3), {[], []})
 
     # Entries are accumulated by prepending, so reverse to restore the order in
     # which they appeared in the email, then deduplicate so an identical tracker
@@ -43,18 +79,24 @@ defmodule Shroud.Email.TrackerRemover do
     struct(email,
       parsed_html: processed_html,
       removed_trackers: removed_trackers,
+      image_urls: image_urls |> Enum.reverse() |> Enum.uniq(),
       swoosh_email: swoosh_email
     )
   end
 
-  defp process_source(trackers, source, image_attrs, acc) do
+  defp fail_open(email) do
+    Logger.warning("Email privacy processing failed; forwarding the original content")
+    %{email | privacy_processing_failed: true}
+  end
+
+  defp process_source(trackers, source, image_attrs, {removed, urls}) do
     tracker = Enum.find(trackers, &Tracker.match?(&1, source))
 
     if tracker || tiny_image?(image_attrs) do
       entry = %{name: if(tracker, do: tracker.name), domain: URI.parse(source).host}
-      {nil, [entry | acc]}
+      {nil, {[entry | removed], [source | urls]}}
     else
-      {url(~p"/proxy?url=#{source}"), acc}
+      {url(~p"/proxy?url=#{source}"), {removed, [source | urls]}}
     end
   end
 

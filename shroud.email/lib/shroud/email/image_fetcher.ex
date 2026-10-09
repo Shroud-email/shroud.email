@@ -7,17 +7,16 @@ defmodule Shroud.Email.ImageFetcher do
 
   use Oban.Worker, queue: :image_fetcher, max_attempts: 1
 
-  alias Shroud.Email.{ImageSources, ParsedEmail}
+  alias Shroud.Email.ParsedEmail
 
   @max_bytes 5 * 1024 * 1024
   @max_images 500
 
   @spec enqueue(ParsedEmail.t()) :: :ok
-  def enqueue(%ParsedEmail{parsed_html: nil}), do: :ok
+  def enqueue(%ParsedEmail{privacy_processing_failed: true}), do: :ok
 
-  def enqueue(%ParsedEmail{parsed_html: html}) do
-    html
-    |> ImageSources.urls()
+  def enqueue(%ParsedEmail{image_urls: urls}) do
+    urls
     |> Stream.uniq()
     |> Stream.filter(&(remote_uri(&1) != nil))
     |> Stream.take(@max_images)

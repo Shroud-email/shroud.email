@@ -3,7 +3,7 @@ defmodule Shroud.Email.ImageFetcherTest do
   use Oban.Testing, repo: Shroud.Repo
 
   import Mox
-  alias Shroud.Email.{ImageFetcher, ParsedEmail}
+  alias Shroud.Email.{ImageFetcher, ParsedEmail, TrackerRemover}
 
   setup :verify_on_exit!
   setup {Req.Test, :verify_on_exit!}
@@ -30,7 +30,7 @@ defmodule Shroud.Email.ImageFetcherTest do
     <a href="https://example.com/unsubscribe">Unsubscribe</a>
     """
 
-    email = %ParsedEmail{parsed_html: Floki.parse_document!(html)}
+    email = prepared_email(html)
 
     assert :ok = ImageFetcher.enqueue(email)
     urls = all_enqueued(worker: ImageFetcher) |> Enum.map(& &1.args["url"]) |> Enum.sort()
@@ -62,7 +62,7 @@ defmodule Shroud.Email.ImageFetcherTest do
     on_exit(fn -> :telemetry.detach(ref) end)
 
     html = Enum.map_join(1..50, fn n -> ~s(<img src="https://images.example.com/#{n}.jpg">) end)
-    email = %ParsedEmail{parsed_html: Floki.parse_document!(html)}
+    email = prepared_email(html)
 
     assert :ok = ImageFetcher.enqueue(email)
     assert_received {^ref, :insert}
@@ -89,11 +89,10 @@ defmodule Shroud.Email.ImageFetcherTest do
     <!--[if mso]><v:rect><v:fill src="https://images.example/outlook"/><v:imagedata src="https://images.example/outlook-photo"/></v:rect><img src="https://spy.example/pixel" width="1" height="1"><![endif]-->
     <!-- <img src="https://ignored.example/comment"> -->
     <a href="https://ignored.example/link">Link</a>
-    <div style="background-image: url(https://images.example/eof"></div>
     <video><source srcset="https://ignored.example/video 1x" src="https://ignored.example/movie"></video>
     """
 
-    assert :ok = ImageFetcher.enqueue(%ParsedEmail{parsed_html: Floki.parse_document!(html)})
+    assert :ok = ImageFetcher.enqueue(prepared_email(html))
     urls = all_enqueued(worker: ImageFetcher) |> Enum.map(& &1.args["url"]) |> Enum.sort()
 
     assert urls ==
@@ -112,7 +111,6 @@ defmodule Shroud.Email.ImageFetcherTest do
                "https://images.example/filter",
                "https://images.example/outlook",
                "https://images.example/outlook-photo",
-               "https://images.example/eof",
                "https://spy.example/pixel"
              ])
   end
@@ -131,7 +129,7 @@ defmodule Shroud.Email.ImageFetcherTest do
     <div style="-webkit-mask-box-image-source: url(https://images.example/webkit-source)"></div>
     """
 
-    assert :ok = ImageFetcher.enqueue(%ParsedEmail{parsed_html: Floki.parse_document!(html)})
+    assert :ok = ImageFetcher.enqueue(prepared_email(html))
     urls = all_enqueued(worker: ImageFetcher) |> Enum.map(& &1.args["url"]) |> Enum.sort()
 
     assert urls == [
@@ -143,6 +141,14 @@ defmodule Shroud.Email.ImageFetcherTest do
            ]
   end
 
+  test "does not enqueue a partial set of images when parsing fails" do
+    html = ~s|<img src="https://images.example/photo"><div style="background: url(">Keep</div>|
+    email = prepared_email(html)
+    assert email.privacy_processing_failed
+    assert :ok = ImageFetcher.enqueue(email)
+    refute_enqueued(worker: ImageFetcher)
+  end
+
   test "normalizes browser-loadable URLs without changing existing percent escapes" do
     html = ~S"""
     <img src="https://images.example/a%20b?name=hello world&amp;items[]=1">
@@ -151,7 +157,7 @@ defmodule Shroud.Email.ImageFetcherTest do
     <p>Content</p><!--[if mso]></v:textbox></v:rect><![endif]-->
     """
 
-    assert :ok = ImageFetcher.enqueue(%ParsedEmail{parsed_html: Floki.parse_document!(html)})
+    assert :ok = ImageFetcher.enqueue(prepared_email(html))
     urls = all_enqueued(worker: ImageFetcher) |> Enum.map(& &1.args["url"]) |> Enum.sort()
 
     assert urls == [
@@ -171,7 +177,7 @@ defmodule Shroud.Email.ImageFetcherTest do
         """
       end)
 
-    assert :ok = ImageFetcher.enqueue(%ParsedEmail{parsed_html: Floki.parse_document!(html)})
+    assert :ok = ImageFetcher.enqueue(prepared_email(html))
     urls = all_enqueued(worker: ImageFetcher) |> Enum.map(& &1.args["url"]) |> Enum.sort()
     expected = Enum.map(1..500, &"https://images.example.com/#{&1}.jpg") |> Enum.sort()
     assert urls == expected
@@ -365,7 +371,7 @@ defmodule Shroud.Email.ImageFetcherTest do
     end)
 
     html = ~s(<img src="https://93.184.215.14/failed"><img src="https://93.184.215.14/success">)
-    assert :ok = ImageFetcher.enqueue(%ParsedEmail{parsed_html: Floki.parse_document!(html)})
+    assert :ok = ImageFetcher.enqueue(prepared_email(html))
     assert %{success: 2, failure: 0} = Oban.drain_queue(queue: :image_fetcher)
 
     assert_received {:visited, "/success"}
@@ -378,5 +384,24 @@ defmodule Shroud.Email.ImageFetcherTest do
 
     Req.Test.expect(ImageFetcher, fn conn -> Req.Test.transport_error(conn, :timeout) end)
     assert :ok = perform_job(ImageFetcher, %{url: "https://93.184.215.14/pixel"})
+  end
+
+  test "enqueues prepared original URLs without scanning the delivered HTML" do
+    email = %ParsedEmail{
+      image_urls: ["https://images.example/original"],
+      parsed_html: [{"div", [{"style", "background: url("}], []}]
+    }
+
+    assert :ok = ImageFetcher.enqueue(email)
+
+    assert [%{args: %{"url" => "https://images.example/original"}}] =
+             all_enqueued(worker: ImageFetcher)
+  end
+
+  defp prepared_email(html) do
+    TrackerRemover.process(%ParsedEmail{
+      parsed_html: Floki.parse_document!(html),
+      swoosh_email: Swoosh.Email.new() |> Swoosh.Email.html_body(html)
+    })
   end
 end

@@ -6,11 +6,6 @@ defmodule Shroud.Email.ImageSources do
 
   alias Shroud.Email.{ConditionalImages, CSSImages}
 
-  def urls(html) do
-    {_, urls} = map(html, fn url, _attrs, acc -> {url, [url | acc]} end, [])
-    Enum.reverse(urls)
-  end
-
   def map(html, fun, acc, parent \\ nil) when is_list(html) do
     {html, acc} = Enum.map_reduce(html, acc, &node(&1, fun, &2, parent))
     {Enum.reject(html, &is_nil/1), acc}
@@ -105,7 +100,7 @@ defmodule Shroud.Email.ImageSources do
 
   defp attribute({"style", value}, _context, fun, acc) do
     css_fun = fn url, acc -> fun.(url, nil, acc) end
-    {value, acc} = CSSImages.map(value, &source(&1, css_fun, &2), acc)
+    {value, acc} = CSSImages.map(value, &source(&1, css_fun, &2), acc, true)
     {{"style", value}, acc}
   end
 

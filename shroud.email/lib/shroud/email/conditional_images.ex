@@ -49,6 +49,9 @@ defmodule Shroud.Email.ConditionalImages do
             {mapped, acc} = attributes.(String.downcase(name), parent, attrs, acc)
             {rewrite(text, attrs, Enum.reject(mapped, &is_nil/1)), acc}
 
+          {:error, _reason} ->
+            throw(:image_parse_failed)
+
           _ ->
             {text, acc}
         end
