@@ -37,7 +37,13 @@ defmodule Shroud.Application do
         ])
       end
 
-    :logger.add_handler(:sentry_handler, Sentry.LoggerHandler, %{})
+    :logger.add_handler(:sentry_handler, Sentry.LoggerHandler, %{
+      config: %{
+        capture_log_messages: true,
+        capture_level: :error,
+        capture_metadata: [:oban_job_id]
+      }
+    })
 
     :telemetry.attach(
       "oban-errors",

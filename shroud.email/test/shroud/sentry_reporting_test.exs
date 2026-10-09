@@ -3,7 +3,24 @@ defmodule Shroud.SentryReportingTest do
 
   import Phoenix.ConnTest
 
+  require Logger
+
   @endpoint ShroudWeb.Endpoint
+
+  test "error logs create events, but warnings do not" do
+    Sentry.Test.setup_sentry()
+
+    ExUnit.CaptureLog.capture_log(fn ->
+      Logger.warning("temporary warning")
+      Logger.error("SMTP connection failed", oban_job_id: 731)
+    end)
+
+    assert [event] = Sentry.Test.pop_sentry_reports()
+    assert event.source == :logger
+    assert event.level == :error
+    assert event.message.formatted == "SMTP connection failed"
+    assert event.extra.logger_metadata[:oban_job_id] == 731
+  end
 
   test "a tokenless login POST is rejected without creating a Sentry event" do
     Sentry.Test.setup_sentry()
