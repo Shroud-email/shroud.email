@@ -428,6 +428,11 @@ defmodule ShroudWeb.EmailAliasLive.Show do
     {:noreply, assign(socket, :detail_forms, Map.put(socket.assigns.detail_forms, field, form))}
   end
 
+  def handle_event("validate_details", %{"field" => field} = params, socket)
+      when field in ["title", "notes"] and not is_map_key(params, "email_alias") do
+    {:noreply, socket}
+  end
+
   @impl true
   def handle_event(
         "update_details",
