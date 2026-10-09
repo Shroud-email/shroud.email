@@ -39,7 +39,12 @@ export class Api {
     let response: Response;
     try {
       response = await send(token);
-      if (response.status === 401 && !input) response = await send(await this.auth.accessToken(true));
+      this.auth.assertCurrent(generation);
+      if (response.status === 401 && !input) {
+        const refreshed = await this.auth.accessToken(true);
+        this.auth.assertCurrent(generation);
+        response = await send(refreshed);
+      }
     } catch {
       this.auth.assertCurrent(generation);
       throw new OperationError({ kind: 'network', message: input ? 'The result is uncertain. Check your aliases before creating another.' : 'Could not reach the server. Try again.', ...(input ? { creationUncertain: true } : {}) });

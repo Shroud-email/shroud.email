@@ -60,3 +60,40 @@ it('never exposes an API response after logout or replays an uncertain creation'
   resolve(Response.json({ email_aliases: [], page_number: 1, page_size: 20, total_pages: 0, total_entries: 0 }));
   await expect(pending).rejects.toThrow();
 });
+
+it('never sends a replacement instance credential to an old request after a delayed 401', async () => {
+  const data: Record<string, unknown> = { session: { instance: 'https://old.example', email: 'old@example.net', access: 'old-access', refresh: 'old-refresh', expiresAt: Date.now() + 100000 } };
+  const requests: { url: string; authorization: string | null }[] = [];
+  let navigation = '';
+  let respond!: (response: Response) => void;
+  let begin!: () => void;
+  const started = new Promise<void>((resolve) => { begin = resolve; });
+  const deps: AuthDependencies = {
+    storage: { get: async (key) => data[key], set: async (key, value) => { data[key] = value; }, remove: async (keys) => { keys.forEach((key) => delete data[key]); } },
+    tabs: { create: async () => 17, update: async (_id, url) => { navigation = url; }, remove: async () => {} },
+    now: Date.now,
+    fetch: async (input, init) => {
+      const url = String(input);
+      requests.push({ url, authorization: new Headers(init?.headers).get('Authorization') });
+      if (url.endsWith('/oauth/revoke')) return new Response();
+      if (url.endsWith('/oauth/token')) return Response.json({ access_token: 'new-instance-access', refresh_token: 'new-refresh', expires_in: 3600, token_type: 'Bearer' });
+      if (url.endsWith('/me')) return Response.json({ email: 'new@example.net' });
+      if (requests.filter((request) => request.url.includes('/aliases?')).length === 1) {
+        begin();
+        return new Promise((resolve) => { respond = resolve; });
+      }
+      return Response.json({ email_aliases: [], page_number: 1, page_size: 20, total_entries: 0, total_pages: 0 });
+    },
+  };
+  const auth = new Auth(deps);
+  const api = new Api(auth, deps.fetch, new PreferencesStore(auth, deps.storage), async () => false);
+  const pending = api.aliases('', 1);
+  await started;
+  await auth.login('https://new.example');
+  const authorize = new URL(navigation);
+  await auth.callback(17, `https://new.example/oauth/extension/callback?${new URLSearchParams({ code: 'new-code', state: authorize.searchParams.get('state')!, iss: 'https://new.example' })}`);
+  expect(await auth.identity()).toEqual({ instance: 'https://new.example', email: 'new@example.net' });
+  respond(new Response(null, { status: 401 }));
+  await expect(pending).rejects.toThrow();
+  expect(requests.filter((request) => new URL(request.url).origin === 'https://old.example' && request.authorization === 'Bearer new-instance-access')).toEqual([]);
+});

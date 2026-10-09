@@ -69,7 +69,7 @@ function displayError(message: string) {
       :page="page"
       :searching="searching"
       @create="
-        creationError = null;
+        creationError = creationError?.creationUncertain ? creationError : null;
         created = null;
         screen = 'create';
       "

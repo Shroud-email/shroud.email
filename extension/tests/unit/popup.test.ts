@@ -234,3 +234,57 @@ it("shows the permission action only when missing, and logs out without keeping 
   expect(w.text()).not.toContain("alex@example.com");
   expect(w.text()).toContain("Sign in");
 });
+
+it("keeps uncertain creation blocked across Back and New alias until aliases refresh successfully", async () => {
+  let creations = 0;
+  let refreshFails = false;
+  transport.send.mockImplementation(async (message) => {
+    if (message.type === "create") {
+      creations++;
+      if (creations === 1) {
+        refreshFails = true;
+        return {
+          ok: false,
+          error: {
+            kind: "network",
+            message: "Response lost",
+            creationUncertain: true,
+          },
+        };
+      }
+      return { ok: true, value: alias };
+    }
+    if (message.type === "aliases" && refreshFails)
+      return {
+        ok: false,
+        error: { kind: "network", message: "Could not refresh" },
+      };
+    return {
+      ok: true,
+      value: message.type === "account" ? structuredClone(account) : page,
+    };
+  });
+  const w = mount(App, { attachTo: document.body });
+  await flushPromises();
+  await button(w, "+ New alias").trigger("click");
+  await button(w, "Create & copy alias").trigger("click");
+  await flushPromises();
+  await button(w, "‹ Create alias").trigger("click");
+  await button(w, "+ New alias").trigger("click");
+  expect(w.text()).toContain("Creation result uncertain");
+  await w.get("form").trigger("submit");
+  await flushPromises();
+  expect(creations).toBe(1);
+  await button(w, "Refresh aliases").trigger("click");
+  await flushPromises();
+  expect(w.text()).toContain("Creation result uncertain");
+  refreshFails = false;
+  await button(w, "Refresh aliases").trigger("click");
+  await flushPromises();
+  expect(w.find('[data-address="created@custom.example"]').exists()).toBe(true);
+  await button(w, "+ New alias").trigger("click");
+  await button(w, "Create & copy alias").trigger("click");
+  await flushPromises();
+  expect(creations).toBe(2);
+  expect(w.text()).toContain("Alias created and copied");
+});

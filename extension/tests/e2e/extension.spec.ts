@@ -260,6 +260,7 @@ test("cancelled consent and a replaced input retain a single created alias for C
   await expect(
     site.getByRole("button", { name: "+ Create & fill", exact: true }),
   ).toBeEnabled();
+  await site.screenshot({ path: "../.amp/in/artifacts/inline-default-light.png" });
   let started!: () => void;
   const sent = new Promise<void>((r) => {
     started = r;
@@ -289,6 +290,7 @@ test("cancelled consent and a replaced input retain a single created alias for C
   await expect(
     site.getByRole("button", { name: "Copy", exact: true }),
   ).toBeVisible();
+  await site.screenshot({ path: "../.amp/in/artifacts/inline-copy-light.png" });
   await expect(site.getByLabel("Work email")).toHaveValue("");
   await context.grantPermissions(["clipboard-read"], {
     origin: extension.website,
