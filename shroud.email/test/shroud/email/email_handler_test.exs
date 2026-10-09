@@ -62,6 +62,8 @@ defmodule Shroud.Email.EmailHandlerTest do
       user: user,
       email_alias: email_alias
     } do
+      Sentry.Test.setup_sentry()
+
       smtp_error =
         {:permanent_failure, ~c"haraka", "501 RFC-5321 local-part exceeds 64 octets\r\n"}
 
@@ -75,16 +77,21 @@ defmodule Shroud.Email.EmailHandlerTest do
 
       for args <- [incoming_args, outgoing_args],
           reason <- [smtp_error, {:retries_exceeded, smtp_error}, {501, %{"error" => smtp_error}}] do
+        job = args |> EmailHandler.new() |> Oban.insert!() |> Repo.reload!()
+
         log =
           capture_log(fn ->
             with_failing_mailer(
-              fn -> assert {:error, ^smtp_error} = perform_job(EmailHandler, args) end,
+              fn -> assert {:error, ^smtp_error} = EmailHandler.perform(job) end,
               reason: reason
             )
           end)
 
         assert log =~ "permanent_failure"
         assert log =~ "local-part exceeds 64 octets"
+        assert [event] = Sentry.Test.pop_sentry_reports()
+        assert event.source == :logger
+        assert event.extra.logger_metadata[:oban_job_id] == job.id
       end
 
       email_alias = Aliases.get_email_alias_by_address!(email_alias.address)

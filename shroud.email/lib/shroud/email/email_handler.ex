@@ -19,6 +19,8 @@ defmodule Shroud.Email.EmailHandler do
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"from" => from, "to" => to, "data" => data}} = job) do
+    Logger.metadata(oban_job_id: job.id)
+
     # Decode Base64 encoded email data (encoded in SmtpServer to safely store as JSONB)
     decoded_data = decode_data(data)
     do_perform(job, from, to, decoded_data)
