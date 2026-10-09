@@ -18,7 +18,7 @@ defmodule Shroud.Email.TrackerRemover do
   use ShroudWeb, :verified_routes
   require Logger
 
-  @privacy_budget 10_000
+  @privacy_budget 2_000
 
   @spec process(ParsedEmail.t(), boolean()) :: ParsedEmail.t()
   def process(email, branding \\ false)

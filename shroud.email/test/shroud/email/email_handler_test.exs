@@ -260,11 +260,11 @@ defmodule Shroud.Email.EmailHandlerTest do
 
       original = ParsedEmail.parse(Mailex.parse!(data), "sender@example.com", email_alias.address)
 
-      # This stand-in helper discards the four-byte input length header, waits two
-      # seconds, and prints a successful JSON reply with no image references.
-      # Each call fits within the three-second parser timeout, but six style
-      # attributes exhaust the ten-second whole-email budget.
-      with_parser_helper("head -c 4 >/dev/null; sleep 2; printf '%s' '{\"Ok\":[]}'", fn ->
+      # This stand-in helper discards the four-byte input length header, waits half
+      # a second, and prints a successful JSON reply with no image references.
+      # Each call fits within the parser timeout and the two-second email budget,
+      # but six style attributes take at least three seconds in total.
+      with_parser_helper("head -c 4 >/dev/null; sleep 0.5; printf '%s' '{\"Ok\":[]}'", fn ->
         assert :ok =
                  perform_job(EmailHandler, %{
                    from: "sender@example.com",

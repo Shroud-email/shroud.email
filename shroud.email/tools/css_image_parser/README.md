@@ -24,7 +24,7 @@ helper crashes, timeouts, or an unavailable helper cause the email pipeline to
 retain the original content, omit branding
 footers, and skip independent image visits. These limits can reject valid CSS.
 
-Tracker removal, original image discovery, and optional branding share a ten-second
+Tracker removal, original image discovery, and optional branding share a two-second
 per-email budget in an unlinked supervised task. At most 20 privacy tasks run at once.
 The image jobs consume the prepared original URL list; no CSS is parsed after delivery.
 
