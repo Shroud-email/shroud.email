@@ -170,6 +170,80 @@ defmodule ShroudWeb.CheckoutControllerTest do
       assert is_nil(user.plan_expires_at)
       # The ordering guard depends on this being persisted.
       assert user.last_paddle_event_at == ~N[2030-01-01 00:00:00.000000]
+
+      assert_enqueued(
+        worker: Shroud.Accounts.UserNotifierJob,
+        args: %{email_function: "deliver_subscription_downgraded", email_args: [user.id]}
+      )
+    end
+
+    test "duplicate cancellations only enqueue one user email", %{conn: conn} do
+      user =
+        user_fixture(%{
+          status: :active,
+          paddle_customer_id: "ctm_duplicate_cancel",
+          paddle_subscription_id: "sub_duplicate_cancel",
+          paddle_price_id: "pri_test_yearly"
+        })
+
+      event =
+        subscription_event("canceled", "ctm_duplicate_cancel", "sub_duplicate_cancel",
+          nil_billing: true,
+          event_type: "subscription.canceled"
+        )
+
+      assert response(post_event(conn, event), 200) == ""
+      assert response(post_event(recycle(conn), event), 200) == ""
+
+      newer = Map.put(event, "occurred_at", "2030-01-02T00:00:00Z")
+      assert response(post_event(recycle(conn), newer), 200) == ""
+
+      assert [%{args: %{"email_args" => [user_id]}}] =
+               all_enqueued(
+                 worker: Shroud.Accounts.UserNotifierJob,
+                 args: %{email_function: "deliver_subscription_downgraded"}
+               )
+
+      assert user_id == user.id
+    end
+
+    for prior_status <- [:free, :lead, :inactive] do
+      test "does not notify a #{prior_status} user", %{conn: conn} do
+        user_fixture(%{
+          status: unquote(prior_status),
+          paddle_customer_id: "ctm_unpaid_cancel",
+          paddle_subscription_id: "sub_unpaid_cancel",
+          paddle_price_id: "pri_test_yearly"
+        })
+
+        event =
+          subscription_event("canceled", "ctm_unpaid_cancel", "sub_unpaid_cancel",
+            nil_billing: true,
+            event_type: "subscription.canceled"
+          )
+
+        assert response(post_event(conn, event), 200) == ""
+        refute_enqueued(worker: Shroud.Accounts.UserNotifierJob)
+      end
+    end
+
+    test "a paused subscription also notifies when paid access becomes free", %{conn: conn} do
+      user =
+        user_fixture(%{
+          status: :active,
+          paddle_customer_id: "ctm_paused",
+          paddle_subscription_id: "sub_paused",
+          paddle_price_id: "pri_test_yearly"
+        })
+
+      event = subscription_event("paused", "ctm_paused", "sub_paused")
+      assert response(post_event(conn, event), 200) == ""
+      assert Repo.reload!(user).status == :free
+
+      assert_enqueued(
+        worker: Shroud.Accounts.UserNotifierJob,
+        args: %{email_function: "deliver_subscription_downgraded", email_args: [user.id]}
+      )
     end
   end
 
@@ -461,6 +535,7 @@ defmodule ShroudWeb.CheckoutControllerTest do
 
       post_event(conn, older)
       assert Repo.get!(User, user.id).status == :active
+      refute_enqueued(worker: Shroud.Accounts.UserNotifierJob)
     end
 
     for {name, previous, incoming, expected_status} <- [
