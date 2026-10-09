@@ -130,15 +130,15 @@ export class Auth {
     return { instance, email: '', access: value.access_token, refresh: value.refresh_token,
       expiresAt: this.deps.now() + value.expires_in * 1000 };
   }
-  accessToken(): Promise<string> {
+  accessToken(forceRefresh = false): Promise<string> {
     if (this.refreshing) return this.refreshing;
     const generation = this.generation;
-    const next = this.loadAccess(generation);
+    const next = this.loadAccess(generation, forceRefresh);
     this.refreshing = next;
     void next.finally(() => { if (this.refreshing === next) this.refreshing = null; }).catch(() => {});
     return next;
   }
-  private async loadAccess(generation: number): Promise<string> {
+  private async loadAccess(generation: number, forceRefresh: boolean): Promise<string> {
     const session = await this.session();
     this.assertCurrent(generation);
     if (!session) throw new Error('Sign in to Shroud.email.');
@@ -146,7 +146,7 @@ export class Auth {
       await this.commit(generation, () => this.deps.storage.remove(['session', 'preferences']));
       throw new Error('Sign in again.');
     }
-    if (session.expiresAt > this.deps.now() + 30000) return session.access;
+    if (!forceRefresh && session.expiresAt > this.deps.now() + 30000) return session.access;
     // Persist removal before rotation: a suspended worker cannot reuse a consumed refresh token.
     await this.commit(generation, () => this.deps.storage.set('session', { ...session, refresh: '' }));
     try {

@@ -30,3 +30,9 @@ export type Message =
   | { type: 'preferences'; patch: Partial<Preferences> }
   | { type: 'selected-domain'; domain: string }
   | { type: 'open'; destination: 'signup' | 'billing'; instance?: string };
+
+export type Result<M extends Message> = M['type'] extends 'account' ? AccountView | null : M['type'] extends 'aliases' ? AliasPage : M['type'] extends 'create' ? Alias : void;
+export async function request<M extends Message>(message: M): Promise<Reply<Result<M>>> {
+  const { browser } = await import('wxt/browser');
+  return browser.runtime.sendMessage(message);
+}
