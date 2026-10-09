@@ -20,6 +20,9 @@ defmodule Shroud.SentryReportingTest do
     assert event.level == :error
     assert event.message.formatted == "SMTP connection failed"
     assert event.extra.logger_metadata[:oban_job_id] == 731
+    assert event.extra.logger_metadata[:file] == __ENV__.file
+    assert is_integer(event.extra.logger_metadata[:line])
+    assert event.extra.logger_metadata[:line] > 0
   end
 
   test "a tokenless login POST is rejected without creating a Sentry event" do

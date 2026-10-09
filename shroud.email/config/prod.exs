@@ -1,5 +1,9 @@
 import Config
 
+config :sentry,
+  enable_source_code_context: true,
+  root_source_code_paths: [File.cwd!()]
+
 # For production, don't forget to configure the url host
 # to something meaningful, Phoenix uses this information
 # when generating URLs.
