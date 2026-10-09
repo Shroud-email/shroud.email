@@ -14,7 +14,7 @@ defmodule Shroud.Email.TrackerRemover do
   # once we enable tracking-link-processing
 
   alias Shroud.Email
-  alias Shroud.Email.{ParsedEmail, Tracker}
+  alias Shroud.Email.{ImageSources, ParsedEmail, Tracker}
   use ShroudWeb, :verified_routes
 
   @spec process(ParsedEmail.t()) :: ParsedEmail.t()
@@ -28,10 +28,7 @@ defmodule Shroud.Email.TrackerRemover do
     # and `domain` is the real host extracted from the image URL, which is what
     # we persist for analytics.
     {processed_html, removed_trackers} =
-      Floki.traverse_and_update(parsed_html, [], fn
-        {"img", attrs, children}, acc -> process_image(trackers, attrs, children, acc)
-        other, acc -> {other, acc}
-      end)
+      ImageSources.map(parsed_html, &process_source(trackers, &1, &2, &3), [])
 
     # Entries are accumulated by prepending, so reverse to restore the order in
     # which they appeared in the email, then deduplicate so an identical tracker
@@ -50,69 +47,28 @@ defmodule Shroud.Email.TrackerRemover do
     )
   end
 
-  defp process_image(trackers, attrs, children, acc) do
-    source = src_value(attrs)
+  defp process_source(trackers, source, image_attrs, acc) do
+    tracker = Enum.find(trackers, &Tracker.match?(&1, source))
 
-    # Look for known trackers (matched by pattern), then fall back to detecting
-    # tracking pixels from unknown sources by their size.
-    entry =
-      case known_tracker_name(trackers, attrs) do
-        nil ->
-          case find_unknown_tracker(attrs) do
-            nil -> nil
-            host -> %{name: nil, domain: host}
-          end
-
-        name ->
-          %{name: name, domain: host_of(source)}
-      end
-
-    if is_nil(entry) do
-      attrs = attrs |> Enum.map(&proxify_src/1)
-      {{"img", attrs, children}, acc}
-    else
-      # Returning nil removes this img element from the HTML
+    if tracker || tiny_image?(image_attrs) do
+      entry = %{name: if(tracker, do: tracker.name), domain: URI.parse(source).host}
       {nil, [entry | acc]}
+    else
+      {url(~p"/proxy?url=#{source}"), acc}
     end
   end
 
-  defp known_tracker_name(trackers, attrs) do
-    attrs
-    |> Enum.map(&check_attribute(trackers, &1))
-    |> Enum.find(%{name: nil}, &(not is_nil(&1)))
-    |> Map.get(:name)
-  end
+  defp tiny_image?(nil), do: false
 
-  defp src_value(attrs) do
-    case Enum.find(attrs, &match?({"src", _src}, &1)) do
-      {"src", source} -> source
-      _ -> nil
-    end
-  end
-
-  defp host_of(nil), do: nil
-  defp host_of(source), do: source |> URI.parse() |> Map.get(:host)
-
-  defp check_attribute(trackers, {"src", source}) do
-    Enum.find(trackers, fn tracker -> Tracker.match?(tracker, source) end)
-  end
-
-  defp check_attribute(_trackers, _attr), do: nil
-
-  defp find_unknown_tracker(attrs) do
+  defp tiny_image?(attrs) do
     {"width", width} = Enum.find(attrs, {"width", "999"}, &match?({"width", _width}, &1))
     {"height", height} = Enum.find(attrs, {"height", "999"}, &match?({"height", _height}, &1))
-    {"src", source} = Enum.find(attrs, {"src", nil}, &match?({"src", _src}, &1))
 
     with {width, _rem} <- parse_size(width),
          {height, _rem} <- parse_size(height) do
-      if width < 3 and height < 3 and not is_nil(source) do
-        source
-        |> URI.parse()
-        |> Map.get(:host)
-      end
+      width < 3 and height < 3
     else
-      :error -> nil
+      :error -> false
     end
   end
 
@@ -124,21 +80,4 @@ defmodule Shroud.Email.TrackerRemover do
     |> String.replace_suffix("em", "")
     |> Integer.parse()
   end
-
-  # Don't proxy inline-attached images!
-  defp proxify_src({"src", "cid:" <> cid_id}) do
-    {"src", "cid:" <> cid_id}
-  end
-
-  # Don't proxy base64 images
-  defp proxify_src({"src", "data:" <> data}) do
-    {"src", "data:" <> data}
-  end
-
-  defp proxify_src({"src", href}) do
-    href = URI.encode(href)
-    {"src", url(~p"/proxy?url=#{href}")}
-  end
-
-  defp proxify_src(attribute), do: attribute
 end

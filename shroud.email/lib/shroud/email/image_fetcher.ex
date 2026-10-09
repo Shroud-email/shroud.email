@@ -7,7 +7,7 @@ defmodule Shroud.Email.ImageFetcher do
 
   use Oban.Worker, queue: :image_fetcher, max_attempts: 1
 
-  alias Shroud.Email.ParsedEmail
+  alias Shroud.Email.{ImageSources, ParsedEmail}
 
   @max_bytes 5 * 1024 * 1024
   @max_images 500
@@ -17,8 +17,7 @@ defmodule Shroud.Email.ImageFetcher do
 
   def enqueue(%ParsedEmail{parsed_html: html}) do
     html
-    |> Floki.find("img")
-    |> Floki.attribute("src")
+    |> ImageSources.urls()
     |> Stream.uniq()
     |> Stream.filter(&(remote_uri(&1) != nil))
     |> Stream.take(@max_images)

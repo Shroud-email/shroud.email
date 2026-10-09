@@ -113,6 +113,8 @@ defmodule Shroud.Email.EmailHandlerTest do
         <img src="https://images.example.com/photo.jpg">
         <img src="https://known.example.com/open">
         <img src="https://unknown.example.com/pixel" width="1" height="1">
+        <div style="background: url(https://known.example.com/background)">Content</div>
+        <picture><source srcset="https://images.example.com/wide.jpg 800w"></picture>
         """)
 
       assert :ok =
@@ -136,6 +138,8 @@ defmodule Shroud.Email.EmailHandlerTest do
 
       assert urls == [
                "https://images.example.com/photo.jpg",
+               "https://images.example.com/wide.jpg",
+               "https://known.example.com/background",
                "https://known.example.com/open",
                "https://unknown.example.com/pixel"
              ]
