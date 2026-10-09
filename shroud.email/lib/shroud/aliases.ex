@@ -19,11 +19,16 @@ defmodule Shroud.Aliases do
     |> Repo.all()
   end
 
-  def paginate_aliases(%User{} = user, search_query, page_number) do
+  def paginate_aliases(%User{} = user, search_query, page_number, status \\ "all") do
     user
     |> aliases_with_metrics(search_query)
+    |> filter_status(status)
     |> Repo.paginate(page: page_number, page_size: 20)
   end
+
+  defp filter_status(query, "enabled"), do: where(query, [ea], ea.enabled == true)
+  defp filter_status(query, "disabled"), do: where(query, [ea], ea.enabled == false)
+  defp filter_status(query, _status), do: query
 
   def count_aliases(%User{} = user) do
     user |> aliases_query() |> Repo.aggregate(:count)

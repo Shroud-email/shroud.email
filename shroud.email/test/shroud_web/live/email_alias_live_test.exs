@@ -191,6 +191,86 @@ defmodule ShroudWeb.EmailAliasLiveTest do
       refute has_element?(view, "button[aria-haspopup='true']", "Open menu")
     end
 
+    test "status combines with search, pagination and restored URLs, and clears empty results", %{
+      conn: conn,
+      user: user,
+      email_alias: enabled
+    } do
+      matches =
+        for _ <- 1..21,
+            do: alias_fixture(%{user_id: user.id, enabled: false, title: "Receipts"})
+
+      nonmatch = alias_fixture(%{user_id: user.id, enabled: false, title: "Newsletter"})
+      enabled_match = alias_fixture(%{user_id: user.id, title: "Receipts"})
+
+      other_user =
+        alias_fixture(%{
+          user_id: Shroud.AccountsFixtures.user_fixture().id,
+          enabled: false,
+          title: "Receipts"
+        })
+
+      deleted = alias_fixture(%{user_id: user.id, enabled: false, title: "Receipts"})
+      Shroud.Aliases.delete_email_alias(deleted.id)
+
+      {:ok, view, _} = live(conn, ~p"/?page=2")
+      view |> element("#alias-status-disabled") |> render_click()
+      assert_patch(view, ~p"/?page=1&status=disabled")
+      assert has_element?(view, "#alias-status-disabled[aria-checked='true']")
+      refute has_element?(view, "#copy-alias-#{enabled_match.id}")
+      assert has_element?(view, "#copy-alias-#{nonmatch.id}")
+
+      view |> form("#alias-search", query: "Receipts") |> render_change()
+      assert_patch(view, ~p"/?page=1&query=Receipts&status=disabled")
+      assert has_element?(view, "#alias-page-range", "Showing 1–20 of 21 aliases")
+
+      for excluded <- [enabled, enabled_match, nonmatch, other_user, deleted] do
+        refute has_element?(view, "#copy-alias-#{excluded.id}")
+      end
+
+      view |> element("#alias-page-next") |> render_click()
+      assert_patch(view, ~p"/?page=2&query=Receipts&status=disabled")
+      assert has_element?(view, "#copy-alias-#{hd(matches).id}")
+      refute has_element?(view, "#aliases > tr:nth-child(2)")
+
+      {:ok, restored, _} = live(conn, ~p"/?page=2&query=Receipts&status=disabled")
+      assert has_element?(restored, "#copy-alias-#{hd(matches).id}")
+      assert has_element?(restored, "#alias-status-disabled[aria-checked='true']")
+
+      assert has_element?(view, "#alias-status-tag", "Status: Disabled")
+      view |> element("#remove-alias-status-filter") |> render_click()
+      assert_patch(view, ~p"/?page=1&query=Receipts")
+      assert has_element?(view, "#query[value='Receipts']")
+      refute has_element?(view, "#alias-status-tag")
+      assert has_element?(view, "#copy-alias-#{enabled_match.id}")
+      assert has_element?(view, "#copy-alias-#{List.last(matches).id}")
+
+      view |> element("#alias-status-enabled") |> render_click()
+      assert_patch(view, ~p"/?page=1&query=Receipts&status=enabled")
+      assert has_element?(view, "#alias-status-tag", "Status: Enabled")
+      assert has_element?(view, "#copy-alias-#{enabled_match.id}")
+      refute has_element?(view, "#copy-alias-#{hd(matches).id}")
+
+      view |> form("#alias-search", query: "missing") |> render_change()
+      assert has_element?(view, "h3", "No matching aliases")
+      assert has_element?(view, "#alias-status-filter")
+      view |> element("#clear-alias-search") |> render_click()
+      assert_patch(view, ~p"/?page=1")
+      assert has_element?(view, "#alias-status-all[aria-checked='true']")
+      assert has_element?(view, "#query[value='']")
+
+      render_patch(view, ~p"/?status=invalid")
+      assert has_element?(view, "#alias-status-all[aria-checked='true']")
+    end
+
+    test "a status with no matches keeps the filter available", %{conn: conn} do
+      {:ok, view, _} = live(conn, ~p"/?status=disabled")
+      assert has_element?(view, "h3", "No matching aliases")
+      assert has_element?(view, "#alias-status-filter")
+      view |> element("#alias-status-all") |> render_click()
+      assert has_element?(view, "#aliases > tr")
+    end
+
     test "searches on change and submit, and clears an empty result", %{
       conn: conn,
       user: user,

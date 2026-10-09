@@ -13,6 +13,7 @@ defmodule ShroudWeb.EmailAliasLive.Index do
   import ShroudWeb.Components.{
     ButtonWithDropdown,
     CopyToClipboardButton,
+    DropdownMenu,
     DropdownItem
   }
 
@@ -42,12 +43,14 @@ defmodule ShroudWeb.EmailAliasLive.Index do
         _ -> ""
       end
 
+    status = if params["status"] in ["enabled", "disabled"], do: params["status"], else: "all"
     page_number = parse_page(params["page"])
-    page = Aliases.paginate_aliases(socket.assigns.current_user, query, page_number)
+    page = Aliases.paginate_aliases(socket.assigns.current_user, query, page_number, status)
 
     socket =
       socket
       |> assign(:filter_query, query)
+      |> assign(:filter_status, status)
       |> assign(:filtered_alias_count, page.total_entries)
       |> assign(:page_number, page.page_number)
       |> assign(:page_size, page.page_size)
@@ -57,7 +60,7 @@ defmodule ShroudWeb.EmailAliasLive.Index do
 
     socket =
       if params["page"] && params["page"] != Integer.to_string(page.page_number) do
-        push_patch(socket, to: aliases_path(page.page_number, query), replace: true)
+        push_patch(socket, to: aliases_path(page.page_number, query, status), replace: true)
       else
         socket
       end
@@ -164,7 +167,16 @@ defmodule ShroudWeb.EmailAliasLive.Index do
 
   @impl true
   def handle_event("filter", %{"query" => query}, socket) do
-    {:noreply, push_patch(socket, to: aliases_path(1, query), replace: true)}
+    {:noreply,
+     push_patch(socket, to: aliases_path(1, query, socket.assigns.filter_status), replace: true)}
+  end
+
+  def handle_event("filter_status", %{"status" => status}, socket) do
+    {:noreply, push_patch(socket, to: aliases_path(1, socket.assigns.filter_query, status))}
+  end
+
+  def handle_event("clear_filters", _params, socket) do
+    {:noreply, push_patch(socket, to: aliases_path(1, "", "all"))}
   end
 
   @impl true
@@ -193,9 +205,12 @@ defmodule ShroudWeb.EmailAliasLive.Index do
     {:noreply, socket}
   end
 
-  defp aliases_path(page_number, ""), do: ~p"/?#{[page: page_number]}"
-
-  defp aliases_path(page_number, query), do: ~p"/?#{[page: page_number, query: query]}"
+  defp aliases_path(page_number, query, status) do
+    params = [page: page_number]
+    params = if query == "", do: params, else: params ++ [query: query]
+    params = if status == "all", do: params, else: params ++ [status: status]
+    ~p"/?#{params}"
+  end
 
   defp parse_page(value) when is_binary(value) do
     case Integer.parse(value) do

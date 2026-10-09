@@ -44,7 +44,7 @@
   </.live_component>
 </form>
 
-<%= if @filtered_alias_count == 0 and @filter_query == "" do %>
+<%= if @alias_count == 0 and @filter_query == "" and @filter_status == "all" do %>
   <.empty_state
     title="No aliases yet"
     description="Get started by adding your first alias."
@@ -64,8 +64,71 @@
     </div>
 
     <div class="flex flex-col-reverse sm:flex-row items-center w-full sm:w-fit">
-      <div class="sm:mr-3 sm:mt-0 mt-3 w-full sm:w-fit">
-        <form id="alias-search" phx-change="filter" phx-submit="filter">
+      <div class="sm:mr-3 sm:mt-0 mt-3 w-full sm:w-fit flex items-center gap-2">
+        <span
+          :if={@filter_status != "all"}
+          id="alias-status-tag"
+          class="inline-flex shrink-0 items-center gap-1 rounded-full bg-gray-100 dark:bg-gray-800 pl-3 pr-1 py-1 text-xs text-gray-700 dark:text-gray-300"
+        >
+          Status: {if(@filter_status == "enabled", do: "Enabled", else: "Disabled")}
+          <.button
+            id="remove-alias-status-filter"
+            intent={:unstyled}
+            click="filter_status"
+            phx-value-status="all"
+            aria-label="Remove status filter"
+            class="inline-flex items-center justify-center rounded-full p-1 hover:bg-gray-200 dark:hover:bg-gray-700 focus-visible:outline-2 focus-visible:outline-indigo-500"
+          >
+            <.icon name={:x_mark} class="h-3.5 w-3.5" />
+          </.button>
+        </span>
+        <.dropdown_menu
+          id="alias-status-filter"
+          tooltip="Filter Aliases"
+          label={
+            if(@filter_status == "all",
+              do: "Filter aliases by status",
+              else: "Filter aliases: #{@filter_status}"
+            )
+          }
+          shape={:default}
+          align={:left}
+          intent={:unstyled}
+          class="shrink-0"
+          button_class={
+            "inline-flex items-center justify-center h-[38px] w-[38px] border-0 bg-transparent rounded-button focus-visible:outline-2 focus-visible:outline-indigo-500 " <>
+              if(@filter_status == "all",
+                do: "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200",
+                else: "text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
+              )
+          }
+        >
+          <:button_content><.icon name={:funnel} class="h-5 w-5" /></:button_content>
+          <%= for {{status, label}, index} <- Enum.with_index([{"all", "All statuses"}, {"enabled", "Enabled"}, {"disabled", "Disabled"}]) do %>
+            <.button
+              id={"alias-status-#{status}"}
+              intent={:unstyled}
+              click="filter_status"
+              phx-value-status={status}
+              role="menuitemradio"
+              aria-checked={to_string(@filter_status == status)}
+              tabindex="-1"
+              class="flex items-center justify-between px-4 py-2 text-sm text-gray-700 dark:text-gray-300 text-left"
+              x-bind:class={"{ 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-100': activeIndex === #{index} }"}
+              x-on:mouseenter={"activeIndex = #{index}"}
+              x-on:mouseleave="activeIndex = -1"
+              alpine_click="open = false; focusButton()"
+            >
+              {label}
+              <.icon
+                :if={@filter_status == status}
+                name={:check}
+                class="h-4 w-4 text-indigo-600 dark:text-indigo-400"
+              />
+            </.button>
+          <% end %>
+        </.dropdown_menu>
+        <form id="alias-search" phx-change="filter" phx-submit="filter" class="flex-1 min-w-0">
           <label for="query" class="sr-only">Search aliases</label>
           <input
             phx-debounce="300"
@@ -85,10 +148,10 @@
   <.empty_state
     :if={@filtered_alias_count == 0}
     title="No matching aliases"
-    description="Try a different search or clear it to see all your aliases."
+    description="Try a different search or status, or clear the filters to see all your aliases."
     icon={:envelope}
   >
-    <.button id="clear-alias-search" click="filter" text="Clear search" phx-value-query="" />
+    <.button id="clear-alias-search" click="clear_filters" text="Clear filters" />
   </.empty_state>
   <div :if={@filtered_alias_count > 0} class="flex flex-col">
     <div class="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
@@ -229,7 +292,7 @@
         <.link
           :if={@page_number > 1}
           id="alias-page-previous"
-          patch={aliases_path(@page_number - 1, @filter_query)}
+          patch={aliases_path(@page_number - 1, @filter_query, @filter_status)}
           class="px-3 py-2 rounded-button text-indigo-600 dark:text-indigo-400 hover:bg-gray-100 dark:hover:bg-gray-700"
         >
           Previous
@@ -266,7 +329,7 @@
               <% true -> %>
                 <.link
                   id={"alias-page-#{number}"}
-                  patch={aliases_path(number, @filter_query)}
+                  patch={aliases_path(number, @filter_query, @filter_status)}
                   aria-label={"Go to page #{number}"}
                   class="px-3 py-2 rounded-button text-indigo-600 dark:text-indigo-400 hover:bg-gray-100 dark:hover:bg-gray-700"
                 >
@@ -278,7 +341,7 @@
         <.link
           :if={@page_number < @total_pages}
           id="alias-page-next"
-          patch={aliases_path(@page_number + 1, @filter_query)}
+          patch={aliases_path(@page_number + 1, @filter_query, @filter_status)}
           class="px-3 py-2 rounded-button text-indigo-600 dark:text-indigo-400 hover:bg-gray-100 dark:hover:bg-gray-700"
         >
           Next
