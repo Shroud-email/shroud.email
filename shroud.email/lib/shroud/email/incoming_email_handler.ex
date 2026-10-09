@@ -259,6 +259,8 @@ defmodule Shroud.Email.IncomingEmailHandler do
 
     email
     |> Map.put(:from, sender)
+    # Swoosh uses Sender for SMTP MAIL FROM; bounces return to the receiving alias.
+    |> Swoosh.Email.header("Sender", email_alias)
     |> Map.put(:to, [{recipient_name, user.email}])
     |> (fn email ->
           if email.reply_to == nil do
