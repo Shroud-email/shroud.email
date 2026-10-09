@@ -1,0 +1,34 @@
+{
+  "name": "shroud-email-extension",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "postinstall": "wxt prepare",
+    "dev": "wxt",
+    "test": "vitest run",
+    "typecheck": "wxt prepare && vue-tsc --noEmit",
+    "build:chrome": "wxt build -b chrome --mv3",
+    "build:firefox": "wxt build -b firefox --mv3",
+    "build:safari": "wxt build -b safari --mv3",
+    "test:e2e": "playwright test",
+    "package:safari": "bash scripts/package-safari.sh"
+  },
+  "dependencies": {
+    "vue": "^3.5.43"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "@vitejs/plugin-vue": "^6.0.9",
+    "@vue/test-utils": "^2.5.1",
+    "@wxt-dev/module-vue": "^1.0.3",
+    "jsdom": "^29.1.1",
+    "prettier": "^3.9.9",
+    "tailwindcss": "^4.3.3",
+    "typescript": "~5.9.3",
+    "vitest": "^5.0.3",
+    "vue-tsc": "^3.3.12",
+    "wxt": "^0.21.4"
+  }
+}
