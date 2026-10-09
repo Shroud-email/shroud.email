@@ -14,6 +14,7 @@ defmodule ShroudWeb.ApiSpecTest do
     assert Map.new(operations) == %{
              {"/api/v1/token", :post} => "createToken",
              {"/api/v1/me", :get} => "getProfile",
+             {"/api/v1/alias-capabilities", :get} => "getAliasCapabilities",
              {"/api/v1/aliases", :get} => "listAliases",
              {"/api/v1/aliases", :post} => "createAlias",
              {"/api/v1/aliases/{address}", :get} => "getAlias",
@@ -45,13 +46,14 @@ defmodule ShroudWeb.ApiSpecTest do
     assert spec.paths["/api/v1/aliases/{address}"].delete.responses[204].content == nil
   end
 
-  test "optional create body, paired custom address fields and nullable metadata" do
+  test "optional create body, selected domain, local name requiring domain and nullable metadata" do
     assert ShroudWeb.ApiSpec.spec().paths["/api/v1/aliases"].post.requestBody.required == false
 
     for params <- [
           %{},
           %{title: "Acme"},
           %{title: nil, notes: nil},
+          %{domain: "example.com"},
           %{local_part: "myemail", domain: "example.com"}
         ] do
       assert_raw_schema(params, Schemas.create_alias())
@@ -64,10 +66,12 @@ defmodule ShroudWeb.ApiSpecTest do
 
     assert_raw_schema(%{title: nil, notes: nil, enabled: false}, Schemas.update_alias())
 
-    # OpenApiSpex's caster does not implement `not`; inspect the published constraint.
-    # Exactly one of these fields is forbidden: clients must omit both or supply both.
-    assert [paired_fields] = Schemas.create_alias().allOf
-    assert Enum.map(paired_fields.not.oneOf, & &1.required) == [[:local_part], [:domain]]
+    schema =
+      Schemas.create_alias() |> OpenApiSpex.OpenApi.to_map() |> Jason.encode!() |> Jason.decode!()
+
+    resolved = ExJsonSchema.Schema.resolve(schema)
+    assert :ok = ExJsonSchema.Validator.validate(resolved, %{"domain" => "example.com"})
+    assert {:error, _} = ExJsonSchema.Validator.validate(resolved, %{"local_part" => "shop"})
   end
 
   test "every documented JSON example conforms to its schema" do

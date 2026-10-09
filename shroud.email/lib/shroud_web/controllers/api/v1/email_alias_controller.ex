@@ -4,8 +4,10 @@ defmodule ShroudWeb.Api.V1.EmailAliasController do
   import Ecto.Query
   alias Shroud.Aliases
   alias Shroud.Aliases.EmailAlias
+  alias Shroud.Domain
   alias Shroud.Domain.CustomDomain
   alias Shroud.Repo
+  alias Shroud.Util
   alias ShroudWeb.Api.V1.Schemas
   import ShroudWeb.UserApiAuth, only: [require_api_scope: 2]
 
@@ -139,8 +141,9 @@ defmodule ShroudWeb.Api.V1.EmailAliasController do
     operation_id: "createAlias",
     summary: "Create an alias",
     description: """
-    Creates an enabled alias with a random or custom address. Random addresses use
-    the default shared domain (`@fog.shroud.email` on hosted Shroud.email).
+    Creates an enabled alias with a random or custom address. Omit domain to use
+    the default shared domain. Supply domain without local_part for a random name
+    on that domain. Custom domains must be owned and currently verified.
     OAuth scope: aliases:create.
     """,
     request_body:
@@ -169,20 +172,12 @@ defmodule ShroudWeb.Api.V1.EmailAliasController do
 
   def create(conn, %{"local_part" => local_part, "domain" => domain} = params)
       when is_binary(local_part) and is_binary(domain) do
-    domain = Repo.get_by(CustomDomain, domain: domain, user_id: conn.assigns.current_user.id)
+    create_on_domain(conn, params, domain, local_part)
+  end
 
-    if is_nil(domain) do
-      render_error(conn, 422, "Domain not found")
-    else
-      params
-      |> alias_metadata()
-      |> Map.merge(%{
-        address: "#{local_part}@#{domain.domain}",
-        user_id: conn.assigns.current_user.id
-      })
-      |> Aliases.create_email_alias()
-      |> render_alias_result(conn)
-    end
+  def create(conn, %{"domain" => domain} = params)
+      when is_binary(domain) and not is_map_key(params, "local_part") do
+    create_on_domain(conn, params, domain, nil)
   end
 
   def create(conn, params)
@@ -243,12 +238,38 @@ defmodule ShroudWeb.Api.V1.EmailAliasController do
     |> Enum.into(%{}, fn {key, value} -> {String.to_existing_atom(key), value} end)
   end
 
+  defp create_on_domain(conn, params, domain, local_part) do
+    owned = Repo.get_by(CustomDomain, domain: domain, user_id: conn.assigns.current_user.id)
+
+    cond do
+      domain != Util.email_domain() and is_nil(owned) ->
+        render_error(conn, 422, "Domain not found")
+
+      domain != Util.email_domain() and not Domain.fully_verified?(owned) ->
+        render_error(conn, 422, "Domain is not verified")
+
+      true ->
+        local_part = local_part || Aliases.generate_alias_name(domain)
+
+        params
+        |> alias_metadata()
+        |> Map.merge(%{address: "#{local_part}@#{domain}", user_id: conn.assigns.current_user.id})
+        |> Aliases.create_email_alias()
+        |> render_alias_result(conn)
+    end
+  end
+
   defp render_alias_result({:ok, email_alias}, conn) do
     render(conn, "email_alias.json", data: email_alias)
   end
 
   defp render_alias_result({:error, :free_limit_reached}, conn) do
-    render_error(conn, 403, "Free plan alias limit reached. Upgrade to create more aliases.")
+    conn
+    |> put_status(403)
+    |> json(%{
+      error: "Free plan alias limit reached. Upgrade to create more aliases.",
+      code: "free_limit_reached"
+    })
   end
 
   defp render_alias_result({:error, :inactive_user}, conn) do

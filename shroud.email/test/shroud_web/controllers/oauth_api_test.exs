@@ -62,6 +62,15 @@ defmodule ShroudWeb.OAuthApiTest do
     refute Floki.text(document) =~ "secret"
   end
 
+  test "alias capabilities require aliases read scope, not profile scope" do
+    %{tokens: tokens} = api_tokens(["profile:read"])
+    assert bearer(tokens.access_token) |> get("/api/v1/alias-capabilities") |> response(403)
+    %{tokens: tokens} = api_tokens(["aliases:read"])
+    conn = bearer(tokens.access_token) |> get("/api/v1/alias-capabilities")
+    assert json_response(conn, 200)["alias_limit"] == nil
+    assert get_resp_header(conn, "cache-control") == ["no-store"]
+  end
+
   defp api_tokens(scopes, user \\ confirmed_user()) do
     callback = "https://app.shroud.email/oauth/callback"
     {params, verifier} = authorization_params(["aliases:read"])

@@ -93,6 +93,7 @@ defmodule ShroudWeb.Router do
     pipe_through([:api, :require_confirmed_api_user])
 
     get("/me", ProfileController, :show)
+    get("/alias-capabilities", AliasCapabilitiesController, :show)
     resources("/aliases", EmailAliasController, only: [:index, :create])
     get("/aliases/:address", EmailAliasController, :show)
     patch("/aliases/:address", EmailAliasController, :update)
