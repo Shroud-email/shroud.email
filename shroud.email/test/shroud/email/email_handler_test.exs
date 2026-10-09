@@ -1235,13 +1235,41 @@ defmodule Shroud.Email.EmailHandlerTest do
                "Discarding incoming email from sender@example.com to disabled alias #{email_alias.address}"
     end
 
-    test "handles 554 rejection notices returned to an alias", %{email_alias: email_alias} do
-      raw_email = File.read!("test/support/data/554_rejection_notice.email") |> Util.lf_to_crlf()
-      perform_job(EmailHandler, %{from: "", to: email_alias.address, data: raw_email})
+    test "reports bounces in one Sentry issue without retaining email data", %{
+      email_alias: email_alias
+    } do
+      Sentry.Test.setup_sentry(dedup_events: false)
+      Sentry.Context.set_user_context(%{email: "private@example.com"})
+      Sentry.Context.set_extra_context(%{recipient: email_alias.address, oban_job_id: 123})
+      Sentry.Context.set_tags_context(%{sender: "private@example.com"})
+      Sentry.Context.set_request_context(%{data: "private message"})
+      Sentry.Context.add_breadcrumb(message: "private message")
 
-      assert [bounce] = all_enqueued(worker: Shroud.S3.S3UploadJob)
-      assert bounce.args["content"] == raw_email
-      assert bounce.args["path"] =~ email_alias.address
+      raw_email = File.read!("test/support/data/554_rejection_notice.email") |> Util.lf_to_crlf()
+
+      for {from, to, data} <- [
+            {"", email_alias.address, raw_email},
+            {nil, "other@email.shroud.test", "Subject: Private subject\r\n\r\nPrivate body"}
+          ] do
+        assert :ok = perform_job(EmailHandler, %{from: from, to: to, data: data})
+
+        assert [event] = Sentry.Test.pop_sentry_reports()
+        assert event.message.formatted == "Received an unclassified email bounce report"
+        assert event.level == :warning
+        assert event.fingerprint == ["shroud-unclassified-email-bounce"]
+
+        assert event == %Sentry.Event{
+                 event_id: event.event_id,
+                 timestamp: event.timestamp,
+                 environment: event.environment,
+                 release: event.release,
+                 message: event.message,
+                 level: :warning,
+                 fingerprint: ["shroud-unclassified-email-bounce"]
+               }
+      end
+
+      refute_enqueued(worker: Shroud.S3.S3UploadJob)
       assert_no_email_sent()
     end
 
@@ -1847,6 +1875,7 @@ defmodule Shroud.Email.EmailHandlerTest do
     end
 
     test "null-sender mixed recipients retain both postmaster delivery and bounce handling" do
+      Sentry.Test.setup_sentry(dedup_events: false)
       raw = "Subject: Delivery problem\r\n\r\nDetails"
 
       assert {:ok, _} =
@@ -1865,9 +1894,9 @@ defmodule Shroud.Email.EmailHandlerTest do
       assert email.to == [{"", "operator@example.net"}]
       assert hd(email.attachments).data == raw
       refute_received {:email, _}
-      assert [bounce] = all_enqueued(worker: Shroud.S3.S3UploadJob)
-      assert bounce.args["content"] == raw
-      assert bounce.args["path"] =~ "noreply@email.shroud.test"
+      refute_enqueued(worker: Shroud.S3.S3UploadJob)
+      assert [event] = Sentry.Test.pop_sentry_reports()
+      assert event.fingerprint == ["shroud-unclassified-email-bounce"]
     end
 
     test "custom-domain postmaster remains a customer alias", %{user: user} do

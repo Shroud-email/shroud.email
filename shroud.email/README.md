@@ -58,3 +58,19 @@ swaks --to test@example.com --server 127.0.0.1 --port 2525
 # Deploying
 
 Set the environment variables in `example.env`.
+
+With `SENTRY_DSN` configured, unclassified email bounce reports appear in one
+warning-level Sentry issue with fingerprint `shroud-unclassified-email-bounce`.
+The events contain no email addresses, message content, or delivery identifiers.
+Bounce reports are not archived to S3. Sentry records the alert time, environment,
+and release, without identifying a user or delivery.
+The SDK deduplicates identical events within approximately 30 seconds, so the
+issue's event count is not an exact bounce count.
+
+In Sentry, configure an issue alert for the message
+`Received an unclassified email bounce report`, including warning-level events.
+Enable notifications for new and recurring occurrences, with a notification
+interval to limit noise. Grouping alone does not enable notifications.
+
+The SMTP processing queue stores envelope addresses and message bodies in Oban
+job arguments. Bounce alerts add no delivery-history or correlation records.
