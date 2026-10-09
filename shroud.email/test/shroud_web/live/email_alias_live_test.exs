@@ -8,6 +8,24 @@ defmodule ShroudWeb.EmailAliasLiveTest do
   describe "Show" do
     setup :register_and_log_in_user
 
+    test "inactive detail forms recover without changing alias details", %{conn: conn, user: user} do
+      email_alias = alias_fixture(%{user_id: user.id, title: "Receipts", notes: "Keep invoices"})
+      {:ok, view, _} = live(conn, ~p"/alias/#{email_alias.address}")
+
+      for field <- ["title", "notes"] do
+        view |> form("#alias-#{field}-form") |> render_change(%{"_target" => ["field"]})
+        assert has_element?(view, "#edit-alias-#{field}")
+      end
+
+      view |> element("#edit-alias-title") |> render_click()
+      assert has_element?(view, "#email_alias_title[value='Receipts']")
+      view |> element("#edit-alias-notes") |> render_click()
+      assert has_element?(view, "#email_alias_notes", "Keep invoices")
+      saved = Shroud.Repo.reload!(email_alias)
+      assert saved.title == "Receipts"
+      assert saved.notes == "Keep invoices"
+    end
+
     test "desktop and mobile deletion require confirmation", %{conn: conn, user: user} do
       email_alias = alias_fixture(%{user_id: user.id})
       {:ok, view, _} = live(conn, ~p"/alias/#{email_alias.address}")
