@@ -8,7 +8,7 @@ defmodule ShroudWeb.Components.DropdownMenu do
   attr(:id, :string, default: nil)
   attr(:label, :string, default: "Open menu")
   attr(:tooltip, :string, default: nil)
-  attr(:shape, :atom, default: :right)
+  attr(:shape, :atom, default: :right, values: [:default, :left, :right, :top_right])
   attr(:align, :atom, default: :right, values: [:left, :right])
   slot(:inner_block, required: true)
   slot(:button_content, required: true)
@@ -43,7 +43,6 @@ defmodule ShroudWeb.Components.DropdownMenu do
           x-on:keydown.arrow-up.prevent="onArrowUp(); $nextTick(() => $refs['menu-items'].focus())"
           x-on:keydown.arrow-down.prevent="onArrowDown(); $nextTick(() => $refs['menu-items'].focus())"
         >
-          <span class="sr-only">{@label}</span>
           {render_slot(@button_content)}
         </.button>
       </div>

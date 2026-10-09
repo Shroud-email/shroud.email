@@ -162,7 +162,7 @@ defmodule ShroudWeb.EmailAliasLiveTest do
         if empty?, do: Shroud.Aliases.delete_email_alias(email_alias.id)
         {:ok, view, _html} = live(conn, ~p"/")
 
-        assert has_element?(view, "button[aria-haspopup='true']", "Open menu")
+        assert has_element?(view, "button[aria-haspopup='true'][aria-label='Open menu']")
         assert has_element?(view, "#new-alias-default-domain[role='menuitem']")
 
         for domain <- [unverified, partial, expired] do
@@ -188,7 +188,7 @@ defmodule ShroudWeb.EmailAliasLiveTest do
 
     test "does not show a domain dropdown without custom domains", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/")
-      refute has_element?(view, "button[aria-haspopup='true']", "Open menu")
+      refute has_element?(view, "button[aria-haspopup='true'][aria-label='Open menu']")
     end
 
     test "status combines with search, pagination and restored URLs, and clears empty results", %{

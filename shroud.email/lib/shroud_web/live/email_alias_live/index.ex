@@ -172,11 +172,12 @@ defmodule ShroudWeb.EmailAliasLive.Index do
   end
 
   def handle_event("filter_status", %{"status" => status}, socket) do
-    {:noreply, push_patch(socket, to: aliases_path(1, socket.assigns.filter_query, status))}
+    {:noreply,
+     push_patch(socket, to: aliases_path(1, socket.assigns.filter_query, status), replace: true)}
   end
 
   def handle_event("clear_filters", _params, socket) do
-    {:noreply, push_patch(socket, to: aliases_path(1, "", "all"))}
+    {:noreply, push_patch(socket, to: aliases_path(1, "", "all"), replace: true)}
   end
 
   @impl true
