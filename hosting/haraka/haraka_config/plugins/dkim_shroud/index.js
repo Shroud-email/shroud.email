@@ -5,6 +5,7 @@ const path = require('node:path')
 
 const { parseHeader } = require('@haraka/email-address')
 const { Pool } = require('pg')
+const replyDomain = require('../reply_domain')
 
 const dkim = require('./lib/dkim')
 
@@ -133,7 +134,12 @@ exports.run_sign_stream = function (txn, props) {
 exports.get_sign_properties = async function (connection) {
   if (!connection.transaction) return
 
-  const domain = this.get_sender_domain(connection)
+  const sender_domain = this.get_sender_domain(connection)
+  // Generated From domains align with the service's DKIM domain in relaxed mode.
+  const domain =
+    sender_domain && replyDomain(sender_domain)
+      ? process.env.EMAIL_DOMAIN.toLowerCase()
+      : sender_domain
 
   if (!domain) {
     connection.transaction.results.add(this, {

@@ -40,6 +40,67 @@ npm ci --omit=dev --omit=optional
 node --test test/*.test.js
 ```
 
+## Stateless reply addresses
+
+`REPLY_ADDRESS_SUBDOMAINS_ENABLED=true` generates:
+
+```text
+sender-local@base32-domain.alias-id.r1.reply.EMAIL_DOMAIN
+```
+
+The local part preserves the external mailbox's case and contains no extra routing
+bytes. The lowercase, unpadded RFC 4648 Base32 payload encodes the lowercase sender
+domain, split left-to-right into labels of at most 63 bytes. The positive decimal
+alias ID resolves through the existing alias table, including custom-domain
+aliases. No sender/recipient mapping or new database migration is required.
+The decoder rejects noncanonical payloads, IDs, unknown versions and deleted aliases.
+Both this format and `sender_at_domain_alias@alias-domain` are accepted regardless
+of the generation flag. Keep `EMAIL_DOMAIN` and the reply DNS stable for saved
+contacts and existing conversations; changing the service domain breaks those routes.
+
+The supported input is an ASCII dot-atom local part and a hostname domain
+(including already-punycoded IDNs). Generation checks SMTP's 64-octet local limit,
+63-octet DNS labels, 253-octet textual domains and 254-octet complete addresses
+([RFC 5321](https://www.rfc-editor.org/rfc/rfc5321#section-4.5.3.1)).
+Quoted locals, address literals, SMTPUTF8 and oversized routes are unsupported.
+For an unsupported From or Reply-To, the owner receives an explanatory notification
+with the unmodified original message attached, rather than an invalid or repaired
+reply address. Attachments may contain trackers; replying directly to the attachment
+can reveal the owner's inbox. Notification replies are discarded. Notification
+delivery failures remain retryable; these notifications do not count as forwards.
+The reverse-alias form displays an error without a copy action for unsupported inputs.
+
+Base32 is not encryption. DNS observers can recover the external domain and correlate
+the stable alias ID, but the sender local part is not in DNS. Routes are not bearer
+credentials or signed tokens: the paid-user and alias-owner checks still authorize
+replies using the envelope sender. Upstream sender authentication remains necessary
+to prevent spoofing. No recipient wildcard grants relay privileges, and customer
+domains need no extra wildcard records. MAIL FROM remains the receiving alias.
+
+Generation is disabled by default. To enable it:
+
+1. Deploy application decoding and Haraka routing/signing support with generation disabled.
+2. Publish `*.r1.reply.EMAIL_DOMAIN. MX 10 APP_DOMAIN.` using your actual domains.
+3. Check MX resolution for a generated name with multiple payload labels.
+4. Verify a forwarded message and reply through an external inbox, including a custom alias.
+5. Set `REPLY_ADDRESS_SUBDOMAINS_ENABLED=true` and recreate the web service.
+
+The wildcard covers multiple labels, unlike a TLS wildcard. Keep the subtree below
+`r1.reply.EMAIL_DOMAIN` free of other records and delegations: explicit names and
+empty nonterminals can suppress wildcard synthesis under the closest-encloser rule
+([RFC 4592](https://www.rfc-editor.org/rfc/rfc4592#section-3.3.1)). The MX target uses
+the existing SMTP hostname and certificate; generated recipient domains do not need
+certificates. No per-alias DNS records or per-generated-domain DKIM keys are needed.
+
+Haraka signs generated From domains with `d=EMAIL_DOMAIN` and the existing service key.
+Verify `dkim=pass` and relaxed DMARC alignment at the external inbox before enabling.
+Strict DKIM alignment is incompatible with this layout. For custom-alias MAIL FROM,
+SPF may not align with the service-owned From domain, so aligned DKIM is essential.
+Check the applicable organizational-domain DMARC policy and its subdomain policy;
+do not assume a record only at `_dmarc.reply.EMAIL_DOMAIN` governs every receiver.
+Rollback disables generation only: retain Haraka support, both decoders and wildcard
+DNS so issued reply addresses keep working.
+
 ## SMTP certificate renewal
 
 The daily cron job publishes Caddy's `APP_DOMAIN` certificate and matching private

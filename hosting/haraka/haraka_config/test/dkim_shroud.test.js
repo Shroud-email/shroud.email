@@ -125,6 +125,27 @@ test("base-domain signing retains upstream behavior and needs no database", asyn
   checkSignature(connection, "sender@base.example", "base.example");
 });
 
+test("deep reply-domain From headers sign with the service key, including custom-alias envelopes", async (t) => {
+  const { plugin } = setup(t);
+  t.mock.method(Pool.prototype, "query", async () => {
+    throw new Error("reply domains must not need a custom-domain lookup");
+  });
+  const from = "Mixed+sender@MV4GC3LQNRSS4Y3PNU.42.R1.REPLY.BASE.EXAMPLE";
+  const connection = await message(from, "customer.example");
+  assert.deepEqual(await sign(plugin, connection), []);
+  checkSignature(connection, from, "base.example");
+});
+
+test("reply-domain suffix lookalikes are not service-signed", async (t) => {
+  const { plugin } = setup(t);
+  t.mock.method(Pool.prototype, "query", async () => ({ rows: [] }));
+  const connection = await message(
+    "sender@token.42.r1.reply.base.example.evil.example",
+  );
+  assert.deepEqual(await sign(plugin, connection), []);
+  assert.equal(connection.transaction.header.get("DKIM-Signature"), "");
+});
+
 test("concurrent custom domains use the shared key but retain distinct From domains", async (t) => {
   const { plugin } = setup(t);
   const queried = [];

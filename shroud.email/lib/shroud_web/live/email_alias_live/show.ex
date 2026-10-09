@@ -17,6 +17,7 @@ defmodule ShroudWeb.EmailAliasLive.Show do
       |> assign(:address, address)
       |> assign(:blocked_sender_error, "")
       |> assign(:reverse_alias_recipient, "")
+      |> assign(:reverse_alias_address, nil)
       |> assign(:editing_fields, MapSet.new())
       |> assign(:paid, Accounts.paid?(socket.assigns.current_user))
       |> update_email_alias()
@@ -213,18 +214,24 @@ defmodule ShroudWeb.EmailAliasLive.Show do
                           <%= if @reverse_alias_recipient == "" do %>
                             <span class="pl-2">-</span>
                           <% else %>
-                            {ReplyAddress.to_reply_address(@reverse_alias_recipient, @address)}
-                            <.copy_to_clipboard_button
-                              id="copy-reverse-alias"
-                              class="ml-1 mt-2 sm:mt-0"
-                              text={ReplyAddress.to_reply_address(@reverse_alias_recipient, @address)}
-                            />
+                            <%= if @reverse_alias_address == :error do %>
+                              <span id="reverse-alias-error">
+                                This recipient cannot be represented by a supported anonymous reply address.
+                              </span>
+                            <% else %>
+                              <span class="break-all">{@reverse_alias_address}</span>
+                              <.copy_to_clipboard_button
+                                id="copy-reverse-alias"
+                                class="ml-1 mt-2 sm:mt-0"
+                                text={@reverse_alias_address}
+                              />
+                            <% end %>
                           <% end %>
                         </div>
                       </div>
                     </fieldset>
                     <p
-                      :if={@reverse_alias_recipient != ""}
+                      :if={is_binary(@reverse_alias_address)}
                       class="mt-3 text-sm text-gray-900 dark:text-gray-100"
                     >
                       Send an email to the above reverse alias. The recipient you entered will receive your message,
@@ -482,7 +489,12 @@ defmodule ShroudWeb.EmailAliasLive.Show do
 
   @impl true
   def handle_event("update_recipient", %{"recipient" => recipient}, socket) do
-    {:noreply, assign(socket, reverse_alias_recipient: recipient)}
+    address =
+      if recipient == "",
+        do: nil,
+        else: ReplyAddress.to_reply_address(recipient, socket.assigns.address)
+
+    {:noreply, assign(socket, reverse_alias_recipient: recipient, reverse_alias_address: address)}
   end
 
   @impl true

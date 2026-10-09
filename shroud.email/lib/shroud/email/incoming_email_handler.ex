@@ -173,14 +173,19 @@ defmodule Shroud.Email.IncomingEmailHandler do
     processed =
       if Accounts.email_branding_enabled?(user), do: Enricher.process(processed), else: processed
 
-    deliver_result =
+    rewritten_email =
       processed
       # Now our pipeline is done, we just want our Swoosh email
       |> Map.get(:swoosh_email)
       |> fix_incoming_sender_and_recipient(user, sender, recipient)
-      |> Mailer.deliver()
+
+    deliver_result =
+      if rewritten_email == :error, do: :reply_unavailable, else: Mailer.deliver(rewritten_email)
 
     case deliver_result do
+      :reply_unavailable ->
+        notify_reply_unavailable(user, recipient, data)
+
       {:ok, _id} ->
         email_alias = Aliases.get_email_alias_by_address!(recipient)
 
@@ -213,8 +218,34 @@ defmodule Shroud.Email.IncomingEmailHandler do
     end
   end
 
+  defp notify_reply_unavailable(user, recipient, data) do
+    email =
+      Swoosh.Email.new()
+      |> Swoosh.Email.to(user.email)
+      |> Swoosh.Email.from({"Shroud.email", "noreply@#{Util.email_domain()}"})
+      |> Swoosh.Email.reply_to("noreply@disabled.r1.reply.#{Util.email_domain()}")
+      |> Swoosh.Email.subject("Anonymous reply unavailable for #{recipient}")
+      |> Swoosh.Email.text_body("""
+      A message to #{recipient} could not be given a supported anonymous reply address.
+      Its original contents are attached. The attachment is unmodified and may contain trackers.
+      Do not reply directly to the attached message: this can expose your real email address.
+      Replies to this notification are discarded.
+      """)
+      |> Swoosh.Email.attachment(
+        Swoosh.Attachment.new({:data, data},
+          filename: "original.eml",
+          content_type: "message/rfc822"
+        )
+      )
+
+    case Mailer.deliver(email) do
+      {:ok, _} -> :ok
+      {:error, _} = error -> error
+    end
+  end
+
   @spec fix_incoming_sender_and_recipient(Swoosh.Email.t(), User.t(), String.t(), String.t()) ::
-          Swoosh.Email.t()
+          Swoosh.Email.t() | :error
   defp fix_incoming_sender_and_recipient(email, user, sender, email_alias) do
     # Modify the email to make it clear it came from us
     recipient_name =
@@ -253,24 +284,27 @@ defmodule Shroud.Email.IncomingEmailHandler do
       |> String.replace(~r/\s+/, " ")
       |> String.trim()
 
-    reply_address = ReplyAddress.to_reply_address(sender_address, email_alias)
     suffix = if Accounts.email_branding_enabled?(user), do: " (via Shroud.email)", else: ""
-    sender = {sanitized_sender_name <> suffix, reply_address}
 
-    email
-    |> Map.put(:from, sender)
-    # Swoosh uses Sender for SMTP MAIL FROM; bounces return to the receiving alias.
-    |> Swoosh.Email.header("Sender", email_alias)
-    |> Map.put(:to, [{recipient_name, user.email}])
-    |> (fn email ->
-          if email.reply_to == nil do
-            email
-          else
-            {_name, reply_to_address} = email.reply_to
-            reply_to_reply_address = ReplyAddress.to_reply_address(reply_to_address, email_alias)
-            email |> Map.put(:reply_to, {reply_to_reply_address, reply_to_reply_address})
-          end
-        end).()
+    with reply_address when is_binary(reply_address) <-
+           ReplyAddress.to_reply_address(sender_address, email_alias),
+         reply_to when reply_to != :error <- encode_reply_to(email.reply_to, email_alias) do
+      email
+      |> Map.put(:from, {sanitized_sender_name <> suffix, reply_address})
+      # Swoosh uses Sender for SMTP MAIL FROM; bounces return to the receiving alias.
+      |> Swoosh.Email.header("Sender", email_alias)
+      |> Map.put(:to, [{recipient_name, user.email}])
+      |> Map.put(:reply_to, reply_to)
+    end
+  end
+
+  defp encode_reply_to(nil, _email_alias), do: nil
+
+  defp encode_reply_to({_name, address}, email_alias) do
+    case ReplyAddress.to_reply_address(address, email_alias) do
+      :error -> :error
+      reply_address -> {reply_address, reply_address}
+    end
   end
 
   @spec uniqueness_constraint_error?(Ecto.Changeset.t(), atom()) :: boolean()

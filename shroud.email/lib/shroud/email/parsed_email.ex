@@ -4,6 +4,7 @@ defmodule Shroud.Email.ParsedEmail do
   """
 
   import Swoosh.Email
+  alias Shroud.Email.ReplyAddress
   require Logger
 
   defstruct [:from, :to, :swoosh_email, :parsed_html, removed_trackers: []]
@@ -177,10 +178,13 @@ defmodule Shroud.Email.ParsedEmail do
   end
 
   @spec process_header(Swoosh.Email.t(), {String.t(), any()}) :: Swoosh.Email.t()
-  defp process_header(email, {"from", value}), do: from(email, parse_address(value))
+  defp process_header(email, {"from", value}), do: from(email, parse_reply_destination(value))
   defp process_header(email, {"subject", value}), do: subject(email, value)
   defp process_header(email, {"to", value}), do: to(email, parse_address(value))
-  defp process_header(email, {"reply-to", value}), do: reply_to(email, parse_address(value))
+
+  defp process_header(email, {"reply-to", value}),
+    do: reply_to(email, parse_reply_destination(value))
+
   defp process_header(email, {key, value}), do: header(email, key, value)
 
   @spec process_attachment(Swoosh.Email.t(), binary(), Keyword.t()) :: Swoosh.Email.t()
@@ -211,6 +215,18 @@ defmodule Shroud.Email.ParsedEmail do
       )
 
     attachment(email, swoosh_attachment)
+  end
+
+  # Reply routing must not turn an unsupported mailbox into a different destination.
+  defp parse_reply_destination(address) do
+    if ReplyAddress.subdomains_enabled?() do
+      case Regex.run(~r/\A([^<>]*)<([^<>]+)>\s*\z/, address) do
+        [_full, name, mailbox] -> {trim_quotes_and_whitespace(name), String.trim(mailbox)}
+        _ -> {"", String.trim(address)}
+      end
+    else
+      parse_address(address)
+    end
   end
 
   # Parses `email@example.com`, `Zero Cool <email@example.com>`, and `"Zero Cool" <email@example.com>"`.

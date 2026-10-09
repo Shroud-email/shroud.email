@@ -1,4 +1,5 @@
 "use strict";
+const replyDomain = require("./reply_domain");
 // This is a fork of https://github.com/haraka/Haraka/blob/master/plugins/rcpt_to.in_host_list.js
 
 // Previous versions of this plugin (Haraka <= 2.4.0) did not account for
@@ -26,6 +27,11 @@ exports.hook_rcpt = function (next, connection, params) {
   if (!rcpt.host) {
     txn.results.add(plugin, { fail: "rcpt!domain" });
     return next();
+  }
+
+  if (replyDomain(rcpt.host)) {
+    txn.results.add(plugin, { pass: "rcpt_to.reply" });
+    return next(OK);
   }
 
   plugin.load_host_list((domains) => {

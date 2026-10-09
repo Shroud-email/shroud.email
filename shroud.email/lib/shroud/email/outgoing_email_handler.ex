@@ -14,25 +14,33 @@ defmodule Shroud.Email.OutgoingEmailHandler do
   @spec handle_outgoing_email(String.t(), String.t(), String.t()) ::
           :ok | {:error, term()}
   def handle_outgoing_email(sender, recipient, data) do
+    case ReplyAddress.from_reply_address(recipient) do
+      :error -> :ok
+      route -> handle_reply(sender, recipient, data, route)
+    end
+  end
+
+  defp handle_reply(sender, recipient, data, {_external_address, alias_address} = route) do
     sender_user = Accounts.get_user_by_email(sender)
+    email_alias = Aliases.get_email_alias_by_address(alias_address)
 
     cond do
       SpamHandler.spam?(data) ->
         mimemail_email = :mimemail.decode(data)
-        SpamHandler.handle_outgoing_spam_email(mimemail_email)
+        SpamHandler.handle_outgoing_spam_email(mimemail_email, route)
 
       is_nil(sender_user) or not Accounts.paid?(sender_user) ->
         Logger.notice(
           "Discarding outgoing email from #{sender} to #{recipient} because user is not on a paid plan"
         )
 
-      sender_owns_alias?(sender_user, recipient) ->
+      not is_nil(email_alias) and email_alias.user_id == sender_user.id ->
         maybe_log(
           sender_user,
           "Forwarding outgoing email from #{sender} to external address #{recipient}"
         )
 
-        forward_outgoing_email(sender_user, sender, recipient, data)
+        forward_outgoing_email(sender_user, sender, recipient, data, route, email_alias)
 
       true ->
         Logger.notice(
@@ -45,10 +53,8 @@ defmodule Shroud.Email.OutgoingEmailHandler do
     end
   end
 
-  @spec forward_outgoing_email(User.t(), String.t(), String.t(), String.t()) ::
-          :ok | {:error, term()}
   # Forwards a reply (sent to a reply address from a user) to the external address
-  defp forward_outgoing_email(%User{} = sender_user, sender, recipient, data) do
+  defp forward_outgoing_email(%User{} = sender_user, sender, recipient, data, route, email_alias) do
     if Accounts.Logging.email_logging_enabled?(sender_user) do
       store_email(sender, recipient, data)
     end
@@ -57,12 +63,10 @@ defmodule Shroud.Email.OutgoingEmailHandler do
 
     case ParsedEmail.parse(mimemail_email, sender, recipient)
          |> Map.get(:swoosh_email)
-         |> fix_outgoing_sender_and_recipient(recipient, sender_user)
+         |> fix_outgoing_sender_and_recipient(route, sender_user)
          |> Mailer.deliver() do
       {:ok, _id} ->
         Shroud.Analytics.outgoing_email_sent()
-        {_recipient_address, email_alias} = ReplyAddress.from_reply_address(recipient)
-        email_alias = Aliases.get_email_alias_by_address!(email_alias)
         Aliases.increment_replied!(email_alias)
 
         :ok
@@ -90,10 +94,7 @@ defmodule Shroud.Email.OutgoingEmailHandler do
     end
   end
 
-  @spec fix_outgoing_sender_and_recipient(Swoosh.Email.t(), String.t(), User.t()) ::
-          Swoosh.Email.t()
-  defp fix_outgoing_sender_and_recipient(email, recipient, user) do
-    {recipient_address, email_alias} = ReplyAddress.from_reply_address(recipient)
+  defp fix_outgoing_sender_and_recipient(email, {recipient_address, email_alias}, user) do
     suffix = if Accounts.email_branding_enabled?(user), do: " (via Shroud.email)", else: ""
 
     email
@@ -103,11 +104,5 @@ defmodule Shroud.Email.OutgoingEmailHandler do
     |> Map.put(:to, [{recipient_address, recipient_address}])
     # Don't forward the reply-to header in replies as it may contain the user's real email
     |> Map.put(:reply_to, nil)
-  end
-
-  defp sender_owns_alias?(user, reply_address) do
-    {_recipient_address, email_alias} = ReplyAddress.from_reply_address(reply_address)
-    email_alias = Aliases.get_email_alias_by_address(email_alias)
-    not is_nil(email_alias) && email_alias.user_id == user.id
   end
 end
