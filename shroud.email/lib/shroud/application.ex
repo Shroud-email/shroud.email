@@ -41,16 +41,9 @@ defmodule Shroud.Application do
       config: %{
         capture_log_messages: true,
         capture_level: :error,
-        capture_metadata: [:oban_job_id]
+        capture_metadata: [:file, :line, :oban_job_id]
       }
     })
-
-    :telemetry.attach(
-      "oban-errors",
-      [:oban, :job, :exception],
-      &Shroud.ErrorReporter.handle_event/4,
-      []
-    )
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
