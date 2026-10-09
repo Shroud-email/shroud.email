@@ -422,6 +422,55 @@ defmodule Shroud.Email.TrackerRemoverTest do
     assert email.removed_trackers == []
   end
 
+  test "blocks poster and mask trackers while preserving video content and safe images" do
+    email =
+      process_html("""
+      <video id="safe" width="1" height="1" src="https://spyonu.com/track?movie" poster="https://gooddomain.com/poster">Fallback</video>
+      <video id="blocked" poster="https://spyonu.com/track?poster">Keep</video>
+      <video id="embedded" poster="data:image/png;base64,abc"></video>
+      """)
+
+    assert Floki.attribute(email.parsed_html, "#safe", "poster") == [
+             proxy("https://gooddomain.com/poster")
+           ]
+
+    assert Floki.attribute(email.parsed_html, "#safe", "src") == [
+             "https://spyonu.com/track?movie"
+           ]
+
+    assert Floki.attribute(email.parsed_html, "#blocked", "poster") == []
+    assert Floki.text(Floki.find(email.parsed_html, "#blocked")) == "Keep"
+
+    assert Floki.attribute(email.parsed_html, "#embedded", "poster") == [
+             "data:image/png;base64,abc"
+           ]
+
+    assert email.removed_trackers == [%{name: "SpyOnU", domain: "spyonu.com"}]
+
+    for property <- [
+          "mask-border",
+          "mask-border-source",
+          "-webkit-mask-box-image",
+          "-webkit-mask-box-image-source"
+        ] do
+      email =
+        process_html("""
+        <style>.blocked { #{property}: url(https://spyonu.com/track); color: red; }</style>
+        <div style="#{property}: url(https://gooddomain.com/mask); color: blue">Keep</div>
+        """)
+
+      assert Floki.text(Floki.find(email.parsed_html, "style")) ==
+               ".blocked { #{property}: none; color: red; }"
+
+      assert Floki.attribute(email.parsed_html, "div", "style") == [
+               "#{property}: url(\"#{proxy("https://gooddomain.com/mask")}\"); color: blue"
+             ]
+
+      assert Floki.text(Floki.find(email.parsed_html, "div")) == "Keep"
+      assert email.removed_trackers == [%{name: "SpyOnU", domain: "spyonu.com"}]
+    end
+  end
+
   test "keeps url candidates valid inside image-set and leaves surrounding CSS unchanged" do
     email =
       process_html(~S"""

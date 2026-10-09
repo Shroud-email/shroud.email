@@ -133,6 +133,8 @@ defmodule Shroud.Email.ImageSources do
 
   defp image_attribute?(tag, "background"), do: tag in ["body", "table", "td", "th", "tr"]
 
+  defp image_attribute?(tag, "poster"), do: tag == "video"
+
   defp image_attribute?(tag, name),
     do: tag in ["image", "feimage"] and name in ["href", "xlink:href"]
 

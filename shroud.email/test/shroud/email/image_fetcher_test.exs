@@ -117,6 +117,32 @@ defmodule Shroud.Email.ImageFetcherTest do
              ])
   end
 
+  test "enqueues video posters and mask border images without fetching videos, fonts or SVG markers" do
+    html = """
+    <video src="https://ignored.example/movie" poster="https://images.example/poster"></video>
+    <video poster="data:image/png;base64,abc"></video>
+    <style>
+      @font-face { src: url(https://ignored.example/font); }
+      .arrow { marker-start: url(https://ignored.example/markers.svg#arrow); }
+      .mask { mask-border-source: url(https://images.example/mask-source); }
+    </style>
+    <div style="mask-border: url(https://images.example/mask) 30"></div>
+    <div style="-webkit-mask-box-image: url(https://images.example/webkit) 30"></div>
+    <div style="-webkit-mask-box-image-source: url(https://images.example/webkit-source)"></div>
+    """
+
+    assert :ok = ImageFetcher.enqueue(%ParsedEmail{parsed_html: Floki.parse_document!(html)})
+    urls = all_enqueued(worker: ImageFetcher) |> Enum.map(& &1.args["url"]) |> Enum.sort()
+
+    assert urls == [
+             "https://images.example/mask",
+             "https://images.example/mask-source",
+             "https://images.example/poster",
+             "https://images.example/webkit",
+             "https://images.example/webkit-source"
+           ]
+  end
+
   test "normalizes browser-loadable URLs without changing existing percent escapes" do
     html = ~S"""
     <img src="https://images.example/a%20b?name=hello world&amp;items[]=1">

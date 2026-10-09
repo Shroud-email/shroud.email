@@ -6,7 +6,7 @@ defmodule Shroud.Email.CSSImages do
   @tokens ~r"""
   /\*.*?\*/|"(?:\\[\s\S]|[^"\\])*"|'(?:\\[\s\S]|[^'\\])*'|(?:[-\w]|\\(?:[0-9a-fA-F]{1,6}\s?|[^\r\n]))+|\s+|.
   """sux
-  @properties ~w(background background-image border-image border-image-source list-style list-style-image content cursor mask mask-image -webkit-mask -webkit-mask-image shape-outside fill stroke filter clip-path)
+  @properties ~w(background background-image border-image border-image-source list-style list-style-image content cursor mask mask-image mask-border mask-border-source -webkit-mask -webkit-mask-image -webkit-mask-box-image -webkit-mask-box-image-source shape-outside fill stroke filter clip-path)
 
   def map(css, fun, acc) do
     tokens = Regex.scan(@tokens, css) |> List.flatten()
