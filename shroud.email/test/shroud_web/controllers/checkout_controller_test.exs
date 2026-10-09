@@ -173,7 +173,7 @@ defmodule ShroudWeb.CheckoutControllerTest do
 
       assert_enqueued(
         worker: Shroud.Accounts.UserNotifierJob,
-        args: %{email_function: "deliver_subscription_ended", email_args: [user.id]}
+        args: %{email_function: "deliver_subscription_downgraded", email_args: [user.id]}
       )
     end
 
@@ -201,7 +201,7 @@ defmodule ShroudWeb.CheckoutControllerTest do
       assert [%{args: %{"email_args" => [user_id]}}] =
                all_enqueued(
                  worker: Shroud.Accounts.UserNotifierJob,
-                 args: %{email_function: "deliver_subscription_ended"}
+                 args: %{email_function: "deliver_subscription_downgraded"}
                )
 
       assert user_id == user.id
@@ -242,7 +242,7 @@ defmodule ShroudWeb.CheckoutControllerTest do
 
       assert_enqueued(
         worker: Shroud.Accounts.UserNotifierJob,
-        args: %{email_function: "deliver_subscription_ended", email_args: [user.id]}
+        args: %{email_function: "deliver_subscription_downgraded", email_args: [user.id]}
       )
     end
   end

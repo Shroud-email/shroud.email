@@ -19,13 +19,13 @@
     <mj-section full-width="full-width" padding-top="40px" padding-bottom="40px" background-color="white">
       <mj-column>
         <mj-text align="center" color="#111827" font-size="20px">
-          <h1>Your subscription has ended</h1>
+          <h1>Your account is now on the free plan</h1>
         </mj-text>
         <mj-text align="center" color="#111827" font-size="16px">
-          <p>Your paid Shroud.email subscription has ended. Your account is now on the free plan.</p>
-          <p>To sign up again and restore access to paid features, visit your billing page.</p>
+          <p>Your paid Shroud.email subscription is no longer active. Your account is now on the free plan.</p>
+          <p>If your subscription is paused, reply to this email for help resuming it. If it has ended, visit your billing page to sign up again.</p>
         </mj-text>
-        <mj-button align="center" href="{{ billing_url }}" font-size="16px" background-color="#4f46e5" border-radius="7px">Sign up again</mj-button>
+        <mj-button align="center" href="{{ billing_url }}" font-size="16px" background-color="#4f46e5" border-radius="7px">View billing</mj-button>
       </mj-column>
     </mj-section>
     <mj-section full-width="full-width" padding-top="20px" background-color="#1f2937">

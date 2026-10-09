@@ -1,5 +1,5 @@
-defmodule Shroud.EmailTemplate.SubscriptionEnded do
-  @template_path Path.join([__DIR__, "subscription_ended.mjml"])
+defmodule Shroud.EmailTemplate.SubscriptionDowngraded do
+  @template_path Path.join([__DIR__, "subscription_downgraded.mjml"])
   @external_resource @template_path
 
   require EEx
