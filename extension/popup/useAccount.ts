@@ -183,7 +183,7 @@ export function useAccount() {
       void loadAliases();
     }
   });
-  async function changed(message: unknown) {
+  function changed(message: unknown) {
     if (
       !message ||
       typeof message !== "object" ||
@@ -192,7 +192,9 @@ export function useAccount() {
     )
       return;
     reset();
-    if ((await refreshAccount()) && account.value) await loadAliases();
+    void refreshAccount().then((loaded) => {
+      if (loaded && account.value) return loadAliases();
+    });
   }
   onMounted(async () => {
     browser.runtime.onMessage.addListener(changed);

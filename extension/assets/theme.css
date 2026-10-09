@@ -318,3 +318,78 @@ body {
 .notice {
   color: var(--green-ink);
 }
+.inline-container {
+  position: fixed;
+  pointer-events: auto;
+  overflow-y: auto;
+  border-radius: 6px;
+  box-shadow: 0 12px 32px #0f172a33;
+}
+.shroud-ui.inline-menu {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+}
+.inline-row {
+  padding: 12px;
+  background: var(--surface);
+  border-radius: 6px;
+}
+.inline-menu footer {
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.domain-button {
+  width: 100%;
+  height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--control);
+}
+.domain-options {
+  position: absolute;
+  z-index: 1;
+  width: 100%;
+  top: calc(100% + 4px);
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  box-shadow: 0 12px 32px #0f172a33;
+}
+.domain-options button {
+  height: 40px;
+  padding: 8px;
+  border-radius: 6px;
+}
+.domain-options button[aria-selected="true"] {
+  background: var(--selected);
+  color: var(--selected-ink);
+}
+.field-icon {
+  all: initial;
+  box-sizing: border-box;
+  position: fixed;
+  width: 28px;
+  height: 28px;
+  padding: 5px;
+  border-radius: 6px;
+  background: #e0e7ff;
+  color: #4f46e5;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.field-icon[hidden] {
+  display: none;
+}
+.field-icon svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+.field-icon:focus-visible {
+  outline: 2px solid #6366f1;
+  outline-offset: 2px;
+}
