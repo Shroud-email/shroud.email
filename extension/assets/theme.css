@@ -1,0 +1,320 @@
+@import "tailwindcss";
+@source '../popup';
+@source '../content';
+@source '../entrypoints';
+
+@font-face {
+  font-family: Inter;
+  src: url("/fonts/Inter.var.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@theme {
+  --font-sans: Inter, system-ui, sans-serif;
+}
+
+.shroud-ui {
+  --canvas: #f3f4f6;
+  --surface: #fff;
+  --control: #fff;
+  --ink: #111827;
+  --label: #374151;
+  --muted: #6b7280;
+  --border: #d1d5db;
+  --divider: #e5e7eb;
+  --primary: #4f46e5;
+  --link: #4f46e5;
+  --selected: #e0e7ff;
+  --selected-ink: #4338ca;
+  --green-bg: #dcfce7;
+  --green-ink: #166534;
+  --red-bg: #fee2e2;
+  --red-ink: #991b1b;
+  --limit-bg: #eff6ff;
+  --limit-border: #bfdbfe;
+  --limit-ink: #1d4ed8;
+  --failure-bg: #fef2f2;
+  --failure-border: #fca5a5;
+  --failure-ink: #991b1b;
+  color-scheme: light;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--ink);
+  background: var(--canvas);
+}
+.shroud-ui[data-appearance="dark"] {
+  --canvas: #020617;
+  --surface: #0f172a;
+  --control: #1e293b;
+  --ink: #f1f5f9;
+  --label: #cbd5e1;
+  --muted: #94a3b8;
+  --border: #334155;
+  --divider: #334155;
+  --primary: #6366f1;
+  --link: #818cf8;
+  --selected: #312e8180;
+  --selected-ink: #a5b4fc;
+  --green-bg: #14532d4d;
+  --green-ink: #86efac;
+  --red-bg: #7f1d1d33;
+  --red-ink: #fca5a5;
+  --limit-bg: #1e3a8a4d;
+  --limit-border: #1e40af;
+  --limit-ink: #93c5fd;
+  --failure-bg: #7f1d1d33;
+  --failure-border: #991b1b;
+  --failure-ink: #fca5a5;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  .shroud-ui[data-appearance="system"] {
+    --canvas: #020617;
+    --surface: #0f172a;
+    --control: #1e293b;
+    --ink: #f1f5f9;
+    --label: #cbd5e1;
+    --muted: #94a3b8;
+    --border: #334155;
+    --divider: #334155;
+    --primary: #6366f1;
+    --link: #818cf8;
+    --selected: #312e8180;
+    --selected-ink: #a5b4fc;
+    --green-bg: #14532d4d;
+    --green-ink: #86efac;
+    --red-bg: #7f1d1d33;
+    --red-ink: #fca5a5;
+    --limit-bg: #1e3a8a4d;
+    --limit-border: #1e40af;
+    --limit-ink: #93c5fd;
+    --failure-bg: #7f1d1d33;
+    --failure-border: #991b1b;
+    --failure-ink: #fca5a5;
+    color-scheme: dark;
+  }
+}
+body {
+  margin: 0;
+}
+.screen {
+  width: 360px;
+  padding: 20px;
+}
+.screen.aliases {
+  height: 500px;
+}
+.screen.aliases.at-limit {
+  height: 600px;
+}
+.screen.login {
+  min-height: 240px;
+}
+.screen.login.expanded {
+  min-height: 300px;
+}
+.screen.create {
+  min-height: 380px;
+}
+.screen.create.at-limit {
+  min-height: 500px;
+}
+.screen.create.failed {
+  min-height: 360px;
+}
+.screen.settings {
+  min-height: 360px;
+}
+.screen.settings.permission-missing {
+  min-height: 420px;
+}
+.shroud-ui h1,
+.back {
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 600;
+}
+.shroud-ui strong {
+  font-weight: 600;
+}
+.shroud-ui button {
+  cursor: pointer;
+}
+.shroud-ui button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+.shroud-ui button:focus-visible,
+.shroud-ui input:focus-visible,
+.shroud-ui select:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+.primary {
+  height: 44px;
+  flex-shrink: 0;
+  width: 100%;
+  background: var(--primary);
+  color: white;
+  border-radius: 6px;
+  font-weight: 500;
+  box-shadow: 0 1px 2px #0000000d;
+}
+.link,
+.icon-button {
+  color: var(--link);
+}
+.icon-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  min-height: 24px;
+}
+.muted {
+  color: var(--muted);
+}
+.shroud-ui input,
+.shroud-ui select {
+  height: 44px;
+  width: 100%;
+  padding: 11px 12px;
+  color: var(--ink);
+  background: var(--control);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 1px 2px #0000000d;
+}
+.shroud-ui input::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+.shroud-ui input.search {
+  height: 40px;
+}
+.shroud-ui label {
+  color: var(--label);
+}
+.segments {
+  height: 44px;
+  padding: 4px;
+  border-radius: 6px;
+  background: var(--control);
+}
+.segments button {
+  flex: 1;
+  border-radius: 6px;
+  color: var(--label);
+}
+.segments button[aria-pressed="true"] {
+  background: var(--selected);
+  color: var(--selected-ink);
+  font-weight: 500;
+}
+.segments.appearance {
+  height: 40px;
+}
+.alias-rows {
+  background: var(--surface);
+  border-radius: 6px;
+  overflow: auto;
+  min-height: 0;
+  box-shadow: 0 1px 2px #0000000d;
+}
+.aliases.at-limit .alias-rows {
+  max-height: 250px;
+}
+.alias-row {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--divider);
+}
+.alias-row:last-child {
+  border-bottom: 0;
+}
+.status {
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.status.enabled {
+  background: var(--green-bg);
+  color: var(--green-ink);
+}
+.status.disabled {
+  background: var(--red-bg);
+  color: var(--red-ink);
+}
+.limit {
+  padding: 12px;
+  border: 1px solid var(--limit-border);
+  border-radius: 6px;
+  background: var(--limit-bg);
+  color: var(--limit-ink);
+}
+.failure {
+  padding: 16px;
+  border: 1px solid var(--failure-border);
+  border-radius: 6px;
+  background: var(--failure-bg);
+  color: var(--failure-ink);
+}
+.login-signup {
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+.server-disclosure {
+  font-size: 12px;
+  color: var(--muted);
+  text-align: left;
+}
+.toggle-row {
+  padding: 14px;
+  border-radius: 6px;
+  background: var(--surface);
+}
+.toggle {
+  width: 36px;
+  height: 22px;
+  border-radius: 12px;
+  padding: 3px;
+  background: var(--border);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.toggle span {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: white;
+}
+.toggle[aria-checked="true"] {
+  background: var(--primary);
+  justify-content: end;
+}
+.account-footer {
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.logout {
+  color: var(--failure-ink);
+}
+.summary-label input {
+  height: 20px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  color: var(--muted);
+}
+.popup-message {
+  margin: 0 20px 16px;
+}
+.notice {
+  color: var(--green-ink);
+}
