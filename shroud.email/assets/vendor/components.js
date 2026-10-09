@@ -71,7 +71,11 @@
   (window.AlpineComponents.menu = function (e = { open: !1 }) {
     return {
       init() {
-        this.items = Array.from(this.$el.querySelectorAll('[role="menuitem"]'));
+        this.items = Array.from(
+          this.$el.querySelectorAll(
+            '[role="menuitem"], [role="menuitemradio"]',
+          ),
+        );
       },
       activeDescendant: null,
       activeIndex: null,

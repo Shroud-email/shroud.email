@@ -125,8 +125,14 @@ defmodule ShroudWeb.Components.ButtonTest do
 
     document = Floki.parse_fragment!(html)
     [trigger] = Floki.find(document, "button[aria-haspopup]")
-    assert Floki.attribute(trigger, "x-on:keydown.arrow-up.prevent") == ["onArrowUp()"]
-    assert Floki.attribute(trigger, "x-on:keydown.arrow-down.prevent") == ["onArrowDown()"]
+    assert Floki.attribute(trigger, "aria-label") == ["Open menu"]
+
+    assert Floki.attribute(trigger, "x-on:keydown.arrow-up.prevent") ==
+             ["onArrowUp(); $nextTick(() => $refs['menu-items'].focus())"]
+
+    assert Floki.attribute(trigger, "x-on:keydown.arrow-down.prevent") ==
+             ["onArrowDown(); $nextTick(() => $refs['menu-items'].focus())"]
+
     [enabled, disabled] = Floki.find(document, "button[role=menuitem]")
     assert Floki.attribute(enabled, "x-on:mouseenter") == ["activeIndex = 0"]
     assert Floki.attribute(disabled, "x-on:mouseenter") == ["activeIndex = -1"]
