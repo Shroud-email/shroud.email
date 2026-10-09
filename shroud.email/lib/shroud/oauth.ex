@@ -52,7 +52,7 @@ defmodule Shroud.OAuth do
            "redirect_uris" => redirects,
            "resource_path" => path,
            "registered" => registered
-         } <-
+         } = metadata <-
            Clients.metadata(params["client_id"]),
          true <- params["redirect_uri"] in redirects,
          true <- params["response_type"] == "code",
@@ -62,6 +62,15 @@ defmodule Shroud.OAuth do
          scope when is_binary(scope) <- params["scope"],
          scopes = String.split(scope, " ", trim: true) |> Enum.uniq(),
          true <- valid_scopes?(scope, params["resource"]),
+         true <-
+           Enum.all?(
+             scopes,
+             &(&1 in Map.get(
+                 metadata,
+                 "allowed_scopes",
+                 Map.keys(permissions(params["resource"]))
+               ))
+           ),
          {:ok, _} <- Boruta.Oauth.preauthorize(oauth_conn(params), owner("consent"), __MODULE__) do
       {:ok,
        %{

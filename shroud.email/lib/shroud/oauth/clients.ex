@@ -4,6 +4,8 @@ defmodule Shroud.OAuth.Clients do
   alias Shroud.Repo
   import Boruta.Ecto.OauthMapper, only: [to_oauth_schema: 1]
 
+  @extension_id "fc4258c1-58a9-4865-8f2f-e78345dcfd46"
+
   def metadata(id) when is_binary(id) do
     case find_client(id) do
       %Boruta.Ecto.Client{metadata: metadata, redirect_uris: redirects} ->
@@ -90,9 +92,27 @@ defmodule Shroud.OAuth.Clients do
     case Ecto.UUID.cast(id) do
       {:ok, uuid} ->
         case Repo.get(Boruta.Ecto.Client, uuid) do
-          %Boruta.Ecto.Client{metadata: %{"mcp_dynamic" => true}} = client -> client
-          %Boruta.Ecto.Client{metadata: %{"registered" => true}} = client -> client
-          _ -> nil
+          %Boruta.Ecto.Client{metadata: %{"mcp_dynamic" => true}} = client ->
+            client
+
+          %Boruta.Ecto.Client{id: @extension_id, metadata: %{"registered" => true}} = client ->
+            %{
+              client
+              | redirect_uris: [Shroud.OAuth.issuer() <> "/oauth/extension/callback"],
+                metadata:
+                  Map.put(client.metadata, "allowed_scopes", [
+                    "profile:read",
+                    "aliases:read",
+                    "aliases:create",
+                    "domains:read"
+                  ])
+            }
+
+          %Boruta.Ecto.Client{metadata: %{"registered" => true}} = client ->
+            client
+
+          _ ->
+            nil
         end
 
       _ ->
