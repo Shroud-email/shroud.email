@@ -33,9 +33,10 @@ defmodule Shroud.Email.EmailHandlerTest do
 
   alias Shroud.Repo
   alias Shroud.Email
-  alias Shroud.Email.{EmailHandler, TrackerDomain}
+  alias Shroud.Email.{EmailHandler, ParsedEmail, TrackerDomain}
   alias Shroud.Email.EmailHandlerTest.FailingMailerAdapter
   alias Shroud.{Aliases, Util, Accounts}
+  alias Swoosh.Adapters.SMTP.Helpers
   use ShroudWeb, :verified_routes
 
   @html_content """
@@ -898,6 +899,60 @@ defmodule Shroud.Email.EmailHandlerTest do
 
       assert_email_sent(fn email ->
         assert email.text_body =~ "pédagogues"
+      end)
+    end
+
+    test "forwards terminal quoted-printable soft breaks without stray equals signs", %{
+      user: user,
+      email_alias: email_alias
+    } do
+      FunWithFlags.enable(:email_branding_preferences, for_actor: user)
+      {:ok, _} = Accounts.update_user_email_preferences(user, %{email_branding: false})
+
+      data =
+        """
+        From: sender@example.com
+        To: #{email_alias.address}
+        Subject: Soft breaks
+        Content-Type: multipart/mixed; boundary=outer
+
+        --outer
+        Content-Type: multipart/alternative; boundary=inner
+
+        --inner
+        Content-Type: text/plain; charset=utf-8
+        Content-Transfer-Encoding: quoted-printable
+
+        Total=3D=
+        --inner
+        Content-Type: text/html; charset=utf-8
+        Content-Transfer-Encoding: quoted-printable
+
+        <html><body><p>Total=3D</p></body></html>=
+        --inner--
+        --outer--
+        """
+        |> Util.lf_to_crlf()
+
+      assert :ok =
+               perform_job(EmailHandler, %{
+                 from: "sender@example.com",
+                 to: email_alias.address,
+                 data: data
+               })
+
+      assert_email_sent(fn email ->
+        assert email.text_body == "Total="
+        assert email.html_body == "<html><body><p>Total=</p></body></html>"
+
+        delivered =
+          email
+          |> Helpers.body([])
+          |> Mailex.parse!()
+          |> ParsedEmail.parse("sender@example.com", user.email)
+
+        assert delivered.swoosh_email.text_body == email.text_body
+        assert delivered.swoosh_email.html_body == email.html_body
       end)
     end
 
