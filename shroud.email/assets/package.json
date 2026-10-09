@@ -3,12 +3,12 @@
     "test": "node --test js/*_test.mjs"
   },
   "dependencies": {
-    "@cap.js/widget": "0.1.56",
+    "@cap.js/widget": "0.1.58",
     "@openpanel/web": "^1.4.1",
     "@paddle/paddle-js": "^1.6.4",
     "@ryangjchandler/alpine-tooltip": "^2.0.1",
     "alpinejs": "^3.15.11",
-    "motion": "^12.43.0",
+    "motion": "^14.0.0",
     "tippy.js": "^6.3.7",
     "vgpu": "^0.5.0"
   }

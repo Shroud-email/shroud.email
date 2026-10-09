@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "license": "AGPL-3.0-only",
   "overrides": {
+    "react-dom": "$react",
     "@istanbuljs/load-nyc-config@1.1.0": {
       "js-yaml": "4.3.2"
     },
@@ -41,7 +42,7 @@
     "@types/jest": "^29.5.14",
     "@types/node": "^24.19.1",
     "@types/react": "~19.2.2",
-    "eslint": "^9.0.0",
+    "eslint": "^9.39.5",
     "eslint-config-expo": "~57.0.2",
     "expo-crypto": "~57.0.3",
     "expo-mcp": "~0.2.1",
