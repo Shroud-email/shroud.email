@@ -308,6 +308,42 @@ defmodule Shroud.Email.EmailHandlerTest do
       end)
     end
 
+    test "uses the alias as SMTP envelope sender when the reply address exceeds 64 bytes", %{
+      user: user
+    } do
+      email_alias =
+        alias_fixture(%{user_id: user.id, address: "qr9frrxbqzyv15j@email.shroud.test"})
+
+      sender = "noreply-feedcoyote-ncej243@no-reply.feedcoyote.com"
+
+      assert :ok =
+               perform_job(EmailHandler, %{
+                 from: sender,
+                 to: email_alias.address,
+                 data:
+                   text_email(
+                     sender,
+                     [email_alias.address],
+                     "Long sender address",
+                     "Hello",
+                     "Reply-To: support@example.com"
+                   )
+               })
+
+      assert_email_sent(fn email ->
+        assert Helpers.sender(email) == email_alias.address
+        assert email.to == [{email_alias.address, user.email}]
+
+        assert email.from ==
+                 {"#{sender} (via Shroud.email)",
+                  "noreply-feedcoyote-ncej243_at_no-reply.feedcoyote.com_qr9frrxbqzyv15j@email.shroud.test"}
+
+        reply_to = "support_at_example.com_qr9frrxbqzyv15j@email.shroud.test"
+        assert email.reply_to == {reply_to, reply_to}
+        assert is_binary(Helpers.body(email, []))
+      end)
+    end
+
     test "handles emails to multiple recipients", %{user: user, email_alias: email_alias} do
       args = %{
         from: "sender@example.com",
@@ -1199,11 +1235,14 @@ defmodule Shroud.Email.EmailHandlerTest do
                "Discarding incoming email from sender@example.com to disabled alias #{email_alias.address}"
     end
 
-    test "handles 554 rejection notices" do
+    test "handles 554 rejection notices returned to an alias", %{email_alias: email_alias} do
       raw_email = File.read!("test/support/data/554_rejection_notice.email") |> Util.lf_to_crlf()
-      perform_job(EmailHandler, %{from: nil, to: "test@test.com", data: raw_email})
+      perform_job(EmailHandler, %{from: "", to: email_alias.address, data: raw_email})
 
-      assert_enqueued(worker: Shroud.S3.S3UploadJob)
+      assert [bounce] = all_enqueued(worker: Shroud.S3.S3UploadJob)
+      assert bounce.args["content"] == raw_email
+      assert bounce.args["path"] =~ email_alias.address
+      assert_no_email_sent()
     end
 
     test "discards outgoing email from free users" do
