@@ -11,7 +11,6 @@ defmodule Shroud.Email.SpamHandler do
   alias Shroud.Accounts.UserNotifierJob
   alias Shroud.Aliases.EmailAlias
   alias Shroud.Email
-  alias Shroud.Email.ReplyAddress
   alias Shroud.Email.ParsedEmail
   alias Shroud.Email.TrackerRemover
 
@@ -68,10 +67,12 @@ defmodule Shroud.Email.SpamHandler do
     :ok
   end
 
-  @spec handle_outgoing_spam_email(email) :: :ok
-  def handle_outgoing_spam_email({_mime_type, _mime_subtype, headers, _opts, _body}) do
+  @spec handle_outgoing_spam_email(email, {String.t(), String.t()}) :: :ok
+  def handle_outgoing_spam_email(
+        {_mime_type, _mime_subtype, headers, _opts, _body},
+        {recipient, email_alias}
+      ) do
     sender = get_header_value(headers, "from")
-    recipient = get_header_value(headers, "to")
 
     case Accounts.get_user_by_email(sender) do
       nil ->
@@ -79,8 +80,6 @@ defmodule Shroud.Email.SpamHandler do
         :ok
 
       user ->
-        {recipient, email_alias} = ReplyAddress.from_reply_address(recipient)
-
         %{
           email_function: :deliver_outgoing_email_marked_as_spam,
           email_args: [user.id, email_alias, recipient]

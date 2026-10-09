@@ -125,7 +125,7 @@ defmodule Shroud.Email.SpamHandlerTest do
     end
   end
 
-  describe "handle_outgoing_spam_email/1" do
+  describe "handle_outgoing_spam_email/2" do
     setup do
       user = user_fixture()
       email_alias = alias_fixture(%{user_id: user.id})
@@ -144,7 +144,11 @@ defmodule Shroud.Email.SpamHandlerTest do
         )
         |> :mimemail.decode()
 
-      assert :ok == SpamHandler.handle_outgoing_spam_email(email)
+      assert :ok ==
+               SpamHandler.handle_outgoing_spam_email(
+                 email,
+                 {"recipient@example.com", email_alias.address}
+               )
 
       assert_enqueued(
         worker: Shroud.Accounts.UserNotifierJob,

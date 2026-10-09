@@ -8,6 +8,36 @@ defmodule ShroudWeb.EmailAliasLiveTest do
   describe "Show" do
     setup :register_and_log_in_user
 
+    test "generates a subdomain reverse alias and clears the copy action on unsupported input", %{
+      conn: conn,
+      user: user
+    } do
+      previous = Application.get_env(:shroud, :reply_address_subdomains_enabled)
+      Application.put_env(:shroud, :reply_address_subdomains_enabled, true)
+      on_exit(fn -> Application.put_env(:shroud, :reply_address_subdomains_enabled, previous) end)
+      email_alias = alias_fixture(%{user_id: user.id})
+      {:ok, view, _} = live(conn, ~p"/alias/#{email_alias.address}")
+
+      view
+      |> form("form[phx-submit=update_recipient]")
+      |> render_submit(%{"recipient" => "Mixed@example.com"})
+
+      assert has_element?(view, "#copy-reverse-alias")
+
+      assert has_element?(
+               view,
+               "span",
+               "Mixed@mv4gc3lqnrss4y3pnu.#{email_alias.id}.r1.reply.email.shroud.test"
+             )
+
+      view
+      |> form("form[phx-submit=update_recipient]")
+      |> render_submit(%{"recipient" => String.duplicate("a", 65) <> "@example.com"})
+
+      assert has_element?(view, "#reverse-alias-error")
+      refute has_element?(view, "#copy-reverse-alias")
+    end
+
     test "inactive detail forms recover without changing alias details", %{conn: conn, user: user} do
       email_alias = alias_fixture(%{user_id: user.id, title: "Receipts", notes: "Keep invoices"})
       {:ok, view, _} = live(conn, ~p"/alias/#{email_alias.address}")

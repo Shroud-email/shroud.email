@@ -13,6 +13,10 @@ if Config.config_env() == :dev do
   end
 end
 
+config :shroud,
+  reply_address_subdomains_enabled:
+    System.get_env("REPLY_ADDRESS_SUBDOMAINS_ENABLED") in ~w(true 1 yes)
+
 # Only these connection peers may supply X-Forwarded-For. No implicit trust of
 # loopback/private networks; direct deployments leave this empty.
 config :shroud,

@@ -33,7 +33,7 @@ defmodule Shroud.Email.EmailHandlerTest do
 
   alias Shroud.Repo
   alias Shroud.Email
-  alias Shroud.Email.{EmailHandler, ParsedEmail, TrackerDomain}
+  alias Shroud.Email.{EmailHandler, ParsedEmail, ReplyAddress, TrackerDomain}
   alias Shroud.Email.EmailHandlerTest.FailingMailerAdapter
   alias Shroud.{Aliases, Util, Accounts}
   alias Swoosh.Adapters.SMTP.Helpers
@@ -56,6 +56,165 @@ defmodule Shroud.Email.EmailHandlerTest do
       user: user,
       email_alias: email_alias
     }
+  end
+
+  describe "subdomain reply routing" do
+    setup do
+      previous = Application.get_env(:shroud, :reply_address_subdomains_enabled)
+      Application.put_env(:shroud, :reply_address_subdomains_enabled, true)
+      on_exit(fn -> Application.put_env(:shroud, :reply_address_subdomains_enabled, previous) end)
+      :ok
+    end
+
+    test "forwards the overflow sender and replies without exposing the owner's address", %{
+      user: user,
+      email_alias: a
+    } do
+      sender = "noreply-feedcoyote-ncej243@no-reply.feedcoyote.com"
+
+      data =
+        text_email(
+          sender,
+          [a.address],
+          "Long sender",
+          "Hello",
+          "Reply-To: Mixed+support@example.com"
+        )
+
+      assert :ok = perform_job(EmailHandler, %{from: sender, to: a.address, data: data})
+
+      assert_email_sent(fn email ->
+        {_name, reply} = email.from
+        assert elem(Util.extract_email_parts(reply), 0) == "noreply-feedcoyote-ncej243"
+        assert Helpers.sender(email) == a.address
+        assert ReplyAddress.from_reply_address(reply) == {sender, a.address}
+        {reply_to, reply_to} = email.reply_to
+
+        assert ReplyAddress.from_reply_address(reply_to) ==
+                 {"Mixed+support@example.com", a.address}
+
+        assert is_binary(Helpers.body(email, []))
+      end)
+
+      reply = "Mixed+support@mv4gc3lqnrss4y3pnu.#{a.id}.r1.reply.email.shroud.test"
+      data = text_email(user.email, [reply], "Reply", "Hello", "Reply-To: #{user.email}")
+      assert :ok = perform_job(EmailHandler, %{from: user.email, to: reply, data: data})
+
+      assert_email_sent(fn email ->
+        assert email.to == [{"Mixed+support@example.com", "Mixed+support@example.com"}]
+        assert elem(email.from, 1) == a.address
+        assert email.reply_to == nil
+        assert is_binary(Helpers.body(email, []))
+      end)
+
+      assert Repo.reload!(a).replied == 1
+    end
+
+    test "a 64-octet mixed-case reply local survives SMTP ingestion and delivery", %{
+      user: user,
+      email_alias: a
+    } do
+      local = "Mixed+_" <> String.duplicate("x", 57)
+      assert byte_size(local) == 64
+      destination = local <> "@example.com"
+      reply = ReplyAddress.to_reply_address(destination, a.address)
+      data = text_email(user.email, [reply], "SMTP round trip", "Hello")
+      port = Application.fetch_env!(:shroud, :mailer)[:smtp_options][:port]
+
+      receipt =
+        :gen_smtp_client.send_blocking({user.email, [reply], data},
+          relay: "127.0.0.1",
+          port: port,
+          tls: :never,
+          auth: :never,
+          no_mx_lookups: true
+        )
+
+      assert is_binary(receipt)
+      assert [job] = all_enqueued(worker: EmailHandler)
+      assert job.args["to"] == [reply]
+      assert :ok = perform_job(EmailHandler, Map.put(job.args, "to", reply))
+
+      assert_email_sent(fn email ->
+        assert email.to == [{destination, destination}]
+        assert elem(email.from, 1) == a.address
+        assert is_binary(Helpers.body(email, []))
+      end)
+    end
+
+    test "unsupported From and Reply-To notify the owner instead of repairing mailbox identity",
+         %{user: user, email_alias: a} do
+      for {from_header, reply_header} <- [
+            {"\"a b\"@example.com", nil},
+            {"\"a@b\"@example.com", nil},
+            {"first@example.com, second@example.com", nil},
+            {"First <first@example.com>, Second <second@example.com>", nil},
+            {"Sender <sender@example.com>", "Reply-To: \"a b\"@example.com"},
+            {String.duplicate("a", 65) <> "@example.com", nil}
+          ] do
+        data =
+          text_email(from_header, [a.address], "Unsupported", "Keep this message", reply_header)
+
+        assert :ok =
+                 perform_job(EmailHandler, %{
+                   from: "sender@example.com",
+                   to: a.address,
+                   data: data
+                 })
+
+        assert_email_sent(fn email ->
+          assert email.to == [{"", user.email}]
+          assert email.subject == "Anonymous reply unavailable for #{a.address}"
+          assert elem(email.from, 1) == "noreply@email.shroud.test"
+          assert ReplyAddress.from_reply_address(elem(email.reply_to, 1)) == :error
+          assert [attachment] = email.attachments
+          assert attachment.data == data
+          assert email.text_body =~ "expose your real email address"
+          assert is_binary(Helpers.body(email, []))
+        end)
+      end
+
+      assert Repo.reload!(a).forwarded == 0
+    end
+
+    test "notification delivery failure remains retryable", %{user: user, email_alias: a} do
+      previous = Application.get_env(:shroud, Shroud.Mailer)
+      Application.put_env(:shroud, Shroud.Mailer, adapter: FailingMailerAdapter)
+      on_exit(fn -> Application.put_env(:shroud, Shroud.Mailer, previous) end)
+      data = text_email("\"a b\"@example.com", [a.address], "Unsupported", "Hello")
+
+      assert {:error, :simulated_smtp_failure} =
+               perform_job(EmailHandler, %{from: "sender@example.com", to: a.address, data: data})
+
+      assert Repo.reload!(a).forwarded == 0
+      refute Repo.reload!(user).has_forwarded_email
+    end
+
+    test "malformed routes, other owners and free users cannot relay", %{
+      user: user,
+      email_alias: a
+    } do
+      route = ReplyAddress.to_reply_address("recipient@example.com", a.address)
+      stranger = user_fixture(%{status: :active})
+      free_user = user_fixture(%{status: :free})
+      free_alias = alias_fixture(%{user_id: free_user.id})
+
+      free_route =
+        ReplyAddress.to_reply_address("recipient@example.com", free_alias.address)
+
+      for {from, to} <- [
+            {stranger.email, route},
+            {free_user.email, free_route},
+            {user.email, String.replace(route, ".r1.", ".r2.")},
+            {user.email, "x@reply.email.shroud.test"}
+          ] do
+        data = text_email(from, [to], "Not authorized", "Hello")
+        assert :ok = perform_job(EmailHandler, %{from: from, to: to, data: data})
+        refute_email_sent()
+      end
+
+      assert Repo.reload!(a).replied == 0
+    end
   end
 
   describe "perform/1" do
