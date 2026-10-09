@@ -42,6 +42,32 @@ defmodule Shroud.Accounts.UserNotifier do
   defp maybe_attach(email, nil), do: email
   defp maybe_attach(email, email_attachment), do: attachment(email, email_attachment)
 
+  def deliver_subscription_ended(user_id) do
+    user = Accounts.get_user!(user_id)
+    billing_url = url(~p"/settings/billing")
+
+    html_body =
+      EmailTemplate.SubscriptionEnded.render(
+        billing_url: billing_url,
+        current_year: DateTime.utc_now().year
+      )
+
+    text_body = """
+    ==============================
+
+    Hi #{user.email},
+
+    Your paid Shroud.email subscription has ended. Your account is now on the free plan.
+
+    To sign up again and restore access to paid features, visit your billing page:
+    #{billing_url}
+
+    ==============================
+    """
+
+    deliver(user.email, "Your Shroud.email subscription has ended", html_body, text_body)
+  end
+
   @doc """
   Deliver instructions to confirm account.
   """

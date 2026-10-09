@@ -592,7 +592,7 @@ defmodule Shroud.Accounts do
   Applies a Paddle subscription event while holding a row lock.
 
   The customer lookup, checkout-identity fallback, ordering check, update, and
-  paid-signup notification share one transaction so concurrent deliveries
+  transition notifications share one transaction so concurrent deliveries
   cannot regress subscription state or enqueue duplicate transition notices.
   """
   def apply_paddle_subscription_event(
@@ -673,6 +673,7 @@ defmodule Shroud.Accounts do
       {:ok, updated_user} ->
         maybe_enqueue_loops_sync(updated_user, user.status, status)
         maybe_notify_paid_signup(updated_user, user.status, status)
+        maybe_notify_subscription_ended(updated_user, user.status, status)
         :applied
 
       {:error, changeset} ->
@@ -694,6 +695,18 @@ defmodule Shroud.Accounts do
   end
 
   defp maybe_notify_paid_signup(_user, _prior_status, _status), do: :ok
+
+  defp maybe_notify_subscription_ended(user, prior_status, :free)
+       when prior_status in [:active, :lifetime] do
+    %{
+      email_function: "deliver_subscription_ended",
+      email_args: [user.id]
+    }
+    |> UserNotifierJob.new()
+    |> Oban.insert!()
+  end
+
+  defp maybe_notify_subscription_ended(_user, _prior_status, _status), do: :ok
 
   defp lock_paddle_user(customer_id, identity_user_id) do
     customer_user =
