@@ -27,7 +27,7 @@ const trust = [
 <section class="relative isolate overflow-hidden bg-slate-950">
     <div class="mx-auto max-w-[90rem] px-4 sm:px-6 lg:px-8">
         <div
-            class="grid items-center gap-12 pt-28 pb-16 sm:pt-32 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.2fr)] lg:gap-16 lg:pt-40 lg:pb-28"
+            class="grid items-center gap-12 pt-28 pb-16 sm:pt-32 lg:min-h-svh lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.2fr)] lg:gap-16 lg:pt-24 lg:pb-8"
         >
             <div class="max-w-xl">
                 <h1
@@ -100,6 +100,7 @@ const trust = [
             <div class="relative min-w-0">
                 <div
                     class="browser-preview overflow-hidden rounded-xl bg-slate-200 dark:bg-slate-800 shadow-2xl ring-1 ring-white/10"
+                    style={`--screenshot-ratio: ${appScreenshot.width / appScreenshot.height}`}
                 >
                     <div class="flex items-center gap-1.5 px-4 py-3" aria-hidden="true">
                         <span class="size-2.5 rounded-full bg-slate-400 dark:bg-slate-500"></span>
@@ -127,3 +128,13 @@ const trust = [
         </div>
     </div>
 </section>
+
+<style>
+    @media (min-width: 64rem) {
+        .browser-preview {
+            /* Reserve the hero padding and browser bar before fitting the screenshot. */
+            width: min(100%, calc((100svh - 10.125rem) * var(--screenshot-ratio)));
+            margin-inline: auto;
+        }
+    }
+</style>
