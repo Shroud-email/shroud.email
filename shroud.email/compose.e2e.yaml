@@ -53,7 +53,7 @@ services:
           - shroud.test
 
   playwright:
-    image: mcr.microsoft.com/playwright:v1.61.1-noble
+    image: mcr.microsoft.com/playwright:v1.64.0-noble
     working_dir: /work/e2e
     environment:
       BASE_URL: http://shroud.test:4000

@@ -7,8 +7,8 @@
     "prepare": "git config --local core.hooksPath .lefthook && mise exec -- lefthook install --force"
   },
   "dependencies": {
-    "@commitlint/cli": "^20.5.0",
-    "@commitlint/config-conventional": "^20.5.0"
+    "@commitlint/cli": "^21.2.3",
+    "@commitlint/config-conventional": "^21.2.3"
   },
   "devDependencies": {
     "prettier": "3.9.9"
