@@ -10,6 +10,7 @@ defmodule Shroud.Email.IncomingEmailHandler do
   alias Shroud.Util
 
   alias Shroud.Email.{
+    DeliveryMarker,
     SpamHandler,
     ParsedEmail,
     ImageFetcher,
@@ -271,6 +272,7 @@ defmodule Shroud.Email.IncomingEmailHandler do
             email |> Map.put(:reply_to, {reply_to_reply_address, reply_to_reply_address})
           end
         end).()
+    |> DeliveryMarker.attach("incoming", user, email_alias, user.email)
   end
 
   @spec uniqueness_constraint_error?(Ecto.Changeset.t(), atom()) :: boolean()

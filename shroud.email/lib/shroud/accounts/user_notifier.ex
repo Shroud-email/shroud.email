@@ -42,6 +42,46 @@ defmodule Shroud.Accounts.UserNotifier do
   defp maybe_attach(email, nil), do: email
   defp maybe_attach(email, email_attachment), do: attachment(email, email_attachment)
 
+  @doc """
+  Sends a plain-text delivery-failure notification without creating a notifier job.
+  Delivery errors are returned without logging addresses or message content.
+  """
+  def deliver_outgoing_email_bounced(
+        user,
+        email_alias,
+        recipient,
+        original_subject,
+        reason,
+        status
+      ) do
+    subject_line = if original_subject, do: "Subject: #{original_subject}\n", else: ""
+
+    new()
+    |> to(user.email)
+    |> from({"Shroud.email", "noreply@#{Util.email_domain()}"})
+    |> reply_to({"Shroud.email", "support@shroud.email"})
+    |> subject("Your email was not delivered")
+    |> header("Auto-Submitted", "auto-generated")
+    |> text_body("""
+    Your email to #{recipient} via #{email_alias} could not be delivered.
+
+    #{subject_line}
+    #{reason} (Delivery status: #{status})
+
+    Check the recipient's address before trying again. If the address is correct,
+    contact support@shroud.email for help.
+
+    Shroud.email
+    """)
+    |> Mailer.deliver()
+    |> case do
+      {:ok, _metadata} -> :ok
+      {:error, _reason} -> {:error, :bounce_notification_failed}
+    end
+  rescue
+    _exception -> {:error, :bounce_notification_failed}
+  end
+
   def deliver_subscription_downgraded(user_id) do
     user = Accounts.get_user!(user_id)
     billing_url = url(~p"/settings/billing")

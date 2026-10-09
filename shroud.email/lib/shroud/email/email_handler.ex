@@ -49,9 +49,14 @@ defmodule Shroud.Email.EmailHandler do
 
   defp do_perform(_job, from, to, data) do
     cond do
-      postmaster?(to) -> forward_postmaster(data)
-      from in ["", nil] -> BounceHandler.handle_haraka_bounce_report(to, data)
-      true -> handle_recipient(from, to, data)
+      postmaster?(to) ->
+        forward_postmaster(data)
+
+      from in ["", nil] or BounceHandler.delivery_status_report?(data) ->
+        BounceHandler.handle_haraka_bounce_report(to, data)
+
+      true ->
+        handle_recipient(from, to, data)
     end
   end
 

@@ -45,4 +45,27 @@ defmodule Shroud.Accounts.UserNotifierTest do
       assert match?({:error, _}, result)
     end
   end
+
+  test "bounce notification exceptions do not log or report identifying data" do
+    Sentry.Test.setup_sentry(dedup_events: false)
+    user = user_fixture()
+
+    log =
+      ExUnit.CaptureLog.capture_log(fn ->
+        assert {:error, :bounce_notification_failed} =
+                 UserNotifier.deliver_outgoing_email_bounced(
+                   user,
+                   "alias@email.shroud.test",
+                   "recipient@example.org",
+                   "Private subject",
+                   "The recipient's address was rejected.",
+                   "5.1.1"
+                 )
+      end)
+
+    refute log =~ user.email
+    refute log =~ "recipient@example.org"
+    refute log =~ "Private subject"
+    assert [] = Sentry.Test.pop_sentry_reports()
+  end
 end

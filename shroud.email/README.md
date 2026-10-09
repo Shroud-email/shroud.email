@@ -58,3 +58,47 @@ swaks --to test@example.com --server 127.0.0.1 --port 2525
 # Deploying
 
 Set the environment variables in `example.env`.
+
+Relayed emails carry an authenticated, encrypted `X-Shroud-Delivery` header.
+It identifies the alias owner, delivery direction, and recipient without a
+delivery timestamp or database correlation record. Keep `SECRET_KEY_BASE` stable
+across instances; changing it invalidates markers in outstanding messages.
+Haraka returns original headers in its delivery-status reports. Reports that omit
+the marker, contain a modified marker, or do not match its alias and recipient
+cannot trigger user notifications.
+
+Authenticated outgoing terminal failures produce a plain-text notification to
+the alias owner's current account email. Delays and successful deliveries do not
+produce notifications. The original subject is included only when it matches the
+authenticated subject hash. Reasons use delivery-status codes, not untrusted
+report text. Notifications carry no delivery marker, preventing notification loops.
+Notification delivery is best effort: failures alert operators without creating
+a notifier job or automatic notification retry. Duplicate reports are suppressed
+using opaque hashes in a single-node, in-memory 15-minute fixed window. The
+window resets on restart and at aligned boundaries; there is no persistent or
+cross-instance exactly-once guarantee.
+
+With `SENTRY_DSN` configured, warning-level bounce events use these fingerprints:
+
+- `shroud-unclassified-email-bounce`: unmatched or malformed reports.
+- `shroud-incoming-forwarding-bounce`: incoming mail could not reach a user's inbox.
+- `shroud-outgoing-delivery-rejection`: outgoing routing or policy failures.
+- `shroud-bounce-notification-failed`: a user notification could not be sent.
+
+Ordinary outgoing address or mailbox rejections notify the user without creating
+a Sentry issue. Inbox-forwarding failures alert operators rather than sending
+more email to the rejecting inbox. There is no persistent delivery-warning UI.
+Raw bounce reports are archived to S3. Each Sentry event's `extra.s3_path`
+identifies its object in the configured email bucket. The path includes the alias
+and timestamp; Sentry receives no raw message content or inherited user context.
+Classified alerts also include a validated delivery-status code. Uploads run
+asynchronously, so the object may not be available immediately when alerted. The SDK
+deduplicates identical events within approximately 30 seconds, so the issue's
+event count is not an exact bounce count.
+
+Configure Sentry issue alerts for these bounce events, including warning-level
+events and both new and recurring occurrences. Set a notification interval to
+limit noise. Grouping alone does not enable notifications.
+
+The SMTP processing queue stores envelope addresses and message bodies in Oban
+job arguments. Bounce handling adds no delivery-history or correlation records.
