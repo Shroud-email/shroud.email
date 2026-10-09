@@ -56,21 +56,9 @@ defmodule ShroudWeb.Plugs.VerifyCaptcha do
 
   defp form_route(%Plug.Conn{request_path: "/users/register", params: %{"user" => params}})
        when is_map(params) do
-    campaign =
-      case params["signup_campaign"] do
-        campaign when is_map(campaign) ->
-          Map.filter(campaign, fn {_key, value} -> is_binary(value) end)
-
-        _ ->
-          %{}
-      end
-
-    query =
-      if params["status"] == "lifetime", do: Map.put(campaign, "lifetime", "true"), else: campaign
-
-    if map_size(query) == 0,
-      do: "/users/register",
-      else: "/users/register?" <> URI.encode_query(query)
+    if params["status"] == "lifetime",
+      do: "/users/register?lifetime=true",
+      else: "/users/register"
   end
 
   defp form_route(_conn), do: "/users/register"

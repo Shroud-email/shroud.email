@@ -27,10 +27,7 @@ defmodule Shroud.Analytics do
   def email_forwarded(_user_id, false), do: capture(nil, "email_forwarded", %{})
   def outgoing_email_sent, do: capture(nil, "outgoing_email_sent", %{})
 
-  def signup(user_id, path) do
-    # OpenPanel extracts properties.__query from __path during ingestion.
-    capture(user_id, "signup", %{__path: path})
-  end
+  def signup(user_id), do: capture(user_id, "signup", %{})
 
   def paid_conversion(user_id, converted_at, source) when source in [:paddle, :lifetime_code],
     do: capture(user_id, "paid_conversion", %{source: Atom.to_string(source)}, converted_at)
