@@ -4,7 +4,6 @@ import { SEO } from "astro-seo";
 import { OPEN_GRAPH, SITE } from "../config";
 import OpenPanel from "../components/OpenPanel.astro";
 import Chatwoot from "../components/Chatwoot.astro";
-import CampaignLinks from "../components/CampaignLinks.astro";
 
 export interface Props {
     title?: string;
@@ -92,7 +91,6 @@ const imageAlt = OPEN_GRAPH.image.alt;
 
         <OpenPanel />
         <Chatwoot />
-        <CampaignLinks />
 
         <script>
             // Scroll-reveal: toggle `is-visible` on .fade-in elements as they enter
