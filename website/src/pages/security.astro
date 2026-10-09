@@ -1,0 +1,101 @@
+---
+import LandingLayout from "../layouts/LandingLayout.astro";
+import PageHeader from "../components/molecules/PageHeader.astro";
+
+const title = "Security";
+const description = "Privacy for your email. Protection for your account.";
+
+const protections = [
+  {
+    title: "Your data stays in the EU",
+    description:
+      "Shroud.email data is stored exclusively in the European Union.",
+    icon: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm0 0c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0v18M3.6 9h16.8M3.6 15h16.8",
+  },
+  {
+    title: "Encryption at rest",
+    description:
+      "Our database is encrypted at rest with AES-256, protecting stored data on disk.",
+    icon: "M20.25 6c0 2.071-3.694 3.75-8.25 3.75S3.75 8.071 3.75 6m16.5 0c0-2.071-3.694-3.75-8.25-3.75S3.75 3.929 3.75 6m16.5 0v12c0 2.071-3.694 3.75-8.25 3.75S3.75 20.071 3.75 18V6m16.5 6c0 2.071-3.694 3.75-8.25 3.75S3.75 14.071 3.75 12",
+  },
+  {
+    title: "Protected connections",
+    description:
+      "HTTPS protects your connection to the web app using modern encryption practices. Our mail server supports STARTTLS for encrypted connections with compatible mail servers.",
+    icon: "M16.5 10.5V6a4.5 4.5 0 0 0-9 0v4.5m-.75 0h10.5A2.25 2.25 0 0 1 19.5 12.75v6A2.25 2.25 0 0 1 17.25 21H6.75a2.25 2.25 0 0 1-2.25-2.25v-6a2.25 2.25 0 0 1 2.25-2.25Z",
+  },
+  {
+    title: "Secure your account.",
+    description:
+      "Sign in with a passkey, or add an extra layer of protection with optional two-factor authentication using an authenticator app.",
+    icon: "M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z",
+  },
+  {
+    title: "Protected credentials",
+    description:
+      "Passwords are stored using best practices like salting and hashing. Secrets are encrypted with AES-256.",
+    icon: "M15.75 5.25a3 3 0 0 1 3 3m3 0a6 6 0 0 1-7.029 5.912L12 16.883H9v3H6v3H3v-3.883l7.838-7.838A6 6 0 1 1 21.75 8.25Z",
+  },
+  {
+    title: "Less exposure to email senders",
+    description:
+      "We add extensive privacy protections to keep trackers out of your emails.",
+    link: { href: "/privacy-protection/", label: "Explore our privacy protections" },
+    icon: "M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88",
+  },
+];
+---
+
+<LandingLayout title={title} description={description}>
+  <PageHeader title={title} description={description} />
+
+  <div class="mx-auto w-full max-w-5xl px-4 pb-20 sm:px-6 sm:pb-28 lg:px-8">
+    <dl class="grid gap-px overflow-hidden rounded-2xl bg-slate-200 ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-800 md:grid-cols-2">
+      {
+        protections.map((protection) => (
+          <div class="bg-slate-50 p-6 dark:bg-slate-900 sm:p-8">
+            <dt>
+              <svg
+                class="mb-5 size-6 text-indigo-600 dark:text-indigo-400"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d={protection.icon} />
+              </svg>
+              <span class="font-display text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+                {protection.title}
+              </span>
+            </dt>
+            <dd class="mt-3 leading-relaxed text-pretty text-slate-700 dark:text-slate-300">
+              {protection.description}
+              {protection.link && (
+                <a
+                  href={protection.link.href}
+                  class="mt-3 block w-fit rounded text-indigo-600 underline underline-offset-4 hover:text-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
+                >
+                  {protection.link.label}
+                </a>
+              )}
+            </dd>
+          </div>
+        ))
+      }
+    </dl>
+
+    <div class="mt-12 text-center">
+      <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-50">Found a security issue?</h2>
+      <p class="mt-3 leading-relaxed text-slate-700 dark:text-slate-300">
+        Please contact us at
+        <a
+          href="mailto:security@shroud.email"
+          class="rounded text-indigo-600 underline underline-offset-4 hover:text-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
+        >security@shroud.email</a>.
+      </p>
+    </div>
+  </div>
+</LandingLayout>
