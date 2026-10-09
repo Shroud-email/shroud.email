@@ -452,7 +452,7 @@ exports.verify_message = async function (connection, txn) {
 }
 
 exports.attest_unsubscribe = function (connection, txn, results) {
-  const secret = process.env.SMTP_PASSWORD
+  const secret = process.env.UNSUBSCRIBE_ATTESTATION_SECRET
   if (!secret) return
   const from = txn.header.get_all('From')
   const unsubscribe = txn.header.get_all('List-Unsubscribe')

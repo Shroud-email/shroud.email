@@ -40,10 +40,12 @@ function setup(t) {
     HARAKA: process.env.HARAKA,
     EMAIL_DOMAIN: process.env.EMAIL_DOMAIN,
     SMTP_PASSWORD: process.env.SMTP_PASSWORD,
+    UNSUBSCRIBE_ATTESTATION_SECRET: process.env.UNSUBSCRIBE_ATTESTATION_SECRET,
   };
   process.env.HARAKA = root;
   process.env.EMAIL_DOMAIN = "BASE.EXAMPLE";
-  process.env.SMTP_PASSWORD = "test-attestation-secret";
+  process.env.SMTP_PASSWORD = "test-smtp-password";
+  process.env.UNSUBSCRIBE_ATTESTATION_SECRET = "test-attestation-secret";
   t.after(() => {
     for (const [key, value] of Object.entries(previous)) {
       if (value === undefined) delete process.env[key];
@@ -319,7 +321,7 @@ test("attestation fails closed on spoofing, failures, coverage, alignment and du
       txn.remove_header("List-Unsubscribe-Post");
       txn.add_header("List-Unsubscribe-Post", "list-unsubscribe=one-click");
     }
-    process.env.SMTP_PASSWORD =
+    process.env.UNSUBSCRIBE_ATTESTATION_SECRET =
       scenario === "no-secret" ? "" : "test-attestation-secret";
     t.mock.method(plugin, "run_verify_stream", async () => {
       assert.equal(txn.header.get_all("X-Shroud-Unsubscribe").length, 2);

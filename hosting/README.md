@@ -60,8 +60,10 @@ revoked records.
 Haraka verifies the original DKIM signature before the app modifies the message.
 Forwarded sender unsubscribe headers must be covered by one passing signature
 whose signing domain exactly matches the original From domain. Haraka passes
-these headers to the app with an HMAC using the shared `SMTP_PASSWORD`; configure
-the same password on both services. The app rejects unverified, malformed, and
+these headers to the app with an HMAC using `UNSUBSCRIBE_ATTESTATION_SECRET`.
+Generate an independent secret with `openssl rand -hex 32` and configure the same
+value in the app and Haraka. This variable is required in production and is
+separate from `SMTP_PASSWORD`. The app rejects unverified, malformed, and
 expired metadata and uses the selected fallback instead.
 Unsubscribe values exceeding 4096 UTF-8 bytes use the selected fallback.
 

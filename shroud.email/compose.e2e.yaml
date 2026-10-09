@@ -37,6 +37,7 @@ services:
       SMTP_AUTH: never
       SMTP_USERNAME: e2e
       SMTP_PASSWORD: e2e
+      UNSUBSCRIBE_ATTESTATION_SECRET: e2e-unsubscribe-attestation-secret
       PORT: 4000
       POOL_SIZE: 5
     depends_on:

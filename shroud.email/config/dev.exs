@@ -22,6 +22,7 @@ config :shroud, Shroud.Vault,
 config :shroud,
   app_domain: "app.example.com",
   email_domain: "example.com",
+  unsubscribe_attestation_secret: "development unsubscribe attestation secret",
   env: :dev
 
 # For development, we disable any cache and enable

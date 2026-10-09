@@ -219,7 +219,13 @@ if config_env() == :prod do
   smtp_password =
     System.get_env("SMTP_PASSWORD") || raise "environment variable SMTP_PASSWORD is missing"
 
-  config :shroud, :unsubscribe_attestation_secret, smtp_password
+  unsubscribe_attestation_secret =
+    case System.get_env("UNSUBSCRIBE_ATTESTATION_SECRET") do
+      secret when is_binary(secret) and byte_size(secret) > 0 -> secret
+      _ -> raise "environment variable UNSUBSCRIBE_ATTESTATION_SECRET is missing or empty"
+    end
+
+  config :shroud, :unsubscribe_attestation_secret, unsubscribe_attestation_secret
 
   smtp_relay = System.get_env("SMTP_RELAY") || "localhost"
 
