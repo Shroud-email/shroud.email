@@ -41,12 +41,57 @@ defmodule Shroud.Email.BounceHandlerTest do
       assert event.extra == %{s3_path: upload.args["path"]}
     end
 
+    test "handles authenticated Haraka failures with only a basic SMTP status", %{
+      email: email,
+      email_alias: email_alias,
+      user: user
+    } do
+      report =
+        delivery_status_report(email, status: nil, diagnostic: "smtp;550 Mailbox unavailable")
+
+      assert :ok = BounceHandler.handle_haraka_bounce_report(email_alias.address, report)
+      assert [job] = all_enqueued(worker: Shroud.Accounts.UserNotifierJob)
+      assert {:ok, notification} = perform_job(Shroud.Accounts.UserNotifierJob, job.args)
+      assert notification.to == [{"", user.email}]
+      assert notification.text_body =~ "The recipient's mail server reported a delivery failure."
+      assert notification.text_body =~ "Delivery status: 5.0.0"
+      refute notification.text_body =~ "Mailbox unavailable"
+      refute notification.html_body =~ "Mailbox unavailable"
+      assert [] = Sentry.Test.pop_sentry_reports()
+
+      incoming =
+        DeliveryMarker.attach(
+          email,
+          "incoming",
+          user,
+          email_alias.address,
+          "recipient@example.org"
+        )
+
+      report =
+        delivery_status_report(incoming, status: nil, diagnostic: "smtp; 450 Delivery timed out")
+
+      assert :ok = BounceHandler.handle_haraka_bounce_report(email_alias.address, report)
+      assert [event] = Sentry.Test.pop_sentry_reports()
+      assert event.fingerprint == ["shroud-incoming-forwarding-bounce"]
+      assert event.tags == %{delivery_status: "4.0.0"}
+
+      assert_enqueued(
+        worker: Shroud.S3.S3UploadJob,
+        args: %{content: report, path: event.extra.s3_path}
+      )
+    end
+
     test "ignores delays, notifies terminal failures, and suppresses repeated reports", %{
       email: email,
       email_alias: email_alias,
       user: user
     } do
-      for opts <- [[action: "delayed", status: "4.4.1"], [action: "delivered", status: "2.0.0"]] do
+      for opts <- [
+            [action: "delayed", status: "4.4.1"],
+            [action: "delivered", status: "2.0.0"],
+            [action: "delayed", status: nil, diagnostic: "smtp;450 Try again later"]
+          ] do
         assert :ok =
                  BounceHandler.handle_haraka_bounce_report(
                    email_alias.address,
@@ -55,6 +100,7 @@ defmodule Shroud.Email.BounceHandlerTest do
 
         assert_no_email_sent()
         assert [] = Sentry.Test.pop_sentry_reports()
+        refute_enqueued(worker: Shroud.Accounts.UserNotifierJob)
       end
 
       failed = delivery_status_report(email, status: "4.4.7")
@@ -146,6 +192,11 @@ defmodule Shroud.Email.BounceHandlerTest do
             {email_alias.address, delivery_status_report(email, recipient: user.email)},
             {email_alias.address, delivery_status_report(email, status: "5.1.1<script>")},
             {email_alias.address, delivery_status_report(email, status: "2.0.0")},
+            {email_alias.address,
+             delivery_status_report(email, status: nil, diagnostic: "smtp;250 OK")},
+            {email_alias.address,
+             delivery_status_report(email, status: nil, diagnostic: "smtp;550<script>")},
+            {email_alias.address, delivery_status_report(email, status: nil)},
             {email_alias.address, "Content-Type: multipart/report; boundary=broken\r\n\r\nBroken"}
           ] do
         assert :ok = BounceHandler.handle_haraka_bounce_report(to, data)

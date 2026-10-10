@@ -38,9 +38,13 @@ defmodule Shroud.Email.BounceHandler do
   def delivery_status_report?(data) do
     headers = data |> String.split(~r/\r?\n\r?\n/, parts: 2) |> hd()
 
-    case Mailex.parse(headers <> "\r\n\r\n") do
-      {:ok, message} -> delivery_status_mime?(message)
-      _ -> false
+    try do
+      case Mailex.parse(headers <> "\r\n\r\n") do
+        {:ok, message} -> delivery_status_mime?(message)
+        _ -> false
+      end
+    rescue
+      _exception -> Regex.match?(~r/^content-type:\s*multipart\/report(?:\s|;|$)/im, headers)
     end
   end
 
@@ -67,6 +71,8 @@ defmodule Shroud.Email.BounceHandler do
     else
       _ -> :error
     end
+  rescue
+    _exception -> :error
   end
 
   defp delivery_status_mime?(%{
@@ -112,12 +118,19 @@ defmodule Shroud.Email.BounceHandler do
     with [headers] <- matches,
          action when action in ["failed", "delayed", "delivered", "relayed", "expanded"] <-
            headers["action"],
-         status when is_binary(status) <- headers["status"],
+         status when is_binary(status) <- headers["status"] || generic_smtp_status(headers),
          [code] <- Regex.run(~r/\A[245]\.\d{1,3}\.\d{1,3}(?=\s|\z)/, status),
          true <- action != "failed" or String.starts_with?(code, ["4.", "5."]) do
       {:ok, action, code}
     else
       _ -> :error
+    end
+  end
+
+  defp generic_smtp_status(headers) do
+    case Regex.run(~r/\Asmtp;\s*([45])\d{2}(?=\s|\z)/i, headers["diagnostic-code"] || "") do
+      [_, class] -> class <> ".0.0"
+      _ -> nil
     end
   end
 

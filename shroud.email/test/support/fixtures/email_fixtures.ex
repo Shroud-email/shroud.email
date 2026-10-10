@@ -75,6 +75,8 @@ defmodule Shroud.EmailFixtures do
     recipient = Keyword.get(opts, :recipient, recipient)
     action = Keyword.get(opts, :action, "failed")
     status = Keyword.get(opts, :status, "5.1.1")
+    status_header = if status, do: "Status: #{status}\n", else: ""
+    diagnostic = Keyword.get(opts, :diagnostic, "smtp; private diagnostic recipient@example.net")
     original = Helpers.body(email, []) |> String.replace("\r\n", "\n")
 
     {original_type, original} =
@@ -102,8 +104,7 @@ defmodule Shroud.EmailFixtures do
 
     Final-Recipient: rfc822; #{recipient}
     Action: #{action}
-    Status: #{status}
-    Diagnostic-Code: smtp; private diagnostic recipient@example.net
+    #{status_header}Diagnostic-Code: #{diagnostic}
 
     --bounce-fixture
     Content-Type: #{original_type}

@@ -1029,6 +1029,59 @@ defmodule Shroud.Email.EmailHandlerTest do
       end)
     end
 
+    test "archives malformed bounce MIME without raising or notifying", %{
+      email_alias: email_alias,
+      user: user
+    } do
+      Sentry.Test.setup_sentry(dedup_events: false)
+
+      email =
+        Swoosh.Email.new()
+        |> Swoosh.Email.from(email_alias.address)
+        |> Swoosh.Email.to("recipient@example.org")
+        |> Swoosh.Email.subject("Original subject")
+        |> Swoosh.Email.text_body("Private body")
+        |> Shroud.Email.DeliveryMarker.attach(
+          "outgoing",
+          user,
+          email_alias.address,
+          "recipient@example.org"
+        )
+
+      for original_format <- [:headers, :full],
+          report = delivery_status_report(email, original_format: original_format),
+          data <- [
+            String.replace(
+              report,
+              "Content-Type: multipart/report;",
+              "Content-Type: multipart/report; name*=UTF-8''%GG;"
+            ),
+            String.replace(
+              report,
+              "Content-Type: text/plain",
+              "Content-Type: text/plain; name*=UTF-8''%GG"
+            ),
+            String.replace(
+              report,
+              "Subject: Original subject\r\n",
+              "Subject: Original subject\r\nContent-Disposition: attachment; filename*=UTF-8''%GG\r\n"
+            )
+          ],
+          from <- ["", "MAILER-DAEMON@example.net"] do
+        assert :ok = perform_job(EmailHandler, %{from: from, to: email_alias.address, data: data})
+        assert_no_email_sent()
+        assert [event] = Sentry.Test.pop_sentry_reports()
+        assert event.fingerprint == ["shroud-unclassified-email-bounce"]
+
+        assert_enqueued(
+          worker: Shroud.S3.S3UploadJob,
+          args: %{content: data, path: event.extra.s3_path}
+        )
+      end
+
+      refute_enqueued(worker: Shroud.Accounts.UserNotifierJob)
+    end
+
     test "notifies the sender of an authenticated outgoing bounce with a non-null sender" do
       Sentry.Test.setup_sentry(dedup_events: false)
       user = user_fixture(%{status: :active})
