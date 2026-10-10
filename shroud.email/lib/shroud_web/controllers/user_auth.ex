@@ -221,7 +221,14 @@ defmodule ShroudWeb.UserAuth do
   end
 
   defp maybe_store_return_to(%{method: "GET"} = conn) do
-    put_session(conn, :user_return_to, current_path(conn))
+    return_to = current_path(conn)
+
+    # Leave room for signing, encoding and other data in the 4096-byte session cookie.
+    if byte_size(return_to) <= 2048 do
+      put_session(conn, :user_return_to, return_to)
+    else
+      delete_session(conn, :user_return_to)
+    end
   end
 
   defp maybe_store_return_to(conn), do: conn

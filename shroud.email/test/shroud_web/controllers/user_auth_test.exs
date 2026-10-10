@@ -194,6 +194,57 @@ defmodule ShroudWeb.UserAuthTest do
       assert Flash.get(conn.assigns.flash, :error) == "You must log in to access this page."
     end
 
+    test "redirects oversized requests without overflowing the session cookie", %{user: user} do
+      user = user |> Accounts.User.confirm_changeset() |> Repo.update!()
+
+      query =
+        URI.encode_query(
+          for n <- 1..100, do: {"redirect_#{n}", "\r\nSet-Cookie:crlfinjection=crlfinjection"}
+        )
+
+      for path <- ["/", "/settings/account"] do
+        conn = get(build_conn(), path <> "?" <> query)
+
+        assert conn.halted
+        assert redirected_to(conn) == ~p"/users/log_in"
+        refute get_session(conn, :user_return_to)
+        assert Enum.all?(get_resp_header(conn, "set-cookie"), &(byte_size(&1) <= 4096))
+        refute Map.has_key?(conn.resp_cookies, "crlfinjection")
+
+        login_conn =
+          conn
+          |> recycle()
+          |> post(~p"/users/log_in", %{
+            "user" => %{"email" => user.email, "password" => valid_user_password()}
+          })
+
+        assert redirected_to(login_conn) == ~p"/"
+        assert get_session(login_conn, :user_token)
+      end
+    end
+
+    test "bounds saved return URLs and clears a previous destination for oversized URLs" do
+      for size <- [2048, 2049] do
+        path = "/settings/account?value=" <> String.duplicate("a", size - 24)
+        assert byte_size(path) == size
+
+        conn =
+          build_conn()
+          |> init_test_session(user_return_to: "/settings/security")
+          |> get(path)
+
+        assert redirected_to(conn) == ~p"/users/log_in"
+
+        if size == 2048 do
+          assert get_session(conn, :user_return_to) == path
+        else
+          refute get_session(conn, :user_return_to)
+        end
+
+        assert Enum.all?(get_resp_header(conn, "set-cookie"), &(byte_size(&1) <= 4096))
+      end
+    end
+
     test "redirects root visits without a login error", %{conn: conn} do
       for path <- ["/", "/?source=bookmark"] do
         redirected_conn = get(conn, path)
