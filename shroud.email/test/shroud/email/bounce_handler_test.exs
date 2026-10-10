@@ -1,31 +1,26 @@
 defmodule Shroud.Email.BounceHandlerTest do
   use Shroud.DataCase, async: true
   import ExUnit.CaptureLog
-  import Mox
   use Oban.Testing, repo: Shroud.Repo
   alias Shroud.Email.BounceHandler
 
-  setup :verify_on_exit!
-
   describe "handle_haraka_bounce_report/2" do
-    test "logs a warning and uploads the email to S3" do
-      Shroud.MockDateTime
-      |> stub(:utc_now_unix, fn ->
-        1_656_358_048
-      end)
+    test "archives the report and sends its object path to Sentry" do
+      Sentry.Test.setup_sentry(dedup_events: false)
 
-      assert capture_log(fn ->
-               BounceHandler.handle_haraka_bounce_report("test@test.com", "email-contents")
-             end) =~
-               "Received bounce report from Haraka! See /bounces/test@test.com-1656358048.eml."
+      log =
+        capture_log(fn ->
+          assert :ok =
+                   BounceHandler.handle_haraka_bounce_report("test@test.com", "email-contents")
+        end)
 
-      assert_enqueued(
-        worker: Shroud.S3.S3UploadJob,
-        args: %{
-          path: "/bounces/test@test.com-1656358048.eml",
-          content: "email-contents"
-        }
-      )
+      assert [upload] = all_enqueued(worker: Shroud.S3.S3UploadJob)
+      assert upload.args["content"] == "email-contents"
+      assert upload.args["path"] =~ "/bounces/test@test.com-"
+      assert log =~ "Received bounce report from Haraka! See #{upload.args["path"]}."
+      refute log =~ "email-contents"
+      assert [event] = Sentry.Test.pop_sentry_reports()
+      assert event.extra == %{s3_path: upload.args["path"]}
     end
   end
 end

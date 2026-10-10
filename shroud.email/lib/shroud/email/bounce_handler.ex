@@ -6,12 +6,7 @@ defmodule Shroud.Email.BounceHandler do
   alias Shroud.S3.S3UploadJob
 
   @doc """
-  Handles a bounce report from Haraka. These are sent when Haraka
-  attempts to deliver a message, but fails, e.g. because of a 554
-  "transaction failed".
-
-  This might happen if e.g. the MTA's IP is on a blocklist, so the
-  recipient refuses to accept the message.
+  Archives a bounce report and notifies Sentry with its S3 object path.
   """
   @spec handle_haraka_bounce_report(String.t(), String.t()) :: :ok
   def handle_haraka_bounce_report(to, data) do
@@ -20,6 +15,26 @@ defmodule Shroud.Email.BounceHandler do
     %{path: s3_path, content: data}
     |> S3UploadJob.new()
     |> Oban.insert!()
+
+    event =
+      Sentry.Event.create_event(
+        message: "Received an unclassified email bounce report",
+        level: :warning,
+        fingerprint: ["shroud-unclassified-email-bounce"]
+      )
+
+    # Allow only operational fields; inherited context can contain email data.
+    %Sentry.Event{
+      event_id: event.event_id,
+      timestamp: event.timestamp,
+      environment: event.environment,
+      release: event.release,
+      message: event.message,
+      level: event.level,
+      fingerprint: event.fingerprint,
+      extra: %{s3_path: s3_path}
+    }
+    |> Sentry.send_event()
 
     Logger.warning("Received bounce report from Haraka! See #{s3_path}.")
     :ok
