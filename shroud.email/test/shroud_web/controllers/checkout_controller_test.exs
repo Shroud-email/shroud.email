@@ -15,6 +15,141 @@ defmodule ShroudWeb.CheckoutControllerTest do
   @period_end_naive ~N[2030-01-01 00:00:00]
   @occurred_at "2030-01-01T00:00:00Z"
 
+  describe "revenue tracking" do
+    setup do
+      previous = Application.get_env(:shroud, :openpanel)
+      bypass = Bypass.open()
+      owner = self()
+
+      Application.put_env(:shroud, :openpanel,
+        enabled: true,
+        client_id: "test-client",
+        client_secret: "test-secret",
+        api_url: "http://localhost:#{bypass.port}/api"
+      )
+
+      Bypass.stub(bypass, "POST", "/api/track", fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        send(owner, {:analytics, Jason.decode!(body)})
+        Plug.Conn.resp(conn, 200, "{}")
+      end)
+
+      on_exit(fn ->
+        for task <- Task.Supervisor.children(Shroud.Analytics.Tasks) do
+          ref = Process.monitor(task)
+          assert_receive {:DOWN, ^ref, :process, ^task, _reason}, 2_000
+        end
+
+        Application.put_env(:shroud, :openpanel, previous)
+      end)
+
+      :ok
+    end
+
+    test "completed payments and renewals use payout earnings and deduplicate transaction IDs", %{
+      conn: conn
+    } do
+      user = user_fixture(%{paddle_customer_id: "ctm_revenue"})
+      event = revenue_event()
+
+      for {transaction_id, amount, timestamp} <- [
+            {"txn_first", "1837", "2030-01-01T00:00:00Z"},
+            {"txn_renewal", "1942", "2031-01-01T00:00:00Z"}
+          ] do
+        payment =
+          event
+          |> put_in(["data", "id"], transaction_id)
+          |> put_in(["data", "details", "payout_totals", "earnings"], amount)
+          |> Map.put("occurred_at", timestamp)
+
+        assert response(post_event(recycle(conn), payment), 200) == ""
+
+        assert_receive {:analytics, %{"type" => "track", "payload" => payload}}, 2_000
+
+        assert payload == %{
+                 "name" => "revenue",
+                 "profileId" => Shroud.Analytics.profile_id(user.id),
+                 "properties" => %{
+                   "__revenue" => String.to_integer(amount),
+                   "currency" => "GBP",
+                   "source" => "paddle",
+                   "__timestamp" => timestamp
+                 }
+               }
+
+        duplicate = Map.put(payment, "event_id", "evt_redelivery")
+        assert response(post_event(recycle(conn), duplicate), 200) == ""
+        refute_receive {:analytics, _}, 100
+      end
+
+      assert is_nil(Repo.reload!(user).paid_converted_at)
+    end
+
+    test "payment before subscription provisioning uses the signed pending checkout identity", %{
+      conn: conn
+    } do
+      user = user_with_pending_checkout(%{})
+
+      event =
+        revenue_event()
+        |> put_in(["data", "id"], "txn_test")
+        |> put_in(["data", "custom_data"], %{
+          "shroud_checkout_identity" => PaddleCheckoutIdentity.sign(user.id)
+        })
+
+      assert response(post_event(conn, event), 200) == ""
+      assert_receive {:analytics, %{"payload" => payload}}, 2_000
+      assert payload["profileId"] == Shroud.Analytics.profile_id(user.id)
+      assert is_nil(Repo.reload!(user).paddle_customer_id)
+    end
+
+    test "invalid, unpaid, and zero-value transactions do not emit revenue", %{conn: conn} do
+      user_fixture(%{paddle_customer_id: "ctm_revenue"})
+      event = revenue_event()
+
+      assert response(post_event(conn, event, secret: "wrong_secret"), 400) == ""
+
+      for invalid <- [
+            put_in(event, ["data", "status"], "paid"),
+            put_in(event, ["data", "details"], nil),
+            put_in(event, ["data", "details", "payout_totals", "earnings"], "18.37"),
+            put_in(event, ["data", "details", "payout_totals", "earnings"], "-1837"),
+            put_in(event, ["data", "customer_id"], "ctm_unknown"),
+            Map.put(event, "occurred_at", "invalid")
+          ] do
+        assert response(post_event(recycle(conn), invalid), 503) == ""
+      end
+
+      zero = put_in(event, ["data", "details", "payout_totals", "earnings"], "0")
+      assert response(post_event(recycle(conn), zero), 200) == ""
+      unpaid = Map.put(event, "event_type", "transaction.payment_failed")
+      assert response(post_event(recycle(conn), unpaid), 200) == ""
+      refute_receive {:analytics, _}, 100
+
+      assert response(post_event(recycle(conn), event), 200) == ""
+      assert_receive {:analytics, %{"payload" => %{"name" => "revenue"}}}, 2_000
+    end
+  end
+
+  defp revenue_event do
+    %{
+      "event_id" => "evt_revenue",
+      "event_type" => "transaction.completed",
+      "occurred_at" => @occurred_at,
+      "data" => %{
+        "id" => "txn_revenue",
+        "status" => "completed",
+        "customer_id" => "ctm_revenue",
+        "currency_code" => "EUR",
+        "items" => [%{"price" => %{"id" => "pri_test_yearly"}}],
+        "details" => %{
+          "totals" => %{"total" => "2499", "earnings" => "2115", "currency_code" => "EUR"},
+          "payout_totals" => %{"earnings" => "1837", "currency_code" => "GBP"}
+        }
+      }
+    }
+  end
+
   test "trial creation and renewals are not conversions; activation is", %{conn: conn} do
     user =
       user_fixture(%{

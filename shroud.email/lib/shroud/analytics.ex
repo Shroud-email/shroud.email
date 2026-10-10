@@ -32,6 +32,15 @@ defmodule Shroud.Analytics do
   def paid_conversion(user_id, converted_at, source) when source in [:paddle, :lifetime_code],
     do: capture(user_id, "paid_conversion", %{source: Atom.to_string(source)}, converted_at)
 
+  def revenue(user_id, amount, currency, occurred_at) do
+    capture(
+      user_id,
+      "revenue",
+      %{__revenue: amount, currency: currency, source: "paddle"},
+      occurred_at
+    )
+  end
+
   def identify(user_id), do: send_event("identify", %{profileId: profile_id(user_id)})
 
   defp capture(user_id, name, properties, occurred_at \\ DateTime.utc_now()) do
