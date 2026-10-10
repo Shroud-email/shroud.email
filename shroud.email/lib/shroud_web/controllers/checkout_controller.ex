@@ -134,6 +134,40 @@ defmodule ShroudWeb.CheckoutController do
 
   defp handle_event(%{"event_type" => "customer.created"}), do: :ok
 
+  defp handle_event(%{"event_type" => "transaction.completed", "data" => transaction} = event)
+       when is_map(transaction) do
+    with %{"status" => "completed", "id" => transaction_id, "customer_id" => customer_id}
+         when is_binary(transaction_id) and transaction_id != "" and is_binary(customer_id) and
+                customer_id != "" <- transaction,
+         %{
+           "details" => %{
+             "payout_totals" => %{"earnings" => earnings, "currency_code" => currency}
+           }
+         }
+         when is_binary(earnings) and is_binary(currency) and byte_size(currency) == 3 <-
+           transaction,
+         {amount, ""} when amount >= 0 <- Integer.parse(earnings),
+         {:ok, event_at} <- parse_iso8601(event["occurred_at"]),
+         {:ok, user_id} <- revenue_user_id(transaction, customer_id) do
+      if amount > 0 do
+        Shroud.Billing.record_paddle_revenue(
+          user_id,
+          transaction_id,
+          amount,
+          currency,
+          DateTime.from_naive!(event_at, "Etc/UTC")
+        )
+      else
+        :ok
+      end
+    else
+      _invalid -> {:error, :invalid_revenue_transaction}
+    end
+  end
+
+  defp handle_event(%{"event_type" => "transaction.completed"}),
+    do: {:error, :invalid_revenue_transaction}
+
   defp handle_event(%{"event_type" => event_type, "data" => subscription} = event)
        when event_type in @subscription_event_types do
     provision_subscription(subscription, event, event_type)
@@ -149,6 +183,22 @@ defmodule ShroudWeb.CheckoutController do
   end
 
   defp handle_event(_malformed_event), do: {:error, :malformed_event}
+
+  defp revenue_user_id(transaction, customer_id) do
+    case Accounts.get_user_by_paddle_customer_id(customer_id) do
+      %Shroud.Accounts.User{id: user_id} ->
+        {:ok, user_id}
+
+      nil ->
+        transaction
+        |> Map.put("transaction_id", transaction["id"])
+        |> verify_checkout_identity()
+        |> case do
+          {:ok, %{user_id: user_id}} -> {:ok, user_id}
+          error -> error
+        end
+    end
+  end
 
   defp provision_subscription(subscription, event, event_type) when is_map(subscription) do
     with {:ok, customer_id} <- required_binary(subscription, "customer_id"),

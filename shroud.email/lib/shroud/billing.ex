@@ -9,6 +9,19 @@ defmodule Shroud.Billing do
 
   @salt "lifetime_code"
 
+  @doc "Records each completed Paddle transaction once before best-effort revenue tracking."
+  def record_paddle_revenue(user_id, transaction_id, amount, currency, occurred_at) do
+    case Repo.insert_all(
+           "tracked_paddle_revenue",
+           [%{transaction_id: transaction_id}],
+           on_conflict: :nothing,
+           conflict_target: [:transaction_id]
+         ) do
+      {1, _} -> Shroud.Analytics.revenue(user_id, amount, currency, occurred_at)
+      {0, _} -> :ok
+    end
+  end
+
   def create_lifetime_code() do
     data = :crypto.strong_rand_bytes(16) |> Base.encode64() |> String.slice(0, 16)
     # max_age is 50 years
