@@ -145,7 +145,6 @@ defmodule Shroud.Email.EmailHandlerTest do
       user: user,
       email_alias: email_alias
     } do
-      FunWithFlags.enable(:email_branding_preferences, for_actor: user)
       {:ok, _} = Accounts.update_user_email_preferences(user, %{email_branding: false})
 
       perform_job(EmailHandler, %{
@@ -181,7 +180,6 @@ defmodule Shroud.Email.EmailHandlerTest do
       user: user,
       email_alias: email_alias
     } do
-      FunWithFlags.enable(:email_branding_preferences, for_actor: user)
       {:ok, _} = Accounts.update_user_email_preferences(user, %{email_branding: false})
 
       perform_job(EmailHandler, %{
@@ -211,7 +209,6 @@ defmodule Shroud.Email.EmailHandlerTest do
       user: user,
       email_alias: email_alias
     } do
-      FunWithFlags.enable(:email_branding_preferences, for_actor: user)
       {:ok, _} = Accounts.update_user_email_preferences(user, %{email_branding: false})
       reply_address = "recipient_at_example.com_alias@email.shroud.test"
 
@@ -238,14 +235,13 @@ defmodule Shroud.Email.EmailHandlerTest do
       assert Aliases.get_email_alias_by_address!(email_alias.address).replied == 1
     end
 
-    test "revoking the feature restores incoming and outgoing branding despite a saved opt-out",
+    test "enabling branding restores incoming and outgoing branding after a saved opt-out",
          %{
            user: user,
            email_alias: email_alias
          } do
-      FunWithFlags.enable(:email_branding_preferences, for_actor: user)
-      {:ok, _} = Accounts.update_user_email_preferences(user, %{email_branding: false})
-      FunWithFlags.disable(:email_branding_preferences, for_actor: user)
+      {:ok, user} = Accounts.update_user_email_preferences(user, %{email_branding: false})
+      {:ok, _} = Accounts.update_user_email_preferences(user, %{email_branding: true})
 
       perform_job(EmailHandler, %{
         from: "sender@example.com",
@@ -254,7 +250,7 @@ defmodule Shroud.Email.EmailHandlerTest do
           multipart_email(
             "sender@example.com",
             [email_alias.address],
-            "Incoming after rollback",
+            "Incoming with branding",
             "Plain text content",
             "<p>HTML content</p>"
           )
@@ -942,7 +938,6 @@ defmodule Shroud.Email.EmailHandlerTest do
       user: user,
       email_alias: email_alias
     } do
-      FunWithFlags.enable(:email_branding_preferences, for_actor: user)
       {:ok, _} = Accounts.update_user_email_preferences(user, %{email_branding: false})
 
       data =

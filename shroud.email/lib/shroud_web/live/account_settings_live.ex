@@ -17,7 +17,6 @@ defmodule ShroudWeb.AccountSettingsLive do
        current_user: user,
        page_title: "Account settings",
        email_form: to_form(Accounts.change_user_email(user)),
-       email_preferences_enabled?: Accounts.email_preferences_enabled?(user),
        email_preferences_form: to_form(User.email_preferences_changeset(user, %{}))
      ), layout: {ShroudWeb.Layouts, :settings}}
   end
@@ -66,12 +65,6 @@ defmodule ShroudWeb.AccountSettingsLive do
            email_preferences_form: to_form(User.email_preferences_changeset(user, %{}))
          )
          |> put_notification(:info, "Email preferences updated.")}
-
-      {:error, :feature_disabled} ->
-        {:noreply,
-         socket
-         |> assign(:email_preferences_enabled?, false)
-         |> put_notification(:error, "Email preferences are not available.")}
 
       {:error, changeset} ->
         {:noreply, assign(socket, :email_preferences_form, to_form(changeset))}

@@ -34,9 +34,8 @@ defmodule ShroudWeb.OAuthApiTest do
 
   defp bearer(token), do: build_conn() |> put_req_header("authorization", "Bearer " <> token)
 
-  test "browser consent and form token exchange work for unflagged API users" do
+  test "browser consent and form token exchange work for API users" do
     user = confirmed_user()
-    FunWithFlags.disable(:chatgpt_integration, for_actor: user)
     %{params: params, exchange: exchange} = api_tokens(["profile:read"], user)
 
     html =
@@ -126,9 +125,8 @@ defmodule ShroudWeb.OAuthApiTest do
     assert get_resp_header(conn, "access-control-allow-credentials") == []
   end
 
-  test "registered API clients work without the MCP flag and return only consented identity" do
+  test "registered API clients return only consented identity" do
     user = confirmed_user()
-    FunWithFlags.disable(:chatgpt_integration, for_actor: user)
     %{tokens: tokens, params: params} = api_tokens(["profile:read", "aliases:read"], user)
     assert tokens.resource == OAuth.resource(:api)
 

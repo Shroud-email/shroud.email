@@ -7,7 +7,7 @@ defmodule ShroudWeb.OAuthRegressionTest do
     %{user: confirmed_user()}
   end
 
-  test "connection navigation and browser connection pages are available to flagged users", %{
+  test "connection navigation and browser connection pages are available to confirmed users", %{
     user: user
   } do
     {params, _} = authorization_params(["aliases:read"])
@@ -30,13 +30,12 @@ defmodule ShroudWeb.OAuthRegressionTest do
     assert build_conn() |> log_in_user(user) |> get("/settings/security") |> response(200)
   end
 
-  test "the MCP flag gates MCP consent but not connection management", %{user: user} do
+  test "MCP consent and connection management are available to confirmed users", %{user: user} do
     {params, _} = authorization_params(["aliases:read"])
-    FunWithFlags.disable(:chatgpt_integration, for_actor: user)
 
     conn = build_conn() |> log_in_user(user)
-    assert conn |> get("/oauth/authorize", params) |> response(404)
-    assert conn |> post("/oauth/authorize", %{}) |> response(404)
+    assert conn |> get("/oauth/authorize", params) |> response(200)
+    assert conn |> post("/oauth/authorize", %{}) |> response(400)
     assert conn |> get("/settings/security") |> response(200)
 
     document = conn |> get("/settings/security") |> html_response(200) |> Floki.parse_document!()

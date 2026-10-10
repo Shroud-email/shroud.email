@@ -9,50 +9,10 @@ defmodule ShroudWeb.SettingsLiveTest do
 
   setup :register_and_log_in_user
 
-  test "unflagged users cannot see or submit email preferences", %{conn: conn, user: user} do
-    {:ok, view, _} = live(conn, ~p"/settings/account")
-    refute has_element?(view, "#email-preferences-form")
-
-    render_submit(view, "update_email_preferences", %{"user" => %{"email_branding" => "false"}})
-
-    assert has_element?(
-             view,
-             "#notification-source [data-kind=error]",
-             "Email preferences are not available."
-           )
-
-    assert Repo.reload!(user).email_branding
-  end
-
-  test "revoking the flag rejects submissions from an already open form", %{
-    conn: conn,
-    user: user
-  } do
-    FunWithFlags.enable(:email_branding_preferences, for_actor: user)
-    {:ok, view, _} = live(conn, ~p"/settings/account")
-    assert has_element?(view, "#email-preferences-form")
-    FunWithFlags.disable(:email_branding_preferences, for_actor: user)
-
-    view
-    |> form("#email-preferences-form", user: %{email_branding: "false"})
-    |> render_submit()
-
-    refute has_element?(view, "#email-preferences-form")
-
-    assert has_element?(
-             view,
-             "#notification-source [data-kind=error]",
-             "Email preferences are not available."
-           )
-
-    assert Repo.reload!(user).email_branding
-  end
-
   test "email branding can be disabled and enabled and survives reloads", %{
     conn: conn,
     user: user
   } do
-    FunWithFlags.enable(:email_branding_preferences, for_actor: user)
     {:ok, view, _} = live(conn, ~p"/settings/account")
     assert has_element?(view, "#user_email_branding[checked]")
 
@@ -75,7 +35,6 @@ defmodule ShroudWeb.SettingsLiveTest do
   end
 
   test "invalid email branding is rejected in place", %{conn: conn, user: user} do
-    FunWithFlags.enable(:email_branding_preferences, for_actor: user)
     {:ok, view, _} = live(conn, ~p"/settings/account")
 
     render_submit(view, "update_email_preferences", %{"user" => %{"email_branding" => "invalid"}})
@@ -152,24 +111,13 @@ defmodule ShroudWeb.SettingsLiveTest do
     refute has_element?(view, "#settings-info, #settings-error")
   end
 
-  test "connected apps are independent of the MCP integration flag", %{
-    conn: conn,
-    user: user
-  } do
-    {:ok, view, _} = live(conn, ~p"/settings/security")
-    assert has_element?(view, "#connected-apps")
-
-    FunWithFlags.enable(:chatgpt_integration, for_actor: user)
+  test "connected apps are available to all users", %{conn: conn} do
     {:ok, view, _} = live(conn, ~p"/settings/security")
     assert has_element?(view, "#connected-apps")
 
     other_user = user_fixture()
     other_user = other_user |> User.confirm_changeset() |> Repo.update!()
     {:ok, view, _} = build_conn() |> log_in_user(other_user) |> live(~p"/settings/security")
-    assert has_element?(view, "#connected-apps")
-
-    FunWithFlags.disable(:chatgpt_integration, for_actor: user)
-    {:ok, view, _} = live(conn, ~p"/settings/security")
     assert has_element?(view, "#connected-apps")
   end
 
