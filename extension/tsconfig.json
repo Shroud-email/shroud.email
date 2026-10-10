@@ -1,0 +1,4 @@
+{
+  "extends": "./.wxt/tsconfig.json",
+  "compilerOptions": { "strict": true, "noUncheckedIndexedAccess": true }
+}

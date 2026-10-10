@@ -1,0 +1,6 @@
+node_modules/
+.wxt/
+.output/
+test-results/
+playwright-report/
+safari/
