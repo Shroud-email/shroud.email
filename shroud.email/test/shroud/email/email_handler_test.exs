@@ -33,7 +33,7 @@ defmodule Shroud.Email.EmailHandlerTest do
 
   alias Shroud.Repo
   alias Shroud.Email
-  alias Shroud.Email.{EmailHandler, ParsedEmail, TrackerDomain}
+  alias Shroud.Email.{CSSParser, EmailHandler, ParsedEmail, TrackerDomain}
   alias Shroud.Email.EmailHandlerTest.FailingMailerAdapter
   alias Shroud.{Aliases, Util, Accounts}
   alias Swoosh.Adapters.SMTP.Helpers
@@ -113,6 +113,8 @@ defmodule Shroud.Email.EmailHandlerTest do
         <img src="https://images.example.com/photo.jpg">
         <img src="https://known.example.com/open">
         <img src="https://unknown.example.com/pixel" width="1" height="1">
+        <div style="background: url(https://known.example.com/background)">Content</div>
+        <picture><source srcset="https://images.example.com/wide.jpg 800w"></picture>
         """)
 
       assert :ok =
@@ -136,9 +138,150 @@ defmodule Shroud.Email.EmailHandlerTest do
 
       assert urls == [
                "https://images.example.com/photo.jpg",
+               "https://images.example.com/wide.jpg",
+               "https://known.example.com/background",
                "https://known.example.com/open",
                "https://unknown.example.com/pixel"
              ]
+    end
+
+    test "forwards original bodies without added footers, visits or tracker counts on parser failure",
+         %{
+           user: user,
+           email_alias: email_alias
+         } do
+      html =
+        ~s|<html><body><img src="https://spy.example.com/pixel" width="1" height="1"><p style='background: url('>Keep café</p></body></html>|
+
+      data =
+        multipart_email(
+          {"Alice", "sender@example.com"},
+          [email_alias.address],
+          "Fail open",
+          "Original text",
+          html
+        )
+
+      original =
+        ParsedEmail.parse(
+          Mailex.parse!(data),
+          "sender@example.com",
+          email_alias.address
+        )
+
+      assert :ok =
+               perform_job(EmailHandler, %{
+                 from: "sender@example.com",
+                 to: email_alias.address,
+                 data: data
+               })
+
+      assert_email_sent(fn email ->
+        assert email.html_body == original.swoosh_email.html_body
+        assert email.text_body == original.swoosh_email.text_body
+
+        assert email.from ==
+                 {"Alice (via Shroud.email)", "sender_at_example.com_alias@email.shroud.test"}
+
+        assert email.to == [{email_alias.address, user.email}]
+      end)
+
+      assert Repo.aggregate(TrackerDomain, :count) == 0
+      refute_enqueued(worker: Shroud.Email.ImageFetcher)
+      assert Aliases.get_email_alias_by_address!(email_alias.address).forwarded == 1
+    end
+
+    test "forwards unchanged bodies after helper exit, invalid reply, oversized reply or timeout",
+         %{email_alias: email_alias} do
+      html =
+        ~s|<img src="https://spy.example.com/pixel" width="1" height="1"><p style="color: red">Keep café</p>|
+
+      data =
+        multipart_email(
+          {"Alice", "sender@example.com"},
+          [email_alias.address],
+          "Helper failure",
+          "Original text",
+          html
+        )
+
+      original = ParsedEmail.parse(Mailex.parse!(data), "sender@example.com", email_alias.address)
+
+      for script <- [
+            "exit 0",
+            "head -c 4 >/dev/null; printf '%s' '{\"Ok\":[[0,10000,\"https://example.com/photo\",false]]}'",
+            "head -c 4 >/dev/null; head -c 4194305 /dev/zero",
+            "head -c 4 >/dev/null; sleep 4"
+          ] do
+        with_parser_helper(script, fn ->
+          assert :ok =
+                   perform_job(EmailHandler, %{
+                     from: "sender@example.com",
+                     to: email_alias.address,
+                     data: data
+                   })
+
+          assert_email_sent(fn email ->
+            assert email.html_body == original.swoosh_email.html_body
+            assert email.text_body == original.swoosh_email.text_body
+          end)
+
+          refute_enqueued(worker: Shroud.Email.ImageFetcher)
+          assert Repo.aggregate(TrackerDomain, :count) == 0
+        end)
+      end
+
+      assert Aliases.get_email_alias_by_address!(email_alias.address).forwarded == 4
+      assert {:ok, []} = CSSParser.references("color: red", true)
+    end
+
+    test "contains a helper exit while a large input is being written" do
+      with_parser_helper("exit 0", fn ->
+        assert {:error, _} = CSSParser.references(String.duplicate(" ", 1_048_576), true)
+      end)
+
+      assert {:ok, []} = CSSParser.references("color: red", true)
+    end
+
+    test "forwards unchanged content when many successful parses exhaust the whole-email budget",
+         %{email_alias: email_alias} do
+      html =
+        ~s|<img src="https://spy.example.com/pixel" width="1" height="1">| <>
+          String.duplicate(~s|<p style="color: red">Keep</p>|, 6)
+
+      data =
+        multipart_email(
+          {"Alice", "sender@example.com"},
+          [email_alias.address],
+          "Budget",
+          "Original text",
+          html
+        )
+
+      original = ParsedEmail.parse(Mailex.parse!(data), "sender@example.com", email_alias.address)
+
+      # This stand-in helper discards the four-byte input length header, waits half
+      # a second, and prints a successful JSON reply with no image references.
+      # Each call fits within the parser timeout and the two-second email budget,
+      # but six style attributes take at least three seconds in total.
+      with_parser_helper("head -c 4 >/dev/null; sleep 0.5; printf '%s' '{\"Ok\":[]}'", fn ->
+        assert :ok =
+                 perform_job(EmailHandler, %{
+                   from: "sender@example.com",
+                   to: email_alias.address,
+                   data: data
+                 })
+
+        assert_email_sent(fn email ->
+          assert email.html_body == original.swoosh_email.html_body
+          assert email.text_body == original.swoosh_email.text_body
+        end)
+
+        refute_enqueued(worker: Shroud.Email.ImageFetcher)
+        assert Repo.aggregate(TrackerDomain, :count) == 0
+      end)
+
+      assert {:ok, []} = CSSParser.references("color: red", true)
     end
 
     test "disabling branding removes both footers without disabling tracker removal", %{
@@ -1939,6 +2082,21 @@ defmodule Shroud.Email.EmailHandlerTest do
       assert_no_email_sent()
       assert :ok = perform_job(EmailHandler, args)
       assert_email_sent(fn email -> assert email.to == [{"", "operator@example.net"}] end)
+    end
+  end
+
+  defp with_parser_helper(script, fun) do
+    path = Application.app_dir(:shroud, "priv/bin/css_image_parser")
+    backup = path <> ".test-original"
+    File.rename!(path, backup)
+
+    try do
+      File.write!(path, "#!/bin/sh\n" <> script <> "\n")
+      File.chmod!(path, 0o755)
+      fun.()
+    after
+      File.rm(path)
+      File.rename!(backup, path)
     end
   end
 

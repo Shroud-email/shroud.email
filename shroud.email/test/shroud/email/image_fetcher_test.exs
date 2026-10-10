@@ -3,7 +3,7 @@ defmodule Shroud.Email.ImageFetcherTest do
   use Oban.Testing, repo: Shroud.Repo
 
   import Mox
-  alias Shroud.Email.{ImageFetcher, ParsedEmail}
+  alias Shroud.Email.{ImageFetcher, ParsedEmail, TrackerRemover}
 
   setup :verify_on_exit!
   setup {Req.Test, :verify_on_exit!}
@@ -30,7 +30,7 @@ defmodule Shroud.Email.ImageFetcherTest do
     <a href="https://example.com/unsubscribe">Unsubscribe</a>
     """
 
-    email = %ParsedEmail{parsed_html: Floki.parse_document!(html)}
+    email = prepared_email(html)
 
     assert :ok = ImageFetcher.enqueue(email)
     urls = all_enqueued(worker: ImageFetcher) |> Enum.map(& &1.args["url"]) |> Enum.sort()
@@ -62,7 +62,7 @@ defmodule Shroud.Email.ImageFetcherTest do
     on_exit(fn -> :telemetry.detach(ref) end)
 
     html = Enum.map_join(1..50, fn n -> ~s(<img src="https://images.example.com/#{n}.jpg">) end)
-    email = %ParsedEmail{parsed_html: Floki.parse_document!(html)}
+    email = prepared_email(html)
 
     assert :ok = ImageFetcher.enqueue(email)
     assert_received {^ref, :insert}
@@ -70,6 +70,101 @@ defmodule Shroud.Email.ImageFetcherTest do
     urls = all_enqueued(worker: ImageFetcher) |> Enum.map(& &1.args["url"]) |> Enum.sort()
     expected = Enum.map(1..50, &"https://images.example.com/#{&1}.jpg") |> Enum.sort()
     assert urls == expected
+  end
+
+  test "enqueues CSS, responsive, legacy, SVG and conditional Outlook images" do
+    html = ~S"""
+    <style>
+      /* background: url(https://ignored.example/comment) */
+      @font-face { src: url(https://ignored.example/font); }
+      @import url(https://ignored.example/styles);
+      .hero { background: image-set("https://images.example/one" 1x, url(https://images.example/two) 2x); }
+      @media (max-width: 600px) { .hero { background-image: u\72l("https://images.example/a)b?x=1&y=2"); } }
+      .text::after { content: "url(https://ignored.example/string)"; }
+      .icon { --photo: url(https://images.example/custom); list-style-image: url(https://images.example/bullet); }
+    </style>
+    <table background="//images.example/table"><tr><td style="border-image: url(https://images.example/border) 30; background: url(data:image/png;base64,abc)"></td></tr></table>
+    <picture><source srcset="https://images.example/wide 600w, https://images.example/wider 1200w"><img srcset="data:image/png;base64,abc 1x, https://images.example/retina?a=1,b=2 2x" src="cid:photo"></picture>
+    <svg><image href="https://images.example/svg"/><filter><feImage xlink:href="https://images.example/filter"/></filter></svg>
+    <!--[if mso]><v:rect><v:fill src="https://images.example/outlook"/><v:imagedata src="https://images.example/outlook-photo"/></v:rect><img src="https://spy.example/pixel" width="1" height="1"><![endif]-->
+    <!-- <img src="https://ignored.example/comment"> -->
+    <a href="https://ignored.example/link">Link</a>
+    <video><source srcset="https://ignored.example/video 1x" src="https://ignored.example/movie"></video>
+    """
+
+    assert :ok = ImageFetcher.enqueue(prepared_email(html))
+    urls = all_enqueued(worker: ImageFetcher) |> Enum.map(& &1.args["url"]) |> Enum.sort()
+
+    assert urls ==
+             Enum.sort([
+               "https://images.example/one",
+               "https://images.example/two",
+               "https://images.example/a)b?x=1&y=2",
+               "https://images.example/custom",
+               "https://images.example/bullet",
+               "https://images.example/table",
+               "https://images.example/border",
+               "https://images.example/wide",
+               "https://images.example/wider",
+               "https://images.example/retina?a=1,b=2",
+               "https://images.example/svg",
+               "https://images.example/filter",
+               "https://images.example/outlook",
+               "https://images.example/outlook-photo",
+               "https://spy.example/pixel"
+             ])
+  end
+
+  test "enqueues video posters and mask border images without fetching videos, fonts or SVG markers" do
+    html = """
+    <video src="https://ignored.example/movie" poster="https://images.example/poster"></video>
+    <video poster="data:image/png;base64,abc"></video>
+    <style>
+      @font-face { src: url(https://ignored.example/font); }
+      .arrow { marker-start: url(https://ignored.example/markers.svg#arrow); }
+      .mask { mask-border-source: url(https://images.example/mask-source); }
+    </style>
+    <div style="mask-border: url(https://images.example/mask) 30"></div>
+    <div style="-webkit-mask-box-image: url(https://images.example/webkit) 30"></div>
+    <div style="-webkit-mask-box-image-source: url(https://images.example/webkit-source)"></div>
+    """
+
+    assert :ok = ImageFetcher.enqueue(prepared_email(html))
+    urls = all_enqueued(worker: ImageFetcher) |> Enum.map(& &1.args["url"]) |> Enum.sort()
+
+    assert urls == [
+             "https://images.example/mask",
+             "https://images.example/mask-source",
+             "https://images.example/poster",
+             "https://images.example/webkit",
+             "https://images.example/webkit-source"
+           ]
+  end
+
+  test "does not enqueue a partial set of images when parsing fails" do
+    html = ~s|<img src="https://images.example/photo"><div style="background: url(">Keep</div>|
+    email = prepared_email(html)
+    assert email.privacy_processing_failed
+    assert :ok = ImageFetcher.enqueue(email)
+    refute_enqueued(worker: ImageFetcher)
+  end
+
+  test "normalizes browser-loadable URLs without changing existing percent escapes" do
+    html = ~S"""
+    <img src="https://images.example/a%20b?name=hello world&amp;items[]=1">
+    <div style='background: url("https://images.example/photo?name=é")'></div>
+    <!--[if mso]><v:rect><v:fill src="https://images.example/outlook?name=hello world"/><v:textbox><![endif]-->
+    <p>Content</p><!--[if mso]></v:textbox></v:rect><![endif]-->
+    """
+
+    assert :ok = ImageFetcher.enqueue(prepared_email(html))
+    urls = all_enqueued(worker: ImageFetcher) |> Enum.map(& &1.args["url"]) |> Enum.sort()
+
+    assert urls == [
+             "https://images.example/a%20b?name=hello%20world&items%5B%5D=1",
+             "https://images.example/outlook?name=hello%20world",
+             "https://images.example/photo?name=%C3%A9"
+           ]
   end
 
   test "caps jobs at the first 500 distinct eligible URLs without counting duplicates or embedded images" do
@@ -82,7 +177,7 @@ defmodule Shroud.Email.ImageFetcherTest do
         """
       end)
 
-    assert :ok = ImageFetcher.enqueue(%ParsedEmail{parsed_html: Floki.parse_document!(html)})
+    assert :ok = ImageFetcher.enqueue(prepared_email(html))
     urls = all_enqueued(worker: ImageFetcher) |> Enum.map(& &1.args["url"]) |> Enum.sort()
     expected = Enum.map(1..500, &"https://images.example.com/#{&1}.jpg") |> Enum.sort()
     assert urls == expected
@@ -276,7 +371,7 @@ defmodule Shroud.Email.ImageFetcherTest do
     end)
 
     html = ~s(<img src="https://93.184.215.14/failed"><img src="https://93.184.215.14/success">)
-    assert :ok = ImageFetcher.enqueue(%ParsedEmail{parsed_html: Floki.parse_document!(html)})
+    assert :ok = ImageFetcher.enqueue(prepared_email(html))
     assert %{success: 2, failure: 0} = Oban.drain_queue(queue: :image_fetcher)
 
     assert_received {:visited, "/success"}
@@ -289,5 +384,24 @@ defmodule Shroud.Email.ImageFetcherTest do
 
     Req.Test.expect(ImageFetcher, fn conn -> Req.Test.transport_error(conn, :timeout) end)
     assert :ok = perform_job(ImageFetcher, %{url: "https://93.184.215.14/pixel"})
+  end
+
+  test "enqueues prepared original URLs without scanning the delivered HTML" do
+    email = %ParsedEmail{
+      image_urls: ["https://images.example/original"],
+      parsed_html: [{"div", [{"style", "background: url("}], []}]
+    }
+
+    assert :ok = ImageFetcher.enqueue(email)
+
+    assert [%{args: %{"url" => "https://images.example/original"}}] =
+             all_enqueued(worker: ImageFetcher)
+  end
+
+  defp prepared_email(html) do
+    TrackerRemover.process(%ParsedEmail{
+      parsed_html: Floki.parse_document!(html),
+      swoosh_email: Swoosh.Email.new() |> Swoosh.Email.html_body(html)
+    })
   end
 end

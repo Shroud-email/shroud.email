@@ -13,12 +13,10 @@ defmodule Shroud.Email.ImageFetcher do
   @max_images 500
 
   @spec enqueue(ParsedEmail.t()) :: :ok
-  def enqueue(%ParsedEmail{parsed_html: nil}), do: :ok
+  def enqueue(%ParsedEmail{privacy_processing_failed: true}), do: :ok
 
-  def enqueue(%ParsedEmail{parsed_html: html}) do
-    html
-    |> Floki.find("img")
-    |> Floki.attribute("src")
+  def enqueue(%ParsedEmail{image_urls: urls}) do
+    urls
     |> Stream.uniq()
     |> Stream.filter(&(remote_uri(&1) != nil))
     |> Stream.take(@max_images)

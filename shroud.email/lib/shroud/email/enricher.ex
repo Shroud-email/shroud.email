@@ -8,6 +8,8 @@ defmodule Shroud.Email.Enricher do
   use ShroudWeb, :verified_routes
 
   @spec process(ParsedEmail.t()) :: ParsedEmail.t()
+  def process(%ParsedEmail{privacy_processing_failed: true} = email), do: email
+
   def process(%ParsedEmail{} = email) do
     email
     |> process_text()
