@@ -8,7 +8,7 @@ defmodule Shroud.Accounts.UserNotifier do
   use ShroudWeb, :verified_routes
 
   # Delivers the email using the application mailer.
-  defp deliver(recipient, subject, html_body, text_body, email_attachment \\ nil) do
+  defp deliver(recipient, subject, html_body, text_body, email_attachment \\ nil, headers \\ []) do
     email =
       new()
       |> to(recipient)
@@ -18,6 +18,8 @@ defmodule Shroud.Accounts.UserNotifier do
       |> html_body(html_body)
       |> text_body(text_body)
       |> maybe_attach(email_attachment)
+
+    email = Enum.reduce(headers, email, fn {name, value}, email -> header(email, name, value) end)
 
     case Mailer.deliver(email) do
       {:ok, _metadata} -> {:ok, email}
@@ -41,6 +43,48 @@ defmodule Shroud.Accounts.UserNotifier do
 
   defp maybe_attach(email, nil), do: email
   defp maybe_attach(email, email_attachment), do: attachment(email, email_attachment)
+
+  @doc """
+  Delivers a notification of an outgoing delivery failure.
+  """
+  def deliver_outgoing_email_bounced(
+        user_id,
+        email_alias,
+        recipient,
+        original_subject,
+        reason,
+        status
+      ) do
+    user = Accounts.get_user!(user_id)
+    subject_line = if original_subject, do: "Subject: #{original_subject}\n", else: ""
+
+    html_body =
+      EmailTemplate.OutgoingEmailBounced.render(
+        user_email: Plug.HTML.html_escape(user.email),
+        email_alias: Plug.HTML.html_escape(email_alias),
+        recipient: Plug.HTML.html_escape(recipient),
+        subject_line: Plug.HTML.html_escape(subject_line),
+        reason: Plug.HTML.html_escape(reason),
+        status: Plug.HTML.html_escape(status),
+        current_year: DateTime.utc_now().year
+      )
+
+    text_body = """
+    Your email to #{recipient} via #{email_alias} could not be delivered.
+
+    #{subject_line}
+    #{reason} (Delivery status: #{status})
+
+    Check the recipient's address before trying again. If the address is correct,
+    contact support@shroud.email for help.
+
+    Shroud.email
+    """
+
+    deliver(user.email, "Your email was not delivered", html_body, text_body, nil, [
+      {"Auto-Submitted", "auto-generated"}
+    ])
+  end
 
   def deliver_subscription_downgraded(user_id) do
     user = Accounts.get_user!(user_id)

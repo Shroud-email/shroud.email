@@ -1172,11 +1172,84 @@ defmodule Shroud.Email.EmailHandlerTest do
       end)
     end
 
-    test "forwards bounces from outgoing emails" do
-      user = user_fixture(%{status: :free})
+    test "archives malformed bounce MIME without raising or notifying", %{
+      email_alias: email_alias,
+      user: user
+    } do
+      Sentry.Test.setup_sentry(dedup_events: false)
+
+      email =
+        Swoosh.Email.new()
+        |> Swoosh.Email.from(email_alias.address)
+        |> Swoosh.Email.to("recipient@example.org")
+        |> Swoosh.Email.subject("Original subject")
+        |> Swoosh.Email.text_body("Private body")
+        |> Shroud.Email.DeliveryMarker.attach(
+          "outgoing",
+          user,
+          email_alias.address,
+          "recipient@example.org"
+        )
+
+      for original_format <- [:headers, :full],
+          report = delivery_status_report(email, original_format: original_format),
+          data <- [
+            String.replace(
+              report,
+              "Content-Type: multipart/report;",
+              "Content-Type: multipart/report; name*=UTF-8''%GG;"
+            ),
+            String.replace(
+              report,
+              "Content-Type: text/plain",
+              "Content-Type: text/plain; name*=UTF-8''%GG"
+            ),
+            String.replace(
+              report,
+              "Subject: Original subject\r\n",
+              "Subject: Original subject\r\nContent-Disposition: attachment; filename*=UTF-8''%GG\r\n"
+            )
+          ],
+          from <- ["", "MAILER-DAEMON@example.net"] do
+        assert :ok = perform_job(EmailHandler, %{from: from, to: email_alias.address, data: data})
+        assert_no_email_sent()
+        assert [event] = Sentry.Test.pop_sentry_reports()
+        assert event.fingerprint == ["shroud-unclassified-email-bounce"]
+
+        assert_enqueued(
+          worker: Shroud.S3.S3UploadJob,
+          args: %{content: data, path: event.extra.s3_path}
+        )
+      end
+
+      refute_enqueued(worker: Shroud.Accounts.UserNotifierJob)
+    end
+
+    test "notifies the sender of an authenticated outgoing bounce with a non-null sender" do
+      Sentry.Test.setup_sentry(dedup_events: false)
+      user = user_fixture(%{status: :active})
       email_alias = alias_fixture(%{user_id: user.id, address: "bouncetest@email.shroud.test"})
 
-      data = File.read!("test/support/data/bounce.email") |> Util.lf_to_crlf()
+      assert :ok =
+               perform_job(EmailHandler, %{
+                 from: user.email,
+                 to: "wrongster_at_foo.com_bouncetest@email.shroud.test",
+                 data:
+                   text_email(
+                     user.email,
+                     ["wrongster@foo.com"],
+                     "=?UTF-8?B?#{Base.encode64("Private subject — café")}?=",
+                     "Private body"
+                   )
+               })
+
+      assert_received {:email, outgoing}
+      marker = outgoing.headers["X-Shroud-Delivery"]
+      refute marker =~ user.email
+      refute marker =~ email_alias.address
+      refute marker =~ "wrongster@foo.com"
+
+      data = delivery_status_report(outgoing, original_format: :full)
 
       perform_job(EmailHandler, %{
         from: "MAILER-DAEMON@amazonses.com",
@@ -1184,20 +1257,119 @@ defmodule Shroud.Email.EmailHandlerTest do
         data: data
       })
 
+      assert_no_email_sent()
+      assert [job] = all_enqueued(worker: Shroud.Accounts.UserNotifierJob)
+      assert {:ok, _email} = perform_job(Shroud.Accounts.UserNotifierJob, job.args)
+
       assert_email_sent(fn email ->
-        assert email.to == [{email_alias.address, user.email}]
+        assert email.to == [{"", user.email}]
+        assert email.from == {"Shroud.email", "noreply@email.shroud.test"}
+        assert email.subject == "Your email was not delivered"
+        assert email.text_body =~ "wrongster@foo.com via #{email_alias.address}"
+        assert email.text_body =~ "Subject: Private subject — café"
+        assert email.text_body =~ "The recipient's address was rejected."
+        refute email.text_body =~ "Private body"
+        refute email.text_body =~ "malicious.example"
+        refute email.text_body =~ "private diagnostic"
+        refute Map.has_key?(email.headers, "X-Shroud-Delivery")
+        assert email.headers["Auto-Submitted"] == "auto-generated"
 
-        assert email.from ==
-                 {"MAILER-DAEMON@amazonses.com (via Shroud.email)",
-                  "MAILER-DAEMON_at_amazonses.com_bouncetest@email.shroud.test"}
-
-        assert email.subject == "Delivery Status Notification (Failure)"
-
-        assert email.text_body =~
-                 "The following message to <wrongster@foo.com> was undeliverable."
-
-        assert is_nil(email.html_body)
+        html_text = email.html_body |> Floki.parse_document!() |> Floki.text()
+        assert html_text =~ "wrongster@foo.com via #{email_alias.address}"
+        assert html_text =~ "Subject: Private subject — café"
+        assert html_text =~ "The recipient's address was rejected."
+        refute html_text =~ "Private body"
+        refute html_text =~ "private diagnostic"
+        assert html_text =~ "Delivery status: 5.1.1"
       end)
+
+      assert [] = Sentry.Test.pop_sentry_reports()
+      assert_enqueued(worker: Shroud.S3.S3UploadJob, args: %{content: data})
+    end
+
+    test "reports inbox-forwarding failures without emailing the rejecting inbox", %{
+      email_alias: email_alias,
+      user: user
+    } do
+      Sentry.Test.setup_sentry(dedup_events: false)
+
+      assert :ok =
+               perform_job(EmailHandler, %{
+                 from: "sender@example.net",
+                 to: email_alias.address,
+                 data:
+                   text_email(
+                     "sender@example.net",
+                     [email_alias.address],
+                     "Incoming",
+                     "Private body"
+                   )
+               })
+
+      assert_received {:email, incoming}
+      Sentry.Context.set_user_context(%{email: user.email})
+      Sentry.Context.set_extra_context(%{recipient: user.email, oban_job_id: 123})
+      Sentry.Context.add_breadcrumb(message: "Private body")
+
+      assert :ok =
+               perform_job(EmailHandler, %{
+                 from: "",
+                 to: email_alias.address,
+                 data: delivery_status_report(incoming, status: "5.2.2")
+               })
+
+      assert_no_email_sent()
+      assert [event] = Sentry.Test.pop_sentry_reports()
+      assert event.fingerprint == ["shroud-incoming-forwarding-bounce"]
+      assert event.tags == %{delivery_status: "5.2.2"}
+      assert [upload] = all_enqueued(worker: Shroud.S3.S3UploadJob)
+      assert event.extra == %{s3_path: upload.args["path"]}
+      assert event.user == %{}
+      assert event.breadcrumbs == []
+      assert event.contexts == nil
+      assert event.request == %Sentry.Interfaces.Request{}
+      refute_enqueued(worker: Shroud.Accounts.UserNotifierJob)
+    end
+
+    test "returns notification delivery failures to Oban for retry", %{
+      email_alias: email_alias,
+      user: user
+    } do
+      Sentry.Test.setup_sentry(dedup_events: false)
+
+      perform_job(EmailHandler, %{
+        from: user.email,
+        to: "recipient_at_example.org_alias@email.shroud.test",
+        data: text_email(user.email, ["recipient@example.org"], "Outgoing", "Private body")
+      })
+
+      assert_received {:email, outgoing}
+
+      log =
+        capture_log(fn ->
+          with_failing_mailer(
+            fn ->
+              assert :ok =
+                       perform_job(EmailHandler, %{
+                         from: "",
+                         to: email_alias.address,
+                         data: delivery_status_report(outgoing)
+                       })
+
+              assert [job] = all_enqueued(worker: Shroud.Accounts.UserNotifierJob)
+
+              assert {:error, reason} = perform_job(Shroud.Accounts.UserNotifierJob, job.args)
+              assert reason == "Private failure for #{user.email}"
+            end,
+            reason: "Private failure for #{user.email}"
+          )
+        end)
+
+      refute log =~ user.email
+      refute log =~ "Private failure"
+      assert_no_email_sent()
+      assert [] = Sentry.Test.pop_sentry_reports()
+      assert_enqueued(worker: Shroud.S3.S3UploadJob)
     end
 
     test "does not forward email from a blocked address" do

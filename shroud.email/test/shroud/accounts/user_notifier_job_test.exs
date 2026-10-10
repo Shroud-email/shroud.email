@@ -8,6 +8,41 @@ defmodule Shroud.Accounts.UserNotifierJobTest do
   alias Shroud.Accounts.UserNotifierJob
 
   describe "perform/1" do
+    test "sends bounce notifications with escaped HTML and a plain-text fallback" do
+      user = user_fixture()
+
+      for subject <- ["<strong>Quote & café</strong>", nil] do
+        assert {:ok, email} =
+                 perform_job(UserNotifierJob, %{
+                   email_function: :deliver_outgoing_email_bounced,
+                   email_args: [
+                     user.id,
+                     "alias@email.shroud.test",
+                     "recipient@example.org",
+                     subject,
+                     "The recipient's address was rejected.",
+                     "5.1.1"
+                   ]
+                 })
+
+        assert_email_sent(to: user.email, subject: "Your email was not delivered")
+        document = Floki.parse_document!(email.html_body)
+        assert [] == Floki.find(document, "strong")
+
+        for body <- [email.text_body, Floki.text(document)] do
+          assert body =~ "recipient@example.org via alias@email.shroud.test"
+          assert body =~ "The recipient's address was rejected."
+          assert body =~ "Delivery status: 5.1.1"
+
+          if subject do
+            assert body =~ "Subject: #{subject}"
+          else
+            refute body =~ "Subject:"
+          end
+        end
+      end
+    end
+
     test "sends subscription_downgraded with pause-aware wording and a billing link" do
       user = user_fixture(%{status: :free})
 

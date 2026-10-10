@@ -4,6 +4,7 @@ defmodule Shroud.Email.OutgoingEmailHandler do
   alias Shroud.Accounts.User
 
   alias Shroud.Email.{
+    DeliveryMarker,
     ParsedEmail,
     ReplyAddress,
     SpamHandler
@@ -103,6 +104,7 @@ defmodule Shroud.Email.OutgoingEmailHandler do
     |> Map.put(:to, [{recipient_address, recipient_address}])
     # Don't forward the reply-to header in replies as it may contain the user's real email
     |> Map.put(:reply_to, nil)
+    |> DeliveryMarker.attach("outgoing", user, email_alias, recipient_address)
   end
 
   defp sender_owns_alias?(user, reply_address) do

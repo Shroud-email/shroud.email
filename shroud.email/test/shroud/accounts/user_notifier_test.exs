@@ -45,4 +45,20 @@ defmodule Shroud.Accounts.UserNotifierTest do
       assert match?({:error, _}, result)
     end
   end
+
+  test "bounce notification exceptions return the standard delivery error" do
+    user = user_fixture()
+
+    ExUnit.CaptureLog.capture_log(fn ->
+      assert {:error, {:delivery_failed, %MatchError{}}} =
+               UserNotifier.deliver_outgoing_email_bounced(
+                 user.id,
+                 "alias@email.shroud.test",
+                 "recipient@example.org",
+                 "Private subject",
+                 "The recipient's address was rejected.",
+                 "5.1.1"
+               )
+    end)
+  end
 end

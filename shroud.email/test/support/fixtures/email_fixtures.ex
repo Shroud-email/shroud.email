@@ -8,6 +8,7 @@ defmodule Shroud.EmailFixtures do
   alias Shroud.Repo
   alias Shroud.Util
   alias Shroud.Email.SpamEmail
+  alias Swoosh.Adapters.SMTP.Helpers
   import Shroud.AccountsFixtures
   import Shroud.AliasesFixtures
 
@@ -66,6 +67,51 @@ defmodule Shroud.EmailFixtures do
     |> add_sender(sender)
     |> add_recipients(recipients)
     |> add_header(extra_header)
+    |> Util.lf_to_crlf()
+  end
+
+  def delivery_status_report(email, opts \\ []) do
+    {_name, recipient} = hd(email.to)
+    recipient = Keyword.get(opts, :recipient, recipient)
+    action = Keyword.get(opts, :action, "failed")
+    status = Keyword.get(opts, :status, "5.1.1")
+    status_header = if status, do: "Status: #{status}\n", else: ""
+    diagnostic = Keyword.get(opts, :diagnostic, "smtp; private diagnostic recipient@example.net")
+    original = Helpers.body(email, []) |> String.replace("\r\n", "\n")
+
+    {original_type, original} =
+      case Keyword.get(opts, :original_format, :headers) do
+        :headers -> {"text/rfc822-headers", original |> String.split("\n\n", parts: 2) |> hd()}
+        :full -> {"message/rfc822", original}
+      end
+
+    """
+    Content-Type: multipart/report; report-type=delivery-status; boundary="bounce-fixture"
+    Subject: Delivery status
+
+    --bounce-fixture
+    Content-Type: text/plain
+
+    Untrusted diagnostic content: https://malicious.example/private
+    --bounce-fixture
+    Content-Type: message/delivery-status
+
+    Reporting-MTA: dns; mx.example.net
+
+    Final-Recipient: rfc822; unrelated@example.net
+    Action: failed
+    Status: 5.2.2
+
+    Final-Recipient: rfc822; #{recipient}
+    Action: #{action}
+    #{status_header}Diagnostic-Code: #{diagnostic}
+
+    --bounce-fixture
+    Content-Type: #{original_type}
+
+    #{original}
+    --bounce-fixture--
+    """
     |> Util.lf_to_crlf()
   end
 

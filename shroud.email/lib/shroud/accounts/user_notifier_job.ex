@@ -13,6 +13,12 @@ defmodule Shroud.Accounts.UserNotifierJob do
     apply(UserNotifier, :deliver_subscription_downgraded, email_args)
   end
 
+  def perform(%Oban.Job{
+        args: %{"email_function" => "deliver_outgoing_email_bounced", "email_args" => email_args}
+      }) do
+    apply(UserNotifier, :deliver_outgoing_email_bounced, email_args)
+  end
+
   def perform(%Oban.Job{args: %{"email_function" => email_function, "email_args" => email_args}}) do
     case email_function do
       "deliver_confirmation_instructions" ->
