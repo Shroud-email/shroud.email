@@ -116,8 +116,9 @@ defmodule Shroud.Email.BounceHandler do
       end)
 
     with [headers] <- matches,
+         action when is_binary(action) <- headers["action"],
          action when action in ["failed", "delayed", "delivered", "relayed", "expanded"] <-
-           headers["action"],
+           String.downcase(action),
          status when is_binary(status) <- headers["status"] || generic_smtp_status(headers),
          [code] <- Regex.run(~r/\A[245]\.\d{1,3}\.\d{1,3}(?=\s|\z)/, status),
          true <- action != "failed" or String.starts_with?(code, ["4.", "5."]) do

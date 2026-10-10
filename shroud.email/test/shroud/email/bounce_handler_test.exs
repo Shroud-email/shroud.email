@@ -47,7 +47,11 @@ defmodule Shroud.Email.BounceHandlerTest do
       user: user
     } do
       report =
-        delivery_status_report(email, status: nil, diagnostic: "smtp;550 Mailbox unavailable")
+        delivery_status_report(email,
+          action: "FAILED",
+          status: nil,
+          diagnostic: "smtp;550 Mailbox unavailable"
+        )
 
       assert :ok = BounceHandler.handle_haraka_bounce_report(email_alias.address, report)
       assert [job] = all_enqueued(worker: Shroud.Accounts.UserNotifierJob)
@@ -69,7 +73,11 @@ defmodule Shroud.Email.BounceHandlerTest do
         )
 
       report =
-        delivery_status_report(incoming, status: nil, diagnostic: "smtp; 450 Delivery timed out")
+        delivery_status_report(incoming,
+          action: "FaIlEd",
+          status: nil,
+          diagnostic: "smtp; 450 Delivery timed out"
+        )
 
       assert :ok = BounceHandler.handle_haraka_bounce_report(email_alias.address, report)
       assert [event] = Sentry.Test.pop_sentry_reports()
@@ -89,8 +97,10 @@ defmodule Shroud.Email.BounceHandlerTest do
     } do
       for opts <- [
             [action: "delayed", status: "4.4.1"],
-            [action: "delivered", status: "2.0.0"],
-            [action: "delayed", status: nil, diagnostic: "smtp;450 Try again later"]
+            [action: "DELIVERED", status: "2.0.0"],
+            [action: "DeLaYeD", status: nil, diagnostic: "smtp;450 Try again later"],
+            [action: "RELAYED", status: "2.0.0"],
+            [action: "ExPaNdEd", status: "2.0.0"]
           ] do
         assert :ok =
                  BounceHandler.handle_haraka_bounce_report(
@@ -192,6 +202,8 @@ defmodule Shroud.Email.BounceHandlerTest do
             {email_alias.address, delivery_status_report(email, recipient: user.email)},
             {email_alias.address, delivery_status_report(email, status: "5.1.1<script>")},
             {email_alias.address, delivery_status_report(email, status: "2.0.0")},
+            {email_alias.address, delivery_status_report(email, action: "FAILURE")},
+            {email_alias.address, delivery_status_report(email, action: nil)},
             {email_alias.address,
              delivery_status_report(email, status: nil, diagnostic: "smtp;250 OK")},
             {email_alias.address,
