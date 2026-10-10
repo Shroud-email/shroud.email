@@ -4,7 +4,7 @@ defmodule Shroud.Email.BounceHandler do
   """
   require Logger
   alias Shroud.Accounts
-  alias Shroud.Accounts.UserNotifier
+  alias Shroud.Accounts.UserNotifierJob
   alias Shroud.Email.DeliveryMarker
   alias Shroud.RateLimit
   alias Shroud.S3.S3UploadJob
@@ -147,25 +147,19 @@ defmodule Shroud.Email.BounceHandler do
 
     case RateLimit.hit(key, :timer.minutes(15), 1) do
       {:allow, _count} ->
-        case UserNotifier.deliver_outgoing_email_bounced(
-               user,
-               email_alias,
-               report.recipient,
-               report.subject,
-               failure_reason(report.status),
-               report.status
-             ) do
-          :ok ->
-            :ok
-
-          {:error, _reason} ->
-            report_event(
-              "Failed to deliver an email bounce notification",
-              ["shroud-bounce-notification-failed"],
-              %{},
-              report.s3_path
-            )
-        end
+        %{
+          email_function: :deliver_outgoing_email_bounced,
+          email_args: [
+            user.id,
+            email_alias,
+            report.recipient,
+            report.subject,
+            failure_reason(report.status),
+            report.status
+          ]
+        }
+        |> UserNotifierJob.new()
+        |> Oban.insert!()
 
         if String.starts_with?(report.status, ["4.", "5.4.", "5.7."]) do
           report_event(

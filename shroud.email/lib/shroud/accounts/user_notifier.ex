@@ -8,7 +8,7 @@ defmodule Shroud.Accounts.UserNotifier do
   use ShroudWeb, :verified_routes
 
   # Delivers the email using the application mailer.
-  defp deliver(recipient, subject, html_body, text_body, email_attachment \\ nil) do
+  defp deliver(recipient, subject, html_body, text_body, email_attachment \\ nil, headers \\ []) do
     email =
       new()
       |> to(recipient)
@@ -18,6 +18,8 @@ defmodule Shroud.Accounts.UserNotifier do
       |> html_body(html_body)
       |> text_body(text_body)
       |> maybe_attach(email_attachment)
+
+    email = Enum.reduce(headers, email, fn {name, value}, email -> header(email, name, value) end)
 
     case Mailer.deliver(email) do
       {:ok, _metadata} -> {:ok, email}
@@ -43,26 +45,20 @@ defmodule Shroud.Accounts.UserNotifier do
   defp maybe_attach(email, email_attachment), do: attachment(email, email_attachment)
 
   @doc """
-  Sends a plain-text delivery-failure notification without creating a notifier job.
-  Delivery errors are returned without logging addresses or message content.
+  Delivers a plain-text notification of an outgoing delivery failure.
   """
   def deliver_outgoing_email_bounced(
-        user,
+        user_id,
         email_alias,
         recipient,
         original_subject,
         reason,
         status
       ) do
+    user = Accounts.get_user!(user_id)
     subject_line = if original_subject, do: "Subject: #{original_subject}\n", else: ""
 
-    new()
-    |> to(user.email)
-    |> from({"Shroud.email", "noreply@#{Util.email_domain()}"})
-    |> reply_to({"Shroud.email", "support@shroud.email"})
-    |> subject("Your email was not delivered")
-    |> header("Auto-Submitted", "auto-generated")
-    |> text_body("""
+    text_body = """
     Your email to #{recipient} via #{email_alias} could not be delivered.
 
     #{subject_line}
@@ -72,14 +68,11 @@ defmodule Shroud.Accounts.UserNotifier do
     contact support@shroud.email for help.
 
     Shroud.email
-    """)
-    |> Mailer.deliver()
-    |> case do
-      {:ok, _metadata} -> :ok
-      {:error, _reason} -> {:error, :bounce_notification_failed}
-    end
-  rescue
-    _exception -> {:error, :bounce_notification_failed}
+    """
+
+    deliver(user.email, "Your email was not delivered", nil, text_body, nil, [
+      {"Auto-Submitted", "auto-generated"}
+    ])
   end
 
   def deliver_subscription_downgraded(user_id) do

@@ -1061,6 +1061,10 @@ defmodule Shroud.Email.EmailHandlerTest do
         data: data
       })
 
+      assert_no_email_sent()
+      assert [job] = all_enqueued(worker: Shroud.Accounts.UserNotifierJob)
+      assert {:ok, _email} = perform_job(Shroud.Accounts.UserNotifierJob, job.args)
+
       assert_email_sent(fn email ->
         assert email.to == [{"", user.email}]
         assert email.from == {"Shroud.email", "noreply@email.shroud.test"}
@@ -1077,7 +1081,6 @@ defmodule Shroud.Email.EmailHandlerTest do
       end)
 
       assert [] = Sentry.Test.pop_sentry_reports()
-      refute_enqueued(worker: Shroud.Accounts.UserNotifierJob)
       assert_enqueued(worker: Shroud.S3.S3UploadJob, args: %{content: data})
     end
 
@@ -1125,7 +1128,7 @@ defmodule Shroud.Email.EmailHandlerTest do
       refute_enqueued(worker: Shroud.Accounts.UserNotifierJob)
     end
 
-    test "reports notification delivery failures without leaking mailer errors", %{
+    test "returns notification delivery failures to Oban for retry", %{
       email_alias: email_alias,
       user: user
     } do
@@ -1149,6 +1152,11 @@ defmodule Shroud.Email.EmailHandlerTest do
                          to: email_alias.address,
                          data: delivery_status_report(outgoing)
                        })
+
+              assert [job] = all_enqueued(worker: Shroud.Accounts.UserNotifierJob)
+
+              assert {:error, reason} = perform_job(Shroud.Accounts.UserNotifierJob, job.args)
+              assert reason == "Private failure for #{user.email}"
             end,
             reason: "Private failure for #{user.email}"
           )
@@ -1157,12 +1165,8 @@ defmodule Shroud.Email.EmailHandlerTest do
       refute log =~ user.email
       refute log =~ "Private failure"
       assert_no_email_sent()
-      assert [event] = Sentry.Test.pop_sentry_reports()
-      assert event.fingerprint == ["shroud-bounce-notification-failed"]
-      assert [upload] = all_enqueued(worker: Shroud.S3.S3UploadJob)
-      assert event.extra == %{s3_path: upload.args["path"]}
-      assert event.exception == []
-      refute_enqueued(worker: Shroud.Accounts.UserNotifierJob)
+      assert [] = Sentry.Test.pop_sentry_reports()
+      assert_enqueued(worker: Shroud.S3.S3UploadJob)
     end
 
     test "does not forward email from a blocked address" do

@@ -60,6 +60,9 @@ defmodule Shroud.Email.BounceHandlerTest do
       failed = delivery_status_report(email, status: "4.4.7")
       assert :ok = BounceHandler.handle_haraka_bounce_report(email_alias.address, failed)
 
+      assert_no_email_sent()
+      assert [job] = all_enqueued(worker: Shroud.Accounts.UserNotifierJob)
+      assert {:ok, _email} = perform_job(Shroud.Accounts.UserNotifierJob, job.args)
       assert_received {:email, notification}
       assert notification.to == [{"", user.email}]
       assert notification.text_body =~ "Delivery attempts ended without reaching the recipient."
@@ -96,7 +99,7 @@ defmodule Shroud.Email.BounceHandlerTest do
       assert_no_email_sent()
       assert [event] = Sentry.Test.pop_sentry_reports()
       assert event.fingerprint == ["shroud-unclassified-email-bounce"]
-      refute_enqueued(worker: Shroud.Accounts.UserNotifierJob)
+      assert [^job] = all_enqueued(worker: Shroud.Accounts.UserNotifierJob)
     end
 
     test "does not copy a modified original subject into the notification", %{
@@ -105,6 +108,8 @@ defmodule Shroud.Email.BounceHandlerTest do
     } do
       data = delivery_status_report(email) |> String.replace("Private subject", "Forged subject")
       assert :ok = BounceHandler.handle_haraka_bounce_report(email_alias.address, data)
+      assert [job] = all_enqueued(worker: Shroud.Accounts.UserNotifierJob)
+      assert {:ok, _email} = perform_job(Shroud.Accounts.UserNotifierJob, job.args)
       assert_received {:email, notification}
       refute notification.text_body =~ "Forged subject"
       refute notification.text_body =~ "Subject:"

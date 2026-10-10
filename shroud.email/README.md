@@ -72,8 +72,8 @@ the alias owner's current account email. Delays and successful deliveries do not
 produce notifications. The original subject is included only when it matches the
 authenticated subject hash. Reasons use delivery-status codes, not untrusted
 report text. Notifications carry no delivery marker, preventing notification loops.
-Notification delivery is best effort: failures alert operators without creating
-a notifier job or automatic notification retry. Duplicate reports are suppressed
+Notifications use the transactional email queue with up to ten delivery attempts.
+Duplicate reports are suppressed
 using opaque hashes in a single-node, in-memory 15-minute fixed window. The
 window resets on restart and at aligned boundaries; there is no persistent or
 cross-instance exactly-once guarantee.
@@ -83,7 +83,6 @@ With `SENTRY_DSN` configured, warning-level bounce events use these fingerprints
 - `shroud-unclassified-email-bounce`: unmatched or malformed reports.
 - `shroud-incoming-forwarding-bounce`: incoming mail could not reach a user's inbox.
 - `shroud-outgoing-delivery-rejection`: outgoing routing or policy failures.
-- `shroud-bounce-notification-failed`: a user notification could not be sent.
 
 Ordinary outgoing address or mailbox rejections notify the user without creating
 a Sentry issue. Inbox-forwarding failures alert operators rather than sending
@@ -101,4 +100,6 @@ events and both new and recurring occurrences. Set a notification interval to
 limit noise. Grouping alone does not enable notifications.
 
 The SMTP processing queue stores envelope addresses and message bodies in Oban
-job arguments. Bounce handling adds no delivery-history or correlation records.
+job arguments. Bounce notification jobs store the user ID, alias, recipient,
+verified subject, reason, and status. Bounce handling adds no delivery-history
+or correlation records.
