@@ -468,21 +468,13 @@ defmodule Shroud.Accounts do
   end
 
   def update_user_email_preferences(user, attrs) do
-    if email_preferences_enabled?(user) do
-      user
-      |> User.email_preferences_changeset(attrs)
-      |> Repo.update()
-    else
-      {:error, :feature_disabled}
-    end
-  end
-
-  def email_preferences_enabled?(user) do
-    FunWithFlags.enabled?(:email_branding_preferences, for: user)
+    user
+    |> User.email_preferences_changeset(attrs)
+    |> Repo.update()
   end
 
   def email_branding_enabled?(user) do
-    user.email_branding or not email_preferences_enabled?(user)
+    user.email_branding
   end
 
   def update_paddle_details!(user, attrs \\ %{}) do

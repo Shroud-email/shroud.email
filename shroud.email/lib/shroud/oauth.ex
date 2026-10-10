@@ -41,10 +41,8 @@ defmodule Shroud.OAuth do
   def resource(:mcp), do: issuer() <> "/mcp"
   def resource(:api), do: issuer() <> "/api/v1"
 
-  def enabled?(user, target),
-    do:
-      target == resource(:api) or
-        (target == resource(:mcp) and FunWithFlags.enabled?(:chatgpt_integration, for: user))
+  def enabled?(_user, target),
+    do: target == resource(:api) or target == resource(:mcp)
 
   def validate_authorization(params) when is_map(params) do
     with %{

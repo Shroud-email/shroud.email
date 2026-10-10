@@ -30,9 +30,7 @@ defmodule Shroud.OAuthFixtures do
   end
 
   def confirmed_user do
-    user = user_fixture() |> Accounts.User.confirm_changeset() |> Repo.update!()
-    FunWithFlags.enable(:chatgpt_integration, for_actor: user)
-    user
+    user_fixture() |> Accounts.User.confirm_changeset() |> Repo.update!()
   end
 
   def connection_fixture(

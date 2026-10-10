@@ -5,7 +5,7 @@ defmodule Shroud.OAuthTest do
   alias Shroud.{Accounts, OAuth, Repo}
   alias Shroud.OAuth.{Clients, Connection}
 
-  test "the integration flag gates authorization, exchange, refresh and access" do
+  test "MCP authorization, exchange, refresh and access are available to confirmed users" do
     %{user: user, connection: connection, tokens: tokens} =
       connection_fixture()
 
@@ -19,14 +19,9 @@ defmodule Shroud.OAuthTest do
         "code_verifier" => verifier
       })
 
-    FunWithFlags.disable(:chatgpt_integration, for_actor: user)
+    assert {:ok, _} = OAuth.exchange(exchange)
 
-    assert {:error, :invalid_request} = OAuth.authorize(user, params)
-
-    assert {:error, :invalid_grant} =
-             OAuth.exchange(exchange)
-
-    assert {:error, :invalid_grant} =
+    assert {:ok, refreshed} =
              OAuth.exchange(%{
                "grant_type" => "refresh_token",
                "client_id" => connection.client_id,
@@ -34,17 +29,8 @@ defmodule Shroud.OAuthTest do
                "refresh_token" => tokens.refresh_token
              })
 
-    assert {:error, :invalid_token} =
-             OAuth.with_access(tokens.access_token, OAuth.resource(:mcp), nil, fn _ ->
-               flunk("flag bypass")
-             end)
-
-    FunWithFlags.enable(:chatgpt_integration, for_actor: user)
-
     assert :ok =
-             OAuth.with_access(tokens.access_token, OAuth.resource(:mcp), nil, fn _ -> :ok end)
-
-    assert {:ok, _} = OAuth.exchange(exchange)
+             OAuth.with_access(refreshed.access_token, OAuth.resource(:mcp), nil, fn _ -> :ok end)
   end
 
   test "only the configured MCP resource, exact redirects, permissions and S256 are accepted" do
