@@ -1077,7 +1077,14 @@ defmodule Shroud.Email.EmailHandlerTest do
         refute email.text_body =~ "private diagnostic"
         refute Map.has_key?(email.headers, "X-Shroud-Delivery")
         assert email.headers["Auto-Submitted"] == "auto-generated"
-        assert is_nil(email.html_body)
+
+        html_text = email.html_body |> Floki.parse_document!() |> Floki.text()
+        assert html_text =~ "wrongster@foo.com via #{email_alias.address}"
+        assert html_text =~ "Subject: Private subject — café"
+        assert html_text =~ "The recipient's address was rejected."
+        refute html_text =~ "Private body"
+        refute html_text =~ "private diagnostic"
+        assert html_text =~ "Delivery status: 5.1.1"
       end)
 
       assert [] = Sentry.Test.pop_sentry_reports()

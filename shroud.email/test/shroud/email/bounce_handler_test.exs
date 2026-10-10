@@ -114,6 +114,8 @@ defmodule Shroud.Email.BounceHandlerTest do
       refute notification.text_body =~ "Forged subject"
       refute notification.text_body =~ "Subject:"
       assert notification.text_body =~ "recipient@example.org"
+      refute notification.html_body =~ "Forged subject"
+      refute notification.html_body =~ "Subject:"
     end
 
     test "does not notify for unsigned, tampered, mismatched, or invalid reports", %{
