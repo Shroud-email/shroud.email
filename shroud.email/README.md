@@ -61,9 +61,10 @@ Set the environment variables in `example.env`.
 
 With `SENTRY_DSN` configured, unclassified email bounce reports appear in one
 warning-level Sentry issue with fingerprint `shroud-unclassified-email-bounce`.
-The events contain no email addresses, message content, or delivery identifiers.
-Bounce reports are not archived to S3. Sentry records the alert time, environment,
-and release, without identifying a user or delivery.
+The raw report is archived to S3. Each event's `extra.s3_path` identifies its
+object in the configured email bucket. The path includes the alias and timestamp;
+the event contains no raw message content or inherited user context. Uploads run
+asynchronously, so the object may not be available immediately when alerted.
 The SDK deduplicates identical events within approximately 30 seconds, so the
 issue's event count is not an exact bounce count.
 

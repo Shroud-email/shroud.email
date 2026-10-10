@@ -1235,7 +1235,7 @@ defmodule Shroud.Email.EmailHandlerTest do
                "Discarding incoming email from sender@example.com to disabled alias #{email_alias.address}"
     end
 
-    test "reports bounces in one Sentry issue without retaining email data", %{
+    test "reports bounces in one Sentry issue with their archive paths", %{
       email_alias: email_alias
     } do
       Sentry.Test.setup_sentry(dedup_events: false)
@@ -1258,6 +1258,11 @@ defmodule Shroud.Email.EmailHandlerTest do
         assert event.level == :warning
         assert event.fingerprint == ["shroud-unclassified-email-bounce"]
 
+        upload =
+          Enum.find(all_enqueued(worker: Shroud.S3.S3UploadJob), &(&1.args["content"] == data))
+
+        assert upload.args["path"] =~ "/bounces/#{to}-"
+
         assert event == %Sentry.Event{
                  event_id: event.event_id,
                  timestamp: event.timestamp,
@@ -1265,11 +1270,11 @@ defmodule Shroud.Email.EmailHandlerTest do
                  release: event.release,
                  message: event.message,
                  level: :warning,
-                 fingerprint: ["shroud-unclassified-email-bounce"]
+                 fingerprint: ["shroud-unclassified-email-bounce"],
+                 extra: %{s3_path: upload.args["path"]}
                }
       end
 
-      refute_enqueued(worker: Shroud.S3.S3UploadJob)
       assert_no_email_sent()
     end
 
@@ -1894,9 +1899,11 @@ defmodule Shroud.Email.EmailHandlerTest do
       assert email.to == [{"", "operator@example.net"}]
       assert hd(email.attachments).data == raw
       refute_received {:email, _}
-      refute_enqueued(worker: Shroud.S3.S3UploadJob)
+      assert [upload] = all_enqueued(worker: Shroud.S3.S3UploadJob)
+      assert upload.args["content"] == raw
       assert [event] = Sentry.Test.pop_sentry_reports()
       assert event.fingerprint == ["shroud-unclassified-email-bounce"]
+      assert event.extra == %{s3_path: upload.args["path"]}
     end
 
     test "custom-domain postmaster remains a customer alias", %{user: user} do

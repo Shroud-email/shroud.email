@@ -3,13 +3,19 @@ defmodule Shroud.Email.BounceHandler do
   Handles various kinds of bounces.
   """
   require Logger
+  alias Shroud.S3.S3UploadJob
 
   @doc """
-  Reports an unclassified null-envelope-sender message to Sentry.
-  Reports share one issue and contain no email data or delivery identifiers.
+  Archives a bounce report and notifies Sentry with its S3 object path.
   """
   @spec handle_haraka_bounce_report(String.t(), String.t()) :: :ok
-  def handle_haraka_bounce_report(_to, _data) do
+  def handle_haraka_bounce_report(to, data) do
+    s3_path = "/bounces/#{to}-#{date_time().utc_now_unix()}.eml"
+
+    %{path: s3_path, content: data}
+    |> S3UploadJob.new()
+    |> Oban.insert!()
+
     event =
       Sentry.Event.create_event(
         message: "Received an unclassified email bounce report",
@@ -25,11 +31,16 @@ defmodule Shroud.Email.BounceHandler do
       release: event.release,
       message: event.message,
       level: event.level,
-      fingerprint: event.fingerprint
+      fingerprint: event.fingerprint,
+      extra: %{s3_path: s3_path}
     }
     |> Sentry.send_event()
 
-    Logger.warning("Received an unclassified email bounce report")
+    Logger.warning("Received bounce report from Haraka! See #{s3_path}.")
     :ok
+  end
+
+  defp date_time do
+    Application.get_env(:shroud, :datetime_module, Shroud.DateTime)
   end
 end
