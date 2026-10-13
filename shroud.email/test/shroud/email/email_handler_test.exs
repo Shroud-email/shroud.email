@@ -680,6 +680,30 @@ defmodule Shroud.Email.EmailHandlerTest do
       assert Aliases.get_email_alias_by_address!("alias@email.shroud.test").replied == 0
     end
 
+    test "outgoing replies preserve zero-byte attachments", %{user: user} do
+      route = "recipient_at_example.com_alias@email.shroud.test"
+
+      raw =
+        "From: #{user.email}\r\nTo: #{route}\r\nSubject: Empty file\r\n" <>
+          "MIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary=empty-file\r\n\r\n" <>
+          "--empty-file\r\nContent-Type: text/plain\r\n\r\nReply body\r\n" <>
+          "--empty-file\r\nContent-Type: image/png\r\n" <>
+          "Content-Disposition: attachment; filename=empty.png\r\n" <>
+          "Content-Transfer-Encoding: base64\r\n\r\n\r\n--empty-file--\r\n"
+
+      assert :ok =
+               perform_job(EmailHandler, %{from: user.email, to: route, data: raw})
+
+      assert_email_sent(fn email ->
+        assert email.text_body == "Reply body"
+        assert email.to == [{"recipient@example.com", "recipient@example.com"}]
+        assert [file] = email.attachments
+        assert file.filename == "empty.png"
+        assert file.content_type == "image/png"
+        assert Swoosh.Attachment.get_content(file) == ""
+      end)
+    end
+
     test "transforms reply-to headers to reply addresses", %{user: user} do
       email_alias = alias_fixture(%{address: "myalias@email.shroud.test", user_id: user.id})
 
