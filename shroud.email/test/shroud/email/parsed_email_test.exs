@@ -16,6 +16,57 @@ defmodule Shroud.Email.ParsedEmailTest do
   @text_content "Text-only body"
 
   describe "process/1" do
+    test "keeps plain text and HTML attachments separate from the message bodies" do
+      raw =
+        """
+        From: sender@example.com
+        To: alias@email.shroud.test
+        Subject: Attachments
+        Content-Type: multipart/mixed; boundary=outer
+
+        --outer
+        Content-Type: multipart/alternative; boundary=body
+
+        --body
+        Content-Type: text/plain
+        Content-Transfer-Encoding: base64
+
+        bWFpbg==
+        --body
+        Content-Type: text/html
+        Content-Transfer-Encoding: base64
+
+        PHA+bWFpbjwvcD4=
+        --body--
+        --outer
+        Content-Type: text/plain; name=notes.txt
+        Content-Disposition: attachment; filename=notes.txt
+        Content-Transfer-Encoding: base64
+
+        ZmlsZQ==
+        --outer
+        Content-Type: text/html; name=notes.html
+        Content-Disposition: attachment; filename=notes.html
+        Content-Transfer-Encoding: base64
+
+        PHA+ZmlsZTwvcD4=
+        --outer--
+        """
+        |> String.replace("\n", "\r\n")
+
+      for decoded <- [Mailex.parse!(raw), :mimemail.decode(raw)] do
+        email =
+          ParsedEmail.parse(decoded, "sender@example.com", "alias@email.shroud.test").swoosh_email
+
+        assert email.text_body == "main"
+        assert email.html_body == "<p>main</p>"
+
+        assert Enum.sort(
+                 Enum.map(email.attachments, &{&1.filename, Swoosh.Attachment.get_content(&1)})
+               ) == [{"notes.html", "<p>file</p>"}, {"notes.txt", "file"}]
+      end
+    end
+
     test "parses a text-only email" do
       email =
         text_email("sender@example.com", ["recipient@shroud.email"], "Subject", @text_content)
