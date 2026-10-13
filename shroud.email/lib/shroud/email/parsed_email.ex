@@ -163,9 +163,10 @@ defmodule Shroud.Email.ParsedEmail do
        )
        when is_binary(data) do
     {_key, name} =
-      opts
-      |> Map.get(:content_type_params, [])
-      |> Enum.find({nil, nil}, fn {key, _value} -> String.downcase(key) == "name" end)
+      (Map.get(opts, :disposition_params, []) ++ Map.get(opts, :content_type_params, []))
+      |> Enum.find({nil, nil}, fn {key, _value} ->
+        String.downcase(key) in ["filename", "name"]
+      end)
 
     {_key, cid} =
       headers
@@ -178,7 +179,8 @@ defmodule Shroud.Email.ParsedEmail do
         |> String.replace_trailing(">", "")
       end
 
-    process_attachment(email, data, name: name, cid: cid)
+    inline? = Map.get(opts, :disposition) == "inline" or not is_nil(cid)
+    process_attachment(email, data, name: name, cid: cid, inline: inline?)
   end
 
   @spec process_headers(Swoosh.Email.t(), [header_type]) :: Swoosh.Email.t()

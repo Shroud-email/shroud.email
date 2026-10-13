@@ -197,6 +197,32 @@ defmodule Shroud.Email.ParsedEmailTest do
       assert attachment.cid == "708f1df0@example.com"
     end
 
+    test "preserves disposition-only filenames and inline attachments" do
+      for {disposition, cid, type} <- [
+            {"inline", "Content-ID: <picture@example.com>\r\n", :inline},
+            {"inline", "", :inline},
+            {"attachment", "", :attachment}
+          ] do
+        raw =
+          "From: sender@example.com\r\nTo: alias@email.shroud.test\r\n" <>
+            "Content-Type: image/png\r\n" <>
+            "Content-Disposition: #{disposition}; filename=picture.png\r\n" <>
+            cid <> "Content-Transfer-Encoding: base64\r\n\r\nAQI=\r\n"
+
+        for decoded <- [Mailex.parse!(raw), :mimemail.decode(raw)] do
+          email =
+            ParsedEmail.parse(decoded, "sender@example.com", "alias@email.shroud.test").swoosh_email
+
+          assert [file] = email.attachments
+          assert file.filename == "picture.png"
+          assert file.content_type == "image/png"
+          assert file.type == type
+          assert file.cid == if(cid == "", do: nil, else: "picture@example.com")
+          assert Swoosh.Attachment.get_content(file) == <<1, 2>>
+        end
+      end
+    end
+
     test "sanitizes email addresses with spaces in the local part" do
       # This reproduces an error where malformed email addresses with spaces
       # cause gen_smtp/mimemail to fail with:
