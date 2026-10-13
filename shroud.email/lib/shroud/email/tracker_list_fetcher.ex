@@ -3,8 +3,8 @@ defmodule Shroud.Email.TrackerListFetcher do
   use Oban.Worker, queue: :default, unique: [period: 3600]
 
   import Ecto.Query
-  alias Shroud.{Email, Repo}
   alias Shroud.Email.Tracker
+  alias Shroud.Repo
 
   @list_uri Application.compile_env!(:shroud, :tracker_list_uri)
 
@@ -14,7 +14,8 @@ defmodule Shroud.Email.TrackerListFetcher do
 
     %{body: response_body} = http().get!(@list_uri)
 
-    current_trackers = Email.list_trackers() |> MapSet.new()
+    tracker_ids = Repo.all(Tracker) |> Map.new(&{Map.take(&1, [:name, :pattern]), &1.id})
+    current_trackers = tracker_ids |> Map.keys() |> MapSet.new()
 
     new_trackers =
       response_body
@@ -25,10 +26,10 @@ defmodule Shroud.Email.TrackerListFetcher do
       |> Enum.map(fn [name, pattern] -> %{name: name, pattern: pattern} end)
       |> MapSet.new()
 
-    deleted_patterns =
-      MapSet.difference(current_trackers, new_trackers) |> Enum.map(&Map.get(&1, :pattern))
+    deleted_ids =
+      MapSet.difference(current_trackers, new_trackers) |> Enum.map(&Map.fetch!(tracker_ids, &1))
 
-    from(t in Tracker, where: t.pattern in ^deleted_patterns) |> Repo.delete_all()
+    from(t in Tracker, where: t.id in ^deleted_ids) |> Repo.delete_all()
 
     added_trackers =
       MapSet.difference(new_trackers, current_trackers)
