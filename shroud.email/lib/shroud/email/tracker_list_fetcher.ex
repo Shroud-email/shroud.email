@@ -22,7 +22,7 @@ defmodule Shroud.Email.TrackerListFetcher do
       |> String.split("\n")
       |> Enum.map(&String.trim/1)
       |> Enum.filter(fn string -> string !== "" end)
-      |> Enum.map(&String.split(&1, "@@="))
+      |> Enum.map(&String.split(&1, "@@=", parts: 2))
       |> Enum.map(fn [name, pattern] -> %{name: name, pattern: pattern} end)
       |> MapSet.new()
 

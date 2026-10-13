@@ -8,6 +8,16 @@ defmodule Shroud.Email.TrackerListFetcherTest do
   setup :verify_on_exit!
 
   describe "perform/1" do
+    test "preserves the record delimiter inside a tracker pattern" do
+      Shroud.MockHTTPoison
+      |> expect(:get!, fn _ ->
+        %HTTPoison.Response{body: "Tracker@@=a@@=b\n", status_code: 200}
+      end)
+
+      assert :ok = perform_job(TrackerListFetcher, %{})
+      assert [%Shroud.Email.Tracker{name: "Tracker", pattern: "a@@=b"}] = Email.list_trackers()
+    end
+
     test "saves all trackers" do
       Shroud.MockHTTPoison
       |> expect(:get!, fn _ ->
