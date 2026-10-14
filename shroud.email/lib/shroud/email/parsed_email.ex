@@ -96,20 +96,25 @@ defmodule Shroud.Email.ParsedEmail do
     _, _ -> {nil, true}
   end
 
-  # HTML
+  # HTML and plaintext
   @spec build_email(Swoosh.Email.t(), :mimemail.mimetuple()) ::
           Swoosh.Email.t()
-  defp build_email(email, {"text", "html", headers, _opts, body}) do
-    email
-    |> html_body(body)
-    |> process_headers(headers)
-  end
+  defp build_email(email, {"text", subtype, headers, opts, body} = part)
+       when subtype in ["html", "plain"] do
+    named? =
+      Enum.any?(
+        Map.get(opts, :content_type_params, []) ++ Map.get(opts, :disposition_params, []),
+        fn
+          {key, _value} -> String.downcase(key) in ["name", "filename"]
+        end
+      )
 
-  # Plaintext
-  defp build_email(email, {"text", "plain", headers, _opts, body}) do
-    email
-    |> text_body(body)
-    |> process_headers(headers)
+    if Map.get(opts, :disposition) == "attachment" or named? do
+      build_attachment(email, part)
+    else
+      email = if subtype == "html", do: html_body(email, body), else: text_body(email, body)
+      process_headers(email, headers)
+    end
   end
 
   # HTML + plaintext
@@ -149,16 +154,19 @@ defmodule Shroud.Email.ParsedEmail do
     |> process_headers(headers)
   end
 
+  defp build_email(email, part), do: build_attachment(email, part)
+
   # Attachment
-  defp build_email(
+  defp build_attachment(
          email,
          {_mime_type, _mime_subtype, headers, opts, data}
        )
        when is_binary(data) do
     {_key, name} =
-      opts
-      |> Map.get(:content_type_params, [])
-      |> Enum.find({nil, nil}, fn {key, _value} -> String.downcase(key) == "name" end)
+      (Map.get(opts, :disposition_params, []) ++ Map.get(opts, :content_type_params, []))
+      |> Enum.find({nil, nil}, fn {key, _value} ->
+        String.downcase(key) in ["filename", "name"]
+      end)
 
     {_key, cid} =
       headers
@@ -171,7 +179,8 @@ defmodule Shroud.Email.ParsedEmail do
         |> String.replace_trailing(">", "")
       end
 
-    process_attachment(email, data, name: name, cid: cid)
+    inline? = Map.get(opts, :disposition) == "inline" or not is_nil(cid)
+    process_attachment(email, data, name: name, cid: cid, inline: inline?)
   end
 
   @spec process_headers(Swoosh.Email.t(), [header_type]) :: Swoosh.Email.t()
@@ -329,14 +338,14 @@ defmodule Shroud.Email.ParsedEmail do
          email,
          %Mailex.Message{content_type: %{type: "text", subtype: "html"}} = msg
        ) do
-    html_body(email, msg.body || "")
+    process_mailex_text(email, msg)
   end
 
   defp process_mailex_content(
          email,
          %Mailex.Message{content_type: %{type: "text", subtype: "plain"}} = msg
        ) do
-    text_body(email, msg.body || "")
+    process_mailex_text(email, msg)
   end
 
   defp process_mailex_content(email, %Mailex.Message{
@@ -374,14 +383,14 @@ defmodule Shroud.Email.ParsedEmail do
          email,
          %Mailex.Message{content_type: %{type: "text", subtype: "html"}} = msg
        ) do
-    html_body(email, msg.body || "")
+    process_mailex_text(email, msg)
   end
 
   defp process_mailex_content_part(
          email,
          %Mailex.Message{content_type: %{type: "text", subtype: "plain"}} = msg
        ) do
-    text_body(email, msg.body || "")
+    process_mailex_text(email, msg)
   end
 
   defp process_mailex_content_part(email, %Mailex.Message{} = msg) do
@@ -389,6 +398,19 @@ defmodule Shroud.Email.ParsedEmail do
       process_mailex_attachment(email, msg)
     else
       email
+    end
+  end
+
+  defp process_mailex_text(email, msg) do
+    cond do
+      msg.disposition_type == "attachment" or not is_nil(msg.filename) ->
+        process_mailex_attachment(email, msg)
+
+      msg.content_type.subtype == "html" ->
+        html_body(email, msg.body || "")
+
+      true ->
+        text_body(email, msg.body || "")
     end
   end
 

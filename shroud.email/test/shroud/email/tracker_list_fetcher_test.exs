@@ -8,6 +8,16 @@ defmodule Shroud.Email.TrackerListFetcherTest do
   setup :verify_on_exit!
 
   describe "perform/1" do
+    test "preserves the record delimiter inside a tracker pattern" do
+      Shroud.MockHTTPoison
+      |> expect(:get!, fn _ ->
+        %HTTPoison.Response{body: "Tracker@@=a@@=b\n", status_code: 200}
+      end)
+
+      assert :ok = perform_job(TrackerListFetcher, %{})
+      assert [%Shroud.Email.Tracker{name: "Tracker", pattern: "a@@=b"}] = Email.list_trackers()
+    end
+
     test "saves all trackers" do
       Shroud.MockHTTPoison
       |> expect(:get!, fn _ ->
@@ -54,6 +64,24 @@ defmodule Shroud.Email.TrackerListFetcherTest do
       assert length(trackers) == 2
       assert Enum.any?(trackers, &match?(%{name: "Tracker Co.", pattern: "tracker\.co"}, &1))
       assert Enum.any?(trackers, &match?(%{name: "Another", pattern: "reg(ex)?\/pattern.*"}, &1))
+    end
+
+    test "retains unchanged rows when refreshing or removing a tracker with the same pattern" do
+      {:ok, kept} = Email.create_tracker(%{name: "Kept", pattern: "shared"})
+      {:ok, removed} = Email.create_tracker(%{name: "Removed", pattern: "shared"})
+
+      Shroud.MockHTTPoison
+      |> expect(:get!, 2, fn _ ->
+        %HTTPoison.Response{body: "Kept@@=shared\n", status_code: 200}
+      end)
+
+      assert :ok = perform_job(TrackerListFetcher, %{})
+      assert Repo.reload(kept) == kept
+      assert Repo.reload(removed) == nil
+
+      assert :ok = perform_job(TrackerListFetcher, %{})
+      assert Repo.reload(kept) == kept
+      assert [%Shroud.Email.Tracker{name: "Kept", pattern: "shared"}] = Email.list_trackers()
     end
 
     test "deletes removed trackers" do
