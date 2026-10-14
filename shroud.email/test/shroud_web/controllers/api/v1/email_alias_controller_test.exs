@@ -6,6 +6,105 @@ defmodule ShroudWeb.Api.V1.EmailAliasControllerTest do
   alias Shroud.Repo
   alias ShroudWeb.Api.V1.Schemas
 
+  test "capabilities count nondeleted aliases including disabled, not other accounts" do
+    user = user_fixture() |> Accounts.User.confirm_changeset() |> Repo.update!()
+    aliases = for _ <- 1..6, do: alias_fixture(%{user_id: user.id})
+
+    assert authorized_get(build_conn(), user, "/api/v1/alias-capabilities")
+           |> json_response(200)
+           |> Map.take(["alias_count", "alias_limit", "can_create"]) ==
+             %{"alias_count" => 6, "alias_limit" => nil, "can_create" => true}
+
+    Shroud.Aliases.update_email_alias(hd(aliases), %{enabled: false})
+    Shroud.Aliases.delete_email_alias(List.last(aliases).id)
+    alias_fixture(%{user_id: user_fixture().id})
+    user = user |> Accounts.User.status_changeset(%{status: :free}) |> Repo.update!()
+
+    response =
+      authorized_get(build_conn(), user, "/api/v1/alias-capabilities") |> json_response(200)
+
+    assert response == %{
+             "alias_count" => 5,
+             "alias_limit" => 5,
+             "can_create" => false,
+             "default_domain" => "email.shroud.test"
+           }
+
+    assert_raw_schema(response, Schemas.alias_capabilities())
+
+    assert authorized_post(build_conn(), user, "/api/v1/aliases")
+           |> json_response(403)
+           |> Map.fetch!("code") == "free_limit_reached"
+
+    Shroud.Aliases.delete_email_alias(Enum.at(aliases, 1).id)
+
+    assert authorized_get(build_conn(), user, "/api/v1/alias-capabilities")
+           |> json_response(200)
+           |> Map.take(["alias_count", "can_create"]) == %{
+             "alias_count" => 4,
+             "can_create" => true
+           }
+
+    paid = user |> Accounts.User.status_changeset(%{status: :active}) |> Repo.update!()
+
+    assert authorized_get(build_conn(), paid, "/api/v1/alias-capabilities")
+           |> json_response(200)
+           |> Map.take(["alias_limit", "can_create"]) == %{
+             "alias_limit" => nil,
+             "can_create" => true
+           }
+
+    inactive = user |> Accounts.User.status_changeset(%{status: :inactive}) |> Repo.update!()
+
+    assert authorized_get(build_conn(), inactive, "/api/v1/alias-capabilities")
+           |> json_response(200)
+           |> Map.fetch!("can_create") == false
+  end
+
+  test "random selected-domain creation validates current verification and ownership" do
+    user = user_fixture() |> Accounts.User.confirm_changeset() |> Repo.update!()
+    own = custom_domain_fixture(%{user_id: user.id, domain: "mail.example"})
+
+    response =
+      authorized_post(build_conn(), user, "/api/v1/aliases", %{
+        "domain" => own.domain,
+        "title" => "Shopping"
+      })
+      |> json_response(200)
+
+    assert String.ends_with?(response["address"], "@mail.example")
+    assert response["title"] == "Shopping"
+
+    assert Repo.get_by!(Shroud.Aliases.EmailAlias, address: response["address"]).domain_id ==
+             own.id
+
+    assert authorized_post(build_conn(), user, "/api/v1/aliases", %{
+             "domain" => "email.shroud.test"
+           })
+           |> json_response(200)
+           |> Map.fetch!("address")
+           |> String.ends_with?("@email.shroud.test")
+
+    foreign = custom_domain_fixture(%{domain: "foreign.example"})
+
+    stale =
+      custom_domain_fixture(%{
+        user_id: user.id,
+        domain: "stale.example",
+        mx_verified_at:
+          NaiveDateTime.utc_now() |> NaiveDateTime.add(-86_401) |> NaiveDateTime.truncate(:second)
+      })
+
+    own |> Ecto.Changeset.change(dkim_verified_at: nil) |> Repo.update!()
+
+    for domain <- [own.domain, foreign.domain, stale.domain, "missing.example"],
+        address <- [%{"domain" => domain}, %{"domain" => domain, "local_part" => "chosen"}] do
+      assert authorized_post(build_conn(), user, "/api/v1/aliases", address) |> response(422)
+    end
+
+    assert Shroud.Aliases.count_aliases(user) == 2
+  end
+
   describe "index/2" do
     setup do
       conn = build_conn()
@@ -274,7 +373,6 @@ defmodule ShroudWeb.Api.V1.EmailAliasControllerTest do
 
       for params <- [
             %{"local_part" => "acme"},
-            %{"domain" => "custom.test"},
             %{"local_part" => nil, "domain" => "custom.test"},
             %{"local_part" => "acme", "domain" => nil},
             %{"local_part" => ["acme"], "domain" => "custom.test"},
@@ -365,7 +463,8 @@ defmodule ShroudWeb.Api.V1.EmailAliasControllerTest do
       conn = authorized_post(conn, free_user, ~p"/api/v1/aliases")
 
       assert json_response(conn, 403) == %{
-               "error" => "Free plan alias limit reached. Upgrade to create more aliases."
+               "error" => "Free plan alias limit reached. Upgrade to create more aliases.",
+               "code" => "free_limit_reached"
              }
     end
   end

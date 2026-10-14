@@ -6,6 +6,70 @@ defmodule ShroudWeb.OAuthApiTest do
 
   @mobile_id "3dab4011-1a87-453f-9b6d-c8e12a41c892"
   @chatgpt_id "7b705cee-124c-4abe-827f-d61c030c32c0"
+  @extension_id "fc4258c1-58a9-4865-8f2f-e78345dcfd46"
+
+  test "extension authorizes on the instance callback with only its allowed scopes" do
+    user = confirmed_user()
+    {params, verifier} = authorization_params(["aliases:read"])
+
+    params =
+      Map.merge(params, %{
+        "client_id" => @extension_id,
+        "redirect_uri" => OAuth.issuer() <> "/oauth/extension/callback",
+        "resource" => OAuth.resource(:api),
+        "scope" => "profile:read aliases:read aliases:create domains:read"
+      })
+
+    assert {:ok, %{registered: true}} = OAuth.validate_authorization(params)
+    assert {:ok, code} = OAuth.authorize(user, params)
+
+    assert {:ok, tokens} =
+             OAuth.exchange(
+               Map.merge(params, %{
+                 "grant_type" => "authorization_code",
+                 "code" => code,
+                 "code_verifier" => verifier
+               })
+             )
+
+    assert bearer(tokens.access_token) |> get("/api/v1/me") |> json_response(200) ==
+             %{"email" => user.email}
+
+    assert bearer(tokens.access_token)
+           |> delete("/api/v1/aliases/not-owned@example.com")
+           |> response(403)
+
+    for patch <- [
+          %{"scope" => "aliases:read aliases:delete"},
+          %{"redirect_uri" => "https://evil.example/oauth/extension/callback"},
+          %{"redirect_uri" => OAuth.issuer() <> "/oauth/callback"},
+          %{"code_challenge_method" => "plain"},
+          %{"resource" => OAuth.resource(:mcp)}
+        ] do
+      assert {:error, :invalid_request} = OAuth.validate_authorization(Map.merge(params, patch))
+    end
+  end
+
+  test "extension callback contains no credentials or application assets" do
+    conn =
+      get(build_conn(), "/oauth/extension/callback", %{"code" => "secret", "state" => "state"})
+
+    assert get_resp_header(conn, "cache-control") == ["no-store"]
+    assert get_resp_header(conn, "referrer-policy") == ["no-referrer"]
+    document = conn |> html_response(200) |> Floki.parse_document!()
+    assert length(Floki.find(document, "#extension-oauth-callback")) == 1
+    assert Floki.find(document, "script, iframe, link, img") == []
+    refute Floki.text(document) =~ "secret"
+  end
+
+  test "alias capabilities require aliases read scope, not profile scope" do
+    %{tokens: tokens} = api_tokens(["profile:read"])
+    assert bearer(tokens.access_token) |> get("/api/v1/alias-capabilities") |> response(403)
+    %{tokens: tokens} = api_tokens(["aliases:read"])
+    conn = bearer(tokens.access_token) |> get("/api/v1/alias-capabilities")
+    assert json_response(conn, 200)["alias_limit"] == nil
+    assert get_resp_header(conn, "cache-control") == ["no-store"]
+  end
 
   defp api_tokens(scopes, user \\ confirmed_user()) do
     callback = "https://app.shroud.email/oauth/callback"

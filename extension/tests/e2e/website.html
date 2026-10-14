@@ -1,0 +1,94 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Extension fixture</title>
+    <style>
+      body {
+        margin: 0;
+        background: #f1f4fc;
+        font: 14px system-ui;
+        color: #111827;
+      }
+      main {
+        margin: 105px auto;
+        width: min(364px, calc(100vw - 64px));
+        padding: 32px;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 16px;
+      }
+      h1 {
+        font-size: 26px;
+      }
+      label {
+        display: block;
+        margin-top: 20px;
+      }
+      input {
+        box-sizing: border-box;
+        width: 100%;
+        height: 44px;
+        margin-top: 8px;
+        padding: 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+      }
+      input:focus {
+        outline: 2px solid #818cf8;
+      }
+      button {
+        margin-top: 16px;
+      }
+      iframe {
+        height: 100px;
+        width: 100%;
+        border: 0;
+      }
+      .metrics {
+        position: fixed;
+        left: 8px;
+        bottom: 8px;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p>EXAMPLE WEBSITE</p>
+      <h1>Create your account</h1>
+      <form>
+        <label>Your name<input value="Alex" /></label
+        ><label
+          >Work email<input
+            type="email"
+            placeholder="you@example.com"
+            id="work" /></label
+        ><label>Backup email<input type="email" id="backup" /></label
+        ><button>Continue</button>
+      </form>
+      <button id="dynamic">Add email field</button
+      ><iframe title="Independent frame" src="/frame"></iframe>
+    </main>
+    <div class="metrics">
+      input: <span id="input-count">0</span> change:
+      <span id="change-count">0</span> submit: <span id="submit-count">0</span>
+    </div>
+    <script>
+      for (const type of ["input", "change", "submit"])
+        document.querySelector("form").addEventListener(type, (e) => {
+          if (type === "submit") e.preventDefault();
+          const count = document.querySelector("#" + type + "-count");
+          count.textContent = String(Number(count.textContent) + 1);
+        });
+      document.querySelector("#dynamic").onclick = () => {
+        const label = document.createElement("label");
+        label.textContent = "Dynamic email";
+        const input = document.createElement("input");
+        input.type = "email";
+        label.append(input);
+        document.querySelector("form").append(label);
+      };
+    </script>
+  </body>
+</html>
