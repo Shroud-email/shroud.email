@@ -1196,7 +1196,7 @@ defmodule Shroud.Email.EmailHandlerTest do
       end)
     end
 
-    test "archives malformed bounce MIME without raising or notifying", %{
+    test "classifies authenticated bounces with malformed MIME parameter escapes", %{
       email_alias: email_alias,
       user: user
     } do
@@ -1237,16 +1237,27 @@ defmodule Shroud.Email.EmailHandlerTest do
           from <- ["", "MAILER-DAEMON@example.net"] do
         assert :ok = perform_job(EmailHandler, %{from: from, to: email_alias.address, data: data})
         assert_no_email_sent()
-        assert [event] = Sentry.Test.pop_sentry_reports()
-        assert event.fingerprint == ["shroud-unclassified-email-bounce"]
+        assert [] = Sentry.Test.pop_sentry_reports()
 
         assert_enqueued(
           worker: Shroud.S3.S3UploadJob,
-          args: %{content: data, path: event.extra.s3_path}
+          args: %{content: data}
         )
       end
 
-      refute_enqueued(worker: Shroud.Accounts.UserNotifierJob)
+      assert [job] = all_enqueued(worker: Shroud.Accounts.UserNotifierJob)
+
+      assert job.args == %{
+               "email_function" => "deliver_outgoing_email_bounced",
+               "email_args" => [
+                 user.id,
+                 email_alias.address,
+                 "recipient@example.org",
+                 "Original subject",
+                 "The recipient's address was rejected.",
+                 "5.1.1"
+               ]
+             }
     end
 
     test "notifies the sender of an authenticated outgoing bounce with a non-null sender" do
