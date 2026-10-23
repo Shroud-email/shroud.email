@@ -124,6 +124,44 @@ defmodule Shroud.AccountsTest do
       assert Repo.reload!(other_job)
       assert Accounts.get_user_by_alias(other_alias.address).id == other.id
     end
+
+    test "stale alias edits and delivery metrics cannot restore erased account data" do
+      user = user_fixture()
+      domain = Shroud.DomainFixtures.custom_domain_fixture(%{user_id: user.id})
+
+      aliases = [
+        alias_fixture(%{user_id: user.id, notes: "Private notes"}),
+        alias_fixture(%{user_id: user.id, address: "private@#{domain.domain}"})
+      ]
+
+      assert :ok = Accounts.delete_user(user, valid_user_password(), "true")
+
+      for email_alias <- aliases do
+        assert {:error, %Ecto.Changeset{}} =
+                 Shroud.Aliases.update_email_alias(email_alias, %{notes: "Restored private notes"})
+
+        assert {:error, %Ecto.Changeset{}} =
+                 Shroud.Aliases.block_sender(email_alias, "private@example.com")
+
+        assert {:error, %Ecto.Changeset{}} =
+                 Shroud.Aliases.unblock_sender(email_alias, "private@example.com")
+
+        Shroud.Aliases.increment_forwarded!(email_alias)
+        Shroud.Aliases.increment_blocked!(email_alias)
+        Shroud.Aliases.increment_replied!(email_alias)
+
+        refute Repo.exists?(
+                 from m in Shroud.Aliases.EmailMetric, where: m.alias_id == ^email_alias.id
+               )
+      end
+
+      reserved = Repo.reload!(hd(aliases))
+      assert is_nil(reserved.notes)
+      assert reserved.blocked_addresses == []
+      assert {reserved.forwarded, reserved.blocked, reserved.replied} == {0, 0, 0}
+      Shroud.Aliases.increment_replied!(reserved)
+      assert Repo.reload!(reserved).replied == 0
+    end
   end
 
   test "the first-forward claim is per user, durable, and rolls back with its transaction" do

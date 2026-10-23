@@ -16,6 +16,7 @@ defmodule Shroud.Accounts do
 
   alias Shroud.Aliases.EmailAlias
   alias Shroud.Billing.Paddle
+  alias Shroud.Email.EmailHandler
   alias Shroud.Notifier
   alias Shroud.Repo
 
@@ -158,6 +159,11 @@ defmodule Shroud.Accounts do
 
     domain_ids =
       Repo.all(from d in Shroud.Domain.CustomDomain, where: d.user_id == ^user.id, select: d.id)
+
+    EmailHandler.delete_user_jobs(
+      Repo.all(from a in aliases, select: a.address),
+      Repo.all(from d in Shroud.Domain.CustomDomain, where: d.id in ^domain_ids, select: d.domain)
+    )
 
     Repo.delete_all(
       from m in Shroud.Aliases.EmailMetric, where: m.alias_id in subquery(alias_ids)

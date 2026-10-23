@@ -12,44 +12,53 @@ defmodule Shroud.Email.OutgoingEmailHandler do
 
   import Shroud.Accounts.Logging, only: [maybe_log: 2, store_email: 3]
 
-  @spec handle_outgoing_email(String.t(), String.t(), String.t()) ::
+  @spec handle_outgoing_email(String.t(), String.t(), String.t(), integer() | nil) ::
           :ok | {:error, term()}
-  def handle_outgoing_email(sender, recipient, data) do
+  def handle_outgoing_email(sender, recipient, data, expected_user_id) do
     sender_user = Accounts.get_user_by_email(sender)
+    {_recipient_address, address} = ReplyAddress.from_reply_address(recipient)
 
-    cond do
-      SpamHandler.spam?(data) ->
-        mimemail_email = :mimemail.decode(data)
-        SpamHandler.handle_outgoing_spam_email(mimemail_email)
+    case Aliases.get_email_alias_by_address(address) do
+      %{user_id: ^expected_user_id} = email_alias ->
+        cond do
+          SpamHandler.spam?(data) ->
+            mimemail_email = :mimemail.decode(data)
+            SpamHandler.handle_outgoing_spam_email(mimemail_email)
 
-      is_nil(sender_user) or not Accounts.paid?(sender_user) ->
-        Logger.notice(
-          "Discarding outgoing email from #{sender} to #{recipient} because user is not on a paid plan"
-        )
+          is_nil(sender_user) or not Accounts.paid?(sender_user) ->
+            Logger.notice(
+              "Discarding outgoing email from #{sender} to #{recipient} because user is not on a paid plan"
+            )
 
-      sender_owns_alias?(sender_user, recipient) ->
-        maybe_log(
-          sender_user,
-          "Forwarding outgoing email from #{sender} to external address #{recipient}"
-        )
+          email_alias.user_id == sender_user.id ->
+            maybe_log(
+              sender_user,
+              "Forwarding outgoing email from #{sender} to external address #{recipient}"
+            )
 
-        forward_outgoing_email(sender_user, sender, recipient, data)
+            forward_outgoing_email(sender_user, sender, recipient, data, email_alias)
 
-      true ->
-        Logger.notice(
-          "Discarding outgoing email from #{sender} to #{recipient} because the alias belongs to someone else"
-        )
-    end
-    |> case do
-      {:error, reason} -> {:error, reason}
-      _ -> :ok
+          true ->
+            Logger.notice(
+              "Discarding outgoing email from #{sender} to #{recipient} because the alias belongs to someone else"
+            )
+        end
+
+      _ ->
+        :ok
     end
   end
 
-  @spec forward_outgoing_email(User.t(), String.t(), String.t(), String.t()) ::
+  @spec forward_outgoing_email(
+          User.t(),
+          String.t(),
+          String.t(),
+          String.t(),
+          Aliases.EmailAlias.t()
+        ) ::
           :ok | {:error, term()}
   # Forwards a reply (sent to a reply address from a user) to the external address
-  defp forward_outgoing_email(%User{} = sender_user, sender, recipient, data) do
+  defp forward_outgoing_email(%User{} = sender_user, sender, recipient, data, email_alias) do
     if Accounts.Logging.email_logging_enabled?(sender_user) do
       store_email(sender, recipient, data)
     end
@@ -62,8 +71,6 @@ defmodule Shroud.Email.OutgoingEmailHandler do
          |> Mailer.deliver() do
       {:ok, _id} ->
         Shroud.Analytics.outgoing_email_sent()
-        {_recipient_address, email_alias} = ReplyAddress.from_reply_address(recipient)
-        email_alias = Aliases.get_email_alias_by_address!(email_alias)
         Aliases.increment_replied!(email_alias)
 
         :ok
@@ -105,11 +112,5 @@ defmodule Shroud.Email.OutgoingEmailHandler do
     # Don't forward the reply-to header in replies as it may contain the user's real email
     |> Map.put(:reply_to, nil)
     |> DeliveryMarker.attach("outgoing", user, email_alias, recipient_address)
-  end
-
-  defp sender_owns_alias?(user, reply_address) do
-    {_recipient_address, email_alias} = ReplyAddress.from_reply_address(reply_address)
-    email_alias = Aliases.get_email_alias_by_address(email_alias)
-    not is_nil(email_alias) && email_alias.user_id == user.id
   end
 end

@@ -55,15 +55,10 @@ defmodule Shroud.Email.SmtpServer do
   end
 
   def handle_DATA(from, to, data, state) do
-    # Base64 encode the raw email data to safely store it as JSONB in Oban.
-    # Raw email data can contain non-UTF-8 bytes which break JSON encoding.
-    encoded_data = Base.encode64(data)
-
-    %{from: from, to: to, data: encoded_data}
-    |> EmailHandler.new()
-    |> Oban.insert()
-
-    {:ok, "1", state}
+    case EmailHandler.enqueue(from, to, data) do
+      {:ok, _job} -> {:ok, "1", state}
+      {:error, _reason} -> {:error, "451 Could not queue message; please retry", state}
+    end
   end
 
   def handle_RSET(state) do

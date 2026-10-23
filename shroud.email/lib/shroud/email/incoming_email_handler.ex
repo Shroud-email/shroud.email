@@ -21,10 +21,10 @@ defmodule Shroud.Email.IncomingEmailHandler do
   import Shroud.Accounts.Logging, only: [maybe_log: 2, store_email: 3]
   require Logger
 
-  @spec handle_incoming_email(String.t(), String.t(), String.t()) ::
+  @spec handle_incoming_email(String.t(), String.t(), String.t(), integer() | nil) ::
           :ok | {:error, term()}
   # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
-  def handle_incoming_email(sender, recipient, data) do
+  def handle_incoming_email(sender, recipient, data, expected_user_id) do
     # Lookup real email based on the receiving alias (`recipient`)
     recipient_user = Accounts.get_user_by_alias(recipient)
     email_alias = Aliases.get_email_alias_by_address(recipient)
@@ -32,6 +32,11 @@ defmodule Shroud.Email.IncomingEmailHandler do
     custom_domain = Domain.get_custom_domain(recipient_domain)
 
     cond do
+      (recipient_user && recipient_user.id != expected_user_id) ||
+        (email_alias && email_alias.user_id != expected_user_id) ||
+          (custom_domain && custom_domain.user_id != expected_user_id) ->
+        :ok
+
       email_alias == nil and not is_nil(custom_domain) and custom_domain.catchall_enabled ->
         create_catchall_address(custom_domain, recipient, sender, data)
 
@@ -79,7 +84,7 @@ defmodule Shroud.Email.IncomingEmailHandler do
           "Forwarding incoming email from #{sender} to #{recipient_user.email} (via #{recipient})"
         )
 
-        forward_incoming_email(recipient_user, sender, recipient, data)
+        forward_incoming_email(recipient_user, sender, email_alias, data)
     end
     |> case do
       {:error, reason} -> {:error, reason}
@@ -106,13 +111,13 @@ defmodule Shroud.Email.IncomingEmailHandler do
            address: recipient,
            notes: "Created by catch-all"
          }) do
-      {:ok, _email_alias} ->
+      {:ok, email_alias} ->
         maybe_log(
           recipient_user,
           "Created alias #{recipient} via catch-all. Forwarding incoming email from #{sender} to #{recipient_user.email}"
         )
 
-        forward_incoming_email(recipient_user, sender, recipient, data)
+        forward_incoming_email(recipient_user, sender, email_alias, data)
 
       {:error, %Ecto.Changeset{} = changeset} ->
         if uniqueness_constraint_error?(changeset, :address) do
@@ -121,7 +126,13 @@ defmodule Shroud.Email.IncomingEmailHandler do
             "Alias #{recipient} already exists (likely created by concurrent catch-all). Forwarding email from #{sender} to #{recipient_user.email}"
           )
 
-          forward_incoming_email(recipient_user, sender, recipient, data)
+          case Aliases.get_email_alias_by_address(recipient) do
+            %{user_id: user_id} = email_alias when user_id == recipient_user.id ->
+              forward_incoming_email(recipient_user, sender, email_alias, data)
+
+            _ ->
+              :ok
+          end
         else
           maybe_log(
             recipient_user,
@@ -158,10 +169,12 @@ defmodule Shroud.Email.IncomingEmailHandler do
     end
   end
 
-  @spec forward_incoming_email(User.t(), String.t(), String.t(), String.t()) ::
+  @spec forward_incoming_email(User.t(), String.t(), Aliases.EmailAlias.t(), String.t()) ::
           :ok | {:error, term()}
   # Forwards an email (sent to an alias) to the user
-  defp forward_incoming_email(%User{} = user, sender, recipient, data) do
+  defp forward_incoming_email(%User{} = user, sender, email_alias, data) do
+    recipient = email_alias.address
+
     if Accounts.Logging.email_logging_enabled?(user) do
       store_email(sender, recipient, data)
     end
@@ -179,8 +192,6 @@ defmodule Shroud.Email.IncomingEmailHandler do
 
     case deliver_result do
       {:ok, _id} ->
-        email_alias = Aliases.get_email_alias_by_address!(recipient)
-
         # Record blocked tracking domains only once the email has actually been
         # forwarded, so that retrying a failed Oban job can't inflate the counts.
         # Both counters live in one transaction so they can't diverge from each

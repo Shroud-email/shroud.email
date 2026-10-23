@@ -33,7 +33,16 @@ defmodule Shroud.Email.EmailHandlerTest do
 
   alias Shroud.Repo
   alias Shroud.Email
-  alias Shroud.Email.{CSSParser, EmailHandler, ParsedEmail, TrackerDomain}
+
+  alias Shroud.Email.{
+    CSSParser,
+    EmailHandler,
+    ParsedEmail,
+    ReplyAddress,
+    SmtpServer,
+    TrackerDomain
+  }
+
   alias Shroud.Email.EmailHandlerTest.FailingMailerAdapter
   alias Shroud.{Aliases, Util, Accounts}
   alias Swoosh.Adapters.SMTP.Helpers
@@ -59,6 +68,108 @@ defmodule Shroud.Email.EmailHandlerTest do
   end
 
   describe "perform/1" do
+    test "account deletion removes queued mail and stale jobs cannot deliver to a replacement owner",
+         %{
+           user: user,
+           email_alias: shared_alias
+         } do
+      other = user_fixture(%{status: :active})
+      other_alias = alias_fixture(%{user_id: other.id})
+      domain = custom_domain_fixture(%{user_id: user.id})
+      address = "private@#{domain.domain}"
+      alias_fixture(%{user_id: user.id, address: address})
+      catchall = "catchall@#{domain.domain}"
+
+      reply =
+        ReplyAddress.to_reply_address("recipient@example.org", shared_alias.address)
+
+      raw = text_email("sender@example.org", [address], "Queued mail", "Private message")
+
+      deleted_jobs =
+        for {sender, recipient} <- [
+              {"sender@example.org", address},
+              {"sender@example.org", catchall},
+              {user.email, reply},
+              {user.email, [reply]}
+            ] do
+          %{from: sender, to: recipient, data: Base.encode64(raw)}
+          |> EmailHandler.new()
+          |> Oban.insert!()
+          |> Repo.reload!()
+        end
+
+      parent =
+        %{
+          from: "sender@example.org",
+          to: [address, catchall, shared_alias.address, other_alias.address],
+          data: Base.encode64(raw)
+        }
+        |> EmailHandler.new()
+        |> Oban.insert!()
+        |> Repo.reload!()
+
+      assert {:ok, "1", []} =
+               SmtpServer.handle_DATA(
+                 "sender@example.org",
+                 [address, other_alias.address],
+                 raw,
+                 []
+               )
+
+      [bound_parent] =
+        all_enqueued(worker: EmailHandler, args: %{to: [address, other_alias.address]})
+
+      bound_parent = Repo.reload!(bound_parent)
+      assert :ok = EmailHandler.perform(bound_parent)
+
+      children =
+        Repo.all(
+          from j in Oban.Job,
+            where: j.worker == "Shroud.Email.EmailHandler",
+            where: j.id not in ^Enum.map([parent, bound_parent | deleted_jobs], & &1.id)
+        )
+
+      assert :ok = Accounts.delete_user(user, valid_user_password(), "true")
+      assert Enum.all?(deleted_jobs, &is_nil(Repo.get(Oban.Job, &1.id)))
+      assert Repo.reload!(parent).args["to"] == [other_alias.address]
+
+      custom_domain_fixture(%{user_id: other.id, domain: domain.domain})
+      alias_fixture(%{user_id: other.id, address: address})
+
+      # Replay jobs already loaded by workers before deletion, including fan-out.
+      for job <- deleted_jobs ++ children ++ [parent, bound_parent] do
+        assert :ok = EmailHandler.perform(job)
+      end
+
+      assert %{failure: 0} = Oban.drain_queue(queue: :outgoing_email, with_recursion: true)
+      deliveries = for {:email, email} <- elem(Process.info(self(), :messages), 1), do: email
+      assert deliveries != []
+      assert Enum.all?(deliveries, &(&1.to == [{address, other.email}]))
+      assert Aliases.get_email_alias_by_address!(address).forwarded == 0
+      refute Aliases.get_email_alias_by_address(catchall)
+    end
+
+    test "SMTP jobs stay bound to their original account when a custom domain changes owners", %{
+      user: user
+    } do
+      other = user_fixture(%{status: :active})
+      domain = custom_domain_fixture(%{user_id: user.id})
+      address = "catchall@#{domain.domain}"
+      raw = text_email("sender@example.org", [address], "Private", "Original owner's message")
+
+      assert {:ok, "1", []} =
+               SmtpServer.handle_DATA("sender@example.org", [address], raw, [])
+
+      Shroud.Domain.delete_custom_domain!(domain)
+      custom_domain_fixture(%{user_id: other.id, domain: domain.domain})
+
+      assert %{success: 2, failure: 0} =
+               Oban.drain_queue(queue: :outgoing_email, with_recursion: true)
+
+      assert_no_email_sent()
+      refute Aliases.get_email_alias_by_address(address)
+    end
+
     test "logs structured delivery errors and returns them without counting a delivery", %{
       user: user,
       email_alias: email_alias
