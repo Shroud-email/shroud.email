@@ -5,7 +5,126 @@ defmodule Shroud.AccountsTest do
   alias Shroud.Accounts
 
   import Shroud.{AccountsFixtures, AliasesFixtures}
-  alias Shroud.Accounts.{LoopsJob, User, UserToken}
+  alias Shroud.Accounts.{LoopsJob, User, UserNotifierJob, UserToken}
+  alias Shroud.Domain.DnsChecker
+
+  describe "delete_user/3" do
+    test "removes owned data and access without releasing shared addresses or redeemed codes" do
+      %{user: user, tokens: tokens, connection: connection} =
+        Shroud.OAuthFixtures.connection_fixture()
+
+      other = user_fixture()
+      other_alias = alias_fixture(%{user_id: other.id})
+      domain = Shroud.DomainFixtures.custom_domain_fixture(%{user_id: user.id})
+      custom_alias = alias_fixture(%{user_id: user.id, address: "private@#{domain.domain}"})
+
+      email_alias =
+        alias_fixture(%{user_id: user.id, title: "Private title", notes: "Private notes"})
+
+      metric =
+        metric_fixture(%{
+          alias_id: email_alias.id,
+          date: Date.utc_today(),
+          forwarded: 7,
+          blocked: 2,
+          replied: 1
+        })
+
+      spam =
+        Repo.insert!(%Shroud.Email.SpamEmail{
+          user_id: user.id,
+          email_alias_id: email_alias.id,
+          from: "sender@example.com",
+          text_body: "Private spam"
+        })
+
+      passkey =
+        Repo.insert!(%Shroud.Accounts.PasskeyCredential{
+          user_id: user.id,
+          credential_id: "credential",
+          public_key: "key"
+        })
+
+      code = Shroud.Billing.create_lifetime_code()
+      assert :ok = Shroud.Billing.redeem_lifetime_code(code, user)
+
+      session_tokens = for _ <- 1..2, do: Accounts.generate_user_session_token(user)
+
+      for token <- session_tokens,
+          do: ShroudWeb.Endpoint.subscribe("users_sessions:#{Base.url_encode64(token)}")
+
+      jobs =
+        [
+          LoopsJob.new(%{action: "sync_loops", user_id: user.id}),
+          DnsChecker.new(%{custom_domain_id: domain.id}),
+          UserNotifierJob.new(%{
+            email_function: "deliver_domain_verified",
+            email_args: [domain.id]
+          }),
+          UserNotifierJob.new(%{
+            email_function: "deliver_subscription_downgraded",
+            email_args: [user.id]
+          }),
+          UserNotifierJob.new(%{
+            email_function: "deliver_reset_password_instructions",
+            email_args: [%{id: user.id, email: user.email}, "url"]
+          })
+        ]
+        |> Enum.map(&Oban.insert!/1)
+
+      other_job =
+        LoopsJob.new(%{action: "sync_loops", user_id: other.id}) |> Oban.insert!()
+
+      assert :ok = Accounts.delete_user(user, valid_user_password(), "true")
+      refute Accounts.get_user(user.id)
+      refute Accounts.get_user_by_alias(email_alias.address)
+      refute Repo.get(Shroud.Domain.CustomDomain, domain.id)
+      refute Repo.get(Shroud.Aliases.EmailAlias, custom_alias.id)
+      refute Repo.get(Shroud.Aliases.EmailMetric, metric.id)
+      refute Repo.get(Shroud.Email.SpamEmail, spam.id)
+      refute Repo.get(Shroud.Accounts.PasskeyCredential, passkey.id)
+      refute Repo.get(Shroud.OAuth.Connection, connection.id)
+      refute Repo.exists?(from t in Boruta.Ecto.Token, where: t.sub == ^to_string(user.id))
+
+      assert {:error, :invalid_token} =
+               Shroud.OAuth.with_access(
+                 tokens.access_token,
+                 Shroud.OAuth.resource(:mcp),
+                 nil,
+                 fn _ -> :ok end
+               )
+
+      assert {:error, :invalid_grant} =
+               Shroud.OAuth.exchange(%{
+                 "grant_type" => "refresh_token",
+                 "client_id" => connection.client_id,
+                 "resource" => Shroud.OAuth.resource(:mcp),
+                 "refresh_token" => tokens.refresh_token
+               })
+
+      for token <- session_tokens do
+        refute Accounts.get_user_by_session_token(token)
+        topic = "users_sessions:#{Base.url_encode64(token)}"
+        assert_receive %Phoenix.Socket.Broadcast{topic: ^topic, event: "disconnect"}
+      end
+
+      reserved = Repo.reload!(email_alias)
+      assert reserved.deleted_at
+      assert is_nil(reserved.user_id) and is_nil(reserved.title) and is_nil(reserved.notes)
+      refute reserved.enabled
+      assert reserved.forwarded == 0
+
+      assert {:error, changeset} =
+               Shroud.Aliases.create_email_alias(%{user_id: other.id, address: reserved.address})
+
+      assert errors_on(changeset).address == ["has already been taken"]
+      assert {:error, :already_redeemed} = Shroud.Billing.redeem_lifetime_code(code, other)
+      assert is_nil(Repo.get_by!(Shroud.Billing.LifetimeCode, code: code).redeemed_by_id)
+      assert Enum.all?(jobs, &is_nil(Repo.get(Oban.Job, &1.id)))
+      assert Repo.reload!(other_job)
+      assert Accounts.get_user_by_alias(other_alias.address).id == other.id
+    end
+  end
 
   test "the first-forward claim is per user, durable, and rolls back with its transaction" do
     user = user_fixture()

@@ -19,6 +19,10 @@ defmodule Shroud.Billing.Paddle.Client do
   @callback create_portal_session(customer_id :: String.t()) ::
               {:ok, %{url: String.t()}} | {:error, term()}
 
+  @callback cancel_subscription(subscription_id :: String.t()) :: :ok | {:error, term()}
+
+  @callback cancel_checkout(transaction_id :: String.t()) :: :ok | {:error, term()}
+
   @callback verify_webhook(raw_body :: binary(), signature_header :: String.t()) ::
               {:ok, map()} | {:error, term()}
 end

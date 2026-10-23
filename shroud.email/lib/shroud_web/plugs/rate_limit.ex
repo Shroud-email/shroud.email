@@ -115,6 +115,9 @@ defmodule ShroudWeb.Plugs.RateLimit do
   defp policies(%{method: "PUT", path_info: ["settings", "password"]} = conn),
     do: [ip_policy(conn, :credentials) | account_policy(conn, :credentials)]
 
+  defp policies(%{method: "DELETE", path_info: ["settings", "account"]} = conn),
+    do: [ip_policy(conn, :credentials) | account_policy(conn, :credentials)]
+
   defp policies(%{method: "GET", path_info: ["proxy"]} = conn),
     do: [ip_policy(conn, :image_proxy)]
 

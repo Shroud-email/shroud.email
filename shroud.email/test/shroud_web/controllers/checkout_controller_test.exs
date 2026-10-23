@@ -15,6 +15,26 @@ defmodule ShroudWeb.CheckoutControllerTest do
   @period_end_naive ~N[2030-01-01 00:00:00]
   @occurred_at "2030-01-01T00:00:00Z"
 
+  test "late signed billing events for deleted accounts are acknowledged without recreating them",
+       %{conn: conn} do
+    user = user_fixture()
+    identity = PaddleCheckoutIdentity.sign(user.id)
+    assert :ok = Shroud.Accounts.delete_user(user, valid_user_password(), "true")
+
+    for type <- ["subscription.canceled", "transaction.completed"] do
+      event = %{
+        "event_type" => type,
+        "data" => %{"custom_data" => %{"shroud_checkout_identity" => identity}}
+      }
+
+      assert response(post_event(recycle(conn), event), 200) == ""
+      refute Shroud.Accounts.get_user(user.id)
+
+      invalid = put_in(event, ["data", "custom_data", "shroud_checkout_identity"], "invalid")
+      assert response(post_event(recycle(conn), invalid), 503) == ""
+    end
+  end
+
   describe "revenue tracking" do
     setup do
       previous = Application.get_env(:shroud, :openpanel)
