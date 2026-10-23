@@ -117,8 +117,20 @@
         label="Current password"
         type="password"
         autocomplete="current-password"
+        aria-invalid={to_string(@flash["deletion_password_error"] != nil)}
+        aria-describedby={
+          if @flash["deletion_password_error"], do: "delete-account-password-error"
+        }
         required
       />
+      <p
+        :if={@flash["deletion_password_error"]}
+        id="delete-account-password-error"
+        role="alert"
+        class="mt-2 text-sm text-red-600 dark:text-red-400"
+      >
+        {@flash["deletion_password_error"]}
+      </p>
     </div>
     <label class="flex items-start gap-3 text-sm text-gray-700 dark:text-gray-300">
       <input

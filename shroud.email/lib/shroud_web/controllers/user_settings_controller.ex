@@ -19,12 +19,14 @@ defmodule ShroudWeb.UserSettingsController do
         |> put_flash(:info, "Your account has been deleted.")
         |> UserAuth.log_out_user()
 
+      {:error, :invalid_password} ->
+        conn
+        |> put_flash(:deletion_password_error, "Current password is incorrect. Please try again.")
+        |> redirect(to: ~p"/settings/account#danger-zone")
+
       {:error, reason} ->
         message =
           case reason do
-            :invalid_password ->
-              "Account not deleted. Please check your current password and try again."
-
             :confirmation_required ->
               "Please confirm that you understand account deletion is permanent."
 

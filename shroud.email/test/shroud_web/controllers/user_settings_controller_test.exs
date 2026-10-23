@@ -2,6 +2,7 @@ defmodule ShroudWeb.UserSettingsControllerTest do
   use ShroudWeb.ConnCase, async: false
 
   alias Shroud.Accounts
+  import Phoenix.LiveViewTest
   import Shroud.AccountsFixtures
 
   setup :register_and_log_in_user
@@ -35,8 +36,29 @@ defmodule ShroudWeb.UserSettingsControllerTest do
             %{current_password: "wrong password", confirm_deletion: "true"}
           ] do
         response = delete(conn, ~p"/settings/account", params)
-        assert redirected_to(response) == ~p"/settings/account"
-        assert Flash.get(response.assigns.flash, :error)
+
+        if params[:confirm_deletion] == "true" do
+          assert redirected_to(response) == ~p"/settings/account#danger-zone"
+          refute Flash.get(response.assigns.flash, :error)
+          {:ok, view, _} = live(recycle(response), ~p"/settings/account")
+
+          assert has_element?(
+                   view,
+                   "#delete-account-password-error[role=alert]",
+                   "Current password is incorrect"
+                 )
+
+          assert has_element?(
+                   view,
+                   "#delete-account-password[aria-invalid=true][aria-describedby=delete-account-password-error]"
+                 )
+
+          refute has_element?(view, "[data-kind=error]")
+        else
+          assert redirected_to(response) == ~p"/settings/account"
+          assert Flash.get(response.assigns.flash, :error)
+        end
+
         assert Accounts.get_user(user.id)
         assert Accounts.get_user_by_session_token(get_session(conn, :user_token))
       end
