@@ -55,10 +55,18 @@ defmodule Shroud.Email.SmtpServer do
   end
 
   def handle_DATA(from, to, data, state) do
-    case EmailHandler.enqueue(from, to, data) do
-      {:ok, _job} -> {:ok, "1", state}
-      {:error, _reason} -> {:error, "451 Could not queue message; please retry", state}
-    end
+    # Base64 keeps non-UTF-8 message bytes safe in Oban's JSONB arguments.
+    encoded_data = Base.encode64(data)
+
+    to
+    |> Enum.uniq()
+    |> Enum.map(fn recipient ->
+      %{from: from, to: recipient, data: encoded_data}
+      |> EmailHandler.new(meta: %{user_id: EmailHandler.recipient_user_id(recipient)})
+    end)
+    |> Oban.insert_all()
+
+    {:ok, "1", state}
   end
 
   def handle_RSET(state) do

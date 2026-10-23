@@ -12,40 +12,39 @@ defmodule Shroud.Email.OutgoingEmailHandler do
 
   import Shroud.Accounts.Logging, only: [maybe_log: 2, store_email: 3]
 
-  @spec handle_outgoing_email(String.t(), String.t(), String.t(), integer() | nil) ::
+  @spec handle_outgoing_email(String.t(), String.t(), String.t()) ::
           :ok | {:error, term()}
-  def handle_outgoing_email(sender, recipient, data, expected_user_id) do
+  def handle_outgoing_email(sender, recipient, data) do
     sender_user = Accounts.get_user_by_email(sender)
     {_recipient_address, address} = ReplyAddress.from_reply_address(recipient)
+    email_alias = Aliases.get_email_alias_by_address(address)
 
-    case Aliases.get_email_alias_by_address(address) do
-      %{user_id: ^expected_user_id} = email_alias ->
-        cond do
-          SpamHandler.spam?(data) ->
-            mimemail_email = :mimemail.decode(data)
-            SpamHandler.handle_outgoing_spam_email(mimemail_email)
+    cond do
+      SpamHandler.spam?(data) ->
+        mimemail_email = :mimemail.decode(data)
+        SpamHandler.handle_outgoing_spam_email(mimemail_email)
 
-          is_nil(sender_user) or not Accounts.paid?(sender_user) ->
-            Logger.notice(
-              "Discarding outgoing email from #{sender} to #{recipient} because user is not on a paid plan"
-            )
+      is_nil(sender_user) or not Accounts.paid?(sender_user) ->
+        Logger.notice(
+          "Discarding outgoing email from #{sender} to #{recipient} because user is not on a paid plan"
+        )
 
-          email_alias.user_id == sender_user.id ->
-            maybe_log(
-              sender_user,
-              "Forwarding outgoing email from #{sender} to external address #{recipient}"
-            )
+      email_alias && email_alias.user_id == sender_user.id ->
+        maybe_log(
+          sender_user,
+          "Forwarding outgoing email from #{sender} to external address #{recipient}"
+        )
 
-            forward_outgoing_email(sender_user, sender, recipient, data, email_alias)
+        forward_outgoing_email(sender_user, sender, recipient, data, email_alias)
 
-          true ->
-            Logger.notice(
-              "Discarding outgoing email from #{sender} to #{recipient} because the alias belongs to someone else"
-            )
-        end
-
-      _ ->
-        :ok
+      true ->
+        Logger.notice(
+          "Discarding outgoing email from #{sender} to #{recipient} because the alias belongs to someone else"
+        )
+    end
+    |> case do
+      {:error, reason} -> {:error, reason}
+      _ -> :ok
     end
   end
 

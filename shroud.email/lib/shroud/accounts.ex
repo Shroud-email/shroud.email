@@ -16,7 +16,6 @@ defmodule Shroud.Accounts do
 
   alias Shroud.Aliases.EmailAlias
   alias Shroud.Billing.Paddle
-  alias Shroud.Email.EmailHandler
   alias Shroud.Notifier
   alias Shroud.Repo
 
@@ -160,7 +159,7 @@ defmodule Shroud.Accounts do
     domain_ids =
       Repo.all(from d in Shroud.Domain.CustomDomain, where: d.user_id == ^user.id, select: d.id)
 
-    EmailHandler.delete_user_jobs(
+    delete_email_jobs(
       Repo.all(from a in aliases, select: a.address),
       Repo.all(from d in Shroud.Domain.CustomDomain, where: d.id in ^domain_ids, select: d.domain)
     )
@@ -192,6 +191,59 @@ defmodule Shroud.Accounts do
         replied: 0
       ]
     )
+  end
+
+  defp delete_email_jobs(addresses, domains) do
+    jobs =
+      from j in Oban.Job,
+        where: j.worker == "Shroud.Email.EmailHandler",
+        where:
+          fragment(
+            """
+            EXISTS (
+              SELECT 1 FROM jsonb_array_elements_text(
+                CASE jsonb_typeof(?->'to') WHEN 'array' THEN ?->'to'
+                ELSE jsonb_build_array(?->>'to') END
+              ) AS r(address)
+              WHERE r.address = ANY(?) OR split_part(r.address, '@', 2) = ANY(?)
+              OR EXISTS (SELECT 1 FROM unnest(?::text[]) AS a(address)
+                         WHERE right(r.address, length(a.address) + 1) = '_' || a.address)
+            )
+            """,
+            j.args,
+            j.args,
+            j.args,
+            ^addresses,
+            ^domains,
+            ^addresses
+          )
+
+    # Lock list jobs against fan-out, then remove scalar children in a fresh query.
+    # A fan-out that finishes while we wait is visible to the second query.
+    for job <-
+          Repo.all(
+            from j in jobs,
+              where: fragment("jsonb_typeof(?->'to') = 'array'", j.args),
+              lock: "FOR UPDATE"
+          ) do
+      remaining =
+        Enum.reject(job.args["to"], fn recipient ->
+          {_local, domain} = Shroud.Util.extract_email_parts(recipient)
+
+          recipient in addresses or domain in domains or
+            Enum.any?(addresses, &String.ends_with?(recipient, "_" <> &1))
+        end)
+
+      if remaining == [] do
+        Repo.delete!(job)
+      else
+        job
+        |> Ecto.Changeset.change(args: Map.put(job.args, "to", remaining))
+        |> Repo.update!()
+      end
+    end
+
+    Repo.delete_all(from j in jobs, where: fragment("jsonb_typeof(?->'to') != 'array'", j.args))
   end
 
   defp delete_user_jobs(user_id, domain_ids) do

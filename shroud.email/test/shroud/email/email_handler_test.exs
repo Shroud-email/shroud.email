@@ -110,24 +110,15 @@ defmodule Shroud.Email.EmailHandlerTest do
 
       assert {:ok, "1", []} =
                SmtpServer.handle_DATA(
-                 "sender@example.org",
+                 "smtp@example.org",
                  [address, other_alias.address],
                  raw,
                  []
                )
 
-      [bound_parent] =
-        all_enqueued(worker: EmailHandler, args: %{to: [address, other_alias.address]})
-
-      bound_parent = Repo.reload!(bound_parent)
-      assert :ok = EmailHandler.perform(bound_parent)
-
-      children =
-        Repo.all(
-          from j in Oban.Job,
-            where: j.worker == "Shroud.Email.EmailHandler",
-            where: j.id not in ^Enum.map([parent, bound_parent | deleted_jobs], & &1.id)
-        )
+      smtp_jobs =
+        all_enqueued(worker: EmailHandler, args: %{from: "smtp@example.org"})
+        |> Enum.map(&Repo.reload!/1)
 
       assert :ok = Accounts.delete_user(user, valid_user_password(), "true")
       assert Enum.all?(deleted_jobs, &is_nil(Repo.get(Oban.Job, &1.id)))
@@ -136,12 +127,21 @@ defmodule Shroud.Email.EmailHandlerTest do
       custom_domain_fixture(%{user_id: other.id, domain: domain.domain})
       alias_fixture(%{user_id: other.id, address: address})
 
+      # SMTP can finish queueing a message after deletion commits.
+      deleted_smtp_job = Enum.find(smtp_jobs, &(&1.args["to"] == address))
+
+      straggler =
+        deleted_smtp_job.args
+        |> EmailHandler.new(meta: deleted_smtp_job.meta)
+        |> Oban.insert!()
+
       # Replay jobs already loaded by workers before deletion, including fan-out.
-      for job <- deleted_jobs ++ children ++ [parent, bound_parent] do
+      for job <- deleted_jobs ++ smtp_jobs ++ [parent] do
         assert :ok = EmailHandler.perform(job)
       end
 
       assert %{failure: 0} = Oban.drain_queue(queue: :outgoing_email, with_recursion: true)
+      assert is_nil(Repo.get(Oban.Job, straggler.id))
       deliveries = for {:email, email} <- elem(Process.info(self(), :messages), 1), do: email
       assert deliveries != []
       assert Enum.all?(deliveries, &(&1.to == [{address, other.email}]))
@@ -163,7 +163,7 @@ defmodule Shroud.Email.EmailHandlerTest do
       Shroud.Domain.delete_custom_domain!(domain)
       custom_domain_fixture(%{user_id: other.id, domain: domain.domain})
 
-      assert %{success: 2, failure: 0} =
+      assert %{success: 1, failure: 0} =
                Oban.drain_queue(queue: :outgoing_email, with_recursion: true)
 
       assert_no_email_sent()

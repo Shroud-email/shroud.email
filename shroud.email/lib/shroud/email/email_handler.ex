@@ -17,31 +17,6 @@ defmodule Shroud.Email.EmailHandler do
 
   @type mimemail_email :: :mimemail.mimetuple()
 
-  @doc "Queues an SMTP envelope bound to its recipient accounts."
-  def enqueue(sender, recipients, data) do
-    Repo.transaction(fn ->
-      recipients = List.wrap(recipients) |> Enum.uniq()
-      owners = Map.new(recipients, &{&1, recipient_user_id(&1)})
-      user_ids = owners |> Map.values() |> Enum.reject(&is_nil/1) |> Enum.uniq() |> Enum.sort()
-
-      # Serialize admission with deletion, including a deletion already in progress.
-      Repo.all(
-        from u in Accounts.User,
-          where: u.id in ^user_ids,
-          order_by: u.id,
-          lock: "FOR UPDATE"
-      )
-
-      recipients = Enum.filter(recipients, &(owners[&1] == recipient_user_id(&1)))
-
-      if recipients != [] do
-        %{from: sender, to: recipients, data: Base.encode64(data)}
-        |> new(meta: %{recipient_user_ids: Map.take(owners, recipients)})
-        |> Oban.insert!()
-      end
-    end)
-  end
-
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"from" => from, "to" => to, "data" => data}} = job) do
     Logger.metadata(oban_job_id: job.id)
@@ -64,14 +39,17 @@ defmodule Shroud.Email.EmailHandler do
       if Ecto.get_meta(job, :state) == :loaded, do: Repo.get(Oban.Job, job.id), else: job
 
     if current && current.args["to"] == recipient &&
-         Map.get(current.meta["recipient_user_ids"] || %{}, recipient, user_id) == user_id do
+         Map.get(current.meta, "user_id", user_id) == user_id do
       do_perform(current, sender, recipient, data, user_id)
     else
+      # Do not retain a straggler's raw message in a completed job.
+      if job.id, do: Repo.delete_all(from j in Oban.Job, where: j.id == ^job.id)
       :ok
     end
   end
 
-  defp recipient_user_id(recipient) do
+  @doc "Resolves the account an SMTP recipient belongs to, including replies and catch-all addresses."
+  def recipient_user_id(recipient) do
     address =
       if ReplyAddress.reply_address?(recipient),
         do: elem(ReplyAddress.from_reply_address(recipient), 1),
@@ -87,63 +65,6 @@ defmodule Shroud.Email.EmailHandler do
       custom_domain -> custom_domain.user_id
       true -> nil
     end
-  end
-
-  @doc "Removes an account's queued deliveries without dropping other envelope recipients."
-  def delete_user_jobs(addresses, domains) do
-    jobs =
-      from j in Oban.Job,
-        where: j.worker == "Shroud.Email.EmailHandler",
-        where:
-          fragment(
-            """
-            EXISTS (
-              SELECT 1 FROM jsonb_array_elements_text(
-                CASE jsonb_typeof(?->'to') WHEN 'array' THEN ?->'to'
-                ELSE jsonb_build_array(?->>'to') END
-              ) AS r(address)
-              WHERE r.address = ANY(?) OR split_part(r.address, '@', 2) = ANY(?)
-              OR EXISTS (SELECT 1 FROM unnest(?::text[]) AS a(address)
-                         WHERE right(r.address, length(a.address) + 1) = '_' || a.address)
-            )
-            """,
-            j.args,
-            j.args,
-            j.args,
-            ^addresses,
-            ^domains,
-            ^addresses
-          )
-
-    # Lock list jobs against fan-out, then remove scalar children in a fresh query.
-    # A fan-out that finishes while we wait is visible to the second query.
-    for job <-
-          Repo.all(
-            from j in jobs,
-              where: fragment("jsonb_typeof(?->'to') = 'array'", j.args),
-              lock: "FOR UPDATE"
-          ) do
-      remaining =
-        Enum.reject(job.args["to"], fn recipient ->
-          {_local, domain} = Shroud.Util.extract_email_parts(recipient)
-
-          recipient in addresses or domain in domains or
-            Enum.any?(addresses, &String.ends_with?(recipient, "_" <> &1))
-        end)
-
-      if remaining == [] do
-        Repo.delete!(job)
-      else
-        job
-        |> Ecto.Changeset.change(
-          args: Map.put(job.args, "to", remaining),
-          meta: recipient_meta(job.meta, remaining)
-        )
-        |> Repo.update!()
-      end
-    end
-
-    Repo.delete_all(from j in jobs, where: fragment("jsonb_typeof(?->'to') != 'array'", j.args))
   end
 
   defp do_perform(job, from, to, data, user_id \\ nil)
@@ -231,11 +152,7 @@ defmodule Shroud.Email.EmailHandler do
              # pruned. Storage and write I/O scale with the recipient count.
              parent.args["to"]
              |> Enum.uniq()
-             |> Enum.map(
-               &new(%{from: from, to: &1, data: encoded_data},
-                 meta: recipient_meta(Map.take(parent.meta, ["recipient_user_ids"]), [&1])
-               )
-             )
+             |> Enum.map(&new(%{from: from, to: &1, data: encoded_data}))
              |> Oban.insert_all()
 
              parent
@@ -246,12 +163,6 @@ defmodule Shroud.Email.EmailHandler do
       {:ok, _} -> :ok
       {:error, reason} -> {:error, reason}
     end
-  end
-
-  defp recipient_meta(meta, recipients) do
-    if owners = meta["recipient_user_ids"],
-      do: Map.put(meta, "recipient_user_ids", Map.take(owners, recipients)),
-      else: meta
   end
 
   # Decode Base64 encoded email data. Falls back to raw data for backwards
@@ -267,7 +178,7 @@ defmodule Shroud.Email.EmailHandler do
           :ok | {:error, term()}
   defp handle_recipient(sender, recipient, data, user_id) do
     if ReplyAddress.reply_address?(recipient) do
-      OutgoingEmailHandler.handle_outgoing_email(sender, recipient, data, user_id)
+      OutgoingEmailHandler.handle_outgoing_email(sender, recipient, data)
     else
       IncomingEmailHandler.handle_incoming_email(sender, recipient, data, user_id)
     end
