@@ -44,7 +44,7 @@ defmodule Shroud.Email.EmailHandler do
   end
 
   defp do_perform(job, from, recipients, data) when is_list(recipients) do
-    fan_out(job, from, recipients, data)
+    fan_out(job, from, data)
   end
 
   defp do_perform(_job, from, to, data) do
@@ -95,7 +95,7 @@ defmodule Shroud.Email.EmailHandler do
     end
   end
 
-  defp fan_out(%Oban.Job{id: id}, from, _recipients, data) do
+  defp fan_out(%Oban.Job{id: id}, from, data) do
     # Save recipient jobs and the parent's fan-out completion flag together.
     # The flag prevents duplicate jobs on retry, even after children are pruned.
     # Lock the parent so concurrent executions cannot both create jobs.
