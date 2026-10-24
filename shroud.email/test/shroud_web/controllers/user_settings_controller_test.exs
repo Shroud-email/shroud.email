@@ -45,7 +45,7 @@ defmodule ShroudWeb.UserSettingsControllerTest do
           assert has_element?(
                    view,
                    "#delete-account-password-error[role=alert]",
-                   "Current password is incorrect"
+                   "Incorrect password. Please try again."
                  )
 
           assert has_element?(

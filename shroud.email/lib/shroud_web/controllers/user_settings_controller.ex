@@ -21,7 +21,7 @@ defmodule ShroudWeb.UserSettingsController do
 
       {:error, :invalid_password} ->
         conn
-        |> put_flash(:deletion_password_error, "Current password is incorrect. Please try again.")
+        |> put_flash(:deletion_password_error, "Incorrect password. Please try again.")
         |> redirect(to: ~p"/settings/account#danger-zone")
 
       {:error, reason} ->
