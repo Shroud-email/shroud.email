@@ -2,7 +2,8 @@ defmodule Shroud.Email.SmtpServer do
   # credo:disable-for-this-file Credo.Check.Readability.FunctionNames
   @behaviour :gen_smtp_server_session
 
-  alias Shroud.Email.EmailHandler
+  alias Shroud.Accounts
+  alias Shroud.Email.{EmailHandler, ReplyAddress}
   require Logger
 
   def child_spec(opts) do
@@ -62,7 +63,7 @@ defmodule Shroud.Email.SmtpServer do
     |> Enum.uniq()
     |> Enum.map(fn recipient ->
       %{from: from, to: recipient, data: encoded_data}
-      |> EmailHandler.new(meta: %{user_id: EmailHandler.recipient_user_id(recipient)})
+      |> EmailHandler.new(meta: %{user_id: recipient_user_id(recipient)})
     end)
     |> Oban.insert_all()
 
@@ -99,5 +100,30 @@ defmodule Shroud.Email.SmtpServer do
 
   def terminate(reason, state) do
     {:ok, reason, state}
+  end
+
+  defp recipient_user_id(recipient) do
+    address =
+      if ReplyAddress.reply_address?(recipient),
+        do: elem(ReplyAddress.from_reply_address(recipient), 1),
+        else: recipient
+
+    {_local, domain} = Shroud.Util.extract_email_parts(address)
+    user = Accounts.get_user_by_alias(address)
+    custom_domain = if is_nil(user), do: Shroud.Domain.get_custom_domain(domain)
+
+    cond do
+      String.downcase(recipient) == "postmaster@#{String.downcase(Shroud.Util.email_domain())}" ->
+        nil
+
+      user ->
+        user.id
+
+      custom_domain ->
+        custom_domain.user_id
+
+      true ->
+        nil
+    end
   end
 end

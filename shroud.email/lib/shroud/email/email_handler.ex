@@ -23,48 +23,7 @@ defmodule Shroud.Email.EmailHandler do
 
     # Decode Base64 encoded email data (encoded in SmtpServer to safely store as JSONB)
     decoded_data = decode_data(data)
-
-    if is_list(to) do
-      do_perform(job, from, to, decoded_data)
-    else
-      deliver_to_current_owner(job, from, to, decoded_data)
-    end
-  end
-
-  defp deliver_to_current_owner(job, sender, recipient, data) do
-    user_id = recipient_user_id(recipient)
-
-    # A worker may already hold a job that deletion removed from the database.
-    current =
-      if Ecto.get_meta(job, :state) == :loaded, do: Repo.get(Oban.Job, job.id), else: job
-
-    if current && current.args["to"] == recipient &&
-         Map.get(current.meta, "user_id", user_id) == user_id do
-      do_perform(current, sender, recipient, data)
-    else
-      # Do not retain a straggler's raw message in a completed job.
-      if job.id, do: Repo.delete_all(from j in Oban.Job, where: j.id == ^job.id)
-      :ok
-    end
-  end
-
-  @doc "Resolves the account an SMTP recipient belongs to, including replies and catch-all addresses."
-  def recipient_user_id(recipient) do
-    address =
-      if ReplyAddress.reply_address?(recipient),
-        do: elem(ReplyAddress.from_reply_address(recipient), 1),
-        else: recipient
-
-    {_local, domain} = Shroud.Util.extract_email_parts(address)
-    user = Accounts.get_user_by_alias(address)
-    custom_domain = if is_nil(user), do: Shroud.Domain.get_custom_domain(domain)
-
-    cond do
-      postmaster?(recipient) -> nil
-      user -> user.id
-      custom_domain -> custom_domain.user_id
-      true -> nil
-    end
+    do_perform(job, from, to, decoded_data)
   end
 
   defp do_perform(_job, from, to, data) when byte_size(data) > 26_214_400 do

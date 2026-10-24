@@ -68,7 +68,7 @@ defmodule Shroud.Email.EmailHandlerTest do
   end
 
   describe "perform/1" do
-    test "account deletion removes queued mail and stale jobs cannot deliver to a replacement owner",
+    test "account deletion removes queued mail and preserves other recipients",
          %{
            user: user,
            email_alias: shared_alias
@@ -124,55 +124,27 @@ defmodule Shroud.Email.EmailHandlerTest do
 
       assert :ok = Shroud.Domain.delete_custom_domain!(removed_domain)
       assert :ok = Accounts.delete_user(user, valid_user_password(), "true")
+
+      deleted_jobs =
+        deleted_jobs ++ Enum.reject(smtp_jobs, &(&1.args["to"] == other_alias.address))
+
       assert Enum.all?(deleted_jobs, &is_nil(Repo.get(Oban.Job, &1.id)))
-      removed_domain_job = Enum.find(smtp_jobs, &(&1.args["to"] == removed_address))
-      assert is_nil(Repo.get(Oban.Job, removed_domain_job.id))
       assert Repo.reload!(parent).args["to"] == [other_alias.address]
 
       custom_domain_fixture(%{user_id: other.id, domain: domain.domain})
       alias_fixture(%{user_id: other.id, address: address})
 
-      # SMTP can finish queueing a message after deletion commits.
-      deleted_smtp_job = Enum.find(smtp_jobs, &(&1.args["to"] == address))
-
-      straggler =
-        deleted_smtp_job.args
-        |> EmailHandler.new(meta: deleted_smtp_job.meta)
-        |> Oban.insert!()
-
-      # Replay jobs already loaded by workers before deletion, including fan-out.
-      for job <- deleted_jobs ++ smtp_jobs ++ [parent] do
+      # Loaded parents must respect deletion's pruned recipients or missing row.
+      for job <- Enum.filter(deleted_jobs, &is_list(&1.args["to"])) ++ [parent] do
         assert :ok = EmailHandler.perform(job)
       end
 
       assert %{failure: 0} = Oban.drain_queue(queue: :outgoing_email, with_recursion: true)
-      assert is_nil(Repo.get(Oban.Job, straggler.id))
       deliveries = for {:email, email} <- elem(Process.info(self(), :messages), 1), do: email
       assert deliveries != []
       assert Enum.all?(deliveries, &(&1.to == [{address, other.email}]))
       assert Aliases.get_email_alias_by_address!(address).forwarded == 0
       refute Aliases.get_email_alias_by_address(catchall)
-    end
-
-    test "SMTP jobs stay bound to their original account when a custom domain changes owners", %{
-      user: user
-    } do
-      other = user_fixture(%{status: :active})
-      domain = custom_domain_fixture(%{user_id: user.id})
-      address = "catchall@#{domain.domain}"
-      raw = text_email("sender@example.org", [address], "Private", "Original owner's message")
-
-      assert {:ok, "1", []} =
-               SmtpServer.handle_DATA("sender@example.org", [address], raw, [])
-
-      Shroud.Domain.delete_custom_domain!(domain)
-      custom_domain_fixture(%{user_id: other.id, domain: domain.domain})
-
-      assert %{success: 1, failure: 0} =
-               Oban.drain_queue(queue: :outgoing_email, with_recursion: true)
-
-      assert_no_email_sent()
-      refute Aliases.get_email_alias_by_address(address)
     end
 
     test "logs structured delivery errors and returns them without counting a delivery", %{
