@@ -4,8 +4,8 @@ defmodule Shroud.Billing.Paddle do
 
   Auth: `Authorization: Bearer <api_key>`. Base URL configurable (sandbox/prod).
   No official Elixir SDK exists, so this module owns the small REST surface
-  used to create fixed checkout transactions and customer portal sessions,
-  plus Paddle webhook signature verification.
+  used for checkout, customer portal sessions, account-deletion cancellation,
+  and Paddle webhook signature verification.
 
   Docs: https://developer.paddle.com
   """
@@ -117,6 +117,81 @@ defmodule Shroud.Billing.Paddle do
 
         {:ok, %Req.Response{status: status, body: resp}} ->
           {:error, {:paddle_api, status, paddle_error_code(resp)}}
+
+        {:error, reason} ->
+          {:error, {:request_failed, reason}}
+      end
+    else
+      {:error, :not_configured}
+    end
+  end
+
+  @doc "Cancels immediately without issuing a refund. Already-canceled subscriptions succeed."
+  @impl true
+  def cancel_subscription(subscription_id) do
+    path = "/subscriptions/#{subscription_id}"
+
+    case cancellation_request(:get, path) do
+      {:ok, %{"id" => ^subscription_id, "status" => "canceled"}} ->
+        :ok
+
+      {:ok, %{"id" => ^subscription_id, "status" => status}}
+      when status in ["active", "trialing", "past_due", "paused"] ->
+        case cancellation_request(:post, path <> "/cancel", %{effective_from: "immediately"}) do
+          {:ok, %{"id" => ^subscription_id, "status" => "canceled"}} -> :ok
+          {:error, reason} -> {:error, reason}
+          _ -> {:error, :invalid_response}
+        end
+
+      {:error, reason} ->
+        {:error, reason}
+
+      _ ->
+        {:error, :invalid_response}
+    end
+  end
+
+  @doc "Closes unpaid checkouts; paid checkouts must finish provisioning before account deletion."
+  @impl true
+  def cancel_checkout(transaction_id) do
+    path = "/transactions/#{transaction_id}"
+
+    case cancellation_request(:get, path) do
+      {:ok, %{"id" => ^transaction_id, "status" => "canceled"}} ->
+        :ok
+
+      {:ok, %{"id" => ^transaction_id, "status" => status}} when status in ["draft", "ready"] ->
+        case cancellation_request(:patch, path, %{status: "canceled"}) do
+          {:ok, %{"id" => ^transaction_id, "status" => "canceled"}} -> :ok
+          {:error, reason} -> {:error, reason}
+          _ -> {:error, :invalid_response}
+        end
+
+      {:ok, %{"id" => ^transaction_id, "status" => _status}} ->
+        {:error, :checkout_processing}
+
+      {:error, reason} ->
+        {:error, reason}
+
+      _ ->
+        {:error, :invalid_response}
+    end
+  end
+
+  defp cancellation_request(method, path, body \\ nil) do
+    if configured?(:paddle_api_key) do
+      options = [method: method, url: path, retry: false, receive_timeout: 10_000]
+      options = if body, do: Keyword.put(options, :json, body), else: options
+
+      case Req.request(client(), options) do
+        {:ok, %Req.Response{status: 200, body: %{"data" => data}}} when is_map(data) ->
+          {:ok, data}
+
+        {:ok, %Req.Response{status: 200}} ->
+          {:error, :invalid_response}
+
+        {:ok, %Req.Response{status: status, body: response}} ->
+          {:error, {:paddle_api, status, paddle_error_code(response)}}
 
         {:error, reason} ->
           {:error, {:request_failed, reason}}

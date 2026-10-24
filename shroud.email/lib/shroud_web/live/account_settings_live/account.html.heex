@@ -80,3 +80,72 @@
     </div>
   </div>
 </.form>
+
+<section
+  id="danger-zone"
+  aria-labelledby="danger-zone-title"
+  class="rounded-md border border-red-200 bg-white p-6 dark:border-red-900 dark:bg-gray-800"
+>
+  <h3 id="danger-zone-title" class="text-lg font-medium text-red-700 dark:text-red-400">
+    Danger zone
+  </h3>
+  <h4 class="mt-4 text-sm font-medium text-gray-900 dark:text-gray-100">Delete account</h4>
+  <p id="delete-account-warning" class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+    Permanently delete your account and aliases. This cannot be undone.
+  </p>
+  <p id="delete-account-billing-warning" class="mt-3 text-sm text-gray-500 dark:text-gray-400">
+    Any subscription will be cancelled immediately. Deleting your account does not issue a refund,
+    including for unused subscription time.
+  </p>
+  <.form
+    for={@deletion_form}
+    id="delete-account-form"
+    action={~p"/settings/account"}
+    method="delete"
+    class="mt-6 space-y-4"
+    aria-describedby="delete-account-warning delete-account-billing-warning"
+  >
+    <div>
+      <.input
+        field={@deletion_form[:current_password]}
+        name="current_password"
+        id="delete-account-password"
+        label="Current password"
+        type="password"
+        autocomplete="current-password"
+        aria-invalid={to_string(@flash["deletion_password_error"] != nil)}
+        aria-describedby={
+          if @flash["deletion_password_error"], do: "delete-account-password-error"
+        }
+        required
+      />
+      <p
+        :if={@flash["deletion_password_error"]}
+        id="delete-account-password-error"
+        role="alert"
+        class="mt-2 text-sm text-red-600 dark:text-red-400"
+      >
+        {@flash["deletion_password_error"]}
+      </p>
+    </div>
+    <label class="flex items-start gap-3 text-sm text-gray-700 dark:text-gray-300">
+      <input
+        id="confirm-account-deletion"
+        type="checkbox"
+        name="confirm_deletion"
+        value="true"
+        required
+        class="mt-0.5 rounded-sm border-gray-300 text-red-600 focus:ring-red-500 dark:bg-gray-700 dark:border-gray-600"
+      />
+      <span>I understand that deletion is permanent and does not issue a refund.</span>
+    </label>
+    <div class="text-right">
+      <.button
+        id="delete-account-button"
+        type="submit"
+        intent={:danger}
+        text="Permanently delete account"
+      />
+    </div>
+  </.form>
+</section>

@@ -9,6 +9,27 @@ defmodule ShroudWeb.SettingsLiveTest do
 
   setup :register_and_log_in_user
 
+  test "the danger zone explains deletion and submits a password-confirmed HTTP request", %{
+    conn: conn
+  } do
+    {:ok, view, _} = live(conn, ~p"/settings/account")
+    assert has_element?(view, "#danger-zone", "Danger zone")
+    assert has_element?(view, "#delete-account-billing-warning", "cancelled immediately")
+    assert has_element?(view, "#delete-account-billing-warning", "does not issue a refund")
+    assert has_element?(view, "#delete-account-form[action='/settings/account'][method=post]")
+    assert has_element?(view, "#delete-account-form input[name=_method][value=delete]")
+
+    assert has_element?(
+             view,
+             "#delete-account-password[type=password][name=current_password][required]"
+           )
+
+    assert has_element?(
+             view,
+             "#confirm-account-deletion[name=confirm_deletion][value=true][required]"
+           )
+  end
+
   test "email branding can be disabled and enabled and survives reloads", %{
     conn: conn,
     user: user

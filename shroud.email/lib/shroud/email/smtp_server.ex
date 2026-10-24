@@ -2,7 +2,8 @@ defmodule Shroud.Email.SmtpServer do
   # credo:disable-for-this-file Credo.Check.Readability.FunctionNames
   @behaviour :gen_smtp_server_session
 
-  alias Shroud.Email.EmailHandler
+  alias Shroud.Accounts
+  alias Shroud.Email.{EmailHandler, ReplyAddress}
   require Logger
 
   def child_spec(opts) do
@@ -55,13 +56,16 @@ defmodule Shroud.Email.SmtpServer do
   end
 
   def handle_DATA(from, to, data, state) do
-    # Base64 encode the raw email data to safely store it as JSONB in Oban.
-    # Raw email data can contain non-UTF-8 bytes which break JSON encoding.
+    # Base64 keeps non-UTF-8 message bytes safe in Oban's JSONB arguments.
     encoded_data = Base.encode64(data)
 
-    %{from: from, to: to, data: encoded_data}
-    |> EmailHandler.new()
-    |> Oban.insert()
+    to
+    |> Enum.uniq()
+    |> Enum.map(fn recipient ->
+      %{from: from, to: recipient, data: encoded_data}
+      |> EmailHandler.new(meta: %{user_id: recipient_user_id(recipient)})
+    end)
+    |> Oban.insert_all()
 
     {:ok, "1", state}
   end
@@ -96,5 +100,30 @@ defmodule Shroud.Email.SmtpServer do
 
   def terminate(reason, state) do
     {:ok, reason, state}
+  end
+
+  defp recipient_user_id(recipient) do
+    address =
+      if ReplyAddress.reply_address?(recipient),
+        do: elem(ReplyAddress.from_reply_address(recipient), 1),
+        else: recipient
+
+    {_local, domain} = Shroud.Util.extract_email_parts(address)
+    user = Accounts.get_user_by_alias(address)
+    custom_domain = if is_nil(user), do: Shroud.Domain.get_custom_domain(domain)
+
+    cond do
+      String.downcase(recipient) == "postmaster@#{String.downcase(Shroud.Util.email_domain())}" ->
+        nil
+
+      user ->
+        user.id
+
+      custom_domain ->
+        custom_domain.user_id
+
+      true ->
+        nil
+    end
   end
 end

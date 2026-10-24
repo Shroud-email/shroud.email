@@ -124,33 +124,31 @@ defmodule Shroud.Aliases do
   end
 
   def update_email_alias(%EmailAlias{} = email_alias, attrs) do
-    change_email_alias(email_alias, attrs)
-    |> Repo.update()
+    update_live_alias(email_alias, &change_email_alias(&1, attrs))
   end
 
   @spec block_sender(EmailAlias.t(), String.t()) ::
           {:ok, EmailAlias.t()} | {:error, Ecto.Changeset.t()}
   def block_sender(%EmailAlias{} = email_alias, sender) do
-    blocked_addresses = MapSet.new([String.downcase(sender) | email_alias.blocked_addresses])
-    attrs = %{blocked_addresses: MapSet.to_list(blocked_addresses)}
+    update_live_alias(email_alias, fn current ->
+      addresses = MapSet.new([String.downcase(sender) | current.blocked_addresses])
 
-    email_alias
-    |> EmailAlias.blocked_addresses_changeset(attrs)
-    |> Repo.update()
+      EmailAlias.blocked_addresses_changeset(current, %{
+        blocked_addresses: MapSet.to_list(addresses)
+      })
+    end)
   end
 
   @spec unblock_sender(EmailAlias.t(), String.t()) :: {:ok, EmailAlias.t()} | :error
   def unblock_sender(%EmailAlias{} = email_alias, sender) do
-    blocked_addresses =
-      email_alias.blocked_addresses
-      |> Enum.map(&String.downcase/1)
-      |> Enum.reject(fn address -> address == String.downcase(sender) end)
+    update_live_alias(email_alias, fn current ->
+      addresses =
+        current.blocked_addresses
+        |> Enum.map(&String.downcase/1)
+        |> Enum.reject(&(&1 == String.downcase(sender)))
 
-    attrs = %{blocked_addresses: blocked_addresses}
-
-    email_alias
-    |> EmailAlias.blocked_addresses_changeset(attrs)
-    |> Repo.update()
+      EmailAlias.blocked_addresses_changeset(current, %{blocked_addresses: addresses})
+    end)
   end
 
   def create_random_email_alias(user, attrs \\ %{}) do
@@ -181,62 +179,60 @@ defmodule Shroud.Aliases do
   end
 
   def increment_forwarded!(%EmailAlias{} = email_alias) do
-    today = NaiveDateTime.utc_now() |> NaiveDateTime.to_date()
-
-    Repo.transaction(fn ->
-      Repo.insert!(%EmailMetric{alias_id: email_alias.id, date: today, forwarded: 1},
-        conflict_target: [:alias_id, :date],
-        on_conflict: [inc: [forwarded: 1]]
-      )
-
-      alias_update =
-        from(e in EmailAlias,
-          where: e.id == ^email_alias.id,
-          select: e.forwarded,
-          update: [inc: [forwarded: 1]]
-        )
-
-      {1, _} = Repo.update_all(alias_update, [])
-    end)
+    increment_metric(email_alias, :forwarded)
   end
 
   def increment_blocked!(%EmailAlias{} = email_alias) do
-    today = NaiveDateTime.utc_now() |> NaiveDateTime.to_date()
-
-    Repo.transaction(fn ->
-      Repo.insert!(%EmailMetric{alias_id: email_alias.id, date: today, blocked: 1},
-        conflict_target: [:alias_id, :date],
-        on_conflict: [inc: [blocked: 1]]
-      )
-
-      alias_update =
-        from(e in EmailAlias,
-          where: e.id == ^email_alias.id,
-          select: e.blocked,
-          update: [inc: [blocked: 1]]
-        )
-
-      {1, _} = Repo.update_all(alias_update, [])
-    end)
+    increment_metric(email_alias, :blocked)
   end
 
   def increment_replied!(%EmailAlias{} = email_alias) do
-    today = NaiveDateTime.utc_now() |> NaiveDateTime.to_date()
+    increment_metric(email_alias, :replied)
+  end
 
-    Repo.transaction(fn ->
-      Repo.insert!(%EmailMetric{alias_id: email_alias.id, date: today, replied: 1},
+  defp increment_metric(email_alias, field) do
+    with_live_alias(email_alias, fn current ->
+      metric = struct(EmailMetric, alias_id: current.id, date: Date.utc_today())
+
+      Repo.insert!(Map.put(metric, field, 1),
         conflict_target: [:alias_id, :date],
-        on_conflict: [inc: [replied: 1]]
+        on_conflict: [inc: [{field, 1}]]
       )
 
-      alias_update =
-        from(e in EmailAlias,
-          where: e.id == ^email_alias.id,
-          select: e.replied,
-          update: [inc: [replied: 1]]
-        )
+      Repo.update_all(from(e in EmailAlias, where: e.id == ^current.id), inc: [{field, 1}])
+    end)
+  end
 
-      {1, _} = Repo.update_all(alias_update, [])
+  defp update_live_alias(email_alias, changeset_fun) do
+    case with_live_alias(email_alias, fn current ->
+           Repo.update(changeset_fun.(current))
+         end) do
+      {:ok, :deleted} ->
+        {:error,
+         Ecto.Changeset.add_error(Ecto.Changeset.change(email_alias), :base, "has been deleted")}
+
+      {:ok, result} ->
+        result
+    end
+  end
+
+  defp with_live_alias(%EmailAlias{user_id: nil}, _fun), do: {:ok, :deleted}
+
+  defp with_live_alias(email_alias, fun) do
+    Repo.transaction(fn ->
+      # Account deletion takes this lock before erasing alias data and metrics.
+      user =
+        Repo.one(from u in User, where: u.id == ^email_alias.user_id, lock: "FOR UPDATE")
+
+      current =
+        if user do
+          Repo.one(
+            from a in EmailAlias,
+              where: a.id == ^email_alias.id and a.user_id == ^user.id and is_nil(a.deleted_at)
+          )
+        end
+
+      if current, do: fun.(current), else: :deleted
     end)
   end
 

@@ -44,7 +44,7 @@ defmodule Shroud.Email.EmailHandler do
   end
 
   defp do_perform(job, from, recipients, data) when is_list(recipients) do
-    fan_out(job, from, recipients, data)
+    fan_out(job, from, data)
   end
 
   defp do_perform(_job, from, to, data) do
@@ -95,19 +95,19 @@ defmodule Shroud.Email.EmailHandler do
     end
   end
 
-  defp fan_out(%Oban.Job{id: id}, from, recipients, data) do
+  defp fan_out(%Oban.Job{id: id}, from, data) do
     # Save recipient jobs and the parent's fan-out completion flag together.
     # The flag prevents duplicate jobs on retry, even after children are pruned.
     # Lock the parent so concurrent executions cannot both create jobs.
     case Repo.transaction(fn ->
-           parent = Repo.one!(from j in Oban.Job, where: j.id == ^id, lock: "FOR UPDATE")
+           parent = Repo.one(from j in Oban.Job, where: j.id == ^id, lock: "FOR UPDATE")
 
-           unless parent.meta["fan_out_completed"] do
+           if parent && parent.meta["fan_out_completed"] != true do
              encoded_data = Base.encode64(data)
 
              # Each child stores the payload so it can retry after the parent is
              # pruned. Storage and write I/O scale with the recipient count.
-             recipients
+             parent.args["to"]
              |> Enum.uniq()
              |> Enum.map(&new(%{from: from, to: &1, data: encoded_data}))
              |> Oban.insert_all()

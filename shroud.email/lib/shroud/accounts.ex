@@ -15,6 +15,7 @@ defmodule Shroud.Accounts do
   }
 
   alias Shroud.Aliases.EmailAlias
+  alias Shroud.Billing.Paddle
   alias Shroud.Notifier
   alias Shroud.Repo
 
@@ -97,6 +98,191 @@ defmodule Shroud.Accounts do
   """
   def get_user!(id), do: Repo.get!(User, id)
   def get_user(id), do: Repo.get(User, id)
+
+  @doc "Deletes an account after password confirmation and successful billing cancellation."
+  def delete_user(%User{id: id}, password) do
+    result =
+      Repo.transaction(
+        fn ->
+          user = Repo.one(from u in User, where: u.id == ^id, lock: "FOR UPDATE")
+
+          unless User.valid_password?(user, password), do: Repo.rollback(:invalid_password)
+
+          with :ok <- cancel_pending_checkout(user),
+               :ok <- cancel_user_subscription(user) do
+            tokens =
+              Repo.all(from t in UserToken, where: t.user_id == ^id and t.context == "session")
+
+            delete_user_data(user)
+            Repo.delete!(user)
+            tokens
+          else
+            {:error, reason} -> Repo.rollback(reason)
+          end
+        end,
+        timeout: 60_000
+      )
+
+    case result do
+      {:ok, tokens} ->
+        for token <- tokens do
+          ShroudWeb.Endpoint.broadcast(
+            "users_sessions:#{Base.url_encode64(token.token)}",
+            "disconnect",
+            %{}
+          )
+        end
+
+        :ok
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp cancel_pending_checkout(%User{paddle_checkout_transaction_id: nil}), do: :ok
+
+  defp cancel_pending_checkout(user),
+    do: Paddle.cancel_checkout(user.paddle_checkout_transaction_id)
+
+  defp cancel_user_subscription(%User{paddle_subscription_id: nil}), do: :ok
+
+  defp cancel_user_subscription(user),
+    do: Paddle.cancel_subscription(user.paddle_subscription_id)
+
+  defp delete_user_data(user) do
+    aliases = from a in EmailAlias, where: a.user_id == ^user.id
+    reserved_alias_ids = from a in aliases, where: is_nil(a.domain_id), select: a.id
+
+    domain_ids =
+      Repo.all(from d in Shroud.Domain.CustomDomain, where: d.user_id == ^user.id, select: d.id)
+
+    delete_email_jobs(
+      user.id,
+      Repo.all(from a in aliases, select: a.address),
+      Repo.all(from d in Shroud.Domain.CustomDomain, where: d.id in ^domain_ids, select: d.domain)
+    )
+
+    # Delete domains before the user so alias cascades do not conflict with owner nullification.
+    Repo.delete_all(from d in Shroud.Domain.CustomDomain, where: d.id in ^domain_ids)
+
+    Repo.delete_all(
+      from m in Shroud.Aliases.EmailMetric, where: m.alias_id in subquery(reserved_alias_ids)
+    )
+
+    Repo.delete_all(from t in Boruta.Ecto.Token, where: t.sub == ^to_string(user.id))
+
+    # Redeemed codes stay reserved, without retaining the account relationship.
+    Repo.update_all(from(c in Shroud.Billing.LifetimeCode, where: c.redeemed_by_id == ^user.id),
+      set: [redeemed_by_id: nil]
+    )
+
+    delete_user_jobs(user.id, domain_ids)
+
+    # Shared addresses must never be reassigned to another account.
+    Repo.update_all(from(a in aliases, where: is_nil(a.domain_id)),
+      set: [
+        deleted_at: NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second),
+        enabled: false,
+        title: nil,
+        notes: nil,
+        blocked_addresses: [],
+        forwarded: 0,
+        blocked: 0,
+        replied: 0
+      ]
+    )
+  end
+
+  defp delete_email_jobs(user_id, addresses, domains) do
+    jobs =
+      from j in Oban.Job,
+        where: j.worker == "Shroud.Email.EmailHandler",
+        where:
+          fragment(
+            """
+            ?->>'user_id' = ? OR EXISTS (
+              SELECT 1 FROM jsonb_array_elements_text(
+                CASE jsonb_typeof(?->'to') WHEN 'array' THEN ?->'to'
+                ELSE jsonb_build_array(?->>'to') END
+              ) AS r(address)
+              WHERE r.address = ANY(?) OR split_part(r.address, '@', 2) = ANY(?)
+              OR EXISTS (SELECT 1 FROM unnest(?::text[]) AS a(address)
+                         WHERE right(r.address, length(a.address) + 1) = '_' || a.address)
+            )
+            """,
+            j.meta,
+            ^to_string(user_id),
+            j.args,
+            j.args,
+            j.args,
+            ^addresses,
+            ^domains,
+            ^addresses
+          )
+
+    # Lock list jobs against fan-out, then remove scalar children in a fresh query.
+    # A fan-out that finishes while we wait is visible to the second query.
+    for job <-
+          Repo.all(
+            from j in jobs,
+              where: fragment("jsonb_typeof(?->'to') = 'array'", j.args),
+              lock: "FOR UPDATE"
+          ) do
+      remaining =
+        Enum.reject(job.args["to"], fn recipient ->
+          {_local, domain} = Shroud.Util.extract_email_parts(recipient)
+
+          recipient in addresses or domain in domains or
+            Enum.any?(addresses, &String.ends_with?(recipient, "_" <> &1))
+        end)
+
+      if remaining == [] do
+        Repo.delete!(job)
+      else
+        job
+        |> Ecto.Changeset.change(args: Map.put(job.args, "to", remaining))
+        |> Repo.update!()
+      end
+    end
+
+    Repo.delete_all(from j in jobs, where: fragment("jsonb_typeof(?->'to') != 'array'", j.args))
+  end
+
+  defp delete_user_jobs(user_id, domain_ids) do
+    user_id = to_string(user_id)
+    domain_ids = Enum.map(domain_ids, &to_string/1)
+    domain_notifications = ["deliver_domain_verified", "deliver_domain_no_longer_verified"]
+
+    Repo.delete_all(
+      from j in Oban.Job,
+        where:
+          j.worker == "Shroud.Accounts.LoopsJob" and
+            fragment("?->>'user_id' = ?", j.args, ^user_id)
+    )
+
+    Repo.delete_all(
+      from j in Oban.Job,
+        where:
+          j.worker == "Shroud.Domain.DnsChecker" and
+            fragment("?->>'custom_domain_id' = ANY(?)", j.args, ^domain_ids)
+    )
+
+    Repo.delete_all(
+      from j in Oban.Job,
+        where: j.worker == "Shroud.Accounts.UserNotifierJob",
+        where:
+          (fragment("?->>'email_function'", j.args) in ^domain_notifications and
+             fragment("?->'email_args'->>0 = ANY(?)", j.args, ^domain_ids)) or
+            (fragment("?->>'email_function'", j.args) not in ^domain_notifications and
+               fragment(
+                 "COALESCE(?->'email_args'->0->>'id', ?->'email_args'->>0) = ?",
+                 j.args,
+                 j.args,
+                 ^user_id
+               ))
+    )
+  end
 
   def list_passkeys(%User{id: user_id}) do
     Repo.all(from p in PasskeyCredential, where: p.user_id == ^user_id, order_by: [asc: p.id])

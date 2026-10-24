@@ -112,7 +112,7 @@ defmodule ShroudWeb.CheckoutController do
 
     case Paddle.verify_webhook(raw_body, signature) do
       {:ok, event} ->
-        case handle_event(event) do
+        case process_event(event) do
           :ok ->
             send_resp(conn, 200, "")
 
@@ -131,6 +131,24 @@ defmodule ShroudWeb.CheckoutController do
         send_resp(conn, :bad_request, "")
     end
   end
+
+  # Signed checkout identities let late billing events be acknowledged without
+  # recreating deleted accounts or retaining customer identifiers locally.
+  defp process_event(%{"event_type" => type, "data" => data} = event)
+       when (type in @subscription_event_types or type == "transaction.completed") and
+              is_map(data) do
+    with {:ok, %{user_id: id}} <-
+           PaddleCheckoutIdentity.verify(
+             get_in(data, ["custom_data", "shroud_checkout_identity"])
+           ),
+         nil <- Accounts.get_user(id) do
+      :ok
+    else
+      _ -> handle_event(event)
+    end
+  end
+
+  defp process_event(event), do: handle_event(event)
 
   defp handle_event(%{"event_type" => "customer.created"}), do: :ok
 

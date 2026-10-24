@@ -1,10 +1,194 @@
 defmodule ShroudWeb.UserSettingsControllerTest do
-  use ShroudWeb.ConnCase, async: true
+  use ShroudWeb.ConnCase, async: false
 
   alias Shroud.Accounts
+  import Phoenix.LiveViewTest
   import Shroud.AccountsFixtures
 
   setup :register_and_log_in_user
+
+  describe "DELETE /settings/account" do
+    setup do
+      bypass = Bypass.open()
+      original = Application.fetch_env!(:shroud, :billing)
+
+      Application.put_env(
+        :shroud,
+        :billing,
+        Keyword.put(original, :paddle_base_url, "http://localhost:#{bypass.port}")
+      )
+
+      on_exit(fn -> Application.put_env(:shroud, :billing, original) end)
+      %{bypass: bypass}
+    end
+
+    test "requires authentication, confirmation and the current password", %{
+      conn: conn,
+      user: user
+    } do
+      assert redirected_to(delete(build_conn(), ~p"/settings/account")) == ~p"/users/log_in"
+
+      for params <- [
+            %{},
+            %{current_password: valid_user_password()},
+            %{current_password: valid_user_password(), confirm_deletion: "false"},
+            %{confirm_deletion: "true"},
+            %{current_password: "wrong password", confirm_deletion: "true"}
+          ] do
+        response = delete(conn, ~p"/settings/account", params)
+
+        if params[:confirm_deletion] == "true" do
+          assert redirected_to(response) == ~p"/settings/account#danger-zone"
+          refute Flash.get(response.assigns.flash, :error)
+          {:ok, view, _} = live(recycle(response), ~p"/settings/account")
+
+          assert has_element?(
+                   view,
+                   "#delete-account-password-error[role=alert]",
+                   "Incorrect password. Please try again."
+                 )
+
+          assert has_element?(
+                   view,
+                   "#delete-account-password[aria-invalid=true][aria-describedby=delete-account-password-error]"
+                 )
+
+          refute has_element?(view, "[data-kind=error]")
+        else
+          assert redirected_to(response) == ~p"/settings/account"
+          assert Flash.get(response.assigns.flash, :error)
+        end
+
+        assert Accounts.get_user(user.id)
+        assert Accounts.get_user_by_session_token(get_session(conn, :user_token))
+      end
+
+      assert response(delete(conn, ~p"/settings/account", %{confirm_deletion: "true"}), 429)
+    end
+
+    test "cancels immediately without a refund, deletes only the signed-in account and clears its session",
+         %{conn: conn, user: user, bypass: bypass} do
+      user
+      |> Accounts.User.paddle_changeset(%{paddle_subscription_id: "sub_delete"})
+      |> Shroud.Repo.update!()
+
+      other = user_fixture()
+
+      Bypass.expect_once(bypass, "GET", "/subscriptions/sub_delete", fn conn ->
+        Plug.Conn.resp(conn, 200, Jason.encode!(%{data: %{id: "sub_delete", status: "active"}}))
+        |> Plug.Conn.put_resp_header("content-type", "application/json")
+      end)
+
+      Bypass.expect_once(bypass, "POST", "/subscriptions/sub_delete/cancel", fn conn ->
+        assert Plug.Conn.get_req_header(conn, "authorization") == ["Bearer test_key"]
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        assert Jason.decode!(body) == %{"effective_from" => "immediately"}
+
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(200, Jason.encode!(%{data: %{id: "sub_delete", status: "canceled"}}))
+      end)
+
+      deleted =
+        delete(conn, ~p"/settings/account", %{
+          current_password: valid_user_password(),
+          confirm_deletion: "true",
+          user_id: other.id
+        })
+
+      assert redirected_to(deleted) == ~p"/users/log_in"
+      refute get_session(deleted, :user_token)
+      refute Accounts.get_user(user.id)
+      assert Accounts.get_user(other.id)
+      refute Accounts.get_user_by_session_token(get_session(conn, :user_token))
+      assert Flash.get(deleted.assigns.flash, :info) == "Your account has been deleted."
+    end
+
+    test "billing failures preserve the account and its data, and an already-canceled subscription can be retried",
+         %{conn: conn, user: user, bypass: bypass} do
+      user
+      |> Accounts.User.paddle_changeset(%{paddle_subscription_id: "sub_delete"})
+      |> Shroud.Repo.update!()
+
+      email_alias = Shroud.AliasesFixtures.alias_fixture(%{user_id: user.id})
+
+      params = %{current_password: valid_user_password(), confirm_deletion: "true"}
+
+      for {status, body} <- [
+            {503, %{error: %{code: "unavailable"}}},
+            {200, %{data: %{id: "sub_delete", status: "active"}}},
+            {200, %{data: %{id: "sub_other", status: "canceled"}}}
+          ] do
+        Bypass.expect_once(bypass, "GET", "/subscriptions/sub_delete", fn conn ->
+          conn
+          |> Plug.Conn.put_resp_content_type("application/json")
+          |> Plug.Conn.resp(200, Jason.encode!(%{data: %{id: "sub_delete", status: "active"}}))
+        end)
+
+        Bypass.expect_once(bypass, "POST", "/subscriptions/sub_delete/cancel", fn conn ->
+          conn
+          |> Plug.Conn.put_resp_content_type("application/json")
+          |> Plug.Conn.resp(status, Jason.encode!(body))
+        end)
+
+        failed = delete(conn, ~p"/settings/account", params)
+        assert redirected_to(failed) == ~p"/settings/account"
+        assert Flash.get(failed.assigns.flash, :error) =~ "has not been deleted"
+        assert Accounts.get_user_by_alias(email_alias.address).id == user.id
+        assert Accounts.get_user_by_session_token(get_session(conn, :user_token))
+      end
+
+      Bypass.expect_once(bypass, "GET", "/subscriptions/sub_delete", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(200, Jason.encode!(%{data: %{id: "sub_delete", status: "canceled"}}))
+      end)
+
+      assert redirected_to(delete(conn, ~p"/settings/account", params)) == ~p"/users/log_in"
+      refute Accounts.get_user(user.id)
+    end
+
+    test "paid pending checkouts block deletion; unpaid checkouts are closed before deletion", %{
+      conn: conn,
+      user: user,
+      bypass: bypass
+    } do
+      user
+      |> Accounts.User.paddle_changeset(%{paddle_checkout_transaction_id: "txn_delete"})
+      |> Shroud.Repo.update!()
+
+      params = %{current_password: valid_user_password(), confirm_deletion: "true"}
+
+      Bypass.expect_once(bypass, "GET", "/transactions/txn_delete", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(200, Jason.encode!(%{data: %{id: "txn_delete", status: "paid"}}))
+      end)
+
+      failed = delete(conn, ~p"/settings/account", params)
+      assert redirected_to(failed) == ~p"/settings/account"
+      assert Flash.get(failed.assigns.flash, :error) =~ "still being processed"
+      assert Accounts.get_user(user.id)
+
+      Bypass.expect_once(bypass, "GET", "/transactions/txn_delete", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(200, Jason.encode!(%{data: %{id: "txn_delete", status: "ready"}}))
+      end)
+
+      Bypass.expect_once(bypass, "PATCH", "/transactions/txn_delete", fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        assert Jason.decode!(body) == %{"status" => "canceled"}
+
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(200, Jason.encode!(%{data: %{id: "txn_delete", status: "canceled"}}))
+      end)
+
+      assert redirected_to(delete(conn, ~p"/settings/account", params)) == ~p"/users/log_in"
+      refute Accounts.get_user(user.id)
+    end
+  end
 
   describe "GET /settings/account" do
     test "renders settings page", %{conn: conn} do

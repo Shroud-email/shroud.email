@@ -17,7 +17,8 @@ defmodule ShroudWeb.AccountSettingsLive do
        current_user: user,
        page_title: "Account settings",
        email_form: to_form(Accounts.change_user_email(user)),
-       email_preferences_form: to_form(User.email_preferences_changeset(user, %{}))
+       email_preferences_form: to_form(User.email_preferences_changeset(user, %{})),
+       deletion_form: to_form(%{}, as: :deletion)
      ), layout: {ShroudWeb.Layouts, :settings}}
   end
 
