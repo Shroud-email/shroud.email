@@ -100,7 +100,7 @@ defmodule Shroud.Accounts do
   def get_user(id), do: Repo.get(User, id)
 
   @doc "Deletes an account after password confirmation and successful billing cancellation."
-  def delete_user(%User{id: id}, password, "true") do
+  def delete_user(%User{id: id}, password) do
     result =
       Repo.transaction(
         fn ->
@@ -140,8 +140,6 @@ defmodule Shroud.Accounts do
     end
   end
 
-  def delete_user(%User{}, _password, _confirmation), do: {:error, :confirmation_required}
-
   defp cancel_pending_checkout(%User{paddle_checkout_transaction_id: nil}), do: :ok
 
   defp cancel_pending_checkout(user),
@@ -154,7 +152,7 @@ defmodule Shroud.Accounts do
 
   defp delete_user_data(user) do
     aliases = from a in EmailAlias, where: a.user_id == ^user.id
-    alias_ids = from a in aliases, select: a.id
+    reserved_alias_ids = from a in aliases, where: is_nil(a.domain_id), select: a.id
 
     domain_ids =
       Repo.all(from d in Shroud.Domain.CustomDomain, where: d.user_id == ^user.id, select: d.id)
@@ -165,11 +163,13 @@ defmodule Shroud.Accounts do
       Repo.all(from d in Shroud.Domain.CustomDomain, where: d.id in ^domain_ids, select: d.domain)
     )
 
+    # Delete domains before the user so alias cascades do not conflict with owner nullification.
+    Repo.delete_all(from d in Shroud.Domain.CustomDomain, where: d.id in ^domain_ids)
+
     Repo.delete_all(
-      from m in Shroud.Aliases.EmailMetric, where: m.alias_id in subquery(alias_ids)
+      from m in Shroud.Aliases.EmailMetric, where: m.alias_id in subquery(reserved_alias_ids)
     )
 
-    Repo.delete_all(from a in aliases, where: not is_nil(a.domain_id))
     Repo.delete_all(from t in Boruta.Ecto.Token, where: t.sub == ^to_string(user.id))
 
     # Redeemed codes stay reserved, without retaining the account relationship.

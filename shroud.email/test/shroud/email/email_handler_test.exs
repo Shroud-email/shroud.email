@@ -123,7 +123,7 @@ defmodule Shroud.Email.EmailHandlerTest do
         |> Enum.map(&Repo.reload!/1)
 
       assert :ok = Shroud.Domain.delete_custom_domain!(removed_domain)
-      assert :ok = Accounts.delete_user(user, valid_user_password(), "true")
+      assert :ok = Accounts.delete_user(user, valid_user_password())
 
       deleted_jobs =
         deleted_jobs ++ Enum.reject(smtp_jobs, &(&1.args["to"] == other_alias.address))

@@ -8,7 +8,7 @@ defmodule Shroud.AccountsTest do
   alias Shroud.Accounts.{LoopsJob, User, UserNotifierJob, UserToken}
   alias Shroud.Domain.DnsChecker
 
-  describe "delete_user/3" do
+  describe "delete_user/2" do
     test "removes owned data and access without releasing shared addresses or redeemed codes" do
       %{user: user, tokens: tokens, connection: connection} =
         Shroud.OAuthFixtures.connection_fixture()
@@ -21,14 +21,16 @@ defmodule Shroud.AccountsTest do
       email_alias =
         alias_fixture(%{user_id: user.id, title: "Private title", notes: "Private notes"})
 
-      metric =
-        metric_fixture(%{
-          alias_id: email_alias.id,
-          date: Date.utc_today(),
-          forwarded: 7,
-          blocked: 2,
-          replied: 1
-        })
+      metrics =
+        for email_alias <- [email_alias, custom_alias] do
+          metric_fixture(%{
+            alias_id: email_alias.id,
+            date: Date.utc_today(),
+            forwarded: 7,
+            blocked: 2,
+            replied: 1
+          })
+        end
 
       spam =
         Repo.insert!(%Shroud.Email.SpamEmail{
@@ -75,12 +77,14 @@ defmodule Shroud.AccountsTest do
       other_job =
         LoopsJob.new(%{action: "sync_loops", user_id: other.id}) |> Oban.insert!()
 
-      assert :ok = Accounts.delete_user(user, valid_user_password(), "true")
+      assert :ok = Accounts.delete_user(user, valid_user_password())
       refute Accounts.get_user(user.id)
       refute Accounts.get_user_by_alias(email_alias.address)
       refute Repo.get(Shroud.Domain.CustomDomain, domain.id)
       refute Repo.get(Shroud.Aliases.EmailAlias, custom_alias.id)
-      refute Repo.get(Shroud.Aliases.EmailMetric, metric.id)
+
+      for metric <- metrics, do: refute(Repo.get(Shroud.Aliases.EmailMetric, metric.id))
+
       refute Repo.get(Shroud.Email.SpamEmail, spam.id)
       refute Repo.get(Shroud.Accounts.PasskeyCredential, passkey.id)
       refute Repo.get(Shroud.OAuth.Connection, connection.id)
@@ -134,7 +138,7 @@ defmodule Shroud.AccountsTest do
         alias_fixture(%{user_id: user.id, address: "private@#{domain.domain}"})
       ]
 
-      assert :ok = Accounts.delete_user(user, valid_user_password(), "true")
+      assert :ok = Accounts.delete_user(user, valid_user_password())
 
       for email_alias <- aliases do
         assert {:error, %Ecto.Changeset{}} =

@@ -8,12 +8,8 @@ defmodule ShroudWeb.UserSettingsController do
     redirect(conn, to: ~p"/settings/account")
   end
 
-  def delete(conn, params) do
-    case Accounts.delete_user(
-           conn.assigns.current_user,
-           params["current_password"],
-           params["confirm_deletion"]
-         ) do
+  def delete(conn, %{"confirm_deletion" => "true"} = params) do
+    case Accounts.delete_user(conn.assigns.current_user, params["current_password"]) do
       :ok ->
         conn
         |> put_flash(:info, "Your account has been deleted.")
@@ -27,9 +23,6 @@ defmodule ShroudWeb.UserSettingsController do
       {:error, reason} ->
         message =
           case reason do
-            :confirmation_required ->
-              "Please confirm that you understand account deletion is permanent."
-
             :checkout_processing ->
               "Your payment is still being processed. Your account has not been deleted. Please try again shortly."
 
@@ -41,6 +34,12 @@ defmodule ShroudWeb.UserSettingsController do
         |> put_flash(:error, message)
         |> redirect(to: ~p"/settings/account")
     end
+  end
+
+  def delete(conn, _params) do
+    conn
+    |> put_flash(:error, "Please confirm that you understand account deletion is permanent.")
+    |> redirect(to: ~p"/settings/account")
   end
 
   def confirm_email(conn, %{"token" => token}) do

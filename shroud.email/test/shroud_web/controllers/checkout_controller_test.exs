@@ -19,7 +19,7 @@ defmodule ShroudWeb.CheckoutControllerTest do
        %{conn: conn} do
     user = user_fixture()
     identity = PaddleCheckoutIdentity.sign(user.id)
-    assert :ok = Shroud.Accounts.delete_user(user, valid_user_password(), "true")
+    assert :ok = Shroud.Accounts.delete_user(user, valid_user_password())
 
     for type <- ["subscription.canceled", "transaction.completed"] do
       event = %{
