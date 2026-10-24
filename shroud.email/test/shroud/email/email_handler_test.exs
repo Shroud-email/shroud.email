@@ -79,6 +79,8 @@ defmodule Shroud.Email.EmailHandlerTest do
       address = "private@#{domain.domain}"
       alias_fixture(%{user_id: user.id, address: address})
       catchall = "catchall@#{domain.domain}"
+      removed_domain = custom_domain_fixture(%{user_id: user.id})
+      removed_address = "catchall@#{removed_domain.domain}"
 
       reply =
         ReplyAddress.to_reply_address("recipient@example.org", shared_alias.address)
@@ -111,7 +113,7 @@ defmodule Shroud.Email.EmailHandlerTest do
       assert {:ok, "1", []} =
                SmtpServer.handle_DATA(
                  "smtp@example.org",
-                 [address, other_alias.address],
+                 [address, other_alias.address, removed_address],
                  raw,
                  []
                )
@@ -120,8 +122,11 @@ defmodule Shroud.Email.EmailHandlerTest do
         all_enqueued(worker: EmailHandler, args: %{from: "smtp@example.org"})
         |> Enum.map(&Repo.reload!/1)
 
+      assert :ok = Shroud.Domain.delete_custom_domain!(removed_domain)
       assert :ok = Accounts.delete_user(user, valid_user_password(), "true")
       assert Enum.all?(deleted_jobs, &is_nil(Repo.get(Oban.Job, &1.id)))
+      removed_domain_job = Enum.find(smtp_jobs, &(&1.args["to"] == removed_address))
+      assert is_nil(Repo.get(Oban.Job, removed_domain_job.id))
       assert Repo.reload!(parent).args["to"] == [other_alias.address]
 
       custom_domain_fixture(%{user_id: other.id, domain: domain.domain})

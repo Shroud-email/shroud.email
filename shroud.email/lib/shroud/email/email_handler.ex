@@ -40,7 +40,7 @@ defmodule Shroud.Email.EmailHandler do
 
     if current && current.args["to"] == recipient &&
          Map.get(current.meta, "user_id", user_id) == user_id do
-      do_perform(current, sender, recipient, data, user_id)
+      do_perform(current, sender, recipient, data)
     else
       # Do not retain a straggler's raw message in a completed job.
       if job.id, do: Repo.delete_all(from j in Oban.Job, where: j.id == ^job.id)
@@ -67,9 +67,7 @@ defmodule Shroud.Email.EmailHandler do
     end
   end
 
-  defp do_perform(job, from, to, data, user_id \\ nil)
-
-  defp do_perform(_job, from, to, data, _user_id) when byte_size(data) > 26_214_400 do
+  defp do_perform(_job, from, to, data) when byte_size(data) > 26_214_400 do
     # when the email is too big, cancel
 
     if is_list(to) do
@@ -86,11 +84,11 @@ defmodule Shroud.Email.EmailHandler do
     :ok
   end
 
-  defp do_perform(job, from, recipients, data, _user_id) when is_list(recipients) do
+  defp do_perform(job, from, recipients, data) when is_list(recipients) do
     fan_out(job, from, recipients, data)
   end
 
-  defp do_perform(_job, from, to, data, user_id) do
+  defp do_perform(_job, from, to, data) do
     cond do
       postmaster?(to) ->
         forward_postmaster(data)
@@ -99,7 +97,7 @@ defmodule Shroud.Email.EmailHandler do
         BounceHandler.handle_haraka_bounce_report(to, data)
 
       true ->
-        handle_recipient(from, to, data, user_id)
+        handle_recipient(from, to, data)
     end
   end
 
@@ -174,13 +172,12 @@ defmodule Shroud.Email.EmailHandler do
     end
   end
 
-  @spec handle_recipient(String.t(), String.t(), String.t(), integer() | nil) ::
-          :ok | {:error, term()}
-  defp handle_recipient(sender, recipient, data, user_id) do
+  @spec handle_recipient(String.t(), String.t(), String.t()) :: :ok | {:error, term()}
+  defp handle_recipient(sender, recipient, data) do
     if ReplyAddress.reply_address?(recipient) do
       OutgoingEmailHandler.handle_outgoing_email(sender, recipient, data)
     else
-      IncomingEmailHandler.handle_incoming_email(sender, recipient, data, user_id)
+      IncomingEmailHandler.handle_incoming_email(sender, recipient, data)
     end
   end
 end

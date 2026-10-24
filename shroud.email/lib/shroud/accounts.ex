@@ -160,6 +160,7 @@ defmodule Shroud.Accounts do
       Repo.all(from d in Shroud.Domain.CustomDomain, where: d.user_id == ^user.id, select: d.id)
 
     delete_email_jobs(
+      user.id,
       Repo.all(from a in aliases, select: a.address),
       Repo.all(from d in Shroud.Domain.CustomDomain, where: d.id in ^domain_ids, select: d.domain)
     )
@@ -193,14 +194,14 @@ defmodule Shroud.Accounts do
     )
   end
 
-  defp delete_email_jobs(addresses, domains) do
+  defp delete_email_jobs(user_id, addresses, domains) do
     jobs =
       from j in Oban.Job,
         where: j.worker == "Shroud.Email.EmailHandler",
         where:
           fragment(
             """
-            EXISTS (
+            ?->>'user_id' = ? OR EXISTS (
               SELECT 1 FROM jsonb_array_elements_text(
                 CASE jsonb_typeof(?->'to') WHEN 'array' THEN ?->'to'
                 ELSE jsonb_build_array(?->>'to') END
@@ -210,6 +211,8 @@ defmodule Shroud.Accounts do
                          WHERE right(r.address, length(a.address) + 1) = '_' || a.address)
             )
             """,
+            j.meta,
+            ^to_string(user_id),
             j.args,
             j.args,
             j.args,

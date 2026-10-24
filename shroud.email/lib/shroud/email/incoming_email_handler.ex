@@ -21,10 +21,10 @@ defmodule Shroud.Email.IncomingEmailHandler do
   import Shroud.Accounts.Logging, only: [maybe_log: 2, store_email: 3]
   require Logger
 
-  @spec handle_incoming_email(String.t(), String.t(), String.t(), integer() | nil) ::
+  @spec handle_incoming_email(String.t(), String.t(), String.t()) ::
           :ok | {:error, term()}
   # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
-  def handle_incoming_email(sender, recipient, data, expected_user_id) do
+  def handle_incoming_email(sender, recipient, data) do
     # Lookup real email based on the receiving alias (`recipient`)
     recipient_user = Accounts.get_user_by_alias(recipient)
     email_alias = Aliases.get_email_alias_by_address(recipient)
@@ -32,11 +32,6 @@ defmodule Shroud.Email.IncomingEmailHandler do
     custom_domain = Domain.get_custom_domain(recipient_domain)
 
     cond do
-      (recipient_user && recipient_user.id != expected_user_id) ||
-        (email_alias && email_alias.user_id != expected_user_id) ||
-          (custom_domain && custom_domain.user_id != expected_user_id) ->
-        :ok
-
       email_alias == nil and not is_nil(custom_domain) and custom_domain.catchall_enabled ->
         create_catchall_address(custom_domain, recipient, sender, data)
 
