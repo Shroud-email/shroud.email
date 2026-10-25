@@ -50,6 +50,7 @@ defmodule ShroudWeb.Router do
     get("/.well-known/apple-app-site-association", MobileAssociationController, :apple)
     get("/.well-known/assetlinks.json", MobileAssociationController, :android)
     get("/oauth/callback", OAuthController, :callback_fallback)
+    get("/oauth/extension/callback", OAuthController, :extension_callback)
     post("/oauth/register", OAuthController, :register)
     post("/oauth/token", OAuthController, :token)
     post("/oauth/revoke", OAuthController, :revoke)
@@ -92,6 +93,7 @@ defmodule ShroudWeb.Router do
     pipe_through([:api, :require_confirmed_api_user])
 
     get("/me", ProfileController, :show)
+    get("/alias-capabilities", AliasCapabilitiesController, :show)
     resources("/aliases", EmailAliasController, only: [:index, :create])
     get("/aliases/:address", EmailAliasController, :show)
     patch("/aliases/:address", EmailAliasController, :update)
