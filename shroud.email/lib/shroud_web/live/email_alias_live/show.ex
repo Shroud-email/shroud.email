@@ -562,22 +562,28 @@ defmodule ShroudWeb.EmailAliasLive.Show do
   end
 
   defp update_email_alias(socket) do
-    email_alias = Aliases.get_email_alias_by_address!(socket.assigns.address)
+    case Aliases.get_email_alias_by_address(socket.assigns.address) do
+      nil ->
+        socket
+        |> put_notification(:error, "Alias not found.")
+        |> redirect(to: ~p"/")
 
-    socket
-    |> assign(:alias, email_alias)
-    |> assign(
-      :detail_forms,
-      Map.new([:title, :notes], fn field ->
-        form =
-          if MapSet.member?(socket.assigns.editing_fields, field) do
-            socket.assigns.detail_forms[field]
-          else
-            to_form(Aliases.change_email_alias(email_alias))
-          end
+      email_alias ->
+        socket
+        |> assign(:alias, email_alias)
+        |> assign(
+          :detail_forms,
+          Map.new([:title, :notes], fn field ->
+            form =
+              if MapSet.member?(socket.assigns.editing_fields, field) do
+                socket.assigns.detail_forms[field]
+              else
+                to_form(Aliases.change_email_alias(email_alias))
+              end
 
-        {field, form}
-      end)
-    )
+            {field, form}
+          end)
+        )
+    end
   end
 end

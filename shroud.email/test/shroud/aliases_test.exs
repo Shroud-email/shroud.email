@@ -218,11 +218,16 @@ defmodule Shroud.AliasesTest do
         replied: 3
       })
 
-      returned_alias = Aliases.get_email_alias_by_address!(alias_address)
-      assert returned_alias.id == alias_id
-      assert returned_alias.forwarded_in_last_30_days == 2
-      assert returned_alias.blocked_in_last_30_days == 4
-      assert returned_alias.replied_in_last_30_days == 6
+      for lookup <- [
+            &Aliases.get_email_alias_by_address!/1,
+            &Aliases.get_email_alias_by_address/1
+          ] do
+        returned_alias = lookup.(alias_address)
+        assert returned_alias.id == alias_id
+        assert returned_alias.forwarded_in_last_30_days == 2
+        assert returned_alias.blocked_in_last_30_days == 4
+        assert returned_alias.replied_in_last_30_days == 6
+      end
     end
 
     test "does not return a deleted alias" do

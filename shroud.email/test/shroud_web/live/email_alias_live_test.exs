@@ -8,6 +8,31 @@ defmodule ShroudWeb.EmailAliasLiveTest do
   describe "Show" do
     setup :register_and_log_in_user
 
+    test "missing and deleted aliases redirect to the list", %{conn: conn, user: user} do
+      email_alias = alias_fixture(%{user_id: user.id})
+      {:ok, _} = Shroud.Aliases.delete_email_alias(email_alias.id)
+
+      for address <- ["missing@email.shroud.test", email_alias.address] do
+        assert {:error, {:redirect, %{to: "/", flash: %{"error" => "Alias not found."}}}} =
+                 live(conn, ~p"/alias/#{address}")
+      end
+    end
+
+    test "an alias deleted between the HTTP render and connected mount redirects", %{
+      conn: conn,
+      user: user
+    } do
+      email_alias = alias_fixture(%{user_id: user.id})
+      conn = get(conn, ~p"/alias/#{email_alias.address}")
+      assert html_response(conn, 200)
+      {:ok, _} = Shroud.Aliases.delete_email_alias(email_alias.id)
+
+      assert {:error, {:redirect, %{to: "/"}}} = result = live(conn)
+      {:ok, redirected_conn} = follow_redirect(result, conn, ~p"/")
+      {:ok, view, _} = live(redirected_conn)
+      assert has_element?(view, "#notification-source [data-kind=error]", "Alias not found.")
+    end
+
     test "inactive detail forms recover without changing alias details", %{conn: conn, user: user} do
       email_alias = alias_fixture(%{user_id: user.id, title: "Receipts", notes: "Keep invoices"})
       {:ok, view, _} = live(conn, ~p"/alias/#{email_alias.address}")
