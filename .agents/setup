@@ -33,7 +33,7 @@ install_apt_packages() {
   fi
 
   sudo apt-get update
-  sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y "${missing[@]}"
+  sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "${missing[@]}"
 }
 
 install_docker() {
@@ -55,7 +55,7 @@ install_docker() {
     fi
 
     sudo apt-get update
-    sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
       docker-ce \
       docker-ce-cli \
       containerd.io \
@@ -92,7 +92,8 @@ install_mise() {
   # Install Erlang first so Elixir's install dependency is present before mise runs in parallel.
   (
     cd shroud.email
-    step "Install precompiled Erlang" env MISE_ERLANG_PRECOMPILED_OS=ubuntu-22.04 "$mise_bin" install --yes erlang
+    # Fail if the binary is unavailable instead of falling back to a lengthy source build.
+    step "Install precompiled Erlang" env MISE_ERLANG_PRECOMPILED_OS=ubuntu-22.04 MISE_ERLANG_COMPILE=false "$mise_bin" install --yes erlang
     step "Install Phoenix tools" "$mise_bin" install --yes
   )
   (cd caddy-permissive-file-storage && step "Install Go tools" "$mise_bin" install --yes)
@@ -128,8 +129,8 @@ install_javascript_dependencies() {
 }
 
 install_elixir_dependencies() {
-  mise exec -- mix local.hex --force --if-missing
-  mise exec -- mix local.rebar --force --if-missing
+  step "Install Hex" mise exec -- mix local.hex --force --if-missing
+  step "Install Rebar" mise exec -- mix local.rebar --force --if-missing
   # Without --only, deps.get fetches dependencies for every environment.
   step "Fetch Mix dependencies" mise exec -- mix deps.get
   step "Compile development Mix environment" mise exec -- mix compile
@@ -162,8 +163,8 @@ full_page_writes = off"
 }
 
 prepare_databases() {
-  mise exec -- mix ecto.setup
-  mise exec -- env MIX_ENV=test mix ecto.setup
+  step "Create and migrate development database" mise exec -- mix ecto.setup
+  step "Create and migrate test database" mise exec -- env MIX_ENV=test mix ecto.setup
 }
 
 seed_development_database() {
@@ -198,4 +199,4 @@ step "Seed development database" seed_development_database
 step "Prepare website" bash "$repo_root/website/.agents/setup"
 
 echo
-echo "Orb setup complete."
+echo "Orb setup complete (${SECONDS}s)."
