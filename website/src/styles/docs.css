@@ -1,29 +1,7 @@
-@font-face {
-  font-family: "Manrope";
-  src: url("../assets/fonts/manrope-latin-400-normal.woff2") format("woff2");
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Manrope";
-  src: url("../assets/fonts/manrope-latin-600-normal.woff2") format("woff2");
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Manrope";
-  src: url("../assets/fonts/manrope-latin-700-normal.woff2") format("woff2");
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-}
+@import "./fonts.css";
 
 :root {
-  --sl-font: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --sl-font: "Timeless Sans", ui-sans-serif, system-ui, sans-serif;
   --sl-color-accent-low: #27245c;
   --sl-color-accent: #818cf8;
   --sl-color-accent-high: #e0e7ff;

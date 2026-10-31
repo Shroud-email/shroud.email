@@ -1,40 +1,7 @@
 @import "tailwindcss";
+@import "./fonts.css";
 @plugin "@tailwindcss/typography";
 @source "../../node_modules/.nuxt-ui/ui/accordion.ts";
-
-@layer base {
-  @font-face {
-    font-family: "Manrope";
-    src: url("../assets/fonts/manrope-latin-400-normal.woff2") format("woff2");
-    font-style: normal;
-    font-weight: 400;
-    font-display: swap;
-  }
-
-  @font-face {
-    font-family: "Manrope";
-    src: url("../assets/fonts/manrope-latin-500-normal.woff2") format("woff2");
-    font-style: normal;
-    font-weight: 500;
-    font-display: swap;
-  }
-
-  @font-face {
-    font-family: "Manrope";
-    src: url("../assets/fonts/manrope-latin-600-normal.woff2") format("woff2");
-    font-style: normal;
-    font-weight: 600;
-    font-display: swap;
-  }
-
-  @font-face {
-    font-family: "Manrope";
-    src: url("../assets/fonts/manrope-latin-700-normal.woff2") format("woff2");
-    font-style: normal;
-    font-weight: 700;
-    font-display: swap;
-  }
-}
 
 /* Dark mode follows the OS setting automatically (no toggle). `dark:` keeps
    Tailwind v4's default prefers-color-scheme behaviour, and every surface is
@@ -42,8 +9,8 @@
    what produces light-on-light). */
 
 @theme {
-  /* Manrope throughout; display hierarchy comes from size and weight. */
-  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  /* Display hierarchy comes from size and weight. */
+  --font-sans: "Timeless Sans", ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-sans);
 
   /* Brand accent. Semantic aliases over Tailwind's (already-OKLCH) indigo so

@@ -3,9 +3,10 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "dev": "astro dev",
-    "start": "astro dev",
-    "build": "astro check && vue-tsc --noEmit && astro build",
+    "fonts": "bash ../shroud.email/scripts/fetch-timeless.sh src/assets/fonts/timeless",
+    "dev": "pnpm fonts && astro dev",
+    "start": "pnpm dev",
+    "build": "pnpm fonts && astro check && vue-tsc --noEmit && astro build",
     "check:content-images": "node scripts/check-content-images.mjs",
     "preview": "astro preview",
     "lint": "npx @biomejs/biome format && npx @biomejs/biome lint --write"

@@ -42,6 +42,7 @@ jobs:
             website:
               - 'website/**'
               - 'shroud.email/openapi.json'
+              - 'shroud.email/scripts/fetch-timeless.sh'
               - '.github/workflows/ci.yml'
             rust:
               - 'shroud.email/tools/css_image_parser/**'
