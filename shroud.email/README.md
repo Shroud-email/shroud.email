@@ -23,19 +23,11 @@ so that Claude Code reads `AGENTS.md` files (it does not pick them up natively).
 To start the server:
 
   * Install dependencies with `mix deps.get`
-  * Set up assets and download Timeless Sans with `mix assets.setup`
   * Create and migrate your database with `mix ecto.setup`
   * Create seed data (if you want) using `mix ecto.seed`
   * Start Phoenix endpoint with `mix phx.server` or inside IEx with `iex -S mix phx.server`
 
 Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
-
-The app self-hosts Timeless Sans 1.094. `mix assets.setup` and `mix assets.deploy`
-download it from the publisher and verify its SHA-256 checksum. This needs
-Bash, curl, unzip, and sha256sum. Font files and their license are cached in
-`priv/static/fonts/timeless/` and excluded from Git because the
-[Timeless Free Font License](https://timeless.co/type/license) permits web
-embedding but prohibits public-repository redistribution.
 
 Passkeys use the configured Phoenix endpoint URL as their WebAuthn origin and RP ID.
 Set `APP_DOMAIN` to the canonical public HTTPS host in production, or the public
