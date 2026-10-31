@@ -29,6 +29,14 @@ defmodule Shroud.Accounts.UserNotifierJobTest do
         document = Floki.parse_document!(email.html_body)
         assert [] == Floki.find(document, "strong")
 
+        assert "https://app.shroud.email/fonts/timeless.css" in Floki.attribute(
+                 document,
+                 "link[rel='stylesheet']",
+                 "href"
+               )
+
+        refute email.html_body =~ "/fonts/inter/"
+
         for body <- [email.text_body, Floki.text(document)] do
           assert body =~ "recipient@example.org via alias@email.shroud.test"
           assert body =~ "The recipient's address was rejected."
