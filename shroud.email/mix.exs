@@ -133,8 +133,14 @@ defmodule Shroud.MixProject do
       "ecto.seed": ["run priv/repo/seeds.exs"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
-      "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
+      "assets.fonts": ["cmd bash scripts/fetch-timeless.sh priv/static/fonts/timeless"],
+      "assets.setup": [
+        "assets.fonts",
+        "tailwind.install --if-missing",
+        "esbuild.install --if-missing"
+      ],
       "assets.deploy": [
+        "assets.fonts",
         "tailwind default --minify",
         "esbuild default --minify",
         "phx.digest"

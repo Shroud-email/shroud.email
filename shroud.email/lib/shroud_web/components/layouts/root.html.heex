@@ -32,7 +32,6 @@
     <.live_title suffix=" · Shroud.email">
       {assigns[:page_title] || "Home"}
     </.live_title>
-    <link phx-track-static rel="stylesheet" href={~p"/fonts/inter/inter.css"} />
     <link phx-track-static rel="stylesheet" href={~p"/assets/app.css"} />
     <%!-- Keep this synchronous script after CSS and before other scripts/body:
          it waits for stylesheets before Firefox can force an unstyled layout. --%>

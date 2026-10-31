@@ -13,6 +13,13 @@ Run commands from `website/`, using its mise toolchain (`mise exec -- <command>`
 | `pnpm run build`   | Build your production site to `./dist/`      |
 | `pnpm run preview` | Preview your build locally, before deploying |
 
+The site self-hosts Timeless Sans 1.094. Development and production builds
+download it from the publisher and verify its SHA-256 checksum. This needs
+Bash, curl, unzip, and sha256sum. Font files and their license are cached in
+`src/assets/fonts/timeless/` and excluded from Git because the
+[Timeless Free Font License](https://timeless.co/type/license) permits web
+embedding but prohibits public-repository redistribution.
+
 ## Documentation
 
 Starlight powers `/docs/` within this Astro site; marketing and blog pages keep
@@ -29,7 +36,7 @@ specification is also published at `/docs/openapi.json`.
 The `/docs/api/aliases/` and `/docs/api/domains/` URLs redirect to the generated
 list-operation pages. Since this is a static build, Astro emits HTML redirect
 pages rather than HTTP redirects. All other existing guide URLs are preserved.
-Docs use the website's Manrope font and indigo accent.
+Docs use the website's Timeless Sans font and indigo accent.
 Documentation is built and deployed with the website using the existing
 website Bunny Storage and Pull Zones; no separate docs deployment is required.
 

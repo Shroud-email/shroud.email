@@ -6,6 +6,7 @@ on:
     paths:
       - 'website/**'
       - 'shroud.email/openapi.json'
+      - 'shroud.email/scripts/fetch-timeless.sh'
       - '.github/workflows/website-deploy.yml'
   workflow_dispatch:
 

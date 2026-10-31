@@ -8,7 +8,7 @@ RUN --mount=type=cache,target=/var/lib/apt,sharing=locked \
     --mount=type=cache,target=/var/cache/apt,sharing=locked \
     apt-get update && \
     apt-get upgrade -y && \
-    apt-get install -y build-essential git curl npm
+    apt-get install -y build-essential git curl npm unzip
 
 ENV PATH="/root/.cargo/bin:${PATH}"
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
@@ -43,6 +43,7 @@ COPY priv priv
 COPY assets assets
 COPY lib lib
 COPY tools tools
+COPY scripts/fetch-timeless.sh scripts/fetch-timeless.sh
 RUN --mount=type=cache,target=/root/.npm npm --prefix assets ci
 # compile and build the release
 RUN mix compile
