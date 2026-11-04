@@ -129,6 +129,16 @@ defmodule ShroudWeb.OAuthController do
     )
   end
 
+  def extension_callback(conn, _params) do
+    conn
+    |> put_root_layout(false)
+    |> put_layout(false)
+    |> put_resp_header("cache-control", "no-store")
+    |> put_resp_header("referrer-policy", "no-referrer")
+    |> put_resp_header("content-security-policy", "default-src 'none'; frame-ancestors 'none'")
+    |> render("extension_callback.html")
+  end
+
   defp callback(conn, params, result) do
     uri = URI.parse(params["redirect_uri"])
 

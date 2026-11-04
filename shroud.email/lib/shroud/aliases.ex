@@ -58,25 +58,30 @@ defmodule Shroud.Aliases do
 
   @free_alias_limit 5
 
+  def creation_capabilities(%User{} = user) do
+    count = count_aliases(user)
+    limit = if user.status == :free, do: @free_alias_limit
+
+    %{
+      alias_count: count,
+      alias_limit: limit,
+      can_create: Accounts.active?(user) and (is_nil(limit) or count < limit),
+      default_domain: Util.email_domain()
+    }
+  end
+
   @spec create_email_alias(map()) ::
           {:ok, EmailAlias.t()}
           | {:error, :inactive_user | :free_limit_reached}
   def create_email_alias(attrs) do
     user = Repo.get(User, attrs.user_id)
-
-    active_alias_count =
-      Repo.aggregate(
-        from(ea in EmailAlias,
-          where: ea.user_id == ^attrs.user_id and is_nil(ea.deleted_at)
-        ),
-        :count
-      )
+    capabilities = creation_capabilities(user)
 
     cond do
       not Accounts.active?(user) ->
         {:error, :inactive_user}
 
-      user.status == :free and active_alias_count >= @free_alias_limit ->
+      not capabilities.can_create ->
         {:error, :free_limit_reached}
 
       true ->

@@ -1,0 +1,37 @@
+name: Browser extension
+on:
+  pull_request:
+    paths:
+      - 'extension/**'
+      - '.github/workflows/extension.yml'
+  push:
+    branches: ['main']
+    paths:
+      - 'extension/**'
+      - '.github/workflows/extension.yml'
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: extension
+
+jobs:
+  test-and-build:
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: '24.21.0'
+          cache: npm
+          cache-dependency-path: extension/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run typecheck
+      - run: npm run build:chrome
+      - run: npm run build:firefox
+      - run: npm run build:safari

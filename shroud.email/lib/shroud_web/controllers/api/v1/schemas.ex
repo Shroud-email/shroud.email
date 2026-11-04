@@ -33,19 +33,22 @@ defmodule ShroudWeb.Api.V1.Schemas do
       title: "CreateAlias",
       type: :object,
       description:
-        "Omit both local_part and domain for a random alias; otherwise supply both strings.",
+        "Omit address fields for a random shared alias; domain alone selects a random name. local_part requires domain.",
       properties: %{
         local_part: %Schema{type: :string},
-        domain: %Schema{type: :string, description: "A custom domain owned by your account."},
+        domain: %Schema{
+          type: :string,
+          description: "The default shared domain or a verified owned custom domain."
+        },
         title: metadata(),
         notes: metadata()
       },
       allOf: [
         %Schema{
           not: %Schema{
-            oneOf: [
+            allOf: [
               %Schema{type: :object, required: [:local_part]},
-              %Schema{type: :object, required: [:domain]}
+              %Schema{not: %Schema{type: :object, required: [:domain]}}
             ]
           }
         }
@@ -108,8 +111,28 @@ defmodule ShroudWeb.Api.V1.Schemas do
       title: "Error",
       type: :object,
       required: [:error],
-      properties: %{error: %Schema{type: :string}},
+      properties: %{error: %Schema{type: :string}, code: %Schema{type: :string}},
       example: %{error: "Invalid token"}
+    }
+  end
+
+  def alias_capabilities do
+    %Schema{
+      title: "AliasCapabilities",
+      type: :object,
+      required: [:alias_count, :alias_limit, :can_create, :default_domain],
+      properties: %{
+        alias_count: %Schema{type: :integer, minimum: 0},
+        alias_limit: %Schema{type: :integer, nullable: true, minimum: 0},
+        can_create: %Schema{type: :boolean},
+        default_domain: %Schema{type: :string}
+      },
+      example: %{
+        alias_count: 4,
+        alias_limit: 5,
+        can_create: true,
+        default_domain: "fog.shroud.email"
+      }
     }
   end
 
